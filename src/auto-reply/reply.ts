@@ -201,7 +201,6 @@ export async function getReplyFromConfig(
       systemSent: true,
     };
     await saveSessionStore(storePath, sessionStore);
-    systemSent = true;
   }
 
   const prefixedBody =
