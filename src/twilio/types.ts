@@ -1,8 +1,9 @@
 export type TwilioRequestOptions = {
   method: "get" | "post";
   uri: string;
+  headers?: Record<string, string>;
   params?: Record<string, string | number>;
-  form?: Record<string, string>;
+  data?: Record<string, string>;
   body?: unknown;
   contentType?: string;
 };

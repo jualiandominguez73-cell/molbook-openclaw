@@ -1907,14 +1907,22 @@ describe("twilio interactions", () => {
   });
 
   it("sendTypingIndicator skips missing messageSid and sends when present", async () => {
-    const client = twilioFactory._createClient();
-    await index.sendTypingIndicator(client, index.defaultRuntime, undefined);
-    expect(client.request).not.toHaveBeenCalled();
+    const mockFetch = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ success: true })));
+    const creds = { accountSid: "AC123", authToken: "token123" };
 
-    await index.sendTypingIndicator(client, index.defaultRuntime, "SM123");
-    expect(client.request).toHaveBeenCalledWith(
-      expect.objectContaining({ method: "post" }),
+    index.sendTypingIndicator(creds, undefined);
+    expect(mockFetch).not.toHaveBeenCalled();
+
+    index.sendTypingIndicator(creds, "SM123");
+    // Wait for initial delay (3000ms) + some buffer for the fire-and-forget async
+    await new Promise((r) => setTimeout(r, 3200));
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://messaging.twilio.com/v2/Indicators/Typing.json",
+      expect.objectContaining({ method: "POST" }),
     );
+    mockFetch.mockRestore();
   });
 
   it("sendMessage wraps Twilio client and returns sid", async () => {

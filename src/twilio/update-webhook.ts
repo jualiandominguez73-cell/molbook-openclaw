@@ -120,7 +120,10 @@ export async function updateWebhook(
     await requester.request({
       method: "post",
       uri: `https://messaging.twilio.com/v2/Channels/Senders/${senderSid}`,
-      form: {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      data: {
         "Webhook.CallbackUrl": url,
         "Webhook.CallbackMethod": method,
       },

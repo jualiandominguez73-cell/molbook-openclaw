@@ -4,7 +4,7 @@ import chalk from "chalk";
 import express, { type Request, type Response } from "express";
 import { getReplyFromConfig, type ReplyPayload } from "../auto-reply/reply.js";
 import { type EnvConfig, readEnv } from "../env.js";
-import { danger, success } from "../globals.js";
+import { danger, logVerbose, success } from "../globals.js";
 import * as mediaHost from "../media/host.js";
 import { attachMediaRoutes } from "../media/server.js";
 import { saveMediaSource } from "../media/store.js";
@@ -83,7 +83,12 @@ export async function startWebhook(
           MediaType: mediaType,
         },
         {
-          onReplyStart: () => sendTypingIndicator(client, runtime, MessageSid),
+          onReplyStart: () => {
+            const creds = getAuthTokenCreds(env);
+            if (creds) {
+              sendTypingIndicator(creds, MessageSid);
+            }
+          },
         },
       );
     }
@@ -159,4 +164,17 @@ function buildTwilioBasicAuth(env: EnvConfig) {
   return Buffer.from(`${env.auth.apiKey}:${env.auth.apiSecret}`).toString(
     "base64",
   );
+}
+
+function getAuthTokenCreds(
+  env: EnvConfig,
+): { accountSid: string; authToken: string } | null {
+  if ("authToken" in env.auth) {
+    return { accountSid: env.accountSid, authToken: env.auth.authToken };
+  }
+  // Typing indicator requires authToken, API key auth is not supported
+  logVerbose(
+    "Skipping typing indicator: API key auth is not supported by Twilio's typing indicator API (requires authToken)",
+  );
+  return null;
 }

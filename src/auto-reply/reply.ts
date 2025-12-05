@@ -702,6 +702,9 @@ type TwilioLikeClient = TwilioRequester & {
       body: string;
     }) => Promise<unknown>;
   };
+  // Twilio SDK exposes credentials via username/password for Basic auth
+  username?: string;
+  password?: string;
 };
 
 export async function autoReplyIfConfigured(
@@ -812,7 +815,13 @@ export async function autoReplyIfConfigured(
   const replyResult = await getReplyFromConfig(
     ctx,
     {
-      onReplyStart: () => sendTypingIndicator(client, runtime, message.sid),
+      onReplyStart: () =>
+        client.username && client.password
+          ? sendTypingIndicator(
+              { accountSid: client.username, authToken: client.password },
+              message.sid,
+            )
+          : undefined,
       onPartialReply: partialSender,
     },
     cfg,
