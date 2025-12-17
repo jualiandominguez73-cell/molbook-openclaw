@@ -258,6 +258,7 @@ function buildSnapshot(): Snapshot {
 
 const MAX_PAYLOAD_BYTES = 512 * 1024; // cap incoming frame size
 const MAX_BUFFERED_BYTES = 1.5 * 1024 * 1024; // per-connection send buffer limit
+const MAX_CHAT_HISTORY_MESSAGES_BYTES = 6 * 1024 * 1024; // keep history responses comfortably under client WS limits
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 const TICK_INTERVAL_MS = 30_000;
 const HEALTH_REFRESH_INTERVAL_MS = 60_000;
@@ -352,6 +353,30 @@ function readSessionMessages(
     }
   }
   return messages;
+}
+
+function jsonUtf8Bytes(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value), "utf8");
+  } catch {
+    return Buffer.byteLength(String(value), "utf8");
+  }
+}
+
+function capArrayByJsonBytes<T>(
+  items: T[],
+  maxBytes: number,
+): { items: T[]; bytes: number } {
+  if (items.length === 0) return { items, bytes: 2 };
+  const parts = items.map((item) => jsonUtf8Bytes(item));
+  let bytes = 2 + parts.reduce((a, b) => a + b, 0) + (items.length - 1); // [] + commas
+  let start = 0;
+  while (bytes > maxBytes && start < items.length - 1) {
+    bytes -= parts[start] + 1; // item + comma
+    start += 1;
+  }
+  const next = start > 0 ? items.slice(start) : items;
+  return { items: next, bytes };
 }
 
 function loadSessionEntry(sessionKey: string) {
@@ -879,8 +904,12 @@ export async function startGatewayServer(
               ? readSessionMessages(sessionId, storePath)
               : [];
           const max = typeof limit === "number" ? limit : 200;
-          const messages =
+          const sliced =
             rawMessages.length > max ? rawMessages.slice(-max) : rawMessages;
+          const capped = capArrayByJsonBytes(
+            sliced,
+            MAX_CHAT_HISTORY_MESSAGES_BYTES,
+          ).items;
           const thinkingLevel =
             entry?.thinkingLevel ??
             loadConfig().inbound?.reply?.thinkingDefault ??
@@ -890,7 +919,7 @@ export async function startGatewayServer(
             payloadJSON: JSON.stringify({
               sessionKey,
               sessionId,
-              messages,
+              messages: capped,
               thinkingLevel,
             }),
           };
@@ -1841,18 +1870,36 @@ export async function startGatewayServer(
               );
               break;
             }
-            const { sessionKey } = params as { sessionKey: string };
+            const { sessionKey, limit } = params as {
+              sessionKey: string;
+              limit?: number;
+            };
             const { storePath, entry } = loadSessionEntry(sessionKey);
             const sessionId = entry?.sessionId;
-            const messages =
+            const rawMessages =
               sessionId && storePath
                 ? readSessionMessages(sessionId, storePath)
                 : [];
+            const hardMax = 1000;
+            const defaultLimit = 200;
+            const requested = typeof limit === "number" ? limit : defaultLimit;
+            const max = Math.min(hardMax, requested);
+            const sliced =
+              rawMessages.length > max ? rawMessages.slice(-max) : rawMessages;
+            const capped = capArrayByJsonBytes(
+              sliced,
+              MAX_CHAT_HISTORY_MESSAGES_BYTES,
+            ).items;
             const thinkingLevel =
               entry?.thinkingLevel ??
               loadConfig().inbound?.reply?.thinkingDefault ??
               "off";
-            respond(true, { sessionKey, sessionId, messages, thinkingLevel });
+            respond(true, {
+              sessionKey,
+              sessionId,
+              messages: capped,
+              thinkingLevel,
+            });
             break;
           }
           case "chat.send": {
@@ -2355,7 +2402,18 @@ export async function startGatewayServer(
               reason,
               tags,
             });
-            enqueueSystemEvent(text);
+            const isNodePresenceLine = text.startsWith("Node:");
+            const normalizedReason = (reason ?? "").toLowerCase();
+            const looksPeriodic =
+              normalizedReason.startsWith("periodic") ||
+              normalizedReason === "heartbeat";
+            if (!(isNodePresenceLine && looksPeriodic)) {
+              const compactNodeText =
+                isNodePresenceLine && (host || ip || version || mode || reason)
+                  ? `Node: ${host?.trim() || "Unknown"}${ip ? ` (${ip})` : ""} · app ${version?.trim() || "unknown"} · mode ${mode?.trim() || "unknown"} · reason ${reason?.trim() || "event"}`
+                  : text;
+              enqueueSystemEvent(compactNodeText);
+            }
             presenceVersion += 1;
             broadcast(
               "presence",

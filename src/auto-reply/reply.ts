@@ -680,16 +680,32 @@ export async function getReplyFromConfig(
     }
   }
 
-  // Prepend queued system events and (for new main sessions) a provider snapshot.
+  // Prepend queued system events (transitions only) and (for new main sessions) a provider snapshot.
+  // Token efficiency: we filter out periodic/heartbeat noise and keep the lines compact.
   const isGroupSession =
     typeof ctx.From === "string" &&
     (ctx.From.includes("@g.us") || ctx.From.startsWith("group:"));
   const isMainSession =
     !isGroupSession && sessionKey === (sessionCfg?.mainKey ?? "main");
   if (isMainSession) {
+    const compactSystemEvent = (line: string): string | null => {
+      const trimmed = line.trim();
+      if (!trimmed) return null;
+      const lower = trimmed.toLowerCase();
+      if (lower.includes("reason periodic")) return null;
+      if (lower.includes("heartbeat")) return null;
+      if (trimmed.startsWith("Node:")) {
+        // Drop the chatty "last input … ago" segment; keep connect/disconnect/launch reasons.
+        return trimmed.replace(/ · last input [^·]+/i, "").trim();
+      }
+      return trimmed;
+    };
+
     const systemLines: string[] = [];
     const queued = drainSystemEvents();
-    systemLines.push(...queued);
+    systemLines.push(
+      ...queued.map(compactSystemEvent).filter((v): v is string => Boolean(v)),
+    );
     if (isNewSession) {
       const summary = await buildProviderSummary(cfg);
       if (summary.length > 0) systemLines.unshift(...summary);
