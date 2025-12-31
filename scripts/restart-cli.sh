@@ -22,9 +22,12 @@ sleep 0.5
 log "==> bundle canvas a2ui"
 pnpm canvas:a2ui:bundle >/dev/null 2>&1 || log "  (canvas bundle skipped or up to date)"
 
+# Prefer a pinned Node major, override with FNM_NODE_VERSION if needed.
+FNM_NODE_VERSION="${FNM_NODE_VERSION:-v22.21.1}"
+
 # Start gateway in background with logging
 log "==> starting CLI gateway on port 18789"
-fnm exec 22 -- pnpm clawdis gateway --port 18789 --allow-unconfigured >/tmp/clawdis-gateway.log 2>&1 &
+fnm exec --using "${FNM_NODE_VERSION}" -- pnpm clawdis gateway --port 18789 --allow-unconfigured >/tmp/clawdis-gateway.log 2>&1 &
 GATEWAY_PID=$!
 echo "${GATEWAY_PID}" > "${GATEWAY_PID_FILE}"
 
