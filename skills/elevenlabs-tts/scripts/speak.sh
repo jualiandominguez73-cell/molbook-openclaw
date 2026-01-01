@@ -3,6 +3,12 @@ set -euo pipefail
 
 # Inworld TTS script (ranked #1 in TTS Arena)
 # Usage: speak.sh "text to speak" --out /path/to/output.mp3
+#
+# Emotion markups (embed inline in text):
+#   [happy] [sad] [excited] [whisper] [angry]
+#   [sigh] [cough] [breathe] [clear_throat]
+#
+# Example: speak.sh "[happy] Hey! Great news!" --out /tmp/msg.mp3
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: speak.sh \"text\" --out /path/to/output.mp3 [--voice NAME]" >&2
