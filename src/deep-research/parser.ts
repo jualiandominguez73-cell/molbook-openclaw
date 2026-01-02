@@ -6,7 +6,10 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { loadConfig } from "../config/config.js";
+import {
+  DEFAULT_DEEP_RESEARCH_CLI_PATH,
+  loadConfig,
+} from "../config/config.js";
 import type { DeepResearchResult } from "./messages.js";
 
 interface ResultJson {
@@ -38,7 +41,7 @@ export async function parseResultJson(
       basePath ??
       dirname(
         loadConfig().deepResearch?.cliPath ??
-          "/home/almaz/TOOLS/gemini_deep_research/gdr.sh",
+          DEFAULT_DEEP_RESEARCH_CLI_PATH,
       );
 
     // Resolve path
