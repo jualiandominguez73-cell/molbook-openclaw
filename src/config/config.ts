@@ -366,6 +366,77 @@ export type ModelsConfig = {
   providers?: Record<string, ModelProviderConfig>;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Memory Configuration (Qdrant + Embeddings)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MemoryEmbeddingProvider = "openai" | "ollama" | "local";
+
+export type MemoryEmbeddingConfig = {
+  /** Embedding provider: "openai" (default), "ollama", or "local" */
+  provider?: MemoryEmbeddingProvider;
+  /** Model ID for embeddings (e.g., "text-embedding-3-small") */
+  model?: string;
+  /** Base URL for embedding API (for ollama/local providers) */
+  baseUrl?: string;
+  /** API key (optional, falls back to OPENAI_API_KEY env) */
+  apiKey?: string;
+  /** Embedding dimension (default: 1536 for OpenAI) */
+  dimensions?: number;
+};
+
+export type MemoryQdrantConfig = {
+  /** Qdrant URL (default: http://localhost:6333) */
+  url?: string;
+  /** Qdrant API key (optional, for Qdrant Cloud) */
+  apiKey?: string;
+  /** Collection name (default: "clawdis_memories") */
+  collection?: string;
+};
+
+export type MemoryAutoExtractConfig = {
+  /** Enable automatic memory extraction from conversations */
+  enabled?: boolean;
+  /** Minimum confidence threshold for auto-extracted memories (0-1) */
+  threshold?: number;
+  /** Categories to auto-extract */
+  categories?: string[];
+};
+
+export type MemoryConfig = {
+  /** Enable memory subsystem */
+  enabled?: boolean;
+  /** Qdrant configuration */
+  qdrant?: MemoryQdrantConfig;
+  /** Embedding configuration */
+  embedding?: MemoryEmbeddingConfig;
+  /** Automatic memory extraction settings */
+  autoExtract?: MemoryAutoExtractConfig;
+  /** Max memories to return per search (default: 5) */
+  searchLimit?: number;
+  /** Memory TTL in days (0 = no expiry, default: 0) */
+  ttlDays?: number;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calendar Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type CalendarConfig = {
+  /** Default timezone for calendar operations */
+  defaultTimezone?: string;
+  /** Default working hours start (0-23) */
+  workingHoursStart?: number;
+  /** Default working hours end (0-23) */
+  workingHoursEnd?: number;
+  /** Default reminder channel */
+  defaultReminderChannel?: "last" | "whatsapp" | "telegram" | "discord";
+  /** Default reminder destination */
+  defaultReminderTo?: string;
+  /** Default minutes before event for reminders */
+  defaultReminderMinutes?: number;
+};
+
 export type ClawdisConfig = {
   identity?: {
     name?: string;
@@ -437,6 +508,8 @@ export type ClawdisConfig = {
   canvasHost?: CanvasHostConfig;
   talk?: TalkConfig;
   gateway?: GatewayConfig;
+  memory?: MemoryConfig;
+  calendar?: CalendarConfig;
 };
 
 /**
@@ -928,6 +1001,59 @@ const ClawdisSchema = z.object({
             .passthrough(),
         )
         .optional(),
+    })
+    .optional(),
+  memory: z
+    .object({
+      enabled: z.boolean().optional(),
+      qdrant: z
+        .object({
+          url: z.string().optional(),
+          apiKey: z.string().optional(),
+          collection: z.string().optional(),
+        })
+        .optional(),
+      embedding: z
+        .object({
+          provider: z
+            .union([
+              z.literal("openai"),
+              z.literal("ollama"),
+              z.literal("local"),
+            ])
+            .optional(),
+          model: z.string().optional(),
+          baseUrl: z.string().optional(),
+          apiKey: z.string().optional(),
+          dimensions: z.number().int().positive().optional(),
+        })
+        .optional(),
+      autoExtract: z
+        .object({
+          enabled: z.boolean().optional(),
+          threshold: z.number().min(0).max(1).optional(),
+          categories: z.array(z.string()).optional(),
+        })
+        .optional(),
+      searchLimit: z.number().int().positive().optional(),
+      ttlDays: z.number().int().min(0).optional(),
+    })
+    .optional(),
+  calendar: z
+    .object({
+      defaultTimezone: z.string().optional(),
+      workingHoursStart: z.number().int().min(0).max(23).optional(),
+      workingHoursEnd: z.number().int().min(0).max(23).optional(),
+      defaultReminderChannel: z
+        .union([
+          z.literal("last"),
+          z.literal("whatsapp"),
+          z.literal("telegram"),
+          z.literal("discord"),
+        ])
+        .optional(),
+      defaultReminderTo: z.string().optional(),
+      defaultReminderMinutes: z.number().int().positive().optional(),
     })
     .optional(),
 });

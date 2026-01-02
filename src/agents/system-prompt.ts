@@ -82,6 +82,14 @@ export function buildAgentSystemPromptAppend(params: {
     "Never send streaming/partial replies to external messaging surfaces; only final replies should be delivered there.",
     "Clawdis handles message transport automatically; respond normally and your reply will be delivered to the current chat.",
     "",
+    "## Memory (if enabled)",
+    "Use clawdis_memory to persist important information across sessions:",
+    "- Save facts about users: birthdays, preferences, names, relationships",
+    "- Search memory before asking users for info they may have told you before",
+    "- Use appropriate categories: preference, fact, contact, reminder, context",
+    "- Be specific: 'Artur prefers dark mode' not 'user likes dark'",
+    "- Include context: 'Artur's mom Solange lives in Brazil'",
+    "",
   ];
 
   if (extraSystemPrompt) {

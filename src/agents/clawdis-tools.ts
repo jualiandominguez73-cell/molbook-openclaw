@@ -1505,12 +1505,10 @@ function createSendMessageTool(): AnyAgentTool {
           typeof params.timeoutMs === "number" ? params.timeoutMs : undefined,
       };
 
-      // Prefix messages with Zee identifier so recipients know it's the assistant
-      const prefixedMessage = `🤖 Zee: ${message}`;
-
+      // No prefix needed - Zee has her own WhatsApp number
       const result = await callGatewayTool("send", gatewayOpts, {
         to,
-        message: prefixedMessage,
+        message,
         provider,
         mediaUrl,
         idempotencyKey: crypto.randomUUID(),

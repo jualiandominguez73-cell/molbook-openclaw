@@ -11,6 +11,8 @@ import {
   type ProcessToolDefaults,
 } from "./bash-tools.js";
 import { createClawdisTools } from "./clawdis-tools.js";
+import { createGoogleTools } from "./google-tools.js";
+import { createMemoryTool } from "./memory-tool.js";
 import { sanitizeToolResultImages } from "./tool-images.js";
 
 // TODO(steipete): Remove this wrapper once pi-mono ships file-magic MIME detection
@@ -311,7 +313,9 @@ export function createClawdisCodingTools(options?: {
     bashTool as unknown as AnyAgentTool,
     processTool as unknown as AnyAgentTool,
     createWhatsAppLoginTool(),
+    createMemoryTool(),
     ...createClawdisTools(),
+    ...createGoogleTools(),
   ];
   return tools.map(normalizeToolParameters);
 }
