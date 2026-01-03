@@ -371,7 +371,7 @@ async function handleDeepResearchMessage(
 
   if (!messageText) return false;
 
-  const command = parseDeepResearchCommand(messageText, ctx.me?.username);
+  const command = parseDeepResearchCommand(messageText);
   if (!command) {
     return false;
   }
