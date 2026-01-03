@@ -29,10 +29,25 @@ node dist/acp-client/client.js \
 
 ### Components
 
-- **`server.ts`** — CLI entry point, stdio JSON-RPC handler
+- **`server.ts`** — CLI entry point, stdio JSON-RPC handler, reconnection logic
 - **`translator.ts`** — Converts ACP ↔ Gateway protocol (session/prompt → chat.send, chat events → session/update)
 - **`session.ts`** — In-memory session manager with `acp:` prefix for isolation
 - **`types.ts`** — TypeScript types for sessions and options
+
+## Features
+
+### Streaming
+- **Text streaming** — Assistant responses stream as `agent_message_chunk` updates
+- **Tool streaming** — Tool calls emit `tool_call` (start) and `tool_call_update` (complete) events
+- **Delta diffing** — Gateway sends cumulative text; acp-gw diffs to send only new characters
+
+### Attachments
+- **Image support** — Images in ACP prompts are extracted and passed to Gateway as base64 attachments
+
+### Reliability
+- **Auto-reconnect** — On Gateway disconnect, retries up to 5 times with exponential backoff
+- **Pending cleanup** — Disconnects reject all pending prompts with clear error messages
+- **Abort/cancel** — `session/cancel` aborts running prompts via Gateway
 
 ## Session Isolation
 
@@ -42,7 +57,7 @@ ACP sessions use the prefix `acp:` in their sessionKey (e.g., `acp:16ef47a0-0fb6
 2. Allows the Gateway to route chat events to the correct ACP client
 3. Enables concurrent execution (see below)
 
-## Concurrent Execution Fix
+## Concurrent Execution
 
 ### The Problem
 
@@ -61,13 +76,7 @@ Main session running → ACP session queued → ACP session waits forever
 In `src/commands/agent.ts`, ACP sessions now use their sessionKey as their lane:
 
 ```typescript
-// Use sessionKey as lane to allow ACP sessions to run in parallel with main
 const lane = sessionKey?.startsWith("acp:") ? sessionKey : undefined;
-result = await runEmbeddedPiAgent({
-  // ...
-  lane,
-  // ...
-});
 ```
 
 This means:
@@ -75,6 +84,21 @@ This means:
 - ACP session `acp:abc123` uses `globalLane=acp:abc123`
 - Each lane has `maxConcurrent: 1`, so sessions don't interfere with each other
 - Multiple ACP sessions can run concurrently with the main session
+
+## Limitations
+
+### MCP Servers Not Supported
+
+ACP clients can pass `mcpServers` in `session/new`, but acp-gw **ignores them**. MCP servers would need to be either:
+- Configured globally in Clawdis config (works today)
+- Spawned locally by acp-gw and proxied (not implemented)
+- Supported per-session by Gateway (not implemented)
+
+For now, configure any needed MCP servers in your Clawdis config file instead of passing them via ACP.
+
+### Session Persistence
+
+Sessions are currently stored in-memory only. If acp-gw restarts, all sessions are lost. The Gateway maintains conversation history, but acp-gw won't be able to resume sessions by ID.
 
 ## Debugging
 
@@ -90,24 +114,48 @@ This logs:
 - `[agentCommand]` — session resolution and lane assignment  
 - `[pi-embedded]` — lane enqueueing and agent start
 
+Use `--verbose` on acp-gw to see all events and protocol messages:
+
+```bash
+node dist/acp-gw/server.js --verbose
+```
+
 ## Event Flow
 
-1. ACP client sends `session/prompt` with prompt text
-2. `acp-gw` calls Gateway `chat.send` with sessionKey=`acp:<sessionId>`
+1. ACP client sends `session/prompt` with prompt text and optional attachments
+2. `acp-gw` extracts text and images, calls Gateway `chat.send` with sessionKey=`acp:<sessionId>`
 3. Gateway registers the run in `chatRunSessions` map
 4. Gateway calls `agentCommand` which runs the agent in its own lane
-5. Agent emits events → Gateway broadcasts them as `chat` events with sessionKey
-6. `acp-gw` receives events, matches sessionKey to pending session
-7. `acp-gw` sends `session/update` notifications back to ACP client
-8. On `state: "final"`, resolves the prompt and returns result
+5. Agent emits events:
+   - `stream: "tool"` → acp-gw sends `tool_call` / `tool_call_update`
+   - `stream: "assistant"` → Gateway emits `chat` events
+6. Gateway broadcasts `chat` events with sessionKey
+7. `acp-gw` receives events, matches sessionKey to pending session
+8. `acp-gw` diffs cumulative text, sends `agent_message_chunk` with new characters
+9. On `state: "final"`, resolves the prompt and returns result
 
 ## Files
 
 ```
 src/acp-gw/
-├── index.ts       # Exports
-├── server.ts      # CLI entry point (clawd-acp-gw binary)
-├── session.ts     # Session manager
-├── translator.ts  # ACP ↔ Gateway protocol translation
-└── types.ts       # TypeScript types
+├── index.ts           # Exports
+├── server.ts          # CLI entry point, reconnection logic
+├── session.ts         # Session manager (+ runId lookup)
+├── session.test.ts    # Session manager tests
+├── translator.ts      # ACP ↔ Gateway protocol translation
+├── translator.test.ts # Translator tests
+└── types.ts           # TypeScript types
+```
+
+## CLI Options
+
+```
+Usage: clawd-acp-gw [options]
+
+Options:
+  --gateway-url <url>      Gateway WebSocket URL (default: ws://127.0.0.1:18789)
+  --gateway-token <token>  Gateway auth token
+  --gateway-password <pw>  Gateway auth password
+  --verbose, -v            Enable verbose logging to stderr
+  --help, -h               Show this help message
 ```
