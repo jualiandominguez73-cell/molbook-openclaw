@@ -453,13 +453,13 @@ export function subscribeEmbeddedPiSession(params: {
               if (delta) {
                 chunk = delta;
               } else if (content) {
-                if (
-                  !deltaBuffer ||
-                  content.startsWith(deltaBuffer) ||
-                  deltaBuffer.startsWith(content)
-                ) {
+                if (!deltaBuffer) {
                   chunk = content;
                   replaceBuffers = true;
+                } else if (content.startsWith(deltaBuffer)) {
+                  chunk = content.slice(deltaBuffer.length);
+                } else if (deltaBuffer.startsWith(content)) {
+                  chunk = "";
                 } else if (!deltaBuffer.includes(content)) {
                   chunk = content;
                 }

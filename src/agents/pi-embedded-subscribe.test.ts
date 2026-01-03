@@ -273,6 +273,62 @@ describe("subscribeEmbeddedPiSession", () => {
     expect(subscription.assistantTexts).toEqual(["Good morning!"]);
   });
 
+  it("does not duplicate multi-chunk replies when text_end repeats full content", () => {
+    let handler: ((evt: unknown) => void) | undefined;
+    const session: StubSession = {
+      subscribe: (fn) => {
+        handler = fn;
+        return () => {};
+      },
+    };
+
+    const onBlockReply = vi.fn();
+
+    const subscription = subscribeEmbeddedPiSession({
+      session: session as unknown as Parameters<
+        typeof subscribeEmbeddedPiSession
+      >[0]["session"],
+      runId: "run",
+      onBlockReply,
+      blockReplyBreak: "text_end",
+      blockReplyChunking: {
+        minChars: 1,
+        maxChars: 60,
+        breakPreference: "newline",
+      },
+    });
+
+    const fullText = Array.from({ length: 1000 }, (_, i) => String(i + 1)).join(
+      " ",
+    );
+    const chunkSize = 50;
+    for (let idx = 0; idx < fullText.length; idx += chunkSize) {
+      handler?.({
+        type: "message_update",
+        message: { role: "assistant" },
+        assistantMessageEvent: {
+          type: "text_delta",
+          delta: fullText.slice(idx, idx + chunkSize),
+        },
+      });
+    }
+
+    const countBefore = onBlockReply.mock.calls.length;
+    const textsBefore = subscription.assistantTexts.length;
+
+    handler?.({
+      type: "message_update",
+      message: { role: "assistant" },
+      assistantMessageEvent: {
+        type: "text_end",
+        content: fullText,
+      },
+    });
+
+    expect(onBlockReply).toHaveBeenCalledTimes(countBefore);
+    expect(subscription.assistantTexts).toHaveLength(textsBefore);
+  });
+
   it("streams soft chunks with paragraph preference", () => {
     let handler: ((evt: unknown) => void) | undefined;
     const session: StubSession = {
