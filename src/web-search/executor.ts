@@ -2,9 +2,9 @@
  * Web Search CLI Executor
  */
 
-import * as child_process from 'child_process';
 import type { WebSearchResult } from './messages.js';
 import type { ExecuteResult, ExecuteOptions } from '../deep-research/executor.js';
+import { executeGeminiSearch } from './gemini-cli.js';
 import { formatErrorMessage } from '../infra/errors.js';
 
 export interface ExecuteWebSearchOptions extends Omit<ExecuteOptions, 'topic'> {
@@ -51,87 +51,78 @@ export async function executeWebSearch(
   }
   
   try {
-    // Escape the query for shell safety
-    const escapedQuery = query.replace(/["\\$`!]/g, '\\$&');
-    const cmd = `${cliPath} --request "${escapedQuery}"`;
-    
-    // Use exec directly with a Promise wrapper (avoids promisify issues with mocks)
-    const { stdout, stderr } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-      child_process.exec(
-        cmd,
-        { timeout: timeoutMs, encoding: 'utf8', env: { ...process.env, PATH: process.env.PATH } },
-        (error, stdout, stderr) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve({ stdout, stderr });
-          }
-        }
-      );
-    });
-    
-    // Parse JSON output
-    let result: WebSearchResult;
-    try {
-      result = JSON.parse(stdout.trim());
-    } catch (parseError) {
-      // Fallback: treat stdout as the response
-      result = {
-        response: stdout.trim(),
-        session_id: `fallback-${Date.now()}`,
-        stats: {
-          models: { "unknown": { api: { totalRequests: 1, totalErrors: 0 }, tokens: { input: 0, candidates: 0, total: 0 } } }
-        }
-      };
+    // Simple query validation
+    if (!query || query.length < 2) {
+      throw new Error("Query too short or empty");
     }
+    
+    if (query.length > 200) {
+      throw new Error("Query too long (max 200 characters)");
+    }
+    
+    // Use the standalone gemini CLI module
+    const result = await executeGeminiSearch(query, { timeoutMs });
     
     return {
       success: true,
       runId: result.session_id,
       result,
-      stdout: stdout.trim(),
-      stderr: stderr.trim()
+      stdout: JSON.stringify(result),
+      stderr: ""
     };
     
   } catch (error) {
-    const errorMessage = formatExecutionError(error, cliPath);
+    // Simple error handling
+    const errorStr = String(error);
+    
+    let errorMessage = `Search failed: ${errorStr}`;
+    
+    // Make error messages more user-friendly
+    if (errorStr.includes('timeout')) {
+      errorMessage = '⏱️ Поиск занял слишком много времени';
+    } else if (errorStr.includes('not found')) {
+      errorMessage = '❌ Gemini CLI не найден. Проверьте установку.';
+    } else if (errorStr.includes('too short')) {
+      errorMessage = '❌ Запрос слишком короткий';
+    } else if (errorStr.includes('too long')) {
+      errorMessage = '❌ Запрос слишком длинный (макс. 200 символов)';
+    }
     
     return {
       success: false,
       runId: `error-${Date.now()}`,
       error: errorMessage,
       stdout: "",
-      stderr: String(error)
+      stderr: errorStr
     };
   }
 }
 
-/**
- * Format execution errors for user display
- */
-function formatExecutionError(error: unknown, cliPath: string): string {
-  const errorStr = String(error);
+// Additional cleaning patterns for very malformed queries
+function aggressivelyCleanQuery(query: string): string {
+  let cleaned = query.toLowerCase();
   
-  // Timeout
-  if (errorStr.includes('timeout') || errorStr.includes('ETIMEOUT')) {
-    return `Search timeout after 30 seconds. Query took too long to process.`;
+  // Remove misspelled search commands
+  cleaned = cleaned.replace(/\b(googel\s+it|web\s+searhc?|seach\s+web|serach)\b/gi, ' ');
+  
+  // Remove "сделай в интернете" and similar
+  cleaned = cleaned.replace(/\b(сделай\s+в\s+интернете|в\s+интернете|in\s+internet|on\s+web)\b/gi, ' ');
+  
+  // Extract the most likely actual query (look for topic patterns)
+  const patterns = [
+    /погода\s+(в\s+)?\w+/i,      // weather
+    /курс\s+\w+/i,               // exchange rate
+    /новости(\s+\w+)*/i,         // news
+    /[а-яА-Я]{4,}/,              // any Russian word (topic)
+  ];
+  
+  for (const pattern of patterns) {
+    const match = cleaned.match(pattern);
+    if (match && match[0].length > 3) {
+      console.log(`[web-search] Extracted topic: "${match[0]}" from "${query}"`);
+      return match[0];
+    }
   }
   
-  // CLI not found
-  if (errorStr.includes('ENOENT') || errorStr.includes('not found')) {
-    return `CLI not found at ${cliPath}. Check webSearch.cliPath configuration.`;
-  }
-  
-  // Permission denied
-  if (errorStr.includes('EACCES') || errorStr.includes('Permission denied')) {
-    return `CLI at ${cliPath} is not executable. Check file permissions.`;
-  }
-  
-  // API errors (captured in stderr)
-  if (errorStr.includes('API') || errorStr.includes('api')) {
-    return `Gemini API error: ${errorStr}. Check API key and network connection.`;
-  }
-  
-  // Generic error
-  return `Search failed: ${formatErrorMessage(error)}`;
+  return cleaned;
 }
