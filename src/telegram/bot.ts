@@ -326,15 +326,15 @@ async function deliverReplies(params: {
           reply_to_message_id: replyToMessageId,
         });
       } else if (kind === "audio") {
-        const useVoice = reply.audioAsVoice !== false; // default true for Telegram
+        const useVoice = reply.audioAsVoice === true; // default false (backward compatible)
         if (useVoice) {
-          // Voice message - displays as round playable bubble
+          // Voice message - displays as round playable bubble (opt-in via [[audio_as_voice]])
           await bot.api.sendVoice(chatId, file, {
             caption,
             reply_to_message_id: replyToMessageId,
           });
         } else {
-          // Audio file - displays with metadata (title, duration)
+          // Audio file - displays with metadata (title, duration) - DEFAULT
           await bot.api.sendAudio(chatId, file, {
             caption,
             reply_to_message_id: replyToMessageId,
