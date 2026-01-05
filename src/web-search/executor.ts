@@ -62,7 +62,11 @@ export async function executeWebSearch(
     }
     
     // Use the standalone gemini CLI module
-    const result = await executeGeminiSearch(query, { timeoutMs, cliPath });
+    const result = await executeGeminiSearch(query, { 
+      timeoutMs, 
+      cliPath,
+      model: cfg.webSearch?.geminiModel
+    });
     
     return {
       success: true,

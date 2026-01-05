@@ -13,6 +13,7 @@ export interface GeminiCliOptions {
   timeoutMs?: number;
   model?: string;
   cliPath?: string;
+  geminiModel?: string;
 }
 
 /**
@@ -24,7 +25,7 @@ export async function executeGeminiSearch(
 ): Promise<WebSearchResult> {
   const {
     timeoutMs = 30000,
-    model = 'gemini-2.5-flash',
+    model = 'gemini-3-flash-preview',
     cliPath,
   } = options;
 

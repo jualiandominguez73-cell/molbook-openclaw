@@ -685,6 +685,7 @@ const WEB_SEARCH_DEFAULTS = {
   cliPath: "",
   timeoutMs: 30000,
   requireConfirmation: false,
+  geminiModel: "gemini-3-flash-preview",
 } as const;
 
 const webSearchSchema = z
@@ -693,6 +694,7 @@ const webSearchSchema = z
     cliPath: z.string().default(() => getDefaultWebSearchCliPath()),
     timeoutMs: z.number().int().positive().default(WEB_SEARCH_DEFAULTS.timeoutMs),
     requireConfirmation: z.boolean().default(WEB_SEARCH_DEFAULTS.requireConfirmation),
+    geminiModel: z.string().default(WEB_SEARCH_DEFAULTS.geminiModel),
     customPatterns: z.array(z.string()).optional(),
   })
   .optional();
@@ -1171,24 +1173,28 @@ function applyDeepResearchEnvOverrides(config: ClawdisConfig): ClawdisConfig {
 function applyWebSearchEnvOverrides(config: ClawdisConfig): ClawdisConfig {
   const hasEnabled = process.env.WEB_SEARCH_ENABLED !== undefined;
   const hasRequireConfirmation = process.env.WEB_SEARCH_REQUIRE_CONFIRMATION !== undefined;
+  const hasGeminiModel = process.env.WEB_SEARCH_GEMINI_MODEL !== undefined;
   const cliPath = process.env.WEB_SEARCH_CLI_PATH;
   const timeoutMsEnv = process.env.WEB_SEARCH_TIMEOUT_MS;
   const hasTimeout = timeoutMsEnv !== undefined;
   const customPatterns = process.env.WEB_SEARCH_CUSTOM_PATTERNS;
 
-  if (!hasEnabled && !hasRequireConfirmation && !cliPath && !hasTimeout && !customPatterns)
-    return config;
-
+  // Always set up web search config with defaults to ensure geminiModel is available
   const webSearch: WebSearchConfig = {
     enabled: config.webSearch?.enabled ?? WEB_SEARCH_DEFAULTS.enabled,
     cliPath: config.webSearch?.cliPath ?? WEB_SEARCH_DEFAULTS.cliPath,
     timeoutMs: config.webSearch?.timeoutMs ?? WEB_SEARCH_DEFAULTS.timeoutMs,
     requireConfirmation: config.webSearch?.requireConfirmation ?? WEB_SEARCH_DEFAULTS.requireConfirmation,
+    geminiModel: config.webSearch?.geminiModel ?? WEB_SEARCH_DEFAULTS.geminiModel,
     customPatterns: config.webSearch?.customPatterns,
   };
-  
+
+
   if (hasEnabled) {
     webSearch.enabled = process.env.WEB_SEARCH_ENABLED === "true";
+  }
+  if (hasGeminiModel) {
+    webSearch.geminiModel = process.env.WEB_SEARCH_GEMINI_MODEL || "";
   }
   if (hasRequireConfirmation) {
     webSearch.requireConfirmation = process.env.WEB_SEARCH_REQUIRE_CONFIRMATION === "true";
@@ -1199,12 +1205,12 @@ function applyWebSearchEnvOverrides(config: ClawdisConfig): ClawdisConfig {
       webSearch.cliPath = normalizedPath;
     }
   }
-  if (hasTimeout) {
-    const parsed = Number.parseInt(timeoutMsEnv!, 10);
+  if (timeoutMsEnv) {
+    const parsed = parseInt(timeoutMsEnv, 10);
     if (!Number.isNaN(parsed) && parsed > 0) {
       webSearch.timeoutMs = parsed;
     } else {
-      console.warn(`[web-search] Invalid timeout value: ${timeoutMsEnv}`);
+      console.warn(`[web-search] Ignoring invalid WEB_SEARCH_TIMEOUT_MS: ${timeoutMsEnv}`);
     }
   }
   if (customPatterns) {
