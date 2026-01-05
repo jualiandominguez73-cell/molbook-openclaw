@@ -1,0 +1,19 @@
+# Agent Registry
+# Maps agent names to their prompt files
+
+agents:
+  peter-project-gathering-expert:
+    file: agents/peter-project-gathering-expert.yaml
+    description: |
+      Comprehensive project analysis agent that analyzes codebases, identifies 
+      key components, understands architectural patterns, and synthesizes 
+      project information into actionable insights with visual schemas.
+    category: analysis
+    version: 1.0
+    
+# Future agents can be added here:
+#  sarah-code-refactorer:
+#    file: agents/sarah-code-refactorer.yaml
+#    description: "Specializes in code refactoring and optimization"
+#    category: refactoring
+#    version: 1.0

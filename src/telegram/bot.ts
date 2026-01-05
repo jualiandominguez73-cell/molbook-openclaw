@@ -721,31 +721,20 @@ async function runWebSearch(
     logger.error({ chatId, error }, "Web search execution failed");
     // If we have a status message, try to edit it
     if (statusChatId && statusMessageId) {
-      try {
-        await ctx.api.editMessageText(
-          statusChatId,
-          statusMessageId,
-          webSearchMessages.error(
-            error instanceof Error ? error.message : String(error),
-          ),
-          { parse_mode: "MarkdownV2" },
-        );
-      } catch (editError) {
-        // If edit fails, send new message
-        await ctx.reply(
-          webSearchMessages.error(
-            error instanceof Error ? error.message : String(error),
-          ),
-          { parse_mode: "MarkdownV2" },
-        );
-      }
+      await ctx.api.editMessageText(
+        statusChatId,
+        statusMessageId,
+        webSearchMessages.error(
+          error instanceof Error ? error.message : String(error),
+        ),
+        { parse_mode: "MarkdownV2" },
+      );
     } else {
       // No status message to edit, send new message
       await ctx.reply(
         webSearchMessages.error(
           error instanceof Error ? error.message : String(error),
         ),
-        { parse_mode: "MarkdownV2" },
       );
     }
   } finally {

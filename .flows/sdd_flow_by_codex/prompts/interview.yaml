@@ -1,0 +1,56 @@
+raw_requirements_prompt: "Share the raw requirements or idea dump. Short or long is fine."
+
+baseline_questions:
+  - "Problem statement?"
+  - "Target users and roles?"
+  - "Top 3 desired outcomes?"
+  - "Deadline or timeline?"
+  - "Known constraints (tech, budget, compliance)?"
+
+gap_question_bank:
+  users:
+    - "Who uses it? Primary/secondary roles?"
+    - "Access levels?"
+  scope:
+    - "What is in scope?"
+    - "What is explicitly out of scope?"
+  core_flows:
+    - "Top 3 user journeys?"
+    - "Entry points and success endpoints?"
+  data:
+    - "What data is created/read/updated?"
+    - "Data sources?"
+    - "Data retention?"
+  integrations:
+    - "Which external systems/APIs?"
+    - "Auth requirements?"
+  non_functional:
+    - "Performance requirements?"
+    - "Reliability requirements?"
+    - "Security and privacy requirements?"
+    - "Localization requirements?"
+  constraints:
+    - "Platform or tech stack constraints?"
+    - "Licensing or deployment limits?"
+  success_criteria:
+    - "How is success measured?"
+    - "KPIs?"
+    - "Acceptable error rates?"
+  risks:
+    - "Biggest technical risks?"
+    - "Biggest business risks?"
+  milestones:
+    - "Any phased delivery?"
+    - "Dependencies?"
+
+open_questions_example: |-
+  - Open Question: <question>
+    - Answer: <answer>
+    - Status: closed
+
+gap_tracking_example: |-
+  - Gap ID: GAP-001
+    - Question: <question>
+    - Answer: <answer>
+    - Status: filled
+    - Source: user interview

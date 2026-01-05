@@ -35,9 +35,10 @@ export interface WebSearchMessages {
 export const messages: WebSearchMessages = {
   /**
    * System acknowledgment when search is triggered
+   * Uses plain text to avoid markdown parsing errors in temporary messages
    */
   acknowledgment: () => {
-    return formatTelegramMessage("● Выполняю веб-поиск...");
+    return "Выполняю веб-поиск...";
   },
 
   /**

@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "feature": "{FEATURE_SLUG}",
+  "overall_status": "NOT_STARTED",
+  "started_at": null,
+  "completed_at": null,
+  "current_card": null,
+  "agent_session_id": null,
+  "cards": {
+    "01": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "02": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "03": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "04": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "05": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "06": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "07": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "08": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "09": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "10": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "11": { "status": "pending", "started_at": null, "completed_at": null, "error": null },
+    "12": { "status": "pending", "started_at": null, "completed_at": null, "error": null }
+  },
+  "progress": {
+    "completed": 0,
+    "total": 12,
+    "percentage": 0,
+    "story_points_completed": 0,
+    "story_points_total": 0
+  },
+  "execution_log": []
+}

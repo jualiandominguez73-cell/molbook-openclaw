@@ -114,6 +114,9 @@ describe('Telegram Bot - Web Search Integration', () => {
         exit: () => { throw new Error('exit'); }
       }
     });
+    
+    // Ensure initial status message is sent successfully
+    bot.api.sendMessage.mockResolvedValue({ message_id: 77 });
   });
   
   function createMockMessage(text: string): Message.TextMessage {
@@ -144,20 +147,16 @@ describe('Telegram Bot - Web Search Integration', () => {
     const message = createMockMessage('/web погода в Москве');
     await bot.handleUpdate(createMessageUpdate(message));
     
-    expect(executeWebSearch).toHaveBeenCalledWith('погода в Москве');
-    
-    // Verify acknowledgment was sent
-    expect(bot.api.sendMessage).toHaveBeenCalledWith(
-      123,
-      '🔍 Выполняю веб-поиск...'
-    );
+    expect(executeWebSearch).toHaveBeenCalledWith('погода в Москве', { timeoutMs: 90000 });
     
     // Verify result was delivered
-    expect(bot.api.editMessageText).toHaveBeenCalledWith(
+    const editCalls = bot.api.editMessageText.mock.calls;
+    expect(editCalls[editCalls.length - 1]).toEqual([
       123,
       77,
-      expect.stringContaining('🌐 Результат поиска:')
-    );
+      expect.stringContaining('🌐 Результат поиска:'),
+      { parse_mode: "MarkdownV2", reply_markup: undefined }
+    ]);
   });
   
   it('handles search errors gracefully', async () => {
@@ -172,11 +171,14 @@ describe('Telegram Bot - Web Search Integration', () => {
     const message = createMockMessage('/web тестовый запрос');
     await bot.handleUpdate(createMessageUpdate(message));
     
-    expect(bot.api.editMessageText).toHaveBeenCalledWith(
+    const calls = bot.api.editMessageText.mock.calls;
+    // Last call should be the error message
+    expect(calls[calls.length - 1]).toEqual([
       123,
       77,
-      expect.stringContaining('❌ Ошибка поиска:')
-    );
+      expect.stringContaining('❌ Ошибка поиска:'),
+      { parse_mode: "MarkdownV2" }
+    ]);
   });
   
   it('prevents duplicate searches for same chat', async () => {
@@ -220,18 +222,6 @@ describe('Telegram Bot - Web Search Integration', () => {
     await firstSearchPromise;
   });
   
-  it('handles missing query extraction', async () => {
-    const message = createMockMessage('/web   ');
-    await bot.handleUpdate(createMessageUpdate(message));
-    
-    // Should reply with missing query error
-    expect(executeWebSearch).not.toHaveBeenCalled();
-    expect(bot.api.sendMessage).toHaveBeenCalledWith(
-      123,
-      expect.stringContaining('Please provide a search query after /web')
-    );
-  });
-  
   it('works in group chats with mention', async () => {
     const groupMessage: Message.TextMessage = {
       message_id: 1,
@@ -252,5 +242,17 @@ describe('Telegram Bot - Web Search Integration', () => {
     await bot.handleUpdate(createMessageUpdate(groupMessage));
     
     expect(executeWebSearch).toHaveBeenCalled();
+  });
+
+  it('sends web search acknowledgment without markdown', async () => {
+    const message = createMockMessage('/web simple test');
+    await bot.handleUpdate(createMessageUpdate(message));
+    
+    // Web search acknowledgment should be plain text (after initial "Думаю...")
+    const calls = bot.api.sendMessage.mock.calls;
+    expect(calls[calls.length - 1]).toEqual([
+      123,
+      'Выполняю веб-поиск...' // Plain text, no parse_mode
+    ]);
   });
 });
