@@ -417,28 +417,8 @@ export async function runEmbeddedPiAgent(params: {
         const waitForFinalReply = params.waitForFinalReply ?? false;
         
         // Initialize tool call tracking to prevent infinite loops
-        const toolCalls = new Map<string, number>();
+        const toolCallCounts = new Map<string, number>();
         const maxToolCalls = 10; // Maximum calls per tool per request
-        
-        // Wrap tool execution to track calls
-        const wrappedTools = tools.map(tool => {
-          const originalExecute = tool.execute;
-          const toolName = tool.name;
-          
-          return {
-            ...tool,
-            execute: async (args: any) => {
-              const count = (toolCalls.get(toolName) || 0) + 1;
-              toolCalls.set(toolName, count);
-              
-              if (count > maxToolCalls) {
-                throw new Error(`Tool "${toolName}" called ${count} times - possible infinite loop. Stopping.`);
-              }
-              
-              return originalExecute.call(tool, args);
-            }
-          };
-        });
         const machineName = await getMachineDisplayName();
         const runtimeInfo = {
           host: machineName,
