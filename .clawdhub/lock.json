@@ -24,6 +24,10 @@
     "bird": {
       "version": "1.0.0",
       "installedAt": 1767586194563
+    },
+    "reddit": {
+      "version": "1.0.0",
+      "installedAt": 1767650864262
     }
   }
 }
