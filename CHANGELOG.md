@@ -14,6 +14,7 @@
 - macOS: treat location permission as always-only to avoid iOS-only enums. (#165) — thanks @Nachx639
 - Onboarding: when running from source, auto-build missing Control UI assets (`pnpm ui:build`).
 - Discord/Slack: route reaction + system notifications to the correct session (no main-session bleed).
+- Heartbeat: make HEARTBEAT_OK ack padding configurable across heartbeat and cron delivery. (#238) — thanks @jalehman
 
 ## 2026.1.5
 
