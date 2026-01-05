@@ -116,7 +116,6 @@ docs/sdd/
 runs/
 prompts/
 sdd-flow/
-.flows/
 
 # Local start/test scripts
 start-*.sh
