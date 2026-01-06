@@ -15,6 +15,7 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Setup](./setup.md)
 - [FAQ](./faq.md)
 - [Configuration](./configuration.md)
+- [Configuration Examples](./configuration-examples.md)
 - [Clawd (personal assistant)](./clawd.md)
 - [Lore](./lore.md)
 

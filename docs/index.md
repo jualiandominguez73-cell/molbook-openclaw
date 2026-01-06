@@ -131,6 +131,7 @@ Example:
   - [Docs hubs (all pages linked)](./hubs.md)
   - [FAQ](./faq.md) ← *common questions answered*
   - [Configuration](./configuration.md)
+  - [Configuration Examples](./configuration-examples.md) ← *complete examples with explanations*
   - [Nix mode](./nix.md)
   - [Clawd personal assistant setup](./clawd.md)
   - [Skills](./skills.md)
