@@ -1,4 +1,5 @@
 import type { ClawdbotConfig } from "../../config/config.js";
+import { resolveProviderGroupRequireMention } from "../../config/group-policy.js";
 import type {
   GroupKeyResolution,
   SessionEntry,
@@ -6,45 +7,115 @@ import type {
 import { normalizeGroupActivation } from "../group-activation.js";
 import type { TemplateContext } from "../templating.js";
 
+function normalizeDiscordSlug(value?: string | null) {
+  if (!value) return "";
+  let text = value.trim().toLowerCase();
+  if (!text) return "";
+  text = text.replace(/^[@#]+/, "");
+  text = text.replace(/[\s_]+/g, "-");
+  text = text.replace(/[^a-z0-9-]+/g, "-");
+  text = text.replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
+  return text;
+}
+
+function normalizeSlackSlug(raw?: string | null) {
+  const trimmed = raw?.trim().toLowerCase() ?? "";
+  if (!trimmed) return "";
+  const dashed = trimmed.replace(/\s+/g, "-");
+  const cleaned = dashed.replace(/[^a-z0-9#@._+-]+/g, "-");
+  return cleaned.replace(/-{2,}/g, "-").replace(/^[-.]+|[-.]+$/g, "");
+}
+
+function resolveDiscordGuildEntry(
+  guilds: NonNullable<ClawdbotConfig["discord"]>["guilds"],
+  groupSpace?: string,
+) {
+  if (!guilds || Object.keys(guilds).length === 0) return null;
+  const space = groupSpace?.trim();
+  if (space && guilds[space]) return guilds[space];
+  const normalized = normalizeDiscordSlug(space);
+  if (normalized && guilds[normalized]) return guilds[normalized];
+  if (normalized) {
+    const match = Object.values(guilds).find(
+      (entry) => normalizeDiscordSlug(entry?.slug ?? undefined) === normalized,
+    );
+    if (match) return match;
+  }
+  return guilds["*"] ?? null;
+}
+
 export function resolveGroupRequireMention(params: {
   cfg: ClawdbotConfig;
   ctx: TemplateContext;
   groupResolution?: GroupKeyResolution;
 }): boolean {
   const { cfg, ctx, groupResolution } = params;
-  const surface = groupResolution?.surface ?? ctx.Surface?.trim().toLowerCase();
+  const provider =
+    groupResolution?.provider ?? ctx.Provider?.trim().toLowerCase();
   const groupId = groupResolution?.id ?? ctx.From?.replace(/^group:/, "");
-  if (surface === "telegram") {
-    if (groupId) {
-      const groupConfig = cfg.telegram?.groups?.[groupId];
-      if (typeof groupConfig?.requireMention === "boolean") {
-        return groupConfig.requireMention;
+  const groupRoom = ctx.GroupRoom?.trim() ?? ctx.GroupSubject?.trim();
+  const groupSpace = ctx.GroupSpace?.trim();
+  if (
+    provider === "telegram" ||
+    provider === "whatsapp" ||
+    provider === "imessage"
+  ) {
+    return resolveProviderGroupRequireMention({
+      cfg,
+      provider,
+      groupId,
+    });
+  }
+  if (provider === "discord") {
+    const guildEntry = resolveDiscordGuildEntry(
+      cfg.discord?.guilds,
+      groupSpace,
+    );
+    const channelEntries = guildEntry?.channels;
+    if (channelEntries && Object.keys(channelEntries).length > 0) {
+      const channelSlug = normalizeDiscordSlug(groupRoom);
+      const entry =
+        (groupId ? channelEntries[groupId] : undefined) ??
+        (channelSlug
+          ? (channelEntries[channelSlug] ?? channelEntries[`#${channelSlug}`])
+          : undefined) ??
+        (groupRoom
+          ? channelEntries[normalizeDiscordSlug(groupRoom)]
+          : undefined);
+      if (entry && typeof entry.requireMention === "boolean") {
+        return entry.requireMention;
       }
     }
-    const groupDefault = cfg.telegram?.groups?.["*"]?.requireMention;
-    if (typeof groupDefault === "boolean") return groupDefault;
+    if (typeof guildEntry?.requireMention === "boolean") {
+      return guildEntry.requireMention;
+    }
     return true;
   }
-  if (surface === "whatsapp") {
-    if (groupId) {
-      const groupConfig = cfg.whatsapp?.groups?.[groupId];
-      if (typeof groupConfig?.requireMention === "boolean") {
-        return groupConfig.requireMention;
+  if (provider === "slack") {
+    const channels = cfg.slack?.channels ?? {};
+    const keys = Object.keys(channels);
+    if (keys.length === 0) return true;
+    const channelId = groupId?.trim();
+    const channelName = groupRoom?.replace(/^#/, "");
+    const normalizedName = normalizeSlackSlug(channelName);
+    const candidates = [
+      channelId ?? "",
+      channelName ? `#${channelName}` : "",
+      channelName ?? "",
+      normalizedName,
+    ].filter(Boolean);
+    let matched: { requireMention?: boolean } | undefined;
+    for (const candidate of candidates) {
+      if (candidate && channels[candidate]) {
+        matched = channels[candidate];
+        break;
       }
     }
-    const groupDefault = cfg.whatsapp?.groups?.["*"]?.requireMention;
-    if (typeof groupDefault === "boolean") return groupDefault;
-    return true;
-  }
-  if (surface === "imessage") {
-    if (groupId) {
-      const groupConfig = cfg.imessage?.groups?.[groupId];
-      if (typeof groupConfig?.requireMention === "boolean") {
-        return groupConfig.requireMention;
-      }
+    const fallback = channels["*"];
+    const resolved = matched ?? fallback;
+    if (typeof resolved?.requireMention === "boolean") {
+      return resolved.requireMention;
     }
-    const groupDefault = cfg.imessage?.groups?.["*"]?.requireMention;
-    if (typeof groupDefault === "boolean") return groupDefault;
     return true;
   }
   return true;
@@ -67,18 +138,18 @@ export function buildGroupIntro(params: {
     params.defaultActivation;
   const subject = params.sessionCtx.GroupSubject?.trim();
   const members = params.sessionCtx.GroupMembers?.trim();
-  const surface = params.sessionCtx.Surface?.trim().toLowerCase();
-  const surfaceLabel = (() => {
-    if (!surface) return "chat";
-    if (surface === "whatsapp") return "WhatsApp";
-    if (surface === "telegram") return "Telegram";
-    if (surface === "discord") return "Discord";
-    if (surface === "webchat") return "WebChat";
-    return `${surface.at(0)?.toUpperCase() ?? ""}${surface.slice(1)}`;
+  const provider = params.sessionCtx.Provider?.trim().toLowerCase();
+  const providerLabel = (() => {
+    if (!provider) return "chat";
+    if (provider === "whatsapp") return "WhatsApp";
+    if (provider === "telegram") return "Telegram";
+    if (provider === "discord") return "Discord";
+    if (provider === "webchat") return "WebChat";
+    return `${provider.at(0)?.toUpperCase() ?? ""}${provider.slice(1)}`;
   })();
   const subjectLine = subject
-    ? `You are replying inside the ${surfaceLabel} group "${subject}".`
-    : `You are replying inside a ${surfaceLabel} group chat.`;
+    ? `You are replying inside the ${providerLabel} group "${subject}".`
+    : `You are replying inside a ${providerLabel} group chat.`;
   const membersLine = members ? `Group members: ${members}.` : undefined;
   const activationLine =
     activation === "always"

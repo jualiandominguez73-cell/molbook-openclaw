@@ -5,17 +5,32 @@ import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-vi.mock("../config/config.js", () => ({
-  loadConfig: vi.fn().mockReturnValue({
-    whatsapp: {
-      allowFrom: ["*"], // Allow all in tests
-    },
-    messages: {
-      messagePrefix: undefined,
-      responsePrefix: undefined,
-      timestampPrefix: false,
-    },
-  }),
+const readAllowFromStoreMock = vi.fn().mockResolvedValue([]);
+const upsertPairingRequestMock = vi
+  .fn()
+  .mockResolvedValue({ code: "PAIRCODE", created: true });
+
+vi.mock("../config/config.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../config/config.js")>();
+  return {
+    ...actual,
+    loadConfig: vi.fn().mockReturnValue({
+      whatsapp: {
+        allowFrom: ["*"], // Allow all in tests
+      },
+      messages: {
+        messagePrefix: undefined,
+        responsePrefix: undefined,
+      },
+    }),
+  };
+});
+
+vi.mock("../pairing/pairing-store.js", () => ({
+  readProviderAllowFromStore: (...args: unknown[]) =>
+    readAllowFromStoreMock(...args),
+  upsertProviderPairingRequest: (...args: unknown[]) =>
+    upsertPairingRequestMock(...args),
 }));
 
 const HOME = path.join(

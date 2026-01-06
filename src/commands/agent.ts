@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { ensureAuthProfileStore } from "../agents/auth-profiles.js";
 import { lookupContextTokens } from "../agents/context.js";
 import {
   DEFAULT_CONTEXT_TOKENS,
@@ -15,11 +16,17 @@ import {
 } from "../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
 import { buildWorkspaceSkillSnapshot } from "../agents/skills.js";
+import { resolveAgentTimeoutMs } from "../agents/timeout.js";
+import { hasNonzeroUsage } from "../agents/usage.js";
 import {
   DEFAULT_AGENT_WORKSPACE_DIR,
   ensureAgentWorkspace,
 } from "../agents/workspace.js";
-import { chunkText, resolveTextChunkLimit } from "../auto-reply/chunk.js";
+import {
+  chunkMarkdownText,
+  chunkText,
+  resolveTextChunkLimit,
+} from "../auto-reply/chunk.js";
 import type { MsgContext } from "../auto-reply/templating.js";
 import {
   normalizeThinkLevel,
@@ -57,7 +64,8 @@ type AgentCommandOpts = {
   json?: boolean;
   timeout?: string;
   deliver?: boolean;
-  surface?: string;
+  /** Message provider context (webchat|voicewake|whatsapp|...). */
+  messageProvider?: string;
   provider?: string; // delivery provider (whatsapp|telegram|...)
   bestEffortDeliver?: boolean;
   abortSignal?: AbortSignal;
@@ -160,7 +168,7 @@ export async function agentCommand(
   const workspaceDirRaw = cfg.agent?.workspace ?? DEFAULT_AGENT_WORKSPACE_DIR;
   const workspace = await ensureAgentWorkspace({
     dir: workspaceDirRaw,
-    ensureBootstrapFiles: true,
+    ensureBootstrapFiles: !cfg.agent?.skipBootstrap,
   });
   const workspaceDir = workspace.dir;
 
@@ -189,11 +197,17 @@ export async function agentCommand(
   const timeoutSecondsRaw =
     opts.timeout !== undefined
       ? Number.parseInt(String(opts.timeout), 10)
-      : (agentCfg?.timeoutSeconds ?? 600);
-  if (Number.isNaN(timeoutSecondsRaw) || timeoutSecondsRaw <= 0) {
+      : undefined;
+  if (
+    timeoutSecondsRaw !== undefined &&
+    (Number.isNaN(timeoutSecondsRaw) || timeoutSecondsRaw <= 0)
+  ) {
     throw new Error("--timeout must be a positive integer (seconds)");
   }
-  const timeoutMs = Math.max(timeoutSecondsRaw, 1) * 1000;
+  const timeoutMs = resolveAgentTimeoutMs({
+    cfg,
+    overrideSeconds: timeoutSecondsRaw,
+  });
 
   const sessionResolution = resolveSession({
     cfg,
@@ -223,7 +237,7 @@ export async function agentCommand(
       cfg,
       entry: sessionEntry,
       sessionKey,
-      surface: sessionEntry?.surface,
+      provider: sessionEntry?.provider,
       chatType: sessionEntry?.chatType,
     });
     if (sendPolicy === "deny") {
@@ -289,7 +303,8 @@ export async function agentCommand(
     });
   let provider = defaultProvider;
   let model = defaultModel;
-  const hasAllowlist = (agentCfg?.allowedModels?.length ?? 0) > 0;
+  const hasAllowlist =
+    agentCfg?.models && Object.keys(agentCfg.models).length > 0;
   const hasStoredOverride = Boolean(
     sessionEntry?.modelOverride || sessionEntry?.providerOverride,
   );
@@ -335,6 +350,18 @@ export async function agentCommand(
       model = storedModelOverride;
     }
   }
+  if (sessionEntry?.authProfileOverride) {
+    const store = ensureAuthProfileStore();
+    const profile = store.profiles[sessionEntry.authProfileOverride];
+    if (!profile || profile.provider !== provider) {
+      delete sessionEntry.authProfileOverride;
+      sessionEntry.updatedAt = Date.now();
+      if (sessionStore && sessionKey) {
+        sessionStore[sessionKey] = sessionEntry;
+        await saveSessionStore(storePath, sessionStore);
+      }
+    }
+  }
 
   if (!resolvedThinkLevel) {
     let catalogForThinking = modelCatalog ?? allowedModelCatalog;
@@ -352,24 +379,14 @@ export async function agentCommand(
   const sessionFile = resolveSessionTranscriptPath(sessionId);
 
   const startedAt = Date.now();
-  emitAgentEvent({
-    runId,
-    stream: "job",
-    data: {
-      state: "started",
-      startedAt,
-      to: opts.to ?? null,
-      sessionId,
-      isNewSession,
-    },
-  });
+  let lifecycleEnded = false;
 
   let result: Awaited<ReturnType<typeof runEmbeddedPiAgent>>;
   let fallbackProvider = provider;
   let fallbackModel = model;
   try {
-    const surface =
-      opts.surface?.trim().toLowerCase() ||
+    const messageProvider =
+      opts.messageProvider?.trim().toLowerCase() ||
       (() => {
         const raw = opts.provider?.trim().toLowerCase();
         if (!raw) return undefined;
@@ -383,7 +400,7 @@ export async function agentCommand(
         runEmbeddedPiAgent({
           sessionId,
           sessionKey,
-          surface,
+          messageProvider,
           sessionFile,
           workspaceDir,
           config: cfg,
@@ -391,6 +408,7 @@ export async function agentCommand(
           prompt: body,
           provider: providerOverride,
           model: modelOverride,
+          authProfileId: sessionEntry?.authProfileOverride,
           thinkLevel: resolvedThinkLevel,
           verboseLevel: resolvedVerboseLevel,
           timeoutMs,
@@ -399,6 +417,13 @@ export async function agentCommand(
           abortSignal: opts.abortSignal,
           extraSystemPrompt: opts.extraSystemPrompt,
           onAgentEvent: (evt) => {
+            if (
+              evt.stream === "lifecycle" &&
+              typeof evt.data?.phase === "string" &&
+              (evt.data.phase === "end" || evt.data.phase === "error")
+            ) {
+              lifecycleEnded = true;
+            }
             emitAgentEvent({
               runId,
               stream: evt.stream,
@@ -410,33 +435,31 @@ export async function agentCommand(
     result = fallbackResult.result;
     fallbackProvider = fallbackResult.provider;
     fallbackModel = fallbackResult.model;
-    emitAgentEvent({
-      runId,
-      stream: "job",
-      data: {
-        state: "done",
-        startedAt,
-        endedAt: Date.now(),
-        to: opts.to ?? null,
-        sessionId,
-        durationMs: Date.now() - startedAt,
-        aborted: result.meta.aborted ?? false,
-      },
-    });
+    if (!lifecycleEnded) {
+      emitAgentEvent({
+        runId,
+        stream: "lifecycle",
+        data: {
+          phase: "end",
+          startedAt,
+          endedAt: Date.now(),
+          aborted: result.meta.aborted ?? false,
+        },
+      });
+    }
   } catch (err) {
-    emitAgentEvent({
-      runId,
-      stream: "job",
-      data: {
-        state: "error",
-        startedAt,
-        endedAt: Date.now(),
-        to: opts.to ?? null,
-        sessionId,
-        durationMs: Date.now() - startedAt,
-        error: String(err),
-      },
-    });
+    if (!lifecycleEnded) {
+      emitAgentEvent({
+        runId,
+        stream: "lifecycle",
+        data: {
+          phase: "error",
+          startedAt,
+          endedAt: Date.now(),
+          error: String(err),
+        },
+      });
+    }
     throw err;
   }
 
@@ -464,7 +487,7 @@ export async function agentCommand(
       contextTokens,
     };
     next.abortedLastRun = result.meta.aborted ?? false;
-    if (usage) {
+    if (hasNonzeroUsage(usage)) {
       const input = usage.input ?? 0;
       const output = usage.output ?? 0;
       const promptTokens =
@@ -588,12 +611,14 @@ export async function agentCommand(
         2,
       ),
     );
-    if (!deliver) return;
+    if (!deliver) {
+      return { payloads: normalizedPayloads, meta: result.meta };
+    }
   }
 
   if (payloads.length === 0) {
     runtime.log("No reply from agent.");
-    return;
+    return { payloads: [], meta: result.meta };
   }
 
   const deliveryTextLimit =
@@ -646,7 +671,7 @@ export async function agentCommand(
     if (deliveryProvider === "telegram" && telegramTarget) {
       try {
         if (media.length === 0) {
-          for (const chunk of chunkText(text, deliveryTextLimit)) {
+          for (const chunk of chunkMarkdownText(text, deliveryTextLimit)) {
             await deps.sendMessageTelegram(telegramTarget, chunk, {
               verbose: false,
               token: telegramToken || undefined,
@@ -777,4 +802,11 @@ export async function agentCommand(
       }
     }
   }
+
+  const normalizedPayloads = payloads.map((p) => ({
+    text: p.text ?? "",
+    mediaUrl: p.mediaUrl ?? null,
+    mediaUrls: p.mediaUrls ?? (p.mediaUrl ? [p.mediaUrl] : undefined),
+  }));
+  return { payloads: normalizedPayloads, meta: result.meta };
 }

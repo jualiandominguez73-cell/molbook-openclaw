@@ -23,21 +23,25 @@
   "navigation": {
     "groups": [
       {
-        "group": "Getting Started",
+        "group": "Start Here",
         "pages": [
+          "getting-started",
+          "wizard",
           "index",
-          "onboarding",
+          "setup",
+          "pairing",
+          "faq",
           "clawd",
-          "faq"
+          "showcase",
+          "hubs",
+          "onboarding"
         ]
       },
       {
-        "group": "Installation",
+        "group": "Install Options",
         "pages": [
-          "wizard",
           "nix",
-          "docker",
-          "setup"
+          "docker"
         ]
       },
       {
@@ -70,8 +74,9 @@
           "mac/dev-setup",
           "mac/menu-bar",
           "mac/voicewake",
-          "ios/connect",
-          "android/connect",
+          "macos",
+          "ios",
+          "android",
           "webchat",
           "web"
         ]

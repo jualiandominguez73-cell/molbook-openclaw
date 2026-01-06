@@ -33,7 +33,7 @@ describe("gateway server agent", () => {
           main: {
             sessionId: "sess-main-stale",
             updatedAt: Date.now(),
-            lastChannel: "whatsapp",
+            lastProvider: "whatsapp",
             lastTo: "+1555",
           },
         },
@@ -49,7 +49,7 @@ describe("gateway server agent", () => {
     const res = await rpcReq(ws, "agent", {
       message: "hi",
       sessionKey: "main",
-      channel: "last",
+      provider: "last",
       deliver: true,
       idempotencyKey: "idem-agent-last-stale",
     });
@@ -76,7 +76,7 @@ describe("gateway server agent", () => {
           main: {
             sessionId: "sess-main-whatsapp",
             updatedAt: Date.now(),
-            lastChannel: "whatsapp",
+            lastProvider: "whatsapp",
             lastTo: "+1555",
           },
         },
@@ -92,7 +92,7 @@ describe("gateway server agent", () => {
     const res = await rpcReq(ws, "agent", {
       message: "hi",
       sessionKey: "main",
-      channel: "last",
+      provider: "last",
       deliver: true,
       idempotencyKey: "idem-agent-last-whatsapp",
     });
@@ -120,7 +120,7 @@ describe("gateway server agent", () => {
           main: {
             sessionId: "sess-main",
             updatedAt: Date.now(),
-            lastChannel: "telegram",
+            lastProvider: "telegram",
             lastTo: "123",
           },
         },
@@ -136,7 +136,7 @@ describe("gateway server agent", () => {
     const res = await rpcReq(ws, "agent", {
       message: "hi",
       sessionKey: "main",
-      channel: "last",
+      provider: "last",
       deliver: true,
       idempotencyKey: "idem-agent-last",
     });
@@ -164,7 +164,7 @@ describe("gateway server agent", () => {
           main: {
             sessionId: "sess-discord",
             updatedAt: Date.now(),
-            lastChannel: "discord",
+            lastProvider: "discord",
             lastTo: "channel:discord-123",
           },
         },
@@ -180,7 +180,7 @@ describe("gateway server agent", () => {
     const res = await rpcReq(ws, "agent", {
       message: "hi",
       sessionKey: "main",
-      channel: "last",
+      provider: "last",
       deliver: true,
       idempotencyKey: "idem-agent-last-discord",
     });
@@ -208,7 +208,7 @@ describe("gateway server agent", () => {
           main: {
             sessionId: "sess-signal",
             updatedAt: Date.now(),
-            lastChannel: "signal",
+            lastProvider: "signal",
             lastTo: "+15551234567",
           },
         },
@@ -224,7 +224,7 @@ describe("gateway server agent", () => {
     const res = await rpcReq(ws, "agent", {
       message: "hi",
       sessionKey: "main",
-      channel: "last",
+      provider: "last",
       deliver: true,
       idempotencyKey: "idem-agent-last-signal",
     });
@@ -253,7 +253,7 @@ describe("gateway server agent", () => {
           main: {
             sessionId: "sess-main-webchat",
             updatedAt: Date.now(),
-            lastChannel: "webchat",
+            lastProvider: "webchat",
             lastTo: "+1555",
           },
         },
@@ -269,7 +269,7 @@ describe("gateway server agent", () => {
     const res = await rpcReq(ws, "agent", {
       message: "hi",
       sessionKey: "main",
-      channel: "last",
+      provider: "last",
       deliver: true,
       idempotencyKey: "idem-agent-webchat",
     });
@@ -463,8 +463,8 @@ describe("gateway server agent", () => {
     });
     emitAgentEvent({
       runId: "run-auto-1",
-      stream: "job",
-      data: { state: "done" },
+      stream: "lifecycle",
+      data: { phase: "end" },
     });
 
     const evt = await finalChatP;
@@ -518,21 +518,20 @@ describe("gateway server agent", () => {
     await server.close();
   });
 
-  test("agent.wait resolves after job completes", async () => {
+  test("agent.wait resolves after lifecycle end", async () => {
     const { server, ws } = await startServerWithClient();
     await connectOk(ws);
 
     const waitP = rpcReq(ws, "agent.wait", {
       runId: "run-wait-1",
-      afterMs: 100,
       timeoutMs: 1000,
     });
 
     setTimeout(() => {
       emitAgentEvent({
         runId: "run-wait-1",
-        stream: "job",
-        data: { state: "done", startedAt: 200, endedAt: 210 },
+        stream: "lifecycle",
+        data: { phase: "end", startedAt: 200, endedAt: 210 },
       });
     }, 10);
 
@@ -545,14 +544,14 @@ describe("gateway server agent", () => {
     await server.close();
   });
 
-  test("agent.wait resolves when job completed before wait call", async () => {
+  test("agent.wait resolves when lifecycle ended before wait call", async () => {
     const { server, ws } = await startServerWithClient();
     await connectOk(ws);
 
     emitAgentEvent({
       runId: "run-wait-early",
-      stream: "job",
-      data: { state: "done", startedAt: 50, endedAt: 55 },
+      stream: "lifecycle",
+      data: { phase: "end", startedAt: 50, endedAt: 55 },
     });
 
     const res = await rpcReq(ws, "agent.wait", {
@@ -567,41 +566,7 @@ describe("gateway server agent", () => {
     await server.close();
   });
 
-  test("agent.wait ignores jobs before afterMs", async () => {
-    const { server, ws } = await startServerWithClient();
-    await connectOk(ws);
-
-    const waitP = rpcReq(ws, "agent.wait", {
-      runId: "run-wait-2",
-      afterMs: 500,
-      timeoutMs: 1000,
-    });
-
-    setTimeout(() => {
-      emitAgentEvent({
-        runId: "run-wait-2",
-        stream: "job",
-        data: { state: "done", startedAt: 200, endedAt: 220 },
-      });
-    }, 10);
-    setTimeout(() => {
-      emitAgentEvent({
-        runId: "run-wait-2",
-        stream: "job",
-        data: { state: "done", startedAt: 700, endedAt: 710 },
-      });
-    }, 20);
-
-    const res = await waitP;
-    expect(res.ok).toBe(true);
-    expect(res.payload.status).toBe("ok");
-    expect(res.payload.startedAt).toBe(700);
-
-    ws.close();
-    await server.close();
-  });
-
-  test("agent.wait times out when no job completes", async () => {
+  test("agent.wait times out when no lifecycle ends", async () => {
     const { server, ws } = await startServerWithClient();
     await connectOk(ws);
 
@@ -611,6 +576,65 @@ describe("gateway server agent", () => {
     });
     expect(res.ok).toBe(true);
     expect(res.payload.status).toBe("timeout");
+
+    ws.close();
+    await server.close();
+  });
+
+  test("agent.wait returns error on lifecycle error", async () => {
+    const { server, ws } = await startServerWithClient();
+    await connectOk(ws);
+
+    const waitP = rpcReq(ws, "agent.wait", {
+      runId: "run-wait-err",
+      timeoutMs: 1000,
+    });
+
+    setTimeout(() => {
+      emitAgentEvent({
+        runId: "run-wait-err",
+        stream: "lifecycle",
+        data: { phase: "error", error: "boom" },
+      });
+    }, 10);
+
+    const res = await waitP;
+    expect(res.ok).toBe(true);
+    expect(res.payload.status).toBe("error");
+    expect(res.payload.error).toBe("boom");
+
+    ws.close();
+    await server.close();
+  });
+
+  test("agent.wait uses lifecycle start timestamp when end omits it", async () => {
+    const { server, ws } = await startServerWithClient();
+    await connectOk(ws);
+
+    const waitP = rpcReq(ws, "agent.wait", {
+      runId: "run-wait-start",
+      timeoutMs: 1000,
+    });
+
+    emitAgentEvent({
+      runId: "run-wait-start",
+      stream: "lifecycle",
+      data: { phase: "start", startedAt: 123 },
+    });
+
+    setTimeout(() => {
+      emitAgentEvent({
+        runId: "run-wait-start",
+        stream: "lifecycle",
+        data: { phase: "end", endedAt: 456 },
+      });
+    }, 10);
+
+    const res = await waitP;
+    expect(res.ok).toBe(true);
+    expect(res.payload.status).toBe("ok");
+    expect(res.payload.startedAt).toBe(123);
+    expect(res.payload.endedAt).toBe(456);
 
     ws.close();
     await server.close();

@@ -42,10 +42,10 @@ async function writeSessionStore(home: string) {
     storePath,
     JSON.stringify(
       {
-        main: {
+        "agent:main:main": {
           sessionId: "main-session",
           updatedAt: Date.now(),
-          lastChannel: "webchat",
+          lastProvider: "webchat",
           lastTo: "",
         },
       },
@@ -224,7 +224,7 @@ describe("runCronIsolatedAgentTurn", () => {
           kind: "agentTurn",
           message: "do it",
           deliver: true,
-          channel: "whatsapp",
+          provider: "whatsapp",
           bestEffortDeliver: false,
         }),
         message: "do it",
@@ -264,7 +264,7 @@ describe("runCronIsolatedAgentTurn", () => {
           kind: "agentTurn",
           message: "do it",
           deliver: true,
-          channel: "whatsapp",
+          provider: "whatsapp",
           bestEffortDeliver: true,
         }),
         message: "do it",
@@ -309,7 +309,7 @@ describe("runCronIsolatedAgentTurn", () => {
             kind: "agentTurn",
             message: "do it",
             deliver: true,
-            channel: "telegram",
+            provider: "telegram",
             to: "123",
           }),
           message: "do it",
@@ -361,7 +361,7 @@ describe("runCronIsolatedAgentTurn", () => {
           kind: "agentTurn",
           message: "do it",
           deliver: true,
-          channel: "discord",
+          provider: "discord",
           to: "channel:1122",
         }),
         message: "do it",
@@ -375,6 +375,226 @@ describe("runCronIsolatedAgentTurn", () => {
         "hello from cron",
         expect.objectContaining({ token: process.env.DISCORD_BOT_TOKEN }),
       );
+    });
+  });
+
+  it("skips delivery when response is exactly HEARTBEAT_OK", async () => {
+    await withTempHome(async (home) => {
+      const storePath = await writeSessionStore(home);
+      const deps: CliDeps = {
+        sendMessageWhatsApp: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
+        sendMessageDiscord: vi.fn(),
+        sendMessageSignal: vi.fn(),
+        sendMessageIMessage: vi.fn(),
+      };
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [{ text: "HEARTBEAT_OK" }],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await runCronIsolatedAgentTurn({
+        cfg: makeCfg(home, storePath),
+        deps,
+        job: makeJob({
+          kind: "agentTurn",
+          message: "do it",
+          deliver: true,
+          provider: "telegram",
+          to: "123",
+        }),
+        message: "do it",
+        sessionKey: "cron:job-1",
+        lane: "cron",
+      });
+
+      // Job still succeeds, but no delivery happens.
+      expect(res.status).toBe("ok");
+      expect(res.summary).toBe("HEARTBEAT_OK");
+      expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
+    });
+  });
+
+  it("skips delivery when response has HEARTBEAT_OK with short padding", async () => {
+    await withTempHome(async (home) => {
+      const storePath = await writeSessionStore(home);
+      const deps: CliDeps = {
+        sendMessageWhatsApp: vi.fn().mockResolvedValue({
+          messageId: "w1",
+          chatId: "+1234",
+        }),
+        sendMessageTelegram: vi.fn(),
+        sendMessageDiscord: vi.fn(),
+        sendMessageSignal: vi.fn(),
+        sendMessageIMessage: vi.fn(),
+      };
+      // Short junk around HEARTBEAT_OK (<=30 chars) should still skip delivery.
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [{ text: "HEARTBEAT_OK 🦞" }],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await runCronIsolatedAgentTurn({
+        cfg: makeCfg(home, storePath, { whatsapp: { allowFrom: ["+1234"] } }),
+        deps,
+        job: makeJob({
+          kind: "agentTurn",
+          message: "do it",
+          deliver: true,
+          provider: "whatsapp",
+          to: "+1234",
+        }),
+        message: "do it",
+        sessionKey: "cron:job-1",
+        lane: "cron",
+      });
+
+      expect(res.status).toBe("ok");
+      expect(deps.sendMessageWhatsApp).not.toHaveBeenCalled();
+    });
+  });
+
+  it("delivers when response has HEARTBEAT_OK but also substantial content", async () => {
+    await withTempHome(async (home) => {
+      const storePath = await writeSessionStore(home);
+      const deps: CliDeps = {
+        sendMessageWhatsApp: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
+        sendMessageDiscord: vi.fn(),
+        sendMessageSignal: vi.fn(),
+        sendMessageIMessage: vi.fn(),
+      };
+      // Long content after HEARTBEAT_OK should still be delivered.
+      const longContent = `Important alert: ${"a".repeat(50)}`;
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [{ text: `HEARTBEAT_OK ${longContent}` }],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await runCronIsolatedAgentTurn({
+        cfg: makeCfg(home, storePath),
+        deps,
+        job: makeJob({
+          kind: "agentTurn",
+          message: "do it",
+          deliver: true,
+          provider: "telegram",
+          to: "123",
+        }),
+        message: "do it",
+        sessionKey: "cron:job-1",
+        lane: "cron",
+      });
+
+      expect(res.status).toBe("ok");
+      expect(deps.sendMessageTelegram).toHaveBeenCalled();
+    });
+  });
+
+  it("delivers when response has HEARTBEAT_OK but includes media", async () => {
+    await withTempHome(async (home) => {
+      const storePath = await writeSessionStore(home);
+      const deps: CliDeps = {
+        sendMessageWhatsApp: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
+        sendMessageDiscord: vi.fn(),
+        sendMessageSignal: vi.fn(),
+        sendMessageIMessage: vi.fn(),
+      };
+      // Media should still be delivered even if text is just HEARTBEAT_OK.
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [
+          { text: "HEARTBEAT_OK", mediaUrl: "https://example.com/img.png" },
+        ],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await runCronIsolatedAgentTurn({
+        cfg: makeCfg(home, storePath),
+        deps,
+        job: makeJob({
+          kind: "agentTurn",
+          message: "do it",
+          deliver: true,
+          provider: "telegram",
+          to: "123",
+        }),
+        message: "do it",
+        sessionKey: "cron:job-1",
+        lane: "cron",
+      });
+
+      expect(res.status).toBe("ok");
+      expect(deps.sendMessageTelegram).toHaveBeenCalledWith(
+        "123",
+        "HEARTBEAT_OK",
+        expect.objectContaining({ mediaUrl: "https://example.com/img.png" }),
+      );
+    });
+  });
+
+  it("delivers when heartbeat ack padding exceeds configured limit", async () => {
+    await withTempHome(async (home) => {
+      const storePath = await writeSessionStore(home);
+      const deps: CliDeps = {
+        sendMessageWhatsApp: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
+        sendMessageDiscord: vi.fn(),
+        sendMessageSignal: vi.fn(),
+        sendMessageIMessage: vi.fn(),
+      };
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [{ text: "HEARTBEAT_OK 🦞" }],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const cfg = makeCfg(home, storePath);
+      cfg.agent = { ...cfg.agent, heartbeat: { ackMaxChars: 0 } };
+
+      const res = await runCronIsolatedAgentTurn({
+        cfg,
+        deps,
+        job: makeJob({
+          kind: "agentTurn",
+          message: "do it",
+          deliver: true,
+          provider: "telegram",
+          to: "123",
+        }),
+        message: "do it",
+        sessionKey: "cron:job-1",
+        lane: "cron",
+      });
+
+      expect(res.status).toBe("ok");
+      expect(deps.sendMessageTelegram).toHaveBeenCalled();
     });
   });
 });

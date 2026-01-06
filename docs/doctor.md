@@ -15,6 +15,8 @@ read_when:
 - Migrates legacy `~/.clawdis/clawdis.json` when no Clawdbot config exists.
 - Checks sandbox Docker images when sandboxing is enabled (offers to build or switch to legacy names).
 - Detects legacy Clawdis services (launchd/systemd/schtasks) and offers to migrate them.
+- On Linux, checks if systemd user lingering is enabled and can enable it (required to keep the Gateway alive after logout).
+- Migrates legacy on-disk state layouts (sessions, agentDir, provider auth dirs) into the current per-agent/per-account structure.
 
 ## Legacy config file migration
 If `~/.clawdis/clawdis.json` exists and `~/.clawdbot/clawdbot.json` does not, doctor will migrate the file and normalize old paths/image names.
@@ -26,8 +28,26 @@ Doctor will:
 - Show the migration it applied.
 - Rewrite `~/.clawdbot/clawdbot.json` with the updated schema.
 
+The Gateway also auto-runs doctor migrations on startup when it detects a legacy
+config format, so stale configs are repaired without manual intervention.
+
 Current migrations:
 - `routing.allowFrom` → `whatsapp.allowFrom`
+- `agent.model`/`allowedModels`/`modelAliases`/`modelFallbacks`/`imageModelFallbacks`
+  → `agent.models` + `agent.model.primary/fallbacks` + `agent.imageModel.primary/fallbacks`
+
+## Legacy state migrations (disk layout)
+
+Doctor can migrate older on-disk layouts into the current structure:
+- Sessions store + transcripts:
+  - from `~/.clawdbot/sessions/` to `~/.clawdbot/agents/<agentId>/sessions/`
+- Agent dir:
+  - from `~/.clawdbot/agent/` to `~/.clawdbot/agents/<agentId>/agent/`
+- WhatsApp auth state (Baileys):
+  - from legacy `~/.clawdbot/credentials/*.json` (except `oauth.json`)
+  - to `~/.clawdbot/credentials/whatsapp/<accountId>/...` (default account id: `default`)
+
+These migrations are best-effort and idempotent; doctor will emit warnings when it leaves any legacy folders behind as backups.
 
 ## Usage
 

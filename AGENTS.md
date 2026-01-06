@@ -6,8 +6,12 @@
 - Docs: `docs/` (images, queue, Pi config). Built output lives in `dist/`.
 
 ## Build, Test, and Development Commands
+- Runtime baseline: Node **22+** (keep Node + Bun paths working).
 - Install deps: `pnpm install`
-- Run CLI in dev: `pnpm clawdbot ...` (tsx entry) or `pnpm dev` for `src/index.ts`.
+- Also supported: `bun install` (keep `pnpm-lock.yaml` + Bun patching in sync when touching deps/patches).
+- Prefer Bun for TypeScript execution (scripts, dev, tests): `bun <file.ts>` / `bunx <tool>`.
+- Run CLI in dev: `pnpm clawdbot ...` (bun) or `pnpm dev`.
+- Node remains supported for running built output (`dist/*`) and production installs.
 - Type-check/build: `pnpm build` (tsc)
 - Lint/format: `pnpm lint` (biome check), `pnpm format` (biome format)
 - Tests: `pnpm test` (vitest); coverage: `pnpm test:coverage`
@@ -30,6 +34,16 @@
 - Follow concise, action-oriented commit messages (e.g., `CLI: add verbose flag to send`).
 - Group related changes; avoid bundling unrelated refactors.
 - PRs should summarize scope, note testing performed, and mention any user-facing changes or new flags.
+- PR review flow: when given a PR link, review via `gh pr view`/`gh pr diff` and do **not** change branches.
+- PR merge flow: create a temp branch from `main`, merge the PR branch into it (prefer squash unless commit history is important; use rebase/merge when it is). Always try to merge the PR unless it’s truly difficult, then use another approach. If we squash, add the PR author as a co-contributor. Apply fixes, add changelog entry (include PR # + thanks), run full gate before the final commit, commit, merge back to `main`, delete the temp branch, and end on `main`.
+- When working on a PR: add a changelog entry with the PR number and thank the contributor.
+- When working on an issue: reference the issue in the changelog entry.
+- When merging a PR: leave a PR comment that explains exactly what we did and include the SHA hashes.
+- When merging a PR from a new contributor: add their avatar to the README “Thanks to all clawtributors” thumbnail list.
+
+### PR Workflow (Review vs Land)
+- **Review mode (PR link only):** read `gh pr view/diff`; **do not** switch branches; **do not** change code.
+- **Landing mode:** create an integration branch from `main`, bring in PR commits (**prefer rebase** for linear history; **merge allowed** when complexity/conflicts make it safer), apply fixes, add changelog (+ thanks + PR #), run full gate **locally before committing** (`pnpm lint && pnpm build && pnpm test`), commit, merge back to `main`, then `git switch main` (never stay on a topic branch after landing).
 
 ## Security & Configuration Tips
 - Web provider stores creds at `~/.clawdbot/credentials/`; rerun `clawdbot login` if logged out.
@@ -45,13 +59,15 @@
 - **Restart apps:** “restart iOS/Android apps” means rebuild (recompile/install) and relaunch, not just kill/launch.
 - **Device checks:** before testing, verify connected real devices (iOS/Android) before reaching for simulators/emulators.
 - iOS Team ID lookup: `security find-identity -p codesigning -v` → use Apple Development (…) TEAMID. Fallback: `defaults read com.apple.dt.Xcode IDEProvisioningTeamIdentifiers`.
-- A2UI bundle hash: `src/canvas-host/a2ui/.bundle.hash` is auto-generated; regenerate via `pnpm canvas:a2ui:bundle` (or `scripts/bundle-a2ui.sh`) instead of manual conflict resolution.
+- A2UI bundle hash: `src/canvas-host/a2ui/.bundle.hash` is auto-generated; ignore unexpected changes, and only regenerate via `pnpm canvas:a2ui:bundle` (or `scripts/bundle-a2ui.sh`) when needed. Commit the hash as a separate commit.
 - Notary key file lives at `~/Library/CloudStorage/Dropbox/Backup/AppStore/AuthKey_NJF3NFGTS3.p8` (Sparkle keys live under `~/Library/CloudStorage/Dropbox/Backup/Sparkle`).
+- Notary auth env vars (`APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_API_KEY_P8`) are in `~/.profile`.
 - **Multi-agent safety:** do **not** create/apply/drop `git stash` entries unless Peter explicitly asks (this includes `git pull --rebase --autostash`). Assume other agents may be working; keep unrelated WIP untouched and avoid cross-cutting state changes.
 - **Multi-agent safety:** when Peter says "push", you may `git pull --rebase` to integrate latest changes (never discard other agents' work). When Peter says "commit", scope to your changes only. When Peter says "commit all", commit everything in grouped chunks.
 - **Multi-agent safety:** do **not** create/remove/modify `git worktree` checkouts (or edit `.worktrees/*`) unless Peter explicitly asks.
 - **Multi-agent safety:** do **not** switch branches / check out a different branch unless Peter explicitly asks.
 - **Multi-agent safety:** running multiple agents is OK as long as each agent has its own session.
+- **Multi-agent safety:** when you see unrecognized files, keep going; focus on your changes and commit only those.
 - When asked to open a “session” file, open the Pi session logs under `~/.clawdbot/sessions/*.jsonl` (newest unless a specific ID is given), not the default `sessions.json`. If logs are needed from Mac Studio, SSH via Tailscale and read the same path there.
 - Menubar dimming + restart flow mirrors Trimmy: use `scripts/restart-mac.sh` (kills all Clawdbot variants, runs `swift build`, packages, relaunches). Icon dimming depends on MenuBarExtraAccess wiring in AppMain; keep `appearsDisabled` updates intact when touching the status item.
 - Do not rebuild the macOS app over SSH; rebuilds must be run directly on the Mac.

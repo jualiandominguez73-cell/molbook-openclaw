@@ -1,5 +1,6 @@
 import { chunkText, resolveTextChunkLimit } from "../auto-reply/chunk.js";
 import {
+  DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   HEARTBEAT_PROMPT,
   stripHeartbeatToken,
 } from "../auto-reply/heartbeat.js";
@@ -45,7 +46,7 @@ export type HeartbeatTarget =
   | "none";
 
 export type HeartbeatDeliveryTarget = {
-  channel:
+  provider:
     | "whatsapp"
     | "telegram"
     | "discord"
@@ -102,6 +103,13 @@ export function resolveHeartbeatPrompt(cfg: ClawdbotConfig) {
   return trimmed || HEARTBEAT_PROMPT;
 }
 
+function resolveHeartbeatAckMaxChars(cfg: ClawdbotConfig) {
+  return Math.max(
+    0,
+    cfg.agent?.heartbeat?.ackMaxChars ?? DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
+  );
+}
+
 function resolveHeartbeatSession(cfg: ClawdbotConfig) {
   const sessionCfg = cfg.session;
   const scope = sessionCfg?.scope ?? "per-sender";
@@ -135,13 +143,13 @@ function resolveHeartbeatReplyPayload(
 function resolveHeartbeatSender(params: {
   allowFrom: Array<string | number>;
   lastTo?: string;
-  lastChannel?: SessionEntry["lastChannel"];
+  lastProvider?: SessionEntry["lastProvider"];
 }) {
-  const { allowFrom, lastTo, lastChannel } = params;
+  const { allowFrom, lastTo, lastProvider } = params;
   const candidates = [
     lastTo?.trim(),
-    lastChannel === "telegram" && lastTo ? `telegram:${lastTo}` : undefined,
-    lastChannel === "whatsapp" && lastTo ? `whatsapp:${lastTo}` : undefined,
+    lastProvider === "telegram" && lastTo ? `telegram:${lastTo}` : undefined,
+    lastProvider === "whatsapp" && lastTo ? `whatsapp:${lastTo}` : undefined,
   ].filter((val): val is string => Boolean(val?.trim()));
 
   const allowList = allowFrom
@@ -201,7 +209,7 @@ export function resolveHeartbeatDeliveryTarget(params: {
       ? rawTarget
       : "last";
   if (target === "none") {
-    return { channel: "none", reason: "target-none" };
+    return { provider: "none", reason: "target-none" };
   }
 
   const explicitTo =
@@ -210,13 +218,13 @@ export function resolveHeartbeatDeliveryTarget(params: {
       ? cfg.agent.heartbeat.to.trim()
       : undefined;
 
-  const lastChannel =
-    entry?.lastChannel && entry.lastChannel !== "webchat"
-      ? entry.lastChannel
+  const lastProvider =
+    entry?.lastProvider && entry.lastProvider !== "webchat"
+      ? entry.lastProvider
       : undefined;
   const lastTo = typeof entry?.lastTo === "string" ? entry.lastTo.trim() : "";
 
-  const channel:
+  const provider:
     | "whatsapp"
     | "telegram"
     | "discord"
@@ -225,7 +233,7 @@ export function resolveHeartbeatDeliveryTarget(params: {
     | "imessage"
     | undefined =
     target === "last"
-      ? lastChannel
+      ? lastProvider
       : target === "whatsapp" ||
           target === "telegram" ||
           target === "discord" ||
@@ -237,27 +245,27 @@ export function resolveHeartbeatDeliveryTarget(params: {
 
   const to =
     explicitTo ||
-    (channel && lastChannel === channel ? lastTo : undefined) ||
+    (provider && lastProvider === provider ? lastTo : undefined) ||
     (target === "last" ? lastTo : undefined);
 
-  if (!channel || !to) {
-    return { channel: "none", reason: "no-target" };
+  if (!provider || !to) {
+    return { provider: "none", reason: "no-target" };
   }
 
-  if (channel !== "whatsapp") {
-    return { channel, to };
+  if (provider !== "whatsapp") {
+    return { provider, to };
   }
 
   const rawAllow = cfg.whatsapp?.allowFrom ?? [];
-  if (rawAllow.includes("*")) return { channel, to };
+  if (rawAllow.includes("*")) return { provider, to };
   const allowFrom = rawAllow
     .map((val) => normalizeE164(val))
     .filter((val) => val.length > 1);
-  if (allowFrom.length === 0) return { channel, to };
+  if (allowFrom.length === 0) return { provider, to };
 
   const normalized = normalizeE164(to);
-  if (allowFrom.includes(normalized)) return { channel, to: normalized };
-  return { channel, to: allowFrom[0], reason: "allowFrom-fallback" };
+  if (allowFrom.includes(normalized)) return { provider, to: normalized };
+  return { provider, to: allowFrom[0], reason: "allowFrom-fallback" };
 }
 
 async function restoreHeartbeatUpdatedAt(params: {
@@ -277,11 +285,12 @@ async function restoreHeartbeatUpdatedAt(params: {
 
 function normalizeHeartbeatReply(
   payload: ReplyPayload,
-  responsePrefix?: string,
+  responsePrefix: string | undefined,
+  ackMaxChars: number,
 ) {
   const stripped = stripHeartbeatToken(payload.text, {
     mode: "heartbeat",
-    maxAckChars: 30,
+    maxAckChars: ackMaxChars,
   });
   const hasMedia = Boolean(
     payload.mediaUrl || (payload.mediaUrls?.length ?? 0) > 0,
@@ -301,7 +310,7 @@ function normalizeHeartbeatReply(
 }
 
 async function deliverHeartbeatReply(params: {
-  channel:
+  provider:
     | "whatsapp"
     | "telegram"
     | "discord"
@@ -324,8 +333,8 @@ async function deliverHeartbeatReply(params: {
     >
   >;
 }) {
-  const { channel, to, text, mediaUrls, deps, textLimit } = params;
-  if (channel === "whatsapp") {
+  const { provider, to, text, mediaUrls, deps, textLimit } = params;
+  if (provider === "whatsapp") {
     if (mediaUrls.length === 0) {
       for (const chunk of chunkText(text, textLimit)) {
         await deps.sendWhatsApp(to, chunk, { verbose: false });
@@ -341,7 +350,7 @@ async function deliverHeartbeatReply(params: {
     return;
   }
 
-  if (channel === "signal") {
+  if (provider === "signal") {
     if (mediaUrls.length === 0) {
       for (const chunk of chunkText(text, textLimit)) {
         await deps.sendSignal(to, chunk);
@@ -357,7 +366,7 @@ async function deliverHeartbeatReply(params: {
     return;
   }
 
-  if (channel === "imessage") {
+  if (provider === "imessage") {
     if (mediaUrls.length === 0) {
       for (const chunk of chunkText(text, textLimit)) {
         await deps.sendIMessage(to, chunk);
@@ -373,7 +382,7 @@ async function deliverHeartbeatReply(params: {
     return;
   }
 
-  if (channel === "telegram") {
+  if (provider === "telegram") {
     if (mediaUrls.length === 0) {
       for (const chunk of chunkText(text, textLimit)) {
         await deps.sendTelegram(to, chunk, { verbose: false });
@@ -389,7 +398,7 @@ async function deliverHeartbeatReply(params: {
     return;
   }
 
-  if (channel === "slack") {
+  if (provider === "slack") {
     if (mediaUrls.length === 0) {
       for (const chunk of chunkText(text, textLimit)) {
         await deps.sendSlack(to, chunk);
@@ -404,6 +413,7 @@ async function deliverHeartbeatReply(params: {
     }
     return;
   }
+  // provider is "discord" here
   if (mediaUrls.length === 0) {
     await deps.sendDiscord(to, text, { verbose: false });
     return;
@@ -441,14 +451,14 @@ export async function runHeartbeatOnce(opts: {
   const sender = resolveHeartbeatSender({
     allowFrom,
     lastTo: entry?.lastTo,
-    lastChannel: entry?.lastChannel,
+    lastProvider: entry?.lastProvider,
   });
   const prompt = resolveHeartbeatPrompt(cfg);
   const ctx = {
     Body: prompt,
     From: sender,
     To: sender,
-    Surface: "heartbeat",
+    Provider: "heartbeat",
   };
 
   try {
@@ -478,9 +488,11 @@ export async function runHeartbeatOnce(opts: {
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 
+    const ackMaxChars = resolveHeartbeatAckMaxChars(cfg);
     const normalized = normalizeHeartbeatReply(
       replyPayload,
       cfg.messages?.responsePrefix,
+      ackMaxChars,
     );
     if (normalized.shouldSkip && !normalized.hasMedia) {
       await restoreHeartbeatUpdatedAt({
@@ -501,7 +513,7 @@ export async function runHeartbeatOnce(opts: {
       replyPayload.mediaUrls ??
       (replyPayload.mediaUrl ? [replyPayload.mediaUrl] : []);
 
-    if (delivery.channel === "none" || !delivery.to) {
+    if (delivery.provider === "none" || !delivery.to) {
       emitHeartbeatEvent({
         status: "skipped",
         reason: delivery.reason ?? "no-target",
@@ -512,7 +524,7 @@ export async function runHeartbeatOnce(opts: {
       return { status: "ran", durationMs: Date.now() - startedAt };
     }
 
-    if (delivery.channel === "whatsapp") {
+    if (delivery.provider === "whatsapp") {
       const readiness = await resolveWhatsAppReadiness(cfg, opts.deps);
       if (!readiness.ok) {
         emitHeartbeatEvent({
@@ -537,9 +549,9 @@ export async function runHeartbeatOnce(opts: {
       sendSignal: opts.deps?.sendSignal ?? sendMessageSignal,
       sendIMessage: opts.deps?.sendIMessage ?? sendMessageIMessage,
     };
-    const textLimit = resolveTextChunkLimit(cfg, delivery.channel);
+    const textLimit = resolveTextChunkLimit(cfg, delivery.provider);
     await deliverHeartbeatReply({
-      channel: delivery.channel,
+      provider: delivery.provider,
       to: delivery.to,
       text: normalized.text,
       mediaUrls,

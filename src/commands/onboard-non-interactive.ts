@@ -14,7 +14,11 @@ import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveUserPath, sleep } from "../utils.js";
 import { healthCommand } from "./health.js";
-import { applyMinimaxConfig, setAnthropicApiKey } from "./onboard-auth.js";
+import {
+  applyAuthProfileConfig,
+  applyMinimaxConfig,
+  setAnthropicApiKey,
+} from "./onboard-auth.js";
 import {
   applyWizardMetadata,
   DEFAULT_WORKSPACE,
@@ -26,6 +30,7 @@ import type {
   OnboardMode,
   OnboardOptions,
 } from "./onboard-types.js";
+import { ensureSystemdUserLingerNonInteractive } from "./systemd-linger.js";
 
 export async function runNonInteractiveOnboarding(
   opts: OnboardOptions,
@@ -97,11 +102,24 @@ export async function runNonInteractiveOnboarding(
       return;
     }
     await setAnthropicApiKey(key);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "anthropic:default",
+      provider: "anthropic",
+      mode: "api_key",
+    });
   } else if (authChoice === "minimax") {
     nextConfig = applyMinimaxConfig(nextConfig);
-  } else if (authChoice === "oauth" || authChoice === "antigravity") {
+  } else if (
+    authChoice === "oauth" ||
+    authChoice === "openai-codex" ||
+    authChoice === "antigravity"
+  ) {
     runtime.error(
-      `${authChoice === "oauth" ? "OAuth" : "Antigravity"} requires interactive mode.`,
+      `${
+        authChoice === "oauth" || authChoice === "openai-codex"
+          ? "OAuth"
+          : "Antigravity"
+      } requires interactive mode.`,
     );
     runtime.exit(1);
     return;
@@ -201,7 +219,9 @@ export async function runNonInteractiveOnboarding(
   nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
   await writeConfigFile(nextConfig);
   runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
-  await ensureWorkspaceAndSessions(workspaceDir, runtime);
+  await ensureWorkspaceAndSessions(workspaceDir, runtime, {
+    skipBootstrap: Boolean(nextConfig.agent?.skipBootstrap),
+  });
 
   if (opts.installDaemon) {
     const service = resolveGatewayService();
@@ -223,6 +243,7 @@ export async function runNonInteractiveOnboarding(
       workingDirectory,
       environment,
     });
+    await ensureSystemdUserLingerNonInteractive({ runtime });
   }
 
   if (!opts.skipHealth) {

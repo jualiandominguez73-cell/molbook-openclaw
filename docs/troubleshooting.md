@@ -14,7 +14,7 @@ When your CLAWDBOT misbehaves, here's how to fix it.
 The agent was interrupted mid-response.
 
 **Causes:**
-- User sent `stop`, `abort`, `esc`, or `exit`
+- User sent `stop`, `abort`, `esc`, `wait`, or `exit`
 - Timeout exceeded
 - Process crashed
 
@@ -29,8 +29,8 @@ cat ~/.clawdbot/clawdbot.json | jq '.whatsapp.allowFrom'
 
 **Check 2:** For group chats, is mention required?
 ```bash
-# The message must match mentionPatterns or explicit mentions; defaults live in whatsapp.groups
-cat ~/.clawdbot/clawdbot.json | jq '.routing.groupChat, .whatsapp.groups'
+# The message must match mentionPatterns or explicit mentions; defaults live in provider groups/guilds.
+cat ~/.clawdbot/clawdbot.json | jq '.routing.groupChat, .whatsapp.groups, .telegram.groups, .imessage.groups, .discord.guilds'
 ```
 
 **Check 3:** Check the logs
@@ -50,7 +50,7 @@ Known issue: When you send an image with ONLY a mention (no other text), WhatsAp
 
 **Check 1:** Is the session file there?
 ```bash
-ls -la ~/.clawdbot/sessions/
+ls -la ~/.clawdbot/agents/<agentId>/sessions/
 ```
 
 **Check 2:** Is `idleMinutes` too short?
@@ -100,7 +100,7 @@ If you’re logged out / unlinked:
 
 ```bash
 clawdbot logout
-rm -rf ~/.clawdbot/credentials # if logout can't cleanly remove everything
+trash ~/.clawdbot/credentials # if logout can't cleanly remove everything
 clawdbot login --verbose       # re-scan QR
 ```
 
@@ -146,7 +146,7 @@ tccutil reset All com.clawdbot.mac.debug
 ```
 
 **Fix 2: Force New Bundle ID**
-If resetting doesn't work, change the `BUNDLE_ID` in `scripts/package-mac-app.sh` (e.g., add a `.test` suffix) and rebuild. This forces macOS to treat it as a new app.
+If resetting doesn't work, change the `BUNDLE_ID` in [`scripts/package-mac-app.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/package-mac-app.sh) (e.g., add a `.test` suffix) and rebuild. This forces macOS to treat it as a new app.
 
 ### Gateway stuck on "Starting..."
 
@@ -160,8 +160,15 @@ lsof -nP -i :18789
 kill -9 <PID>
 ```
 
+If the gateway is supervised by launchd, killing the PID will just respawn it.
+Stop the supervisor instead:
+```bash
+clawdbot gateway stop
+# Or: launchctl bootout gui/$UID/com.clawdbot.gateway
+```
+
 **Fix 2: Check embedded gateway**
-Ensure the gateway relay was properly bundled. Run `./scripts/package-mac-app.sh` and ensure `bun` is installed.
+Ensure the gateway relay was properly bundled. Run [`./scripts/package-mac-app.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/package-mac-app.sh) and ensure `bun` is installed.
 
 ## Debug Mode
 
@@ -181,7 +188,7 @@ clawdbot login --verbose
 | Log | Location |
 |-----|----------|
 | Main logs (default) | `/tmp/clawdbot/clawdbot-YYYY-MM-DD.log` |
-| Session files | `~/.clawdbot/sessions/` |
+| Session files | `~/.clawdbot/agents/<agentId>/sessions/` |
 | Media cache | `~/.clawdbot/media/` |
 | Credentials | `~/.clawdbot/credentials/` |
 
@@ -203,7 +210,7 @@ tail -20 /tmp/clawdbot/clawdbot-*.log
 Nuclear option:
 
 ```bash
-rm -rf ~/.clawdbot
+trash ~/.clawdbot
 clawdbot login         # re-pair WhatsApp
 clawdbot gateway        # start the Gateway again
 ```
@@ -225,3 +232,26 @@ clawdbot gateway        # start the Gateway again
 *"Have you tried turning it off and on again?"* — Every IT person ever
 
 🦞🔧
+
+### Browser Not Starting (Linux)
+
+If you see `"Failed to start Chrome CDP on port 18800"`:
+
+**Most likely cause:** Snap-packaged Chromium on Ubuntu.
+
+**Quick fix:** Install Google Chrome instead:
+```bash
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo dpkg -i google-chrome-stable_current_amd64.deb
+```
+
+Then set in config:
+```json
+{
+  "browser": {
+    "executablePath": "/usr/bin/google-chrome-stable"
+  }
+}
+```
+
+**Full guide:** See [browser-linux-troubleshooting](https://docs.clawd.bot/browser-linux-troubleshooting)

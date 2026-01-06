@@ -17,6 +17,10 @@ export default defineConfig(({ command }) => {
   const base = envBase ? normalizeBase(envBase) : "/";
   return {
     base,
+    publicDir: path.resolve(here, "public"),
+    optimizeDeps: {
+      include: ["lit/directives/repeat.js"],
+    },
     build: {
       outDir: path.resolve(here, "../dist/control-ui"),
       emptyOutDir: true,

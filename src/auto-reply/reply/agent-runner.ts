@@ -6,6 +6,7 @@ import {
   queueEmbeddedPiMessage,
   runEmbeddedPiAgent,
 } from "../../agents/pi-embedded.js";
+import { hasNonzeroUsage } from "../../agents/usage.js";
 import {
   loadSessionStore,
   type SessionEntry,
@@ -27,6 +28,7 @@ import {
   scheduleFollowupDrain,
 } from "./queue.js";
 import { extractReplyToTag } from "./reply-tags.js";
+import { incrementCompactionCount } from "./session-updates.js";
 import type { TypingController } from "./typing.js";
 
 export async function runReplyAgent(params: {
@@ -104,6 +106,7 @@ export async function runReplyAgent(params: {
   const streamedPayloadKeys = new Set<string>();
   const pendingStreamedPayloadKeys = new Set<string>();
   const pendingBlockTasks = new Set<Promise<void>>();
+  const pendingToolTasks = new Set<Promise<void>>();
   let didStreamBlockReply = false;
   const buildPayloadKey = (payload: ReplyPayload) => {
     const text = payload.text?.trim() ?? "";
@@ -167,6 +170,7 @@ export async function runReplyAgent(params: {
   };
 
   let didLogHeartbeatStrip = false;
+  let autoCompactionCompleted = false;
   try {
     const runId = crypto.randomUUID();
     if (sessionKey) {
@@ -184,9 +188,11 @@ export async function runReplyAgent(params: {
           runEmbeddedPiAgent({
             sessionId: followupRun.run.sessionId,
             sessionKey,
-            surface: sessionCtx.Surface?.trim().toLowerCase() || undefined,
+            messageProvider:
+              sessionCtx.Provider?.trim().toLowerCase() || undefined,
             sessionFile: followupRun.run.sessionFile,
             workspaceDir: followupRun.run.workspaceDir,
+            agentDir: followupRun.run.agentDir,
             config: followupRun.run.config,
             skillsSnapshot: followupRun.run.skillsSnapshot,
             prompt: commandBody,
@@ -195,6 +201,7 @@ export async function runReplyAgent(params: {
             enforceFinalTag: followupRun.run.enforceFinalTag,
             provider,
             model,
+            authProfileId: followupRun.run.authProfileId,
             thinkLevel: followupRun.run.thinkLevel,
             verboseLevel: followupRun.run.verboseLevel,
             bashElevated: followupRun.run.bashElevated,
@@ -232,6 +239,15 @@ export async function runReplyAgent(params: {
                   });
                 }
               : undefined,
+            onAgentEvent: (evt) => {
+              if (evt.stream !== "compaction") return;
+              const phase =
+                typeof evt.data.phase === "string" ? evt.data.phase : "";
+              const willRetry = Boolean(evt.data.willRetry);
+              if (phase === "end" && !willRetry) {
+                autoCompactionCompleted = true;
+              }
+            },
             onBlockReply:
               blockStreamingEnabled && opts?.onBlockReply
                 ? async (payload) => {
@@ -297,33 +313,45 @@ export async function runReplyAgent(params: {
                 : undefined,
             shouldEmitToolResult,
             onToolResult: opts?.onToolResult
-              ? async (payload) => {
-                  let text = payload.text;
-                  if (!isHeartbeat && text?.includes("HEARTBEAT_OK")) {
-                    const stripped = stripHeartbeatToken(text, {
-                      mode: "message",
+              ? (payload) => {
+                  // `subscribeEmbeddedPiSession` may invoke tool callbacks without awaiting them.
+                  // If a tool callback starts typing after the run finalized, we can end up with
+                  // a typing loop that never sees a matching markRunComplete(). Track and drain.
+                  const task = (async () => {
+                    let text = payload.text;
+                    if (!isHeartbeat && text?.includes("HEARTBEAT_OK")) {
+                      const stripped = stripHeartbeatToken(text, {
+                        mode: "message",
+                      });
+                      if (stripped.didStrip && !didLogHeartbeatStrip) {
+                        didLogHeartbeatStrip = true;
+                        logVerbose(
+                          "Stripped stray HEARTBEAT_OK token from reply",
+                        );
+                      }
+                      if (
+                        stripped.shouldSkip &&
+                        (payload.mediaUrls?.length ?? 0) === 0
+                      ) {
+                        return;
+                      }
+                      text = stripped.text;
+                    }
+                    if (!isHeartbeat) {
+                      await typing.startTypingOnText(text);
+                    }
+                    await opts.onToolResult?.({
+                      text,
+                      mediaUrls: payload.mediaUrls,
                     });
-                    if (stripped.didStrip && !didLogHeartbeatStrip) {
-                      didLogHeartbeatStrip = true;
-                      logVerbose(
-                        "Stripped stray HEARTBEAT_OK token from reply",
-                      );
-                    }
-                    if (
-                      stripped.shouldSkip &&
-                      (payload.mediaUrls?.length ?? 0) === 0
-                    ) {
-                      return;
-                    }
-                    text = stripped.text;
-                  }
-                  if (!isHeartbeat) {
-                    await typing.startTypingOnText(text);
-                  }
-                  await opts.onToolResult?.({
-                    text,
-                    mediaUrls: payload.mediaUrls,
-                  });
+                  })()
+                    .catch((err) => {
+                      logVerbose(`tool result delivery failed: ${String(err)}`);
+                    })
+                    .finally(() => {
+                      pendingToolTasks.delete(task);
+                    });
+                  pendingToolTasks.add(task);
                 }
               : undefined,
           }),
@@ -359,10 +387,16 @@ export async function runReplyAgent(params: {
     }
 
     const payloadArray = runResult.payloads ?? [];
-    if (payloadArray.length === 0) return finalizeWithFollowup(undefined);
     if (pendingBlockTasks.size > 0) {
       await Promise.allSettled(pendingBlockTasks);
     }
+    if (pendingToolTasks.size > 0) {
+      await Promise.allSettled(pendingToolTasks);
+    }
+    // Drain any late tool/block deliveries before deciding there's "nothing to send".
+    // Otherwise, a late typing trigger (e.g. from a tool callback) can outlive the run and
+    // keep the typing indicator stuck.
+    if (payloadArray.length === 0) return finalizeWithFollowup(undefined);
 
     const sanitizedPayloads = isHeartbeat
       ? payloadArray
@@ -436,7 +470,7 @@ export async function runReplyAgent(params: {
         sessionEntry?.contextTokens ??
         DEFAULT_CONTEXT_TOKENS;
 
-      if (usage) {
+      if (hasNonzeroUsage(usage)) {
         const entry = sessionEntry ?? sessionStore[sessionKey];
         if (entry) {
           const input = usage.input ?? 0;
@@ -477,6 +511,21 @@ export async function runReplyAgent(params: {
 
     // If verbose is enabled and this is a new session, prepend a session hint.
     let finalPayloads = filteredPayloads;
+    if (autoCompactionCompleted) {
+      const count = await incrementCompactionCount({
+        sessionEntry,
+        sessionStore,
+        sessionKey,
+        storePath,
+      });
+      if (resolvedVerboseLevel === "on") {
+        const suffix = typeof count === "number" ? ` (count ${count})` : "";
+        finalPayloads = [
+          { text: `🧹 Auto-compaction complete${suffix}.` },
+          ...finalPayloads,
+        ];
+      }
+    }
     if (resolvedVerboseLevel === "on" && isNewSession) {
       finalPayloads = [
         { text: `🧭 New session: ${followupRun.run.sessionId}` },
@@ -488,6 +537,6 @@ export async function runReplyAgent(params: {
       finalPayloads.length === 1 ? finalPayloads[0] : finalPayloads,
     );
   } finally {
-    typing.cleanup();
+    typing.markRunComplete();
   }
 }

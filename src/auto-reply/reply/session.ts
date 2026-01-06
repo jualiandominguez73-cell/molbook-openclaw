@@ -7,6 +7,7 @@ import {
   DEFAULT_RESET_TRIGGERS,
   type GroupKeyResolution,
   loadSessionStore,
+  resolveAgentIdFromSessionKey,
   resolveGroupSessionKey,
   resolveSessionKey,
   resolveStorePath,
@@ -14,6 +15,7 @@ import {
   type SessionScope,
   saveSessionStore,
 } from "../../config/sessions.js";
+import { resolveCommandAuthorization } from "../command-auth.js";
 import type { MsgContext, TemplateContext } from "../templating.js";
 import { stripMentions, stripStructuralPrefixes } from "./mentions.js";
 
@@ -37,10 +39,12 @@ export type SessionInitResult = {
 export async function initSessionState(params: {
   ctx: MsgContext;
   cfg: ClawdbotConfig;
+  commandAuthorized: boolean;
 }): Promise<SessionInitResult> {
-  const { ctx, cfg } = params;
+  const { ctx, cfg, commandAuthorized } = params;
   const sessionCfg = cfg.session;
   const mainKey = sessionCfg?.mainKey ?? "main";
+  const agentId = resolveAgentIdFromSessionKey(ctx.SessionKey);
   const resetTriggers = sessionCfg?.resetTriggers?.length
     ? sessionCfg.resetTriggers
     : DEFAULT_RESET_TRIGGERS;
@@ -49,12 +53,12 @@ export async function initSessionState(params: {
     1,
   );
   const sessionScope = sessionCfg?.scope ?? "per-sender";
-  const storePath = resolveStorePath(sessionCfg?.store);
+  const storePath = resolveStorePath(sessionCfg?.store, { agentId });
 
   const sessionStore: Record<string, SessionEntry> =
     loadSessionStore(storePath);
   let sessionKey: string | undefined;
-  let sessionEntry: SessionEntry | undefined;
+  let sessionEntry: SessionEntry;
 
   let sessionId: string | undefined;
   let isNewSession = false;
@@ -76,6 +80,11 @@ export async function initSessionState(params: {
 
   const rawBody = ctx.Body ?? "";
   const trimmedBody = rawBody.trim();
+  const resetAuthorized = resolveCommandAuthorization({
+    ctx,
+    cfg,
+    commandAuthorized,
+  }).isAuthorizedSender;
   // Timestamp/message prefixes (e.g. "[Dec 4 17:35] ") are added by the
   // web inbox before we get here. They prevented reset triggers like "/new"
   // from matching, so strip structural wrappers when checking for resets.
@@ -84,6 +93,7 @@ export async function initSessionState(params: {
     : triggerBodyNormalized;
   for (const trigger of resetTriggers) {
     if (!trigger) continue;
+    if (!resetAuthorized) break;
     if (trimmedBody === trigger || strippedForReset === trigger) {
       isNewSession = true;
       bodyStripped = "";
@@ -146,30 +156,30 @@ export async function initSessionState(params: {
     queueDrop: baseEntry?.queueDrop,
     displayName: baseEntry?.displayName,
     chatType: baseEntry?.chatType,
-    surface: baseEntry?.surface,
+    provider: baseEntry?.provider,
     subject: baseEntry?.subject,
     room: baseEntry?.room,
     space: baseEntry?.space,
   };
-  if (groupResolution?.surface) {
-    const surface = groupResolution.surface;
+  if (groupResolution?.provider) {
+    const provider = groupResolution.provider;
     const subject = ctx.GroupSubject?.trim();
     const space = ctx.GroupSpace?.trim();
     const explicitRoom = ctx.GroupRoom?.trim();
-    const isRoomSurface = surface === "discord" || surface === "slack";
+    const isRoomProvider = provider === "discord" || provider === "slack";
     const nextRoom =
       explicitRoom ??
-      (isRoomSurface && subject && subject.startsWith("#")
+      (isRoomProvider && subject && subject.startsWith("#")
         ? subject
         : undefined);
     const nextSubject = nextRoom ? undefined : subject;
     sessionEntry.chatType = groupResolution.chatType ?? "group";
-    sessionEntry.surface = surface;
+    sessionEntry.provider = provider;
     if (nextSubject) sessionEntry.subject = nextSubject;
     if (nextRoom) sessionEntry.room = nextRoom;
     if (space) sessionEntry.space = space;
     sessionEntry.displayName = buildGroupDisplayName({
-      surface: sessionEntry.surface,
+      provider: sessionEntry.provider,
       subject: sessionEntry.subject,
       room: sessionEntry.room,
       space: sessionEntry.space,

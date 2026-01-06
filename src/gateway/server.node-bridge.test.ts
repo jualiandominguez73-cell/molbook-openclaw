@@ -699,8 +699,8 @@ describe("gateway server node/bridge", () => {
       runId: "sess-main",
       seq: 2,
       ts: Date.now(),
-      stream: "job",
-      data: { state: "done" },
+      stream: "lifecycle",
+      data: { phase: "end" },
     });
 
     await new Promise((r) => setTimeout(r, 25));
@@ -732,7 +732,7 @@ describe("gateway server node/bridge", () => {
           main: {
             sessionId: "sess-main",
             updatedAt: Date.now(),
-            lastChannel: "whatsapp",
+            lastProvider: "whatsapp",
             lastTo: "+1555",
           },
         },
@@ -759,7 +759,7 @@ describe("gateway server node/bridge", () => {
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(call.sessionId).toBe("sess-main");
     expect(call.deliver).toBe(false);
-    expect(call.surface).toBe("Node");
+    expect(call.messageProvider).toBe("node");
 
     const stored = JSON.parse(
       await fs.readFile(testState.sessionStorePath, "utf-8"),
@@ -841,8 +841,8 @@ describe("gateway server node/bridge", () => {
       runId: "sess-main",
       seq: 2,
       ts: Date.now(),
-      stream: "job",
-      data: { state: "done" },
+      stream: "lifecycle",
+      data: { phase: "end" },
     });
 
     const evt = await finalChatP;

@@ -1,5 +1,12 @@
 import crypto from "node:crypto";
-
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  resolveAgentDir,
+  resolveAgentIdFromSessionKey,
+  resolveAgentWorkspaceDir,
+} from "../agents/agent-scope.js";
 import { resolveModelRefFromString } from "../agents/model-selection.js";
 import {
   abortEmbeddedPiRun,
@@ -7,6 +14,8 @@ import {
   isEmbeddedPiRunStreaming,
   resolveEmbeddedSessionLane,
 } from "../agents/pi-embedded.js";
+import { ensureSandboxWorkspaceForSession } from "../agents/sandbox.js";
+import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import {
   DEFAULT_AGENT_WORKSPACE_DIR,
   ensureAgentWorkspace,
@@ -20,7 +29,9 @@ import { resolveSessionTranscriptPath } from "../config/sessions.js";
 import { logVerbose } from "../globals.js";
 import { clearCommandLane, getQueueSize } from "../process/command-queue.js";
 import { defaultRuntime } from "../runtime.js";
+import { resolveCommandAuthorization } from "./command-auth.js";
 import { hasControlCommand } from "./command-detection.js";
+import { shouldHandleTextCommands } from "./commands-registry.js";
 import { getAbortMemory } from "./reply/abort.js";
 import { runReplyAgent } from "./reply/agent-runner.js";
 import { resolveBlockStreamingChunking } from "./reply/block-streaming.js";
@@ -28,6 +39,7 @@ import { applySessionHints } from "./reply/body.js";
 import { buildCommandContext, handleCommands } from "./reply/commands.js";
 import {
   handleDirectiveOnly,
+  type InlineDirectives,
   isDirectiveOnly,
   parseInlineDirectives,
   persistInlineDirectives,
@@ -38,6 +50,7 @@ import {
   defaultGroupActivation,
   resolveGroupRequireMention,
 } from "./reply/groups.js";
+import { stripMentions, stripStructuralPrefixes } from "./reply/mentions.js";
 import {
   createModelSelectionState,
   resolveContextTokens,
@@ -49,7 +62,7 @@ import {
   prependSystemEvents,
 } from "./reply/session-updates.js";
 import { createTypingController } from "./reply/typing.js";
-import type { MsgContext } from "./templating.js";
+import type { MsgContext, TemplateContext } from "./templating.js";
 import {
   type ElevatedLevel,
   normalizeThinkLevel,
@@ -98,10 +111,10 @@ function stripSenderPrefix(value?: string) {
 
 function resolveElevatedAllowList(
   allowFrom: AgentElevatedAllowFromConfig | undefined,
-  surface: string,
+  provider: string,
   discordFallback?: Array<string | number>,
 ): Array<string | number> | undefined {
-  switch (surface) {
+  switch (provider) {
     case "whatsapp":
       return allowFrom?.whatsapp;
     case "telegram":
@@ -125,14 +138,14 @@ function resolveElevatedAllowList(
 }
 
 function isApprovedElevatedSender(params: {
-  surface: string;
+  provider: string;
   ctx: MsgContext;
   allowFrom?: AgentElevatedAllowFromConfig;
   discordFallback?: Array<string | number>;
 }): boolean {
   const rawAllow = resolveElevatedAllowList(
     params.allowFrom,
-    params.surface,
+    params.provider,
     params.discordFallback,
   );
   if (!rawAllow || rawAllow.length === 0) return false;
@@ -206,14 +219,16 @@ export async function getReplyFromConfig(
     }
   }
 
-  const workspaceDirRaw = cfg.agent?.workspace ?? DEFAULT_AGENT_WORKSPACE_DIR;
+  const agentId = resolveAgentIdFromSessionKey(ctx.SessionKey);
+  const workspaceDirRaw =
+    resolveAgentWorkspaceDir(cfg, agentId) ?? DEFAULT_AGENT_WORKSPACE_DIR;
   const workspace = await ensureAgentWorkspace({
     dir: workspaceDirRaw,
-    ensureBootstrapFiles: true,
+    ensureBootstrapFiles: !cfg.agent?.skipBootstrap,
   });
   const workspaceDir = workspace.dir;
-  const timeoutSeconds = Math.max(agentCfg?.timeoutSeconds ?? 600, 1);
-  const timeoutMs = timeoutSeconds * 1000;
+  const agentDir = resolveAgentDir(cfg, agentId);
+  const timeoutMs = resolveAgentTimeoutMs({ cfg });
   const configuredTypingSeconds =
     agentCfg?.typingIntervalSeconds ?? sessionCfg?.typingIntervalSeconds;
   const typingIntervalSeconds =
@@ -224,6 +239,7 @@ export async function getReplyFromConfig(
     silentToken: SILENT_REPLY_TOKEN,
     log: defaultRuntime.log,
   });
+  opts?.onTypingController?.(typing);
 
   let transcribedText: string | undefined;
   if (cfg.routing?.transcribeAudio && isAudio(ctx.MediaType)) {
@@ -236,7 +252,17 @@ export async function getReplyFromConfig(
     }
   }
 
-  const sessionState = await initSessionState({ ctx, cfg });
+  const commandAuthorized = ctx.CommandAuthorized ?? true;
+  resolveCommandAuthorization({
+    ctx,
+    cfg,
+    commandAuthorized,
+  });
+  const sessionState = await initSessionState({
+    ctx,
+    cfg,
+    commandAuthorized,
+  });
   let {
     sessionCtx,
     sessionEntry,
@@ -254,8 +280,47 @@ export async function getReplyFromConfig(
   } = sessionState;
 
   const rawBody = sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
-  const commandAuthorized = ctx.CommandAuthorized ?? true;
-  const parsedDirectives = parseInlineDirectives(rawBody);
+  const clearInlineDirectives = (cleaned: string): InlineDirectives => ({
+    cleaned,
+    hasThinkDirective: false,
+    thinkLevel: undefined,
+    rawThinkLevel: undefined,
+    hasVerboseDirective: false,
+    verboseLevel: undefined,
+    rawVerboseLevel: undefined,
+    hasElevatedDirective: false,
+    elevatedLevel: undefined,
+    rawElevatedLevel: undefined,
+    hasStatusDirective: false,
+    hasModelDirective: false,
+    rawModelDirective: undefined,
+    hasQueueDirective: false,
+    queueMode: undefined,
+    queueReset: false,
+    rawQueueMode: undefined,
+    debounceMs: undefined,
+    cap: undefined,
+    dropPolicy: undefined,
+    rawDebounce: undefined,
+    rawCap: undefined,
+    rawDrop: undefined,
+    hasQueueOptions: false,
+  });
+  let parsedDirectives = parseInlineDirectives(rawBody);
+  const hasDirective =
+    parsedDirectives.hasThinkDirective ||
+    parsedDirectives.hasVerboseDirective ||
+    parsedDirectives.hasElevatedDirective ||
+    parsedDirectives.hasStatusDirective ||
+    parsedDirectives.hasModelDirective ||
+    parsedDirectives.hasQueueDirective;
+  if (hasDirective) {
+    const stripped = stripStructuralPrefixes(parsedDirectives.cleaned);
+    const noMentions = isGroup ? stripMentions(stripped, ctx, cfg) : stripped;
+    if (noMentions.trim().length > 0) {
+      parsedDirectives = clearInlineDirectives(parsedDirectives.cleaned);
+    }
+  }
   const directives = commandAuthorized
     ? parsedDirectives
     : {
@@ -270,20 +335,20 @@ export async function getReplyFromConfig(
   sessionCtx.Body = parsedDirectives.cleaned;
   sessionCtx.BodyStripped = parsedDirectives.cleaned;
 
-  const surfaceKey =
-    sessionCtx.Surface?.trim().toLowerCase() ??
-    ctx.Surface?.trim().toLowerCase() ??
+  const messageProviderKey =
+    sessionCtx.Provider?.trim().toLowerCase() ??
+    ctx.Provider?.trim().toLowerCase() ??
     "";
   const elevatedConfig = agentCfg?.elevated;
   const discordElevatedFallback =
-    surfaceKey === "discord" ? cfg.discord?.dm?.allowFrom : undefined;
+    messageProviderKey === "discord" ? cfg.discord?.dm?.allowFrom : undefined;
   const elevatedEnabled = elevatedConfig?.enabled !== false;
   const elevatedAllowed =
     elevatedEnabled &&
     Boolean(
-      surfaceKey &&
+      messageProviderKey &&
         isApprovedElevatedSender({
-          surface: surfaceKey,
+          provider: messageProviderKey,
           ctx,
           allowFrom: elevatedConfig?.allowFrom,
           discordFallback: discordElevatedFallback,
@@ -326,7 +391,7 @@ export async function getReplyFromConfig(
       : "text_end";
   const blockStreamingEnabled = resolvedBlockStreaming === "on";
   const blockReplyChunking = blockStreamingEnabled
-    ? resolveBlockStreamingChunking(cfg, sessionCtx.Surface)
+    ? resolveBlockStreamingChunking(cfg, sessionCtx.Provider)
     : undefined;
 
   const modelState = await createModelSelectionState({
@@ -357,7 +422,9 @@ export async function getReplyFromConfig(
       : `Model switched to ${label}.`;
   const isModelListAlias =
     directives.hasModelDirective &&
-    directives.rawModelDirective?.trim().toLowerCase() === "status";
+    ["status", "list"].includes(
+      directives.rawModelDirective?.trim().toLowerCase() ?? "",
+    );
   const effectiveModelDirective = isModelListAlias
     ? undefined
     : directives.rawModelDirective;
@@ -372,6 +439,7 @@ export async function getReplyFromConfig(
     })
   ) {
     const directiveReply = await handleDirectiveOnly({
+      cfg,
       directives,
       sessionEntry,
       sessionStore,
@@ -397,6 +465,7 @@ export async function getReplyFromConfig(
   const persisted = await persistInlineDirectives({
     directives,
     effectiveModelDirective,
+    cfg,
     sessionEntry,
     sessionStore,
     sessionKey,
@@ -438,9 +507,14 @@ export async function getReplyFromConfig(
     triggerBodyNormalized,
     commandAuthorized,
   });
+  const allowTextCommands = shouldHandleTextCommands({
+    cfg,
+    surface: command.surface,
+    commandSource: ctx.CommandSource,
+  });
   const isEmptyConfig = Object.keys(cfg).length === 0;
   if (
-    command.isWhatsAppSurface &&
+    command.isWhatsAppProvider &&
     isEmptyConfig &&
     command.from &&
     command.to &&
@@ -468,6 +542,7 @@ export async function getReplyFromConfig(
     defaultGroupActivation: () => defaultActivation,
     resolvedThinkLevel,
     resolvedVerboseLevel: resolvedVerboseLevel ?? "off",
+    resolvedElevatedLevel,
     resolveDefaultThinkingLevel: modelState.resolveDefaultThinkingLevel,
     provider,
     model,
@@ -478,6 +553,15 @@ export async function getReplyFromConfig(
     typing.cleanup();
     return commandResult.reply;
   }
+
+  await stageSandboxMedia({
+    ctx,
+    sessionCtx,
+    cfg,
+    sessionKey,
+    workspaceDir,
+  });
+
   const isFirstTurnInSession = isNewSession || !systemSent;
   const isGroupChat = sessionCtx.ChatType === "group";
   const wasMentioned = ctx.WasMentioned === true;
@@ -498,7 +582,12 @@ export async function getReplyFromConfig(
   const baseBody = sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
   const rawBodyTrimmed = (ctx.Body ?? "").trim();
   const baseBodyTrimmedRaw = baseBody.trim();
-  if (!commandAuthorized && !baseBodyTrimmedRaw && hasControlCommand(rawBody)) {
+  if (
+    allowTextCommands &&
+    !commandAuthorized &&
+    !baseBodyTrimmedRaw &&
+    hasControlCommand(rawBody)
+  ) {
     typing.cleanup();
     return undefined;
   }
@@ -595,7 +684,7 @@ export async function getReplyFromConfig(
     : queueBodyBase;
   const resolvedQueue = resolveQueueSettings({
     cfg,
-    surface: sessionCtx.Surface,
+    provider: sessionCtx.Provider,
     sessionEntry,
     inlineMode: perMessageQueueMode,
     inlineOptions: perMessageQueueOptions,
@@ -620,20 +709,24 @@ export async function getReplyFromConfig(
     resolvedQueue.mode === "followup" ||
     resolvedQueue.mode === "collect" ||
     resolvedQueue.mode === "steer-backlog";
+  const authProfileId = sessionEntry?.authProfileOverride;
   const followupRun = {
     prompt: queuedBody,
     summaryLine: baseBodyTrimmedRaw,
     enqueuedAt: Date.now(),
     run: {
+      agentId,
+      agentDir,
       sessionId: sessionIdFinal,
       sessionKey,
-      surface: sessionCtx.Surface?.trim().toLowerCase() || undefined,
+      messageProvider: sessionCtx.Provider?.trim().toLowerCase() || undefined,
       sessionFile,
       workspaceDir,
       config: cfg,
       skillsSnapshot,
       provider,
       model,
+      authProfileId,
       thinkLevel: resolvedThinkLevel,
       verboseLevel: resolvedVerboseLevel,
       elevatedLevel: resolvedElevatedLevel,
@@ -680,4 +773,66 @@ export async function getReplyFromConfig(
     sessionCtx,
     shouldInjectGroupIntro,
   });
+}
+
+async function stageSandboxMedia(params: {
+  ctx: MsgContext;
+  sessionCtx: TemplateContext;
+  cfg: ClawdbotConfig;
+  sessionKey?: string;
+  workspaceDir: string;
+}) {
+  const { ctx, sessionCtx, cfg, sessionKey, workspaceDir } = params;
+  const rawPath = ctx.MediaPath?.trim();
+  if (!rawPath || !sessionKey) return;
+
+  const sandbox = await ensureSandboxWorkspaceForSession({
+    config: cfg,
+    sessionKey,
+    workspaceDir,
+  });
+  if (!sandbox) return;
+
+  let source = rawPath;
+  if (source.startsWith("file://")) {
+    try {
+      source = fileURLToPath(source);
+    } catch {
+      return;
+    }
+  }
+  if (!path.isAbsolute(source)) return;
+
+  const originalMediaPath = ctx.MediaPath;
+  const originalMediaUrl = ctx.MediaUrl;
+
+  try {
+    const fileName = path.basename(source);
+    if (!fileName) return;
+    const destDir = path.join(sandbox.workspaceDir, "media", "inbound");
+    await fs.mkdir(destDir, { recursive: true });
+    const dest = path.join(destDir, fileName);
+    await fs.copyFile(source, dest);
+
+    const relative = path.posix.join("media", "inbound", fileName);
+    ctx.MediaPath = relative;
+    sessionCtx.MediaPath = relative;
+
+    if (originalMediaUrl) {
+      let normalizedUrl = originalMediaUrl;
+      if (normalizedUrl.startsWith("file://")) {
+        try {
+          normalizedUrl = fileURLToPath(normalizedUrl);
+        } catch {
+          normalizedUrl = originalMediaUrl;
+        }
+      }
+      if (normalizedUrl === originalMediaPath || normalizedUrl === source) {
+        ctx.MediaUrl = relative;
+        sessionCtx.MediaUrl = relative;
+      }
+    }
+  } catch (err) {
+    logVerbose(`Failed to stage inbound media for sandbox: ${String(err)}`);
+  }
 }

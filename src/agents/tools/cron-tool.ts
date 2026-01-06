@@ -1,7 +1,25 @@
 import { Type } from "@sinclair/typebox";
-
+import {
+  normalizeCronJobCreate,
+  normalizeCronJobPatch,
+} from "../../cron/normalize.js";
 import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
 import { callGatewayTool, type GatewayCallOptions } from "./gateway.js";
+
+// NOTE: We use Type.Object({}, { additionalProperties: true }) for job/patch
+// instead of CronAddParamsSchema/CronJobPatchSchema because:
+//
+// 1. CronAddParamsSchema contains nested Type.Union (for schedule, payload, etc.)
+// 2. TypeBox compiles Type.Union to JSON Schema `anyOf`
+// 3. pi-ai's sanitizeSchemaForGoogle() strips `anyOf` from nested properties
+// 4. This leaves empty schemas `{}` which Claude rejects as invalid
+//
+// The actual validation happens at runtime via normalizeCronJobCreate/Patch
+// and the gateway's validateCronAddParams. This schema just needs to accept
+// any object so the AI can pass through the job definition.
+//
+// See: https://github.com/anthropics/anthropic-cookbook/blob/main/misc/tool_use_best_practices.md
+// Claude requires valid JSON Schema 2020-12 with explicit types.
 
 const CronToolSchema = Type.Union([
   Type.Object({
@@ -29,7 +47,7 @@ const CronToolSchema = Type.Union([
     gatewayUrl: Type.Optional(Type.String()),
     gatewayToken: Type.Optional(Type.String()),
     timeoutMs: Type.Optional(Type.Number()),
-    jobId: Type.String(),
+    id: Type.String(),
     patch: Type.Object({}, { additionalProperties: true }),
   }),
   Type.Object({
@@ -37,21 +55,21 @@ const CronToolSchema = Type.Union([
     gatewayUrl: Type.Optional(Type.String()),
     gatewayToken: Type.Optional(Type.String()),
     timeoutMs: Type.Optional(Type.Number()),
-    jobId: Type.String(),
+    id: Type.String(),
   }),
   Type.Object({
     action: Type.Literal("run"),
     gatewayUrl: Type.Optional(Type.String()),
     gatewayToken: Type.Optional(Type.String()),
     timeoutMs: Type.Optional(Type.Number()),
-    jobId: Type.String(),
+    id: Type.String(),
   }),
   Type.Object({
     action: Type.Literal("runs"),
     gatewayUrl: Type.Optional(Type.String()),
     gatewayToken: Type.Optional(Type.String()),
     timeoutMs: Type.Optional(Type.Number()),
-    jobId: Type.String(),
+    id: Type.String(),
   }),
   Type.Object({
     action: Type.Literal("wake"),
@@ -97,36 +115,38 @@ export function createCronTool(): AnyAgentTool {
           if (!params.job || typeof params.job !== "object") {
             throw new Error("job required");
           }
+          const job = normalizeCronJobCreate(params.job) ?? params.job;
           return jsonResult(
-            await callGatewayTool("cron.add", gatewayOpts, params.job),
+            await callGatewayTool("cron.add", gatewayOpts, job),
           );
         }
         case "update": {
-          const id = readStringParam(params, "jobId", { required: true });
+          const id = readStringParam(params, "id", { required: true });
           if (!params.patch || typeof params.patch !== "object") {
             throw new Error("patch required");
           }
+          const patch = normalizeCronJobPatch(params.patch) ?? params.patch;
           return jsonResult(
             await callGatewayTool("cron.update", gatewayOpts, {
               id,
-              patch: params.patch,
+              patch,
             }),
           );
         }
         case "remove": {
-          const id = readStringParam(params, "jobId", { required: true });
+          const id = readStringParam(params, "id", { required: true });
           return jsonResult(
             await callGatewayTool("cron.remove", gatewayOpts, { id }),
           );
         }
         case "run": {
-          const id = readStringParam(params, "jobId", { required: true });
+          const id = readStringParam(params, "id", { required: true });
           return jsonResult(
             await callGatewayTool("cron.run", gatewayOpts, { id }),
           );
         }
         case "runs": {
-          const id = readStringParam(params, "jobId", { required: true });
+          const id = readStringParam(params, "id", { required: true });
           return jsonResult(
             await callGatewayTool("cron.runs", gatewayOpts, { id }),
           );

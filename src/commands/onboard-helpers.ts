@@ -33,7 +33,13 @@ export function summarizeExistingConfig(config: ClawdbotConfig): string {
   const rows: string[] = [];
   if (config.agent?.workspace)
     rows.push(`workspace: ${config.agent.workspace}`);
-  if (config.agent?.model) rows.push(`model: ${config.agent.model}`);
+  if (config.agent?.model) {
+    const model =
+      typeof config.agent.model === "string"
+        ? config.agent.model
+        : config.agent.model.primary;
+    if (model) rows.push(`model: ${model}`);
+  }
   if (config.gateway?.mode) rows.push(`gateway.mode: ${config.gateway.mode}`);
   if (typeof config.gateway?.port === "number") {
     rows.push(`gateway.port: ${config.gateway.port}`);
@@ -217,10 +223,11 @@ export async function openUrl(url: string): Promise<boolean> {
 export async function ensureWorkspaceAndSessions(
   workspaceDir: string,
   runtime: RuntimeEnv,
+  options?: { skipBootstrap?: boolean },
 ) {
   const ws = await ensureAgentWorkspace({
     dir: workspaceDir,
-    ensureBootstrapFiles: true,
+    ensureBootstrapFiles: !options?.skipBootstrap,
   });
   runtime.log(`Workspace OK: ${ws.dir}`);
   const sessionsDir = resolveSessionTranscriptsDir();

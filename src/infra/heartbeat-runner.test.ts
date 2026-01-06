@@ -60,7 +60,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
       agent: { heartbeat: { target: "none" } },
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry: baseEntry })).toEqual({
-      channel: "none",
+      provider: "none",
       reason: "target-none",
     });
   });
@@ -69,11 +69,11 @@ describe("resolveHeartbeatDeliveryTarget", () => {
     const cfg: ClawdbotConfig = {};
     const entry = {
       ...baseEntry,
-      lastChannel: "whatsapp" as const,
+      lastProvider: "whatsapp" as const,
       lastTo: "+1555",
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry })).toEqual({
-      channel: "whatsapp",
+      provider: "whatsapp",
       to: "+1555",
     });
   });
@@ -82,11 +82,11 @@ describe("resolveHeartbeatDeliveryTarget", () => {
     const cfg: ClawdbotConfig = {};
     const entry = {
       ...baseEntry,
-      lastChannel: "webchat" as const,
+      lastProvider: "webchat" as const,
       lastTo: "web",
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry })).toEqual({
-      channel: "none",
+      provider: "none",
       reason: "no-target",
     });
   });
@@ -98,11 +98,11 @@ describe("resolveHeartbeatDeliveryTarget", () => {
     };
     const entry = {
       ...baseEntry,
-      lastChannel: "whatsapp" as const,
+      lastProvider: "whatsapp" as const,
       lastTo: "+1222",
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry })).toEqual({
-      channel: "whatsapp",
+      provider: "whatsapp",
       to: "+1555",
       reason: "allowFrom-fallback",
     });
@@ -113,7 +113,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
       agent: { heartbeat: { target: "telegram", to: "123" } },
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry: baseEntry })).toEqual({
-      channel: "telegram",
+      provider: "telegram",
       to: "123",
     });
   });
@@ -132,7 +132,7 @@ describe("runHeartbeatOnce", () => {
             main: {
               sessionId: "sid",
               updatedAt: Date.now(),
-              lastChannel: "whatsapp",
+              lastProvider: "whatsapp",
               lastTo: "+1555",
             },
           },
@@ -181,6 +181,64 @@ describe("runHeartbeatOnce", () => {
     }
   });
 
+  it("respects ackMaxChars for heartbeat acks", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const storePath = path.join(tmpDir, "sessions.json");
+    const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
+    try {
+      await fs.writeFile(
+        storePath,
+        JSON.stringify(
+          {
+            main: {
+              sessionId: "sid",
+              updatedAt: Date.now(),
+              lastProvider: "whatsapp",
+              lastTo: "+1555",
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      const cfg: ClawdbotConfig = {
+        agent: {
+          heartbeat: {
+            every: "5m",
+            target: "whatsapp",
+            to: "+1555",
+            ackMaxChars: 0,
+          },
+        },
+        whatsapp: { allowFrom: ["*"] },
+        session: { store: storePath },
+      };
+
+      replySpy.mockResolvedValue({ text: "HEARTBEAT_OK 🦞" });
+      const sendWhatsApp = vi.fn().mockResolvedValue({
+        messageId: "m1",
+        toJid: "jid",
+      });
+
+      await runHeartbeatOnce({
+        cfg,
+        deps: {
+          sendWhatsApp,
+          getQueueSize: () => 0,
+          nowMs: () => 0,
+          webAuthExists: async () => true,
+          hasActiveWebListener: () => true,
+        },
+      });
+
+      expect(sendWhatsApp).toHaveBeenCalled();
+    } finally {
+      replySpy.mockRestore();
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("skips WhatsApp delivery when not linked or running", async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
     const storePath = path.join(tmpDir, "sessions.json");
@@ -193,7 +251,7 @@ describe("runHeartbeatOnce", () => {
             main: {
               sessionId: "sid",
               updatedAt: Date.now(),
-              lastChannel: "whatsapp",
+              lastProvider: "whatsapp",
               lastTo: "+1555",
             },
           },

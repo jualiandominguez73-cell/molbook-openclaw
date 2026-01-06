@@ -11,23 +11,24 @@ function isNodeRuntime(execPath: string): boolean {
   return base === "node" || base === "node.exe";
 }
 
+function isBunRuntime(execPath: string): boolean {
+  const base = path.basename(execPath).toLowerCase();
+  return base === "bun" || base === "bun.exe";
+}
+
 async function resolveCliEntrypointPathForService(): Promise<string> {
   const argv1 = process.argv[1];
   if (!argv1) throw new Error("Unable to resolve CLI entrypoint path");
 
   const normalized = path.resolve(argv1);
-  const looksLikeDist = /[/\\]dist[/\\].+\.(cjs|js|mjs)$/.test(normalized);
+  const resolvedPath = await resolveRealpathSafe(normalized);
+  const looksLikeDist = /[/\\]dist[/\\].+\.(cjs|js|mjs)$/.test(resolvedPath);
   if (looksLikeDist) {
-    await fs.access(normalized);
-    return normalized;
+    await fs.access(resolvedPath);
+    return resolvedPath;
   }
 
-  const distCandidates = [
-    path.resolve(path.dirname(normalized), "..", "dist", "index.js"),
-    path.resolve(path.dirname(normalized), "..", "dist", "index.mjs"),
-    path.resolve(path.dirname(normalized), "dist", "index.js"),
-    path.resolve(path.dirname(normalized), "dist", "index.mjs"),
-  ];
+  const distCandidates = buildDistCandidates(resolvedPath, normalized);
 
   for (const candidate of distCandidates) {
     try {
@@ -43,6 +44,63 @@ async function resolveCliEntrypointPathForService(): Promise<string> {
   );
 }
 
+async function resolveRealpathSafe(inputPath: string): Promise<string> {
+  try {
+    return await fs.realpath(inputPath);
+  } catch {
+    return inputPath;
+  }
+}
+
+function buildDistCandidates(...inputs: string[]): string[] {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+
+  for (const inputPath of inputs) {
+    if (!inputPath) continue;
+    const baseDir = path.dirname(inputPath);
+    appendDistCandidates(candidates, seen, path.resolve(baseDir, ".."));
+    appendDistCandidates(candidates, seen, baseDir);
+    appendNodeModulesBinCandidates(candidates, seen, inputPath);
+  }
+
+  return candidates;
+}
+
+function appendDistCandidates(
+  candidates: string[],
+  seen: Set<string>,
+  baseDir: string,
+): void {
+  const distDir = path.resolve(baseDir, "dist");
+  const distEntries = [
+    path.join(distDir, "index.js"),
+    path.join(distDir, "index.mjs"),
+    path.join(distDir, "entry.js"),
+    path.join(distDir, "entry.mjs"),
+  ];
+  for (const entry of distEntries) {
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    candidates.push(entry);
+  }
+}
+
+function appendNodeModulesBinCandidates(
+  candidates: string[],
+  seen: Set<string>,
+  inputPath: string,
+): void {
+  const parts = inputPath.split(path.sep);
+  const binIndex = parts.lastIndexOf(".bin");
+  if (binIndex <= 0) return;
+  if (parts[binIndex - 1] !== "node_modules") return;
+  const binName = path.basename(inputPath);
+  const nodeModulesDir = parts.slice(0, binIndex).join(path.sep);
+  const packageRoot = path.join(nodeModulesDir, binName);
+  appendDistCandidates(candidates, seen, packageRoot);
+}
+
 function resolveRepoRootForDev(): string {
   const argv1 = process.argv[1];
   if (!argv1) throw new Error("Unable to resolve repo root");
@@ -55,16 +113,16 @@ function resolveRepoRootForDev(): string {
   return parts.slice(0, srcIndex).join(path.sep);
 }
 
-async function resolveTsxCliPath(repoRoot: string): Promise<string> {
-  const candidate = path.join(
-    repoRoot,
-    "node_modules",
-    "tsx",
-    "dist",
-    "cli.mjs",
-  );
-  await fs.access(candidate);
-  return candidate;
+async function resolveBunPath(): Promise<string> {
+  // Bun is expected to be in PATH, resolve via which/where
+  const { execSync } = await import("node:child_process");
+  try {
+    const bunPath = execSync("which bun", { encoding: "utf8" }).trim();
+    await fs.access(bunPath);
+    return bunPath;
+  } catch {
+    throw new Error("Bun not found in PATH. Install bun: https://bun.sh");
+  }
 }
 
 export async function resolveGatewayProgramArguments(params: {
@@ -72,28 +130,40 @@ export async function resolveGatewayProgramArguments(params: {
   dev?: boolean;
 }): Promise<GatewayProgramArgs> {
   const gatewayArgs = ["gateway-daemon", "--port", String(params.port)];
-  const nodePath = process.execPath;
+  const execPath = process.execPath;
 
   if (!params.dev) {
     try {
       const cliEntrypointPath = await resolveCliEntrypointPathForService();
       return {
-        programArguments: [nodePath, cliEntrypointPath, ...gatewayArgs],
+        programArguments: [execPath, cliEntrypointPath, ...gatewayArgs],
       };
     } catch (error) {
-      if (!isNodeRuntime(nodePath)) {
-        return { programArguments: [nodePath, ...gatewayArgs] };
+      // If running under bun or another runtime that can execute TS directly
+      if (!isNodeRuntime(execPath)) {
+        return { programArguments: [execPath, ...gatewayArgs] };
       }
       throw error;
     }
   }
 
+  // Dev mode: use bun to run TypeScript directly
   const repoRoot = resolveRepoRootForDev();
-  const tsxCliPath = await resolveTsxCliPath(repoRoot);
   const devCliPath = path.join(repoRoot, "src", "index.ts");
   await fs.access(devCliPath);
+
+  // If already running under bun, use current execPath
+  if (isBunRuntime(execPath)) {
+    return {
+      programArguments: [execPath, devCliPath, ...gatewayArgs],
+      workingDirectory: repoRoot,
+    };
+  }
+
+  // Otherwise resolve bun from PATH
+  const bunPath = await resolveBunPath();
   return {
-    programArguments: [nodePath, tsxCliPath, devCliPath, ...gatewayArgs],
+    programArguments: [bunPath, devCliPath, ...gatewayArgs],
     workingDirectory: repoRoot,
   };
 }

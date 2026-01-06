@@ -16,6 +16,7 @@ import {
   resolveEmbeddedSessionLane,
   waitForEmbeddedPiRunEnd,
 } from "../agents/pi-embedded.js";
+import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import { normalizeGroupActivation } from "../auto-reply/group-activation.js";
 import {
   normalizeElevatedLevel,
@@ -41,11 +42,13 @@ import {
   type SessionEntry,
   saveSessionStore,
 } from "../config/sessions.js";
+import { registerAgentRunContext } from "../infra/agent-events.js";
 import {
   loadVoiceWakeConfig,
   setVoiceWakeTriggers,
 } from "../infra/voicewake.js";
 import { clearCommandLane } from "../process/command-queue.js";
+import { isSubagentSessionKey } from "../routing/session-key.js";
 import { defaultRuntime } from "../runtime.js";
 import { normalizeSendPolicy } from "../sessions/send-policy.js";
 import { buildMessageWithAttachments } from "./chat-attachments.js";
@@ -347,6 +350,52 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
               }
             : { sessionId: randomUUID(), updatedAt: now };
 
+          if ("spawnedBy" in p) {
+            const raw = p.spawnedBy;
+            if (raw === null) {
+              if (existing?.spawnedBy) {
+                return {
+                  ok: false,
+                  error: {
+                    code: ErrorCodes.INVALID_REQUEST,
+                    message: "spawnedBy cannot be cleared once set",
+                  },
+                };
+              }
+            } else if (raw !== undefined) {
+              const trimmed = String(raw).trim();
+              if (!trimmed) {
+                return {
+                  ok: false,
+                  error: {
+                    code: ErrorCodes.INVALID_REQUEST,
+                    message: "invalid spawnedBy: empty",
+                  },
+                };
+              }
+              if (!isSubagentSessionKey(key)) {
+                return {
+                  ok: false,
+                  error: {
+                    code: ErrorCodes.INVALID_REQUEST,
+                    message:
+                      "spawnedBy is only supported for subagent:* sessions",
+                  },
+                };
+              }
+              if (existing?.spawnedBy && existing.spawnedBy !== trimmed) {
+                return {
+                  ok: false,
+                  error: {
+                    code: ErrorCodes.INVALID_REQUEST,
+                    message: "spawnedBy cannot be changed once set",
+                  },
+                };
+              }
+              next.spawnedBy = trimmed;
+            }
+          }
+
           if ("thinkingLevel" in p) {
             const raw = p.thinkingLevel;
             if (raw === null) {
@@ -558,11 +607,11 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
             sendPolicy: entry?.sendPolicy,
             displayName: entry?.displayName,
             chatType: entry?.chatType,
-            surface: entry?.surface,
+            provider: entry?.provider,
             subject: entry?.subject,
             room: entry?.room,
             space: entry?.space,
-            lastChannel: entry?.lastChannel,
+            lastProvider: entry?.lastProvider,
             lastTo: entry?.lastTo,
             skillsSnapshot: entry?.skillsSnapshot,
           };
@@ -844,12 +893,12 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
           ctx.chatAbortControllers.delete(runId);
           ctx.chatRunBuffers.delete(runId);
           ctx.chatDeltaSentAt.delete(runId);
-          ctx.removeChatRun(active.sessionId, runId, sessionKey);
+          ctx.removeChatRun(runId, runId, sessionKey);
 
           const payload = {
             runId,
             sessionKey,
-            seq: (ctx.agentRunSeq.get(active.sessionId) ?? 0) + 1,
+            seq: (ctx.agentRunSeq.get(runId) ?? 0) + 1,
             state: "aborted" as const,
           };
           ctx.broadcast("chat", payload);
@@ -885,10 +934,6 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
             timeoutMs?: number;
             idempotencyKey: string;
           };
-          const timeoutMs = Math.min(
-            Math.max(p.timeoutMs ?? 30_000, 0),
-            30_000,
-          );
           const normalizedAttachments =
             p.attachments?.map((a) => ({
               type: typeof a?.type === "string" ? a.type : undefined,
@@ -927,7 +972,13 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
             }
           }
 
-          const { storePath, store, entry } = loadSessionEntry(p.sessionKey);
+          const { cfg, storePath, store, entry } = loadSessionEntry(
+            p.sessionKey,
+          );
+          const timeoutMs = resolveAgentTimeoutMs({
+            cfg,
+            overrideMs: p.timeoutMs,
+          });
           const now = Date.now();
           const sessionId = entry?.sessionId ?? randomUUID();
           const sessionEntry: SessionEntry = {
@@ -936,10 +987,11 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
             thinkingLevel: entry?.thinkingLevel,
             verboseLevel: entry?.verboseLevel,
             systemSent: entry?.systemSent,
-            lastChannel: entry?.lastChannel,
+            lastProvider: entry?.lastProvider,
             lastTo: entry?.lastTo,
           };
           const clientRunId = p.idempotencyKey;
+          registerAgentRunContext(clientRunId, { sessionKey: p.sessionKey });
 
           const cached = ctx.dedupe.get(`chat:${clientRunId}`);
           if (cached) {
@@ -962,7 +1014,7 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
               sessionId,
               sessionKey: p.sessionKey,
             });
-            ctx.addChatRun(sessionId, {
+            ctx.addChatRun(clientRunId, {
               sessionKey: p.sessionKey,
               clientRunId,
             });
@@ -978,10 +1030,11 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
               {
                 message: messageWithAttachments,
                 sessionId,
+                runId: clientRunId,
                 thinking: p.thinking,
                 deliver: p.deliver,
                 timeout: Math.ceil(timeoutMs / 1000).toString(),
-                surface: `Node(${nodeId})`,
+                messageProvider: `node(${nodeId})`,
                 abortSignal: abortController.signal,
               },
               defaultRuntime,
@@ -1074,7 +1127,7 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
           verboseLevel: entry?.verboseLevel,
           systemSent: entry?.systemSent,
           sendPolicy: entry?.sendPolicy,
-          lastChannel: entry?.lastChannel,
+          lastProvider: entry?.lastProvider,
           lastTo: entry?.lastTo,
         };
         if (storePath) {
@@ -1094,7 +1147,7 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
             sessionId,
             thinking: "low",
             deliver: false,
-            surface: "Node",
+            messageProvider: "node",
           },
           defaultRuntime,
           ctx.deps,
@@ -1156,7 +1209,7 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
           verboseLevel: entry?.verboseLevel,
           systemSent: entry?.systemSent,
           sendPolicy: entry?.sendPolicy,
-          lastChannel: entry?.lastChannel,
+          lastProvider: entry?.lastProvider,
           lastTo: entry?.lastTo,
         };
         if (storePath) {
@@ -1175,7 +1228,7 @@ export function createBridgeHandlers(ctx: BridgeHandlersContext) {
               typeof link?.timeoutSeconds === "number"
                 ? link.timeoutSeconds.toString()
                 : undefined,
-            surface: "Node",
+            messageProvider: "node",
           },
           defaultRuntime,
           ctx.deps,

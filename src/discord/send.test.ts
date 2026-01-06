@@ -1,4 +1,4 @@
-import { PermissionsBitField, Routes } from "discord.js";
+import { PermissionFlagsBits, Routes } from "discord-api-types/v10";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -53,7 +53,7 @@ const makeRest = () => {
       get: getMock,
       patch: patchMock,
       delete: deleteMock,
-    } as unknown as import("discord.js").REST,
+    } as unknown as import("@buape/carbon").RequestClient,
     postMock,
     putMock,
     getMock,
@@ -106,6 +106,38 @@ describe("sendMessageDiscord", () => {
     expect(res.channelId).toBe("chan1");
   });
 
+  it("adds missing permission hints on 50013", async () => {
+    const { rest, postMock, getMock } = makeRest();
+    const perms = PermissionFlagsBits.ViewChannel;
+    const apiError = Object.assign(new Error("Missing Permissions"), {
+      code: 50013,
+      status: 403,
+    });
+    postMock.mockRejectedValueOnce(apiError);
+    getMock
+      .mockResolvedValueOnce({
+        id: "789",
+        guild_id: "guild1",
+        type: 0,
+        permission_overwrites: [],
+      })
+      .mockResolvedValueOnce({ id: "bot1" })
+      .mockResolvedValueOnce({
+        id: "guild1",
+        roles: [{ id: "guild1", permissions: perms.toString() }],
+      })
+      .mockResolvedValueOnce({ roles: [] });
+
+    let error: unknown;
+    try {
+      await sendMessageDiscord("channel:789", "hello", { rest, token: "t" });
+    } catch (err) {
+      error = err;
+    }
+    expect(String(error)).toMatch(/missing permissions/i);
+    expect(String(error)).toMatch(/SendMessages/);
+  });
+
   it("uploads media attachments", async () => {
     const { rest, postMock } = makeRest();
     postMock.mockResolvedValue({ id: "msg", channel_id: "789" });
@@ -118,7 +150,9 @@ describe("sendMessageDiscord", () => {
     expect(postMock).toHaveBeenCalledWith(
       Routes.channelMessages("789"),
       expect.objectContaining({
-        files: [expect.objectContaining({ name: "photo.jpg" })],
+        body: expect.objectContaining({
+          files: [expect.objectContaining({ name: "photo.jpg" })],
+        }),
       }),
     );
   });
@@ -234,10 +268,8 @@ describe("fetchChannelPermissionsDiscord", () => {
 
   it("calculates permissions from guild roles", async () => {
     const { rest, getMock } = makeRest();
-    const perms = new PermissionsBitField([
-      PermissionsBitField.Flags.ViewChannel,
-      PermissionsBitField.Flags.SendMessages,
-    ]);
+    const perms =
+      PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages;
     getMock
       .mockResolvedValueOnce({
         id: "chan1",
@@ -248,7 +280,7 @@ describe("fetchChannelPermissionsDiscord", () => {
       .mockResolvedValueOnce({
         id: "guild1",
         roles: [
-          { id: "guild1", permissions: perms.bitfield.toString() },
+          { id: "guild1", permissions: perms.toString() },
           { id: "role2", permissions: "0" },
         ],
       })
@@ -269,7 +301,7 @@ describe("readMessagesDiscord", () => {
     vi.clearAllMocks();
   });
 
-  it("passes query params as URLSearchParams", async () => {
+  it("passes query params as an object", async () => {
     const { rest, getMock } = makeRest();
     getMock.mockResolvedValue([]);
     await readMessagesDiscord(
@@ -278,8 +310,8 @@ describe("readMessagesDiscord", () => {
       { rest, token: "t" },
     );
     const call = getMock.mock.calls[0];
-    const options = call?.[1] as { query?: URLSearchParams };
-    expect(options.query?.toString()).toBe("limit=5&before=10");
+    const options = call?.[1] as Record<string, unknown>;
+    expect(options).toEqual({ limit: 5, before: "10" });
   });
 });
 
@@ -342,8 +374,7 @@ describe("searchMessagesDiscord", () => {
       { rest, token: "t" },
     );
     const call = getMock.mock.calls[0];
-    const options = call?.[1] as { query?: URLSearchParams };
-    expect(options.query?.toString()).toBe("content=hello&limit=5");
+    expect(call?.[0]).toBe("/guilds/g1/messages/search?content=hello&limit=5");
   });
 
   it("supports channel/author arrays and clamps limit", async () => {
@@ -360,9 +391,8 @@ describe("searchMessagesDiscord", () => {
       { rest, token: "t" },
     );
     const call = getMock.mock.calls[0];
-    const options = call?.[1] as { query?: URLSearchParams };
-    expect(options.query?.toString()).toBe(
-      "content=hello&channel_id=c1&channel_id=c2&author_id=u1&limit=25",
+    expect(call?.[0]).toBe(
+      "/guilds/g1/messages/search?content=hello&channel_id=c1&channel_id=c2&author_id=u1&limit=25",
     );
   });
 });
@@ -512,13 +542,13 @@ describe("uploadStickerDiscord", () => {
           name: "clawdbot_wave",
           description: "Clawdbot waving",
           tags: "👋",
+          files: [
+            expect.objectContaining({
+              name: "asset.png",
+              contentType: "image/png",
+            }),
+          ],
         },
-        files: [
-          expect.objectContaining({
-            name: "asset.png",
-            contentType: "image/png",
-          }),
-        ],
       }),
     );
   });
@@ -562,7 +592,7 @@ describe("sendPollDiscord", () => {
       "channel:789",
       {
         question: "Lunch?",
-        answers: ["Pizza", "Sushi"],
+        options: ["Pizza", "Sushi"],
       },
       {
         rest,

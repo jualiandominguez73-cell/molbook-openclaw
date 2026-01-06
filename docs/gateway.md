@@ -70,6 +70,13 @@ Defaults (can be overridden via env/flags/config):
 - `canvasHost.port=19005` (derived: `gateway.port+4`)
 - `agent.workspace` default becomes `~/clawd-dev` when you run `setup`/`onboard` under `--dev`.
 
+Derived ports (rules of thumb):
+- Base port = `gateway.port` (or `CLAWDBOT_GATEWAY_PORT` / `--port`)
+- `bridge.port = base + 1` (or `CLAWDBOT_BRIDGE_PORT` / config override)
+- `browser.controlUrl port = base + 2` (or `CLAWDBOT_BROWSER_CONTROL_URL` / config override)
+- `canvasHost.port = base + 4` (or `CLAWDBOT_CANVAS_HOST_PORT` / config override)
+- Browser profile CDP ports auto-allocate from `browser.controlPort + 9 .. + 108` (persisted per profile).
+
 Checklist per instance:
 - unique `gateway.port`
 - unique `CLAWDBOT_CONFIG_PATH`
@@ -104,7 +111,7 @@ CLAWDBOT_CONFIG_PATH=~/.clawdbot/b.json CLAWDBOT_STATE_DIR=~/.clawdbot-b clawdbo
 - `node.invoke` — invoke a command on a node (e.g. `canvas.*`, `camera.*`).
 - `node.pair.*` — pairing lifecycle (`request`, `list`, `approve`, `reject`, `verify`).
 
-See also: `docs/presence.md` for how presence is produced/deduped and why `instanceId` matters.
+See also: [`docs/presence.md`](https://docs.clawd.bot/presence) for how presence is produced/deduped and why `instanceId` matters.
 
 ## Events
 - `agent` — streamed tool/output events from the agent run (seq-tagged).
@@ -120,7 +127,7 @@ See also: `docs/presence.md` for how presence is produced/deduped and why `insta
 ## Typing and validation
 - Server validates every inbound frame with AJV against JSON Schema emitted from the protocol definitions.
 - Clients (TS/Swift) consume generated types (TS directly; Swift via the repo’s generator).
-- Types live in `src/gateway/protocol/*.ts`; regenerate schemas/models with `pnpm protocol:gen` (writes `dist/protocol.schema.json`) and `pnpm protocol:gen:swift` (writes `apps/macos/Sources/ClawdbotProtocol/GatewayModels.swift`).
+- Types live in [`src/gateway/protocol/*.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/protocol/*.ts); regenerate schemas/models with `pnpm protocol:gen` (writes [`dist/protocol.schema.json`](https://github.com/clawdbot/clawdbot/blob/main/dist/protocol.schema.json)) and `pnpm protocol:gen:swift` (writes [`apps/macos/Sources/ClawdbotProtocol/GatewayModels.swift`](https://github.com/clawdbot/clawdbot/blob/main/apps/macos/Sources/ClawdbotProtocol/GatewayModels.swift)).
 
 ## Connection snapshot
 - `hello-ok` includes a `snapshot` with `presence`, `health`, `stateVersion`, and `uptimeMs` plus `policy {maxPayload,maxBufferedBytes,tickIntervalMs}` so clients can render immediately without extra requests.
@@ -148,11 +155,15 @@ See also: `docs/presence.md` for how presence is produced/deduped and why `insta
   - KeepAlive: true
   - StandardOut/Err: file paths or `syslog`
 - On failure, launchd restarts; fatal misconfig should keep exiting so the operator notices.
+- LaunchAgents are per-user and require a logged-in session; for headless setups use a custom LaunchDaemon (not shipped).
 
 Bundled mac app:
 - Clawdbot.app can bundle a bun-compiled gateway binary and install a per-user LaunchAgent labeled `com.clawdbot.gateway`.
+- To stop it cleanly, use `clawdbot gateway stop` (or `launchctl bootout gui/$UID/com.clawdbot.gateway`).
+- To restart, use `clawdbot gateway restart` (or `launchctl kickstart -k gui/$UID/com.clawdbot.gateway`).
 
-## Supervision (systemd example)
+## Supervision (systemd user unit)
+Create `~/.config/systemd/user/clawdbot-gateway.service`:
 ```
 [Unit]
 Description=Clawdbot Gateway
@@ -161,16 +172,36 @@ Wants=network-online.target
 
 [Service]
 ExecStart=/usr/local/bin/clawdbot gateway --port 18789
-Restart=on-failure
+Restart=always
 RestartSec=5
-User=clawdbot
 Environment=CLAWDBOT_GATEWAY_TOKEN=
-WorkingDirectory=/home/clawdbot
+WorkingDirectory=/home/youruser
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 ```
-Enable with `systemctl enable --now clawdbot-gateway.service`.
+Enable lingering (required so the user service survives logout/idle):
+```
+sudo loginctl enable-linger youruser
+```
+Onboarding runs this on Linux (may prompt for sudo; writes `/var/lib/systemd/linger`).
+Then enable the service:
+```
+systemctl --user enable --now clawdbot-gateway.service
+```
+
+**Alternative (system service)** - for always-on or multi-user servers, you can
+install a systemd **system** unit instead of a user unit (no lingering needed).
+Create `/etc/systemd/system/clawdbot-gateway.service` (copy the unit above,
+switch `WantedBy=multi-user.target`, set `User=` + `WorkingDirectory=`), then:
+```
+sudo systemctl daemon-reload
+sudo systemctl enable --now clawdbot-gateway.service
+```
+
+## Supervision (Windows scheduled task)
+- Onboarding installs a Scheduled Task named `Clawdbot Gateway` (runs on user logon).
+- Requires a logged-in user session; for headless setups use a system service or a task configured to run without a logged-in user (not shipped).
 
 ## Operational checks
 - Liveness: open WS and send `req:connect` → expect `res` with `payload.type="hello-ok"` (with snapshot).
@@ -188,6 +219,7 @@ Enable with `systemctl enable --now clawdbot-gateway.service`.
 - `clawdbot gateway send --to <num> --message "hi" [--media-url ...]` — send via Gateway (idempotent).
 - `clawdbot gateway agent --message "hi" [--to ...]` — run an agent turn (waits for final by default).
 - `clawdbot gateway call <method> --params '{"k":"v"}'` — raw method invoker for debugging.
+- `clawdbot gateway stop|restart` — stop/restart the supervised gateway service (launchd/systemd/schtasks).
 - Gateway helper subcommands assume a running gateway on `--url`; they no longer auto-spawn one.
 
 ## Migration guidance

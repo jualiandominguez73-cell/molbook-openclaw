@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { resolveThinkingDefault } from "../../agents/model-selection.js";
+import { resolveAgentTimeoutMs } from "../../agents/timeout.js";
 import { agentCommand } from "../../commands/agent.js";
 import { type SessionEntry, saveSessionStore } from "../../config/sessions.js";
+import { registerAgentRunContext } from "../../infra/agent-events.js";
 import { defaultRuntime } from "../../runtime.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { buildMessageWithAttachments } from "../chat-attachments.js";
@@ -115,12 +117,12 @@ export const chatHandlers: GatewayRequestHandlers = {
     context.chatAbortControllers.delete(runId);
     context.chatRunBuffers.delete(runId);
     context.chatDeltaSentAt.delete(runId);
-    context.removeChatRun(active.sessionId, runId, sessionKey);
+    context.removeChatRun(runId, runId, sessionKey);
 
     const payload = {
       runId,
       sessionKey,
-      seq: (context.agentRunSeq.get(active.sessionId) ?? 0) + 1,
+      seq: (context.agentRunSeq.get(runId) ?? 0) + 1,
       state: "aborted" as const,
     };
     context.broadcast("chat", payload);
@@ -153,7 +155,6 @@ export const chatHandlers: GatewayRequestHandlers = {
       timeoutMs?: number;
       idempotencyKey: string;
     };
-    const timeoutMs = Math.min(Math.max(p.timeoutMs ?? 30_000, 0), 30_000);
     const normalizedAttachments =
       p.attachments?.map((a) => ({
         type: typeof a?.type === "string" ? a.type : undefined,
@@ -188,6 +189,10 @@ export const chatHandlers: GatewayRequestHandlers = {
       }
     }
     const { cfg, storePath, store, entry } = loadSessionEntry(p.sessionKey);
+    const timeoutMs = resolveAgentTimeoutMs({
+      cfg,
+      overrideMs: p.timeoutMs,
+    });
     const now = Date.now();
     const sessionId = entry?.sessionId ?? randomUUID();
     const sessionEntry: SessionEntry = {
@@ -197,16 +202,17 @@ export const chatHandlers: GatewayRequestHandlers = {
       verboseLevel: entry?.verboseLevel,
       systemSent: entry?.systemSent,
       sendPolicy: entry?.sendPolicy,
-      lastChannel: entry?.lastChannel,
+      lastProvider: entry?.lastProvider,
       lastTo: entry?.lastTo,
     };
     const clientRunId = p.idempotencyKey;
+    registerAgentRunContext(clientRunId, { sessionKey: p.sessionKey });
 
     const sendPolicy = resolveSendPolicy({
       cfg,
       entry,
       sessionKey: p.sessionKey,
-      surface: entry?.surface,
+      provider: entry?.provider,
       chatType: entry?.chatType,
     });
     if (sendPolicy === "deny") {
@@ -236,7 +242,7 @@ export const chatHandlers: GatewayRequestHandlers = {
         sessionId,
         sessionKey: p.sessionKey,
       });
-      context.addChatRun(sessionId, {
+      context.addChatRun(clientRunId, {
         sessionKey: p.sessionKey,
         clientRunId,
       });
@@ -252,10 +258,11 @@ export const chatHandlers: GatewayRequestHandlers = {
         {
           message: messageWithAttachments,
           sessionId,
+          runId: clientRunId,
           thinking: p.thinking,
           deliver: p.deliver,
           timeout: Math.ceil(timeoutMs / 1000).toString(),
-          surface: "WebChat",
+          messageProvider: "webchat",
           abortSignal: abortController.signal,
         },
         defaultRuntime,
