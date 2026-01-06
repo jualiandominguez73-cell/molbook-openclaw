@@ -1,0 +1,60 @@
+{
+  "bug_id": "WEB-SEARCH-INTERMITTENT",
+  "overall_status": "IN_PROGRESS",
+  "tdd_phase": "GREEN",
+  "started_at": "2026-01-06T00:00:00Z",
+  "completed_at": null,
+  "current_card": "02",
+  "cards": {
+    "01": {
+      "status": "completed",
+      "title": "Regression Test (TDD RED)",
+      "tdd_phase": "RED",
+      "started_at": "2026-01-06T09:47:00Z",
+      "completed_at": "2026-01-06T09:48:00Z",
+      "test_result": "failed (bug confirmed)",
+      "error": null
+    },
+    "02": {
+      "status": "pending",
+      "title": "Implement Fix (TDD GREEN)",
+      "tdd_phase": "GREEN",
+      "started_at": null,
+      "completed_at": null,
+      "test_result": null,
+      "error": null
+    },
+    "03": {
+      "status": "pending",
+      "title": "Verify & PR",
+      "tdd_phase": "VERIFY",
+      "started_at": null,
+      "completed_at": null,
+      "pr_url": null,
+      "error": null
+    }
+  },
+  "execution_log": [
+    {
+      "timestamp": "2026-01-06T00:00:00Z",
+      "level": "INFO",
+      "message": "Bug fix initialized",
+      "card": null,
+      "tdd_phase": null
+    },
+    {
+      "timestamp": "2026-01-06T09:47:00Z",
+      "level": "INFO",
+      "message": "Card 01 started - Regression test",
+      "card": "01",
+      "tdd_phase": "RED"
+    },
+    {
+      "timestamp": "2026-01-06T09:48:00Z",
+      "level": "INFO",
+      "message": "Card 01 completed - Test fails, bug confirmed",
+      "card": "01",
+      "tdd_phase": "RED"
+    }
+  ]
+}
