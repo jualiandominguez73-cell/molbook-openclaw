@@ -39,9 +39,9 @@ describe("writeOAuthCredentials", () => {
   it("writes auth-profiles.json under CLAWDBOT_STATE_DIR/agents/main/agent", async () => {
     tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-oauth-"));
     process.env.CLAWDBOT_STATE_DIR = tempStateDir;
-    // Clear legacy env vars so resolveDefaultAgentDir uses the new multi-agent path
-    delete process.env.CLAWDBOT_AGENT_DIR;
-    delete process.env.PI_CODING_AGENT_DIR;
+    // Even if legacy env vars are set, onboarding should write to the multi-agent path.
+    process.env.CLAWDBOT_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.PI_CODING_AGENT_DIR = process.env.CLAWDBOT_AGENT_DIR;
 
     const creds = {
       refresh: "refresh-token",
@@ -68,5 +68,12 @@ describe("writeOAuthCredentials", () => {
       access: "access-token",
       type: "oauth",
     });
+
+    await expect(
+      fs.readFile(
+        path.join(tempStateDir, "agent", "auth-profiles.json"),
+        "utf8",
+      ),
+    ).rejects.toThrow();
   });
 });
