@@ -1,7 +1,7 @@
 ---
 summary: "Exec spec: Z.AI GLM-4.7 integration (provider normalization + docs + CLI/tests)"
 status: "complete"
-owner: "peter"
+owner: "mneves75"
 updated: "2026-01-06"
 ---
 
@@ -56,6 +56,10 @@ allowlists, fallbacks, and docs.
 - [x] Add CLI coverage for `models status` and `models list` canonical output.
 - [x] Add CLI coverage for `models status --plain` and `models list --plain`.
 - [x] Add CLI coverage for `models list --provider z.ai` filter normalization.
+- [x] Add CLI coverage for `models list --provider Z.AI` case normalization.
+- [x] Add CLI coverage for `models list --provider z-ai` alias normalization.
+- [x] Add CLI coverage for missing ZAI auth (available=false).
+- [x] Add auth profile order coverage for Z.AI aliases.
 
 ### Phase 4 — Docs
 - [x] Update `docs/configuration.md` with Z.AI setup snippet.
@@ -63,6 +67,7 @@ allowlists, fallbacks, and docs.
 - [x] Note Z.AI endpoint variants + built-in provider base URL.
 - [x] Add/refresh Z.AI mention in `docs/models.md`.
 - [x] Add UX note for missing `ZAI_API_KEY` auth errors.
+- [x] Add example error message for missing `ZAI_API_KEY`.
 
 ### Phase 5 — Verification
 - [x] Run unit tests (CLI + model parsing).
@@ -73,6 +78,10 @@ allowlists, fallbacks, and docs.
 ## Files touched
 - `src/agents/model-selection.ts`
 - `src/agents/model-selection.test.ts`
+- `src/agents/model-auth.test.ts`
+- `src/agents/auth-profiles.ts`
+- `src/agents/auth-profiles.test.ts`
+- `src/commands/models.list.test.ts`
 - `src/commands/models.set.test.ts`
 - `docs/configuration.md`
 - `docs/models.md`
@@ -86,4 +95,5 @@ allowlists, fallbacks, and docs.
 - Revert Z.AI doc updates.
 
 ## Verification log
-- Tests: `pnpm test` (pass; 2 skipped live tests).
+- Tests: `pnpm test` (pass; 2 skipped live tests) — 2026-01-06.
+- Targeted: `pnpm vitest run src/commands/models.list.test.ts src/agents/auth-profiles.test.ts src/agents/model-selection.test.ts src/agents/model-auth.test.ts` — 2026-01-06.
