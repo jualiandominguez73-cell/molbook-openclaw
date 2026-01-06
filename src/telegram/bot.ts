@@ -348,9 +348,13 @@ export function createTelegramBot(opts: TelegramBotOptions) {
 
       const statusLines: string[] = [];
       let streamedText = "";
+      let committedText = "";
+      let didStreamReply = false;
       const chatIdStr = String(chatId);
+      const streamChunkLimit = TELEGRAM_MAX_LENGTH - 50;
 
-      const buildDisplayText = (content: string) => {
+      const buildDisplayText = (content: string, includeStatus = true) => {
+        if (!includeStatus) return content;
         if (!content) return statusLines.join("\n");
         if (statusLines.length === 0) return content;
         return `${statusLines.join("\n")}\n\n${content}`;
@@ -358,11 +362,82 @@ export function createTelegramBot(opts: TelegramBotOptions) {
 
       const updateWorkingMessage = async (
         content: string,
-        opts?: { force?: boolean },
+        opts?: { force?: boolean; includeStatus?: boolean },
       ) => {
-        const displayText = buildDisplayText(content);
+        const displayText = buildDisplayText(
+          content,
+          opts?.includeStatus ?? true,
+        );
         if (!displayText) return;
-        await editWorkingMessage(chatIdStr, displayText, opts);
+        await editWorkingMessage(chatIdStr, displayText, { force: opts?.force });
+      };
+
+      const commitStreamChunk = async (chunk: string) => {
+        if (!chunk) return;
+        const workingState = workingMessages.get(chatIdStr);
+        if (workingState) {
+          await editWorkingMessage(chatIdStr, chunk, { force: true });
+          clearWorkingMessage(chatIdStr);
+          return;
+        }
+        await sendTelegramText(bot, chatIdStr, chunk, runtime);
+      };
+
+      const applyStreamUpdate = async (nextText: string) => {
+        if (!nextText) return;
+        didStreamReply = true;
+        if (streamedText && !nextText.startsWith(streamedText)) {
+          streamedText = "";
+          committedText = "";
+        }
+        streamedText = nextText;
+        if (committedText && !streamedText.startsWith(committedText)) {
+          committedText = "";
+        }
+        let remaining = streamedText.slice(committedText.length);
+        if (!remaining) return;
+
+        while (remaining.length > streamChunkLimit) {
+          const chunk = remaining.slice(0, streamChunkLimit);
+          await commitStreamChunk(chunk);
+          committedText += chunk;
+          remaining = streamedText.slice(committedText.length);
+        }
+
+        if (remaining) {
+          await updateWorkingMessage(remaining);
+        }
+      };
+
+      const finalizeStreamedText = async (finalText: string) => {
+        if (!finalText) return;
+        if (streamedText && !finalText.startsWith(streamedText)) {
+          streamedText = "";
+          committedText = "";
+        }
+        streamedText = finalText;
+        if (committedText && !streamedText.startsWith(committedText)) {
+          committedText = "";
+        }
+        let remaining = streamedText.slice(committedText.length);
+        while (remaining.length > streamChunkLimit) {
+          const chunk = remaining.slice(0, streamChunkLimit);
+          await commitStreamChunk(chunk);
+          committedText += chunk;
+          remaining = streamedText.slice(committedText.length);
+        }
+        if (remaining) {
+          const workingState = workingMessages.get(chatIdStr);
+          if (workingState) {
+            await editWorkingMessage(chatIdStr, remaining, { force: true });
+            clearWorkingMessage(chatIdStr);
+          } else {
+            await sendTelegramText(bot, chatIdStr, remaining, runtime);
+          }
+          committedText += remaining;
+        } else {
+          clearWorkingMessage(chatIdStr);
+        }
       };
 
       const dispatcher = createReplyDispatcher({
@@ -371,14 +446,17 @@ export function createTelegramBot(opts: TelegramBotOptions) {
           if (info.kind === "tool") {
             if (!payload.text) return;
             statusLines.push(`_${payload.text}_`);
-            await updateWorkingMessage(streamedText);
+            const currentChunk =
+              committedText && streamedText.startsWith(committedText)
+                ? streamedText.slice(committedText.length)
+                : streamedText;
+            await updateWorkingMessage(currentChunk);
             return;
           }
 
           if (info.kind === "block") {
             if (!payload.text) return;
-            streamedText = payload.text;
-            await updateWorkingMessage(streamedText);
+            await applyStreamUpdate(payload.text);
             return;
           }
 
@@ -386,6 +464,10 @@ export function createTelegramBot(opts: TelegramBotOptions) {
             Boolean(payload.mediaUrl) || (payload.mediaUrls?.length ?? 0) > 0;
 
           if (!hasMedia && payload.text) {
+            if (didStreamReply) {
+              await finalizeStreamedText(payload.text);
+              return;
+            }
             streamedText = payload.text;
             await editWorkingMessage(chatIdStr, payload.text, { force: true });
             clearWorkingMessage(chatIdStr);
