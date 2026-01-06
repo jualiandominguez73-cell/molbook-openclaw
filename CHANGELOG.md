@@ -11,8 +11,12 @@
 - Groups: `whatsapp.groups`, `telegram.groups`, and `imessage.groups` now act as allowlists when set. Add `"*"` to keep allow-all behavior.
 
 ### Fixes
+- Auto-reply: treat steer during compaction as a follow-up, queued until compaction completes.
+- Auth: lock auth profile refreshes to avoid multi-instance OAuth logouts; keep credentials on refresh failure.
+- Onboarding: prompt immediately for OpenAI Codex redirect URL on remote/headless logins.
 - Typing indicators: stop typing once the reply dispatcher drains to prevent stuck typing across Discord/Telegram/WhatsApp.
 - Google: merge consecutive messages to satisfy strict role alternation for Google provider models. Thanks @Asleep123 for PR #266.
+- WhatsApp/Telegram: add groupPolicy handling for group messages and normalize allowFrom matching (tg/telegram prefixes). Thanks @mneves75.
 - Auto-reply: add configurable ack reactions for inbound messages (default 👀 or `identity.emoji`) with scope controls. Thanks @obviyus for PR #178.
 - Onboarding: resolve CLI entrypoint when running via `npx` so gateway daemon install works without a build step.
 - Onboarding: when OpenAI Codex OAuth is used, default to `openai-codex/gpt-5.2` and warn if the selected model lacks auth.
@@ -47,15 +51,17 @@
 - Block streaming: avoid splitting Markdown fenced blocks and reopen fences when forced to split.
 - Block streaming: preserve leading indentation in block replies (lists, indented fences).
 - Docs: document systemd lingering and logged-in session requirements on macOS/Windows.
-- Auto-reply: unify tool/block/final delivery across providers and apply consistent heartbeat/prefix handling. Thanks @MSch for PR #225 (superseded commit 92c953d0749143eb2a3f31f3cd6ad0e8eabf48c3).
+- Auto-reply: centralize tool/block/final dispatch across providers for consistent streaming + heartbeat/prefix handling. Thanks @MSch for PR #225.
 - Heartbeat: make HEARTBEAT_OK ack padding configurable across heartbeat and cron delivery. (#238) — thanks @jalehman
 - WhatsApp: set sender E.164 for direct chats so owner commands work in DMs.
 - Slack: keep auto-replies in the original thread when responding to thread messages. Thanks @scald for PR #251.
 - Discord: surface missing-permission hints (muted/role overrides) when replies fail.
+- Discord: use channel IDs for DMs instead of user IDs. Thanks @VACInc for PR #261.
 - Docs: clarify Slack manifest scopes (current vs optional) with references. Thanks @jarvis-medmatic for PR #235.
 - Control UI: avoid Slack config ReferenceError by reading slack config snapshots. Thanks @sreekaransrinath for PR #249.
-- Telegram: honor routing.groupChat.mentionPatterns for group mention gating. Thanks @regenrek for PR #242.
+- Telegram: honor routing.groupChat.mentionPatterns for group mention gating. Thanks Kevin Kern (@regenrek) for PR #242.
 - Telegram: gate groups via `telegram.groups` allowlist (align with WhatsApp/iMessage). Thanks @kitze for PR #241.
+- Telegram: support media groups (multi-image messages). Thanks @obviyus for PR #220.
 - Auto-reply: block unauthorized `/reset` and infer WhatsApp senders from E.164 inputs.
 - Auto-reply: track compaction count in session status; verbose mode announces auto-compactions.
 - Telegram: send GIF media as animations (auto-play) and improve filename sniffing.
