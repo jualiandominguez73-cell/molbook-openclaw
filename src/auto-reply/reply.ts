@@ -451,6 +451,9 @@ export async function getReplyFromConfig(
       isGroup,
     })
   ) {
+    const currentThinkLevel =
+      (sessionEntry?.thinkingLevel as ThinkLevel | undefined) ??
+      (agentCfg?.thinkingDefault as ThinkLevel | undefined);
     const directiveReply = await handleDirectiveOnly({
       cfg,
       directives,
@@ -470,6 +473,7 @@ export async function getReplyFromConfig(
       model,
       initialModelLabel,
       formatModelSwitchEvent,
+      currentThinkLevel,
     });
     typing.cleanup();
     return directiveReply;
