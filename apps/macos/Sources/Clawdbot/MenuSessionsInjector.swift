@@ -253,7 +253,7 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
         let rows = self.usageRows
         let errorText = self.cachedUsageErrorText
 
-        if rows.isEmpty && errorText == nil {
+        if rows.isEmpty, errorText == nil {
             return cursor
         }
 
