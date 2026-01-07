@@ -133,6 +133,9 @@ export type EmbeddedPiRunResult = {
     isError?: boolean;
   }>;
   meta: EmbeddedPiRunMeta;
+  // True if a messaging tool (telegram, whatsapp, discord, slack, sessions_send)
+  // successfully sent a message. Used to suppress agent's confirmation text.
+  didSendViaMessagingTool?: boolean;
 };
 
 export type EmbeddedPiCompactResult = {
@@ -945,6 +948,7 @@ export async function runEmbeddedPiAgent(params: {
             toolMetas,
             unsubscribe,
             waitForCompactionRetry,
+            didSendViaMessagingTool,
           } = subscription;
 
           const queueHandle: EmbeddedPiQueueHandle = {
@@ -1206,6 +1210,7 @@ export async function runEmbeddedPiAgent(params: {
               agentMeta,
               aborted,
             },
+            didSendViaMessagingTool: didSendViaMessagingTool(),
           };
         } finally {
           restoreSkillEnv?.();
