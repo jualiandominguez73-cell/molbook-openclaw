@@ -57,6 +57,7 @@ import {
   isRateLimitErrorMessage,
   pickFallbackThinkingLevel,
   sanitizeSessionMessagesImages,
+  validateGeminiTurns,
 } from "./pi-embedded-helpers.js";
 import {
   type BlockReplyChunking,
@@ -670,8 +671,10 @@ export async function compactEmbeddedPiSession(params: {
             session.messages,
             "session:history",
           );
-          if (prior.length > 0) {
-            session.agent.replaceMessages(prior);
+          // Validate Gemini turn sequences to prevent "function call turn comes immediately after a user turn" error
+          const validated = validateGeminiTurns(prior);
+          if (validated.length > 0) {
+            session.agent.replaceMessages(validated);
           }
           const result = await session.compact(params.customInstructions);
           return {
@@ -983,8 +986,10 @@ export async function runEmbeddedPiAgent(params: {
             session.messages,
             "session:history",
           );
-          if (prior.length > 0) {
-            session.agent.replaceMessages(prior);
+          // Validate Gemini turn sequences to prevent "function call turn comes immediately after a user turn" error
+          const validated = validateGeminiTurns(prior);
+          if (validated.length > 0) {
+            session.agent.replaceMessages(validated);
           }
           let aborted = Boolean(params.abortSignal?.aborted);
           let timedOut = false;
