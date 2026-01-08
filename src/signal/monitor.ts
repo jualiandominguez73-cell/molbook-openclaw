@@ -531,6 +531,12 @@ export async function monitorSignalProvider(
         ctx: ctxPayload,
         cfg,
         dispatcher,
+        replyOptions: {
+          disableBlockStreaming:
+            typeof accountInfo.config.blockStreaming === "boolean"
+              ? !accountInfo.config.blockStreaming
+              : undefined,
+        },
       });
       if (!queuedFinal) return;
     };

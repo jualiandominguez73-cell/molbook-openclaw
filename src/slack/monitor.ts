@@ -1139,7 +1139,14 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
       ctx: ctxPayload,
       cfg,
       dispatcher,
-      replyOptions: { ...replyOptions, skillFilter: channelConfig?.skills },
+      replyOptions: {
+        ...replyOptions,
+        skillFilter: channelConfig?.skills,
+        disableBlockStreaming:
+          typeof account.config.blockStreaming === "boolean"
+            ? !account.config.blockStreaming
+            : undefined,
+      },
     });
     markDispatchIdle();
     if (didSetStatus) {
