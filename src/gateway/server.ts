@@ -1959,6 +1959,7 @@ export async function startGatewayServer(
       await stopSlackProvider();
       await stopSignalProvider();
       await stopIMessageProvider();
+      await stopMSTeamsProvider();
       await stopGmailWatcher();
       cron.stop();
       heartbeatRunner.stop();
