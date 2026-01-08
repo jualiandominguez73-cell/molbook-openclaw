@@ -7,11 +7,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-config-"));
   const previousHome = process.env.HOME;
+  const previousUserProfile = process.env.USERPROFILE;
+  const previousHomeDrive = process.env.HOMEDRIVE;
+  const previousHomePath = process.env.HOMEPATH;
   process.env.HOME = base;
+  process.env.USERPROFILE = base;
+  const parsed = path.parse(base);
+  if (parsed.root) {
+    process.env.HOMEDRIVE = parsed.root.replace(/\\$/, "");
+    process.env.HOMEPATH = base.slice(Math.max(parsed.root.length - 1, 0));
+  }
   try {
     return await fn(base);
   } finally {
     process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) {
+      delete process.env.USERPROFILE;
+    } else {
+      process.env.USERPROFILE = previousUserProfile;
+    }
+    if (previousHomeDrive === undefined) {
+      delete process.env.HOMEDRIVE;
+    } else {
+      process.env.HOMEDRIVE = previousHomeDrive;
+    }
+    if (previousHomePath === undefined) {
+      delete process.env.HOMEPATH;
+    } else {
+      process.env.HOMEPATH = previousHomePath;
+    }
     await fs.rm(base, { recursive: true, force: true });
   }
 }
@@ -402,7 +426,7 @@ describe("Nix integration (U3, U5, U9)", () => {
         { CLAWDBOT_STATE_DIR: "/custom/state/dir" },
         async () => {
           const { STATE_DIR_CLAWDBOT } = await import("./config.js");
-          expect(STATE_DIR_CLAWDBOT).toBe("/custom/state/dir");
+          expect(STATE_DIR_CLAWDBOT).toBe(path.resolve("/custom/state/dir"));
         },
       );
     });
@@ -412,7 +436,9 @@ describe("Nix integration (U3, U5, U9)", () => {
         { CLAWDBOT_CONFIG_PATH: undefined, CLAWDBOT_STATE_DIR: undefined },
         async () => {
           const { CONFIG_PATH_CLAWDBOT } = await import("./config.js");
-          expect(CONFIG_PATH_CLAWDBOT).toMatch(/\.clawdbot\/clawdbot\.json$/);
+          expect(CONFIG_PATH_CLAWDBOT).toContain(
+            path.join(".clawdbot", "clawdbot.json"),
+          );
         },
       );
     });
@@ -422,7 +448,9 @@ describe("Nix integration (U3, U5, U9)", () => {
         { CLAWDBOT_CONFIG_PATH: "/nix/store/abc/clawdbot.json" },
         async () => {
           const { CONFIG_PATH_CLAWDBOT } = await import("./config.js");
-          expect(CONFIG_PATH_CLAWDBOT).toBe("/nix/store/abc/clawdbot.json");
+          expect(CONFIG_PATH_CLAWDBOT).toBe(
+            path.resolve("/nix/store/abc/clawdbot.json"),
+          );
         },
       );
     });
@@ -435,7 +463,9 @@ describe("Nix integration (U3, U5, U9)", () => {
         },
         async () => {
           const { CONFIG_PATH_CLAWDBOT } = await import("./config.js");
-          expect(CONFIG_PATH_CLAWDBOT).toBe("/custom/state/clawdbot.json");
+          expect(CONFIG_PATH_CLAWDBOT).toBe(
+            path.join(path.resolve("/custom/state"), "clawdbot.json"),
+          );
         },
       );
     });

@@ -215,14 +215,13 @@ export function resolveSessionFilePath(
 
 export function resolveStorePath(store?: string, opts?: { agentId?: string }) {
   const agentId = normalizeAgentId(opts?.agentId ?? DEFAULT_AGENT_ID);
+  const expandHome = (value: string) =>
+    value.replace(/^~(?=$|[\\/])/, os.homedir());
   if (!store) return resolveDefaultSessionStorePath(agentId);
   if (store.includes("{agentId}")) {
-    return path.resolve(
-      store.replaceAll("{agentId}", agentId).replace("~", os.homedir()),
-    );
+    return path.resolve(expandHome(store.replaceAll("{agentId}", agentId)));
   }
-  if (store.startsWith("~"))
-    return path.resolve(store.replace("~", os.homedir()));
+  if (store.startsWith("~")) return path.resolve(expandHome(store));
   return path.resolve(store);
 }
 
