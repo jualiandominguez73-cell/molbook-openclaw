@@ -172,9 +172,11 @@ const requireOpenAllowFrom = (params: {
   ctx: z.RefinementCtx;
   path: Array<string | number>;
   message: string;
+  allowEmpty?: boolean;
 }) => {
   if (params.policy !== "open") return;
   const allow = normalizeAllowFrom(params.allowFrom);
+  if (allow.length === 0 && params.allowEmpty) return;
   if (allow.includes("*")) return;
   params.ctx.addIssue({
     code: z.ZodIssueCode.custom,
@@ -507,7 +509,8 @@ const MatrixDmSchema = z
       ctx,
       path: ["allowFrom"],
       message:
-        'matrix.dm.policy="open" requires matrix.dm.allowFrom to include "*"',
+        'matrix.dm.policy="open" requires matrix.dm.allowFrom to include "*" when allowFrom is set',
+      allowEmpty: true,
     });
   });
 

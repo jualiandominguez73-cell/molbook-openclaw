@@ -378,7 +378,7 @@ const FIELD_HELP: Record<string, string> = {
   "channels.slack.dm.policy":
     'Direct message access control ("pairing" recommended). "open" requires channels.slack.dm.allowFrom=["*"].',
   "matrix.dm.policy":
-    'Direct message access control ("pairing" recommended). "open" requires matrix.dm.allowFrom=["*"].',
+    'Direct message access control ("pairing" recommended). "open" allows anyone to DM; include matrix.dm.allowFrom=["*"] to make it explicit.',
   "matrix.allowlistOnly":
     "Force allowlists for Matrix rooms + DMs (overrides open/pairing defaults).",
 };

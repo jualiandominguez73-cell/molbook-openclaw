@@ -49,7 +49,7 @@ All current DM-capable channels support a DM policy (`dmPolicy` or `*.dm.policy`
 
 - `pairing` (default): unknown senders receive a short pairing code and the bot ignores their message until approved. Codes expire after 1 hour; repeated DMs won’t resend a code until a new request is created. Pending requests are capped at **3 per channel** by default.
 - `allowlist`: unknown senders are blocked (no pairing handshake).
-- `open`: allow anyone to DM (public). **Requires** the channel allowlist to include `"*"` (explicit opt-in).
+- `open`: allow anyone to DM (public). **Requires** the channel allowlist to include `"*"` (explicit opt-in); Matrix treats a missing allowlist as `"*"`.
 - `disabled`: ignore inbound DMs entirely.
 
 Approve via CLI:
