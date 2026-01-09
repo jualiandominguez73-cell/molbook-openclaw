@@ -26,10 +26,15 @@ import {
   loginAntigravityVpsAware,
 } from "./antigravity-oauth.js";
 import {
+  applyGoogleGeminiModelDefault,
+  GOOGLE_GEMINI_DEFAULT_MODEL,
+} from "./google-gemini-model-default.js";
+import {
   applyAuthProfileConfig,
   applyMinimaxConfig,
   applyMinimaxProviderConfig,
   setAnthropicApiKey,
+  setGeminiApiKey,
   writeOAuthCredentials,
 } from "./onboard-auth.js";
 import { openUrl } from "./onboard-helpers.js";
@@ -168,10 +173,39 @@ export async function applyAuthChoice(params: {
       );
     }
   } else if (params.authChoice === "claude-cli") {
-    const store = ensureAuthProfileStore(params.agentDir);
-    if (!store.profiles[CLAUDE_CLI_PROFILE_ID]) {
+    const store = ensureAuthProfileStore(params.agentDir, {
+      allowKeychainPrompt: false,
+    });
+    const hasClaudeCli = Boolean(store.profiles[CLAUDE_CLI_PROFILE_ID]);
+    if (!hasClaudeCli && process.platform === "darwin") {
       await params.prompter.note(
-        "No Claude CLI credentials found at ~/.claude/.credentials.json.",
+        [
+          "macOS will show a Keychain prompt next.",
+          'Choose "Always Allow" so the launchd gateway can start without prompts.',
+          'If you choose "Allow" or "Deny", each restart will block on a Keychain alert.',
+        ].join("\n"),
+        "Claude CLI Keychain",
+      );
+      const proceed = await params.prompter.confirm({
+        message: "Check Keychain for Claude CLI credentials now?",
+        initialValue: true,
+      });
+      if (!proceed) {
+        return { config: nextConfig, agentModelOverride };
+      }
+    }
+
+    const storeWithKeychain = hasClaudeCli
+      ? store
+      : ensureAuthProfileStore(params.agentDir, {
+          allowKeychainPrompt: true,
+        });
+
+    if (!storeWithKeychain.profiles[CLAUDE_CLI_PROFILE_ID]) {
+      await params.prompter.note(
+        process.platform === "darwin"
+          ? 'No Claude CLI credentials found in Keychain ("Claude Code-credentials") or ~/.claude/.credentials.json.'
+          : "No Claude CLI credentials found at ~/.claude/.credentials.json.",
         "Claude CLI OAuth",
       );
       return { config: nextConfig, agentModelOverride };
@@ -385,6 +419,30 @@ export async function applyAuthChoice(params: {
         "Trouble with OAuth? See https://docs.clawd.bot/start/faq",
         "OAuth help",
       );
+    }
+  } else if (params.authChoice === "gemini-api-key") {
+    const key = await params.prompter.text({
+      message: "Enter Gemini API key",
+      validate: (value) => (value?.trim() ? undefined : "Required"),
+    });
+    await setGeminiApiKey(String(key).trim(), params.agentDir);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "google:default",
+      provider: "google",
+      mode: "api_key",
+    });
+    if (params.setDefaultModel) {
+      const applied = applyGoogleGeminiModelDefault(nextConfig);
+      nextConfig = applied.next;
+      if (applied.changed) {
+        await params.prompter.note(
+          `Default model set to ${GOOGLE_GEMINI_DEFAULT_MODEL}`,
+          "Model configured",
+        );
+      }
+    } else {
+      agentModelOverride = GOOGLE_GEMINI_DEFAULT_MODEL;
+      await noteAgentModel(GOOGLE_GEMINI_DEFAULT_MODEL);
     }
   } else if (params.authChoice === "apiKey") {
     const key = await params.prompter.text({

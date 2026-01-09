@@ -1,5 +1,5 @@
 ---
-summary: "CLI reference for clawdbot commands, subcommands, and options"
+summary: "Clawdbot CLI reference for `clawdbot` commands, subcommands, and options"
 read_when:
   - Adding or modifying CLI commands or options
   - Documenting new command surfaces
@@ -7,8 +7,7 @@ read_when:
 
 # CLI reference
 
-This page mirrors `src/cli/*` and is the source of truth for CLI behavior.
-If you change the CLI code, update this doc.
+This page describes the current CLI behavior. If commands change, update this doc.
 
 ## Global flags
 
@@ -21,11 +20,12 @@ If you change the CLI code, update this doc.
 - ANSI colors and progress indicators only render in TTY sessions.
 - OSC-8 hyperlinks render as clickable links in supported terminals; otherwise we fall back to plain URLs.
 - `--json` (and `--plain` where supported) disables styling for clean output.
+- `--no-color` disables ANSI styling where supported; `NO_COLOR=1` is also respected.
 - Long-running commands show a progress indicator (OSC 9;4 when supported).
 
 ## Color palette
 
-Clawdbot uses a lobster palette for CLI output. Source of truth: `src/terminal/theme.ts`.
+Clawdbot uses a lobster palette for CLI output.
 
 - `accent` (#FF5A2D): headings, provider labels, primary highlights.
 - `accentBright` (#FF7A3D): command names, emphasis.
@@ -55,8 +55,9 @@ clawdbot [--dev] [--profile <name>] <command>
     list
     info
     check
-  send
-  poll
+  message
+    send
+    poll
   agent
   agents
     list
@@ -166,8 +167,9 @@ Options:
 - `--workspace <dir>`
 - `--non-interactive`
 - `--mode <local|remote>`
-- `--auth-choice <oauth|claude-cli|openai-codex|codex-cli|antigravity|apiKey|minimax|skip>`
+- `--auth-choice <oauth|claude-cli|openai-codex|codex-cli|antigravity|gemini-api-key|apiKey|minimax|skip>`
 - `--anthropic-api-key <key>`
+- `--gemini-api-key <key>`
 - `--gateway-port <port>`
 - `--gateway-bind <loopback|lan|tailnet|auto>`
 - `--gateway-auth <off|token|password>`
@@ -203,7 +205,8 @@ Manage chat provider accounts (WhatsApp/Telegram/Discord/Slack/Signal/iMessage).
 
 Subcommands:
 - `providers list`: show configured chat providers and auth profiles (Claude Code + Codex CLI OAuth sync included).
-- `providers status`: check gateway reachability and provider health (`--probe` to verify credentials; use `status --deep` for local-only probes).
+- `providers status`: check gateway reachability and provider health (`--probe` to verify credentials and run small provider audits; use `status --deep` for local-only probes).
+- Tip: `providers status` prints warnings with suggested fixes when it can detect common misconfigurations (then points you to `clawdbot doctor`).
 - `providers add`: wizard-style setup when no flags are passed; flags switch to non-interactive mode.
 - `providers remove`: disable by default; pass `--delete` to remove config entries without prompts.
 - `providers login`: interactive provider login (WhatsApp Web only).
@@ -228,7 +231,9 @@ Common options:
 - `--json`: output JSON (includes usage unless `--no-usage` is set).
 
 OAuth sync sources:
-- `~/.claude/.credentials.json` → `anthropic:claude-cli`
+- Claude Code → `anthropic:claude-cli`
+  - macOS: Keychain item "Claude Code-credentials" (choose "Always Allow" to avoid launchd prompts)
+  - Linux/Windows: `~/.claude/.credentials.json`
 - `~/.codex/auth.json` → `openai-codex:codex-cli`
 
 More detail: [/concepts/oauth](/concepts/oauth)
@@ -279,7 +284,7 @@ Options:
 
 ## Messaging + agent
 
-### `send`
+### `message send`
 Send a message through a provider.
 
 Required:
@@ -295,7 +300,7 @@ Options:
 - `--json`
 - `--verbose`
 
-### `poll`
+### `message poll`
 Create a poll (WhatsApp or Discord).
 
 Required:
@@ -440,10 +445,17 @@ Notes:
 ### `logs`
 Tail Gateway file logs via RPC.
 
+Notes:
+- TTY sessions render a colorized, structured view; non-TTY falls back to plain text.
+- `--json` emits line-delimited JSON (one log event per line).
+
 Examples:
 ```bash
 clawdbot logs --follow
 clawdbot logs --limit 200
+clawdbot logs --plain
+clawdbot logs --json
+clawdbot logs --no-color
 ```
 
 ### `gateway <subcommand>`
@@ -477,6 +489,9 @@ Options:
 Options:
 - `--json`
 - `--plain`
+- `--check` (exit 1=expired/missing, 2=expiring)
+
+Always includes the auth overview and OAuth expiry status for profiles in the auth store.
 
 ### `models set <model>`
 Set `agent.model.primary`.

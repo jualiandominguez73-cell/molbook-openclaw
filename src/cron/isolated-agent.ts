@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { runClaudeCliAgent } from "../agents/claude-cli-runner.js";
 import { lookupContextTokens } from "../agents/context.js";
 import {
   DEFAULT_CONTEXT_TOKENS,
@@ -319,6 +320,7 @@ export async function runCronIsolatedAgentTurn(params: {
       cfg: params.cfg,
       catalog: await loadCatalog(),
       defaultProvider: resolvedDefault.provider,
+      defaultModel: resolvedDefault.model,
     });
     const key = modelKey(
       resolvedOverride.ref.provider,
@@ -423,12 +425,29 @@ export async function runCronIsolatedAgentTurn(params: {
       sessionKey: params.sessionKey,
     });
     const messageProvider = resolvedDelivery.provider;
+    const claudeSessionId = cronSession.sessionEntry.claudeCliSessionId?.trim();
     const fallbackResult = await runWithModelFallback({
       cfg: params.cfg,
       provider,
       model,
-      run: (providerOverride, modelOverride) =>
-        runEmbeddedPiAgent({
+      run: (providerOverride, modelOverride) => {
+        if (providerOverride === "claude-cli") {
+          return runClaudeCliAgent({
+            sessionId: cronSession.sessionEntry.sessionId,
+            sessionKey: params.sessionKey,
+            sessionFile,
+            workspaceDir,
+            config: params.cfg,
+            prompt: commandBody,
+            provider: providerOverride,
+            model: modelOverride,
+            thinkLevel,
+            timeoutMs,
+            runId: cronSession.sessionEntry.sessionId,
+            claudeSessionId,
+          });
+        }
+        return runEmbeddedPiAgent({
           sessionId: cronSession.sessionEntry.sessionId,
           sessionKey: params.sessionKey,
           messageProvider,
@@ -449,7 +468,8 @@ export async function runCronIsolatedAgentTurn(params: {
             (agentCfg?.verboseDefault as "on" | "off" | undefined),
           timeoutMs,
           runId: cronSession.sessionEntry.sessionId,
-        }),
+        });
+      },
     });
     runResult = fallbackResult.result;
     fallbackProvider = fallbackResult.provider;
@@ -474,6 +494,12 @@ export async function runCronIsolatedAgentTurn(params: {
     cronSession.sessionEntry.modelProvider = providerUsed;
     cronSession.sessionEntry.model = modelUsed;
     cronSession.sessionEntry.contextTokens = contextTokens;
+    if (providerUsed === "claude-cli") {
+      const cliSessionId = runResult.meta.agentMeta?.sessionId?.trim();
+      if (cliSessionId) {
+        cronSession.sessionEntry.claudeCliSessionId = cliSessionId;
+      }
+    }
     if (hasNonzeroUsage(usage)) {
       const input = usage.input ?? 0;
       const output = usage.output ?? 0;

@@ -34,9 +34,13 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
 5) **Tail the latest log**
    ```bash
+   clawdbot logs --follow
+   ```
+   If RPC is down, fall back to:
+   ```bash
    tail -f "$(ls -t /tmp/clawdbot/clawdbot-*.log | head -1)"
    ```
-   File logs are separate from service logs; see [Logging](/gateway/logging) and [Troubleshooting](/gateway/troubleshooting).
+   File logs are separate from service logs; see [Logging](/logging) and [Troubleshooting](/gateway/troubleshooting).
 
 ## What is Clawdbot?
 
@@ -114,6 +118,26 @@ Legacy single‑agent path: `~/.clawdbot/agent/*` (migrated by `clawdbot doctor`
 
 Your **workspace** (AGENTS.md, memory files, skills, etc.) is separate and configured via `agent.workspace` (default: `~/clawd`).
 
+### Can agents work outside the workspace?
+
+Yes. The workspace is the **default cwd** and memory anchor, not a hard sandbox.
+Relative paths resolve inside the workspace, but absolute paths can access other
+host locations unless sandboxing is enabled. If you need isolation, use
+[`agent.sandbox`](/gateway/sandboxing) or per‑agent sandbox settings. If you
+want a repo to be the default working directory, point that agent’s
+`workspace` to the repo root. The Clawdbot repo is just source code; keep the
+workspace separate unless you intentionally want the agent to work inside it.
+
+Example (repo as default cwd):
+
+```json5
+{
+  agent: {
+    workspace: "~/Projects/my-repo"
+  }
+}
+```
+
 ### I’m in remote mode — where is the session store?
 
 Session state is owned by the **gateway host**. If you’re in remote mode, the session store you care about is on the remote machine, not your local laptop. See [Session management](/concepts/session).
@@ -185,6 +209,19 @@ Clawdbot reads env vars from the parent process (shell, launchd/systemd, CI, etc
 
 Neither `.env` file overrides existing env vars.
 
+You can also define inline env vars in config (applied only if missing from the process env):
+
+```json5
+{
+  env: {
+    OPENROUTER_API_KEY: "sk-or-...",
+    vars: { GROQ_API_KEY: "gsk-..." }
+  }
+}
+```
+
+See [/environment](/environment) for full precedence and sources.
+
 ### “I started the Gateway via a daemon and my env vars disappeared.” What now?
 
 Two common fixes:
@@ -243,6 +280,18 @@ Use the `/model` command as a standalone message:
 ```
 
 You can list available models with `/model`, `/model list`, or `/model status`.
+
+### Why do I see “Model … is not allowed” and then no reply?
+
+If `agent.models` is set, it becomes the **allowlist** for `/model` and any
+session overrides. Choosing a model that isn’t in that list returns:
+
+```
+Model "provider/model" is not allowed. Use /model to list available models.
+```
+
+That error is returned **instead of** a normal reply. Fix: add the model to
+`agent.models`, remove the allowlist, or pick a model from `/model list`.
 
 ### Are opus / sonnet / gpt built‑in shortcuts?
 
@@ -333,7 +382,7 @@ It means the system attempted to use the auth profile ID `anthropic:default`, bu
 - **Make sure you’re editing the correct agent**
   - Multi‑agent setups mean there can be multiple `auth-profiles.json` files.
 - **Sanity‑check model/auth status**
-  - Use `/model status` to see configured models and whether providers are authenticated.
+  - Use `clawdbot models status` to see configured models and whether providers are authenticated.
 
 ### Why did it also try Google Gemini and fail?
 
@@ -507,12 +556,12 @@ Start the Gateway with `--verbose` to get more console detail. Then inspect the 
 
 ### My skill generated an image/PDF, but nothing was sent
 
-Outbound attachments from the agent must include a `MEDIA:<path-or-url>` line (on its own line). See [Clawd setup](/start/clawd) and [Agent send](/tools/agent-send).
+Outbound attachments from the agent must include a `MEDIA:<path-or-url>` line (on its own line). See [Clawdbot assistant setup](/start/clawd) and [Agent send](/tools/agent-send).
 
 CLI sending:
 
 ```bash
-clawdbot send --to +15555550123 --message "Here you go" --media /path/to/file.png
+clawdbot message send --to +15555550123 --message "Here you go" --media /path/to/file.png
 ```
 
 Note: images are resized/recompressed (max side 2048px) to hit size limits. See [Images](/nodes/images).

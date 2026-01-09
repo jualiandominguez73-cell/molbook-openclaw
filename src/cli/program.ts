@@ -9,8 +9,7 @@ import { configureCommand } from "../commands/configure.js";
 import { doctorCommand } from "../commands/doctor.js";
 import { healthCommand } from "../commands/health.js";
 import { onboardCommand } from "../commands/onboard.js";
-import { pollCommand } from "../commands/poll.js";
-import { sendCommand } from "../commands/send.js";
+import { messagePollCommand, messageSendCommand } from "../commands/message.js";
 import { sessionsCommand } from "../commands/sessions.js";
 import { setupCommand } from "../commands/setup.js";
 import { statusCommand } from "../commands/status.js";
@@ -146,7 +145,7 @@ export function buildProgram() {
       "Link personal WhatsApp Web and show QR + connection logs.",
     ],
     [
-      'clawdbot send --to +15555550123 --message "Hi" --json',
+      'clawdbot message send --to +15555550123 --message "Hi" --json',
       "Send via your web session and print JSON result.",
     ],
     ["clawdbot gateway --port 18789", "Run the WebSocket Gateway locally."],
@@ -164,7 +163,7 @@ export function buildProgram() {
       "Talk directly to the agent using the Gateway; optionally send the WhatsApp reply.",
     ],
     [
-      'clawdbot send --provider telegram --to @mychat --message "Hi"',
+      'clawdbot message send --provider telegram --to @mychat --message "Hi"',
       "Send via your Telegram bot.",
     ],
   ] as const;
@@ -232,9 +231,10 @@ export function buildProgram() {
     .option("--mode <mode>", "Wizard mode: local|remote")
     .option(
       "--auth-choice <choice>",
-      "Auth: oauth|claude-cli|openai-codex|codex-cli|antigravity|apiKey|minimax|skip",
+      "Auth: oauth|claude-cli|openai-codex|codex-cli|antigravity|gemini-api-key|apiKey|minimax|skip",
     )
     .option("--anthropic-api-key <key>", "Anthropic API key")
+    .option("--gemini-api-key <key>", "Gemini API key")
     .option("--gateway-port <port>", "Gateway port")
     .option("--gateway-bind <mode>", "Gateway bind: loopback|lan|tailnet|auto")
     .option("--gateway-auth <mode>", "Gateway auth: off|token|password")
@@ -263,11 +263,13 @@ export function buildProgram() {
               | "openai-codex"
               | "codex-cli"
               | "antigravity"
+              | "gemini-api-key"
               | "apiKey"
               | "minimax"
               | "skip"
               | undefined,
             anthropicApiKey: opts.anthropicApiKey as string | undefined,
+            geminiApiKey: opts.geminiApiKey as string | undefined,
             gatewayPort:
               typeof opts.gatewayPort === "string"
                 ? Number.parseInt(opts.gatewayPort, 10)
@@ -399,7 +401,18 @@ export function buildProgram() {
       }
     });
 
-  program
+  const message = program
+    .command("message")
+    .description("Send messages and polls across providers")
+    .action(() => {
+      message.outputHelp();
+      defaultRuntime.error(
+        danger('Missing subcommand. Try: "clawdbot message send"'),
+      );
+      defaultRuntime.exit(1);
+    });
+
+  message
     .command("send")
     .description(
       "Send a message (WhatsApp Web, Telegram bot, Discord, Slack, Signal, iMessage)",
@@ -430,16 +443,16 @@ export function buildProgram() {
       "after",
       `
 Examples:
-  clawdbot send --to +15555550123 --message "Hi"
-  clawdbot send --to +15555550123 --message "Hi" --media photo.jpg
-  clawdbot send --to +15555550123 --message "Hi" --dry-run      # print payload only
-  clawdbot send --to +15555550123 --message "Hi" --json         # machine-readable result`,
+  clawdbot message send --to +15555550123 --message "Hi"
+  clawdbot message send --to +15555550123 --message "Hi" --media photo.jpg
+  clawdbot message send --to +15555550123 --message "Hi" --dry-run      # print payload only
+  clawdbot message send --to +15555550123 --message "Hi" --json         # machine-readable result`,
     )
     .action(async (opts) => {
       setVerbose(Boolean(opts.verbose));
       const deps = createDefaultDeps();
       try {
-        await sendCommand(
+        await messageSendCommand(
           {
             ...opts,
             account: opts.account as string | undefined,
@@ -453,7 +466,7 @@ Examples:
       }
     });
 
-  program
+  message
     .command("poll")
     .description("Create a poll via WhatsApp or Discord")
     .requiredOption(
@@ -486,16 +499,16 @@ Examples:
       "after",
       `
 Examples:
-  clawdbot poll --to +15555550123 -q "Lunch today?" -o "Yes" -o "No" -o "Maybe"
-  clawdbot poll --to 123456789@g.us -q "Meeting time?" -o "10am" -o "2pm" -o "4pm" -s 2
-  clawdbot poll --to channel:123456789 -q "Snack?" -o "Pizza" -o "Sushi" --provider discord
-  clawdbot poll --to channel:123456789 -q "Plan?" -o "A" -o "B" --provider discord --duration-hours 48`,
+  clawdbot message poll --to +15555550123 -q "Lunch today?" -o "Yes" -o "No" -o "Maybe"
+  clawdbot message poll --to 123456789@g.us -q "Meeting time?" -o "10am" -o "2pm" -o "4pm" -s 2
+  clawdbot message poll --to channel:123456789 -q "Snack?" -o "Pizza" -o "Sushi" --provider discord
+  clawdbot message poll --to channel:123456789 -q "Plan?" -o "A" -o "B" --provider discord --duration-hours 48`,
     )
     .action(async (opts) => {
       setVerbose(Boolean(opts.verbose));
       const deps = createDefaultDeps();
       try {
-        await pollCommand(opts, deps, defaultRuntime);
+        await messagePollCommand(opts, deps, defaultRuntime);
       } catch (err) {
         defaultRuntime.error(String(err));
         defaultRuntime.exit(1);

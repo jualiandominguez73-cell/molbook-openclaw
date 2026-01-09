@@ -2,9 +2,11 @@ import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
-import type { SessionsListResult } from "../types";
+import { stripThinkingTags } from "../format";
 import { toSanitizedMarkdownHtml } from "../markdown";
-import { resolveToolDisplay, formatToolDetail } from "../tool-display";
+import { formatToolDetail, resolveToolDisplay } from "../tool-display";
+import type { SessionsListResult } from "../types";
+import type { ChatQueueItem } from "../ui-types";
 
 export type ChatProps = {
   sessionKey: string;
@@ -17,6 +19,7 @@ export type ChatProps = {
   stream: string | null;
   streamStartedAt: number | null;
   draft: string;
+  queue: ChatQueueItem[];
   connected: boolean;
   canSend: boolean;
   disabledReason: string | null;
@@ -27,14 +30,16 @@ export type ChatProps = {
   onRefresh: () => void;
   onDraftChange: (next: string) => void;
   onSend: () => void;
+  onQueueRemove: (id: string) => void;
   onNewSession: () => void;
 };
 
 export function renderChat(props: ChatProps) {
-  const canCompose = props.connected && !props.sending;
+  const canCompose = props.connected;
+  const isBusy = props.sending || Boolean(props.stream);
   const sessionOptions = resolveSessionOptions(props.sessionKey, props.sessions);
   const composePlaceholder = props.connected
-    ? "Message (⌘↩ to send)"
+    ? "Message (↩ to send, Shift+↩ for line breaks)"
     : "Connect to the gateway to start chatting…";
 
   return html`
@@ -53,7 +58,7 @@ export function renderChat(props: ChatProps) {
                 (entry) =>
                   html`<option value=${entry.key}>
                     ${entry.displayName ?? entry.key}
-                  </option>`,
+                  </option>`
               )}
             </select>
           </label>
@@ -70,34 +75,67 @@ export function renderChat(props: ChatProps) {
         </div>
       </div>
 
-      ${props.disabledReason
-        ? html`<div class="callout" style="margin-top: 12px;">
+      ${
+        props.disabledReason
+          ? html`<div class="callout" style="margin-top: 12px;">
             ${props.disabledReason}
           </div>`
-        : nothing}
+          : nothing
+      }
 
-      ${props.error
-        ? html`<div class="callout danger" style="margin-top: 12px;">${props.error}</div>`
-        : nothing}
+      ${
+        props.error
+          ? html`<div class="callout danger" style="margin-top: 12px;">${props.error}</div>`
+          : nothing
+      }
 
       <div class="chat-thread" role="log" aria-live="polite">
         ${props.loading ? html`<div class="muted">Loading chat…</div>` : nothing}
-        ${repeat(buildChatItems(props), (item) => item.key, (item) => {
-          if (item.kind === "reading-indicator") return renderReadingIndicator();
-          if (item.kind === "stream") {
-            return renderMessage(
-              {
-                role: "assistant",
-                content: [{ type: "text", text: item.text }],
-                timestamp: item.startedAt,
-              },
-              props,
-              { streaming: true },
-            );
+        ${repeat(
+          buildChatItems(props),
+          (item) => item.key,
+          (item) => {
+            if (item.kind === "reading-indicator") return renderReadingIndicator();
+            if (item.kind === "stream") {
+              return renderMessage(
+                {
+                  role: "assistant",
+                  content: [{ type: "text", text: item.text }],
+                  timestamp: item.startedAt,
+                },
+                props,
+                { streaming: true }
+              );
+            }
+            return renderMessage(item.message, props);
           }
-          return renderMessage(item.message, props);
-        })}
+        )}
       </div>
+
+      ${props.queue.length
+        ? html`
+            <div class="chat-queue" role="status" aria-live="polite">
+              <div class="chat-queue__title">Queued (${props.queue.length})</div>
+              <div class="chat-queue__list">
+                ${props.queue.map(
+                  (item) => html`
+                    <div class="chat-queue__item">
+                      <div class="chat-queue__text">${item.text}</div>
+                      <button
+                        class="btn chat-queue__remove"
+                        type="button"
+                        aria-label="Remove queued message"
+                        @click=${() => props.onQueueRemove(item.id)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  `,
+                )}
+              </div>
+            </div>
+          `
+        : nothing}
 
       <div class="chat-compose">
         <label class="field chat-compose__field">
@@ -107,12 +145,13 @@ export function renderChat(props: ChatProps) {
             ?disabled=${!props.connected}
             @keydown=${(e: KeyboardEvent) => {
               if (e.key !== "Enter") return;
-              if (!e.metaKey && !e.ctrlKey) return;
+              if (e.isComposing || e.keyCode === 229) return;
+              if (e.shiftKey) return; // Allow Shift+Enter for line breaks
+              if (!props.connected) return;
               e.preventDefault();
               if (canCompose) props.onSend();
             }}
-            @input=${(e: Event) =>
-              props.onDraftChange((e.target as HTMLTextAreaElement).value)}
+            @input=${(e: Event) => props.onDraftChange((e.target as HTMLTextAreaElement).value)}
             placeholder=${composePlaceholder}
           ></textarea>
         </label>
@@ -126,10 +165,10 @@ export function renderChat(props: ChatProps) {
           </button>
           <button
             class="btn primary"
-            ?disabled=${!props.connected || props.sending}
+            ?disabled=${!props.connected}
             @click=${props.onSend}
           >
-            ${props.sending ? "Sending…" : "Send"}
+            ${isBusy ? "Queue" : "Send"}
           </button>
         </div>
       </div>
@@ -231,16 +270,11 @@ type SessionOption = {
   displayName?: string;
 };
 
-function resolveSessionOptions(
-  currentKey: string,
-  sessions: SessionsListResult | null,
-) {
+function resolveSessionOptions(currentKey: string, sessions: SessionsListResult | null) {
   const now = Date.now();
   const cutoff = now - 24 * 60 * 60 * 1000;
-  const entries = Array.isArray(sessions?.sessions) ? sessions?.sessions ?? [] : [];
-  const sorted = [...entries].sort(
-    (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
-  );
+  const entries = Array.isArray(sessions?.sessions) ? (sessions?.sessions ?? []) : [];
+  const sorted = [...entries].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
   const recent: SessionOption[] = [];
   const seen = new Set<string>();
   for (const entry of sorted) {
@@ -292,7 +326,7 @@ function renderReadingIndicator() {
 function renderMessage(
   message: unknown,
   props?: Pick<ChatProps, "isToolOutputExpanded" | "onToolOutputToggle">,
-  opts?: { streaming?: boolean },
+  opts?: { streaming?: boolean }
 ) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
@@ -314,7 +348,7 @@ function renderMessage(
   const markdown =
     display?.kind === "json"
       ? ["```json", display.value, "```"].join("\n")
-      : display?.value ?? null;
+      : (display?.value ?? null);
 
   const timestamp =
     typeof m.timestamp === "number" ? new Date(m.timestamp).toLocaleTimeString() : "";
@@ -330,9 +364,11 @@ function renderMessage(
     <div class="chat-line ${klass}">
       <div class="chat-msg">
         <div class="chat-bubble ${opts?.streaming ? "streaming" : ""}">
-          ${markdown
-            ? html`<div class="chat-text">${unsafeHTML(toSanitizedMarkdownHtml(markdown))}</div>`
-            : nothing}
+          ${
+            markdown
+              ? html`<div class="chat-text">${unsafeHTML(toSanitizedMarkdownHtml(markdown))}</div>`
+              : nothing
+          }
           ${toolCards.map((card, index) =>
             renderToolCard(card, {
               id: `${toolCardBase}:${index}`,
@@ -340,7 +376,7 @@ function renderMessage(
                 ? props.isToolOutputExpanded(`${toolCardBase}:${index}`)
                 : false,
               onToggle: props?.onToolOutputToggle,
-            }),
+            })
           )}
         </div>
         <div class="chat-stamp mono">
@@ -353,8 +389,11 @@ function renderMessage(
 
 function extractText(message: unknown): string | null {
   const m = message as Record<string, unknown>;
+  const role = typeof m.role === "string" ? m.role : "";
   const content = m.content;
-  if (typeof content === "string") return content;
+  if (typeof content === "string") {
+    return role === "assistant" ? stripThinkingTags(content) : content;
+  }
   if (Array.isArray(content)) {
     const parts = content
       .map((p) => {
@@ -363,9 +402,14 @@ function extractText(message: unknown): string | null {
         return null;
       })
       .filter((v): v is string => typeof v === "string");
-    if (parts.length > 0) return parts.join("\n");
+    if (parts.length > 0) {
+      const joined = parts.join("\n");
+      return role === "assistant" ? stripThinkingTags(joined) : joined;
+    }
   }
-  if (typeof m.text === "string") return m.text;
+  if (typeof m.text === "string") {
+    return role === "assistant" ? stripThinkingTags(m.text) : m.text;
+  }
   return null;
 }
 
@@ -421,7 +465,7 @@ function renderToolCard(
     id: string;
     expanded: boolean;
     onToggle?: (id: string, expanded: boolean) => void;
-  },
+  }
 ) {
   const display = resolveToolDisplay({ name: card.name, args: card.args });
   const detail = formatToolDetail(display);
@@ -431,11 +475,10 @@ function renderToolCard(
   return html`
     <div class="chat-tool-card">
       <div class="chat-tool-card__title">${display.emoji} ${display.label}</div>
-      ${detail
-        ? html`<div class="chat-tool-card__detail">${detail}</div>`
-        : nothing}
-      ${hasOutput
-        ? html`
+      ${detail ? html`<div class="chat-tool-card__detail">${detail}</div>` : nothing}
+      ${
+        hasOutput
+          ? html`
             <details
               class="chat-tool-card__details"
               ?open=${expanded}
@@ -451,14 +494,17 @@ function renderToolCard(
                   (${card.text?.length ?? 0} chars)
                 </span>
               </summary>
-              ${expanded
-                ? html`<div class="chat-tool-card__output chat-text">
+              ${
+                expanded
+                  ? html`<div class="chat-tool-card__output chat-text">
                     ${unsafeHTML(toSanitizedMarkdownHtml(card.text ?? ""))}
                   </div>`
-                : nothing}
+                  : nothing
+              }
             </details>
           `
-        : nothing}
+          : nothing
+      }
     </div>
   `;
 }

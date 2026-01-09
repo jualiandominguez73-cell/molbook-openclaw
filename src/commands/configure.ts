@@ -31,7 +31,9 @@ import {
 } from "../config/config.js";
 import { GATEWAY_LAUNCH_AGENT_LABEL } from "../daemon/constants.js";
 import { resolveGatewayProgramArguments } from "../daemon/program-args.js";
+import { resolvePreferredNodePath } from "../daemon/runtime-paths.js";
 import { resolveGatewayService } from "../daemon/service.js";
+import { buildServiceEnvironment } from "../daemon/service-env.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
@@ -48,11 +50,16 @@ import {
   GATEWAY_DAEMON_RUNTIME_OPTIONS,
   type GatewayDaemonRuntime,
 } from "./daemon-runtime.js";
+import {
+  applyGoogleGeminiModelDefault,
+  GOOGLE_GEMINI_DEFAULT_MODEL,
+} from "./google-gemini-model-default.js";
 import { healthCommand } from "./health.js";
 import {
   applyAuthProfileConfig,
   applyMinimaxConfig,
   setAnthropicApiKey,
+  setGeminiApiKey,
   writeOAuthCredentials,
 } from "./onboard-auth.js";
 import {
@@ -284,8 +291,11 @@ async function promptAuthConfig(
     await select({
       message: "Model/auth choice",
       options: buildAuthChoiceOptions({
-        store: ensureAuthProfileStore(),
+        store: ensureAuthProfileStore(undefined, {
+          allowKeychainPrompt: false,
+        }),
         includeSkip: true,
+        includeClaudeCliIfMissing: true,
       }),
     }),
     runtime,
@@ -295,6 +305,7 @@ async function promptAuthConfig(
     | "openai-codex"
     | "codex-cli"
     | "antigravity"
+    | "gemini-api-key"
     | "apiKey"
     | "minimax"
     | "skip";
@@ -508,6 +519,28 @@ async function promptAuthConfig(
       runtime.error(String(err));
       note("Trouble with OAuth? See https://docs.clawd.bot/start/faq", "OAuth");
     }
+  } else if (authChoice === "gemini-api-key") {
+    const key = guardCancel(
+      await text({
+        message: "Enter Gemini API key",
+        validate: (value) => (value?.trim() ? undefined : "Required"),
+      }),
+      runtime,
+    );
+    await setGeminiApiKey(String(key).trim());
+    next = applyAuthProfileConfig(next, {
+      profileId: "google:default",
+      provider: "google",
+      mode: "api_key",
+    });
+    const applied = applyGoogleGeminiModelDefault(next);
+    next = applied.next;
+    if (applied.changed) {
+      note(
+        `Default model set to ${GOOGLE_GEMINI_DEFAULT_MODEL}`,
+        "Model configured",
+      );
+    }
   } else if (authChoice === "apiKey") {
     const key = guardCancel(
       await text({
@@ -611,18 +644,24 @@ async function maybeInstallDaemon(params: {
     const devMode =
       process.argv[1]?.includes(`${path.sep}src${path.sep}`) &&
       process.argv[1]?.endsWith(".ts");
+    const nodePath = await resolvePreferredNodePath({
+      env: process.env,
+      runtime: daemonRuntime,
+    });
     const { programArguments, workingDirectory } =
       await resolveGatewayProgramArguments({
         port: params.port,
         dev: devMode,
         runtime: daemonRuntime,
+        nodePath,
       });
-    const environment: Record<string, string | undefined> = {
-      PATH: process.env.PATH,
-      CLAWDBOT_GATEWAY_TOKEN: params.gatewayToken,
-      CLAWDBOT_LAUNCHD_LABEL:
+    const environment = buildServiceEnvironment({
+      env: process.env,
+      port: params.port,
+      token: params.gatewayToken,
+      launchdLabel:
         process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
-    };
+    });
     await service.install({
       env: process.env,
       stdout: process.stdout,

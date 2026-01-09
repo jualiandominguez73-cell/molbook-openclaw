@@ -24,7 +24,10 @@ import {
 import { setVerbose } from "../globals.js";
 import { GatewayLockError } from "../infra/gateway-lock.js";
 import { formatPortDiagnostics, inspectPortUsage } from "../infra/ports.js";
-import { createSubsystemLogger } from "../logging.js";
+import {
+  createSubsystemLogger,
+  setConsoleSubsystemFilter,
+} from "../logging.js";
 import { defaultRuntime } from "../runtime.js";
 import { forceFreePortAndWait } from "./ports.js";
 import { withProgress } from "./progress.js";
@@ -48,8 +51,11 @@ type GatewayRunOpts = {
   allowUnconfigured?: boolean;
   force?: boolean;
   verbose?: boolean;
+  claudeCliLogs?: boolean;
   wsLog?: unknown;
   compact?: boolean;
+  rawStream?: boolean;
+  rawStreamPath?: unknown;
 };
 
 type GatewayRunParams = {
@@ -284,6 +290,10 @@ async function runGatewayCommand(
   }
 
   setVerbose(Boolean(opts.verbose));
+  if (opts.claudeCliLogs) {
+    setConsoleSubsystemFilter(["agent/claude-cli"]);
+    process.env.CLAWDBOT_CLAUDE_CLI_LOG_OUTPUT = "1";
+  }
   const wsLogRaw = (opts.compact ? "compact" : opts.wsLog) as
     | string
     | undefined;
@@ -299,6 +309,14 @@ async function runGatewayCommand(
     defaultRuntime.exit(1);
   }
   setGatewayWsLogStyle(wsLogStyle);
+
+  if (opts.rawStream) {
+    process.env.CLAWDBOT_RAW_STREAM = "1";
+  }
+  const rawStreamPath = toOptionString(opts.rawStreamPath);
+  if (rawStreamPath) {
+    process.env.CLAWDBOT_RAW_STREAM_PATH = rawStreamPath;
+  }
 
   const cfg = loadConfig();
   const portOverride = parsePort(opts.port);
@@ -560,11 +578,18 @@ function addGatewayRunCommand(
     )
     .option("--verbose", "Verbose logging to stdout/stderr", false)
     .option(
+      "--claude-cli-logs",
+      "Only show claude-cli logs in the console (includes stdout/stderr)",
+      false,
+    )
+    .option(
       "--ws-log <style>",
       'WebSocket log style ("auto"|"full"|"compact")',
       "auto",
     )
     .option("--compact", 'Alias for "--ws-log compact"', false)
+    .option("--raw-stream", "Log raw model stream events to jsonl", false)
+    .option("--raw-stream-path <path>", "Raw stream jsonl path")
     .action(async (opts) => {
       await runGatewayCommand(opts, params);
     });

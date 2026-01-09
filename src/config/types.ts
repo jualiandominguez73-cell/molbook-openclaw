@@ -779,6 +779,8 @@ export type RoutingConfig = {
       workspace?: string;
       agentDir?: string;
       model?: string;
+      /** Per-agent override for group mention patterns. */
+      mentionPatterns?: string[];
       subagents?: {
         /** Allow spawning sub-agents under other agent ids. Use "*" to allow any. */
         allowAgents?: string[];
@@ -843,6 +845,8 @@ export type CommandsConfig = {
   native?: boolean;
   /** Enable text command parsing (default: true). */
   text?: boolean;
+  /** Allow restart commands/tools (default: false). */
+  restart?: boolean;
   /** Enforce access-group allowlists/policies for commands (default: true). */
   useAccessGroups?: boolean;
 };
@@ -1087,6 +1091,14 @@ export type ClawdbotConfig = {
       /** Timeout for the login shell exec (ms). Default: 15000. */
       timeoutMs?: number;
     };
+    /** Inline env vars to apply when not already present in the process env. */
+    vars?: Record<string, string>;
+    /** Sugar: allow env vars directly under env (string values only). */
+    [key: string]:
+      | string
+      | Record<string, string>
+      | { enabled?: boolean; timeoutMs?: number }
+      | undefined;
   };
   identity?: {
     name?: string;

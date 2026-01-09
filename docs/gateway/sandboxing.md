@@ -23,12 +23,16 @@ and process access when the model does something dumb.
 Not sandboxed:
 - The Gateway process itself.
 - Any tool explicitly allowed to run on the host (e.g. `agent.elevated`).
+  - **Elevated bash runs on the host and bypasses sandboxing.**
+  - If sandboxing is off, `agent.elevated` does not change execution (already on host). See [Elevated Mode](/tools/elevated).
 
 ## Modes
 `agent.sandbox.mode` controls **when** sandboxing is used:
 - `"off"`: no sandboxing.
 - `"non-main"`: sandbox only **non-main** sessions (default if you want normal chats on host).
 - `"all"`: every session runs in a sandbox.
+Note: `"non-main"` is based on `session.mainKey` (default `"main"`), not agent id.
+Group/channel sessions use their own keys, so they count as non-main and will be sandboxed.
 
 ## Scope
 `agent.sandbox.scope` controls **how many containers** are created:
@@ -43,6 +47,10 @@ Not sandboxed:
 - `"rw"`: mounts the agent workspace read/write at `/workspace`.
 
 Inbound media is copied into the active sandbox workspace (`media/inbound/*`).
+Skills note: the `read` tool is sandbox-rooted. With `workspaceAccess: "none"`,
+Clawdbot mirrors eligible skills into the sandbox workspace (`.../skills`) so
+they can be read. With `"rw"`, workspace skills are readable from
+`/workspace/skills`.
 
 ## Images + setup
 Default image: `clawdbot-sandbox:bookworm-slim`
