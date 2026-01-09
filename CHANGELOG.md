@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Discord: add channel/category management actions (create/edit/move/delete + category removal). (#487) - thanks @NicholasSpisak
 - WhatsApp: group `/model list` output by provider for scannability. (#456) - thanks @mcinteerj
 - Hooks: allow per-hook model overrides for webhook/Gmail runs (e.g. GPT 5 Mini).
 - Control UI: logs tab opens at the newest entries (bottom).
