@@ -251,8 +251,8 @@ Controls how WhatsApp direct chats (DMs) are handled:
 Pairing codes expire after 1 hour; the bot only sends a pairing code when a new request is created. Pending DM pairing requests are capped at **3 per provider** by default.
 
 Pairing approvals:
-- `clawdbot pairing list --provider whatsapp`
-- `clawdbot pairing approve --provider whatsapp <code>`
+- `clawdbot pairing list whatsapp`
+- `clawdbot pairing approve whatsapp <code>`
 
 ### `whatsapp.allowFrom`
 
@@ -1186,6 +1186,15 @@ Block streaming:
   Provider overrides: `whatsapp.blockStreamingCoalesce`, `telegram.blockStreamingCoalesce`,
   `discord.blockStreamingCoalesce`, `slack.blockStreamingCoalesce`, `signal.blockStreamingCoalesce`,
   `imessage.blockStreamingCoalesce`, `msteams.blockStreamingCoalesce` (and per-account variants).
+- `agents.defaults.humanDelay`: randomized pause between **block replies** after the first.
+  Modes: `off` (default), `natural` (800–2500ms), `custom` (use `minMs`/`maxMs`).
+  Per-agent override: `agents.list[].humanDelay`.
+  Example:
+  ```json5
+  {
+    agents: { defaults: { humanDelay: { mode: "natural" } } }
+  }
+  ```
 See [/concepts/streaming](/concepts/streaming) for behavior + chunking details.
 
 Typing indicators:
@@ -1490,6 +1499,8 @@ Notes:
 
 Z.AI models are available via the built-in `zai` provider. Set `ZAI_API_KEY`
 in your environment and reference the model by provider/model.
+
+Shortcut: `clawdbot onboard --auth-choice zai-api-key`.
 
 ```json5
 {
@@ -2087,6 +2098,7 @@ Template placeholders are expanded in `audio.transcription.command` (and any fut
 | Variable | Description |
 |----------|-------------|
 | `{{Body}}` | Full inbound message body |
+| `{{RawBody}}` | Raw inbound message body (no history/sender wrappers; best for command parsing) |
 | `{{BodyStripped}}` | Body with group mentions stripped (best default for agents) |
 | `{{From}}` | Sender identifier (E.164 for WhatsApp; may differ per provider) |
 | `{{To}}` | Destination identifier |

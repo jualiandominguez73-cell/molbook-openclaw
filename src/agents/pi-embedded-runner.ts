@@ -62,6 +62,10 @@ import {
   resolveModelAuthMode,
 } from "./model-auth.js";
 import { ensureClawdbotModelsJson } from "./models-config.js";
+import type { MessagingToolSend } from "./pi-embedded-messaging.js";
+
+export type { MessagingToolSend } from "./pi-embedded-messaging.js";
+
 import {
   buildBootstrapContextFiles,
   classifyFailoverReason,
@@ -264,13 +268,6 @@ type ApiKeyInfo = {
   apiKey: string;
   profileId?: string;
   source: string;
-};
-
-export type MessagingToolSend = {
-  tool: string;
-  provider: string;
-  accountId?: string;
-  to?: string;
 };
 
 export type EmbeddedPiRunResult = {
@@ -852,6 +849,7 @@ export async function compactEmbeddedPiSession(params: {
           agentAccountId: params.agentAccountId,
           sessionKey: params.sessionKey ?? params.sessionId,
           agentDir,
+          workspaceDir: effectiveWorkspace,
           config: params.config,
           abortSignal: runAbortController.signal,
           modelProvider: model.provider,
@@ -1235,6 +1233,7 @@ export async function runEmbeddedPiAgent(params: {
             agentAccountId: params.agentAccountId,
             sessionKey: params.sessionKey ?? params.sessionId,
             agentDir,
+            workspaceDir: effectiveWorkspace,
             config: params.config,
             abortSignal: runAbortController.signal,
             modelProvider: model.provider,

@@ -90,20 +90,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         timeoutMs: Int,
         operation: @escaping @Sendable () async throws -> T) async throws -> T
     {
-        if timeoutMs == 0 {
-            return try await operation()
-        }
-
-        return try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(timeoutMs) * 1_000_000)
-                throw Error.timeout
-            }
-            let result = try await group.next()!
-            group.cancelAll()
-            return result
-        }
+        try await AsyncTimeout.withTimeoutMs(timeoutMs: timeoutMs, onTimeout: { Error.timeout }, operation: operation)
     }
 
     private static func accuracyValue(_ accuracy: ClawdbotLocationAccuracy) -> CLLocationAccuracy {
@@ -128,11 +115,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+<<<<<<< HEAD
         let latest = locations.last
         Task { @MainActor in
             guard let cont = self.locationContinuation else { return }
             self.locationContinuation = nil
             if let latest {
+=======
+        let locs = locations
+        Task { @MainActor in
+            guard let cont = self.locationContinuation else { return }
+            self.locationContinuation = nil
+            if let latest = locs.last {
+>>>>>>> upstream/main
                 cont.resume(returning: latest)
             } else {
                 cont.resume(throwing: Error.unavailable)
@@ -141,10 +136,18 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Swift.Error) {
+<<<<<<< HEAD
         Task { @MainActor in
             guard let cont = self.locationContinuation else { return }
             self.locationContinuation = nil
             cont.resume(throwing: error)
+=======
+        let err = error
+        Task { @MainActor in
+            guard let cont = self.locationContinuation else { return }
+            self.locationContinuation = nil
+            cont.resume(throwing: err)
+>>>>>>> upstream/main
         }
     }
 }
