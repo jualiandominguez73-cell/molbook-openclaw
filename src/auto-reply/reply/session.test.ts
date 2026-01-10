@@ -134,7 +134,9 @@ describe("initSessionState RawBody", () => {
   });
 
   it("Reset triggers (/new, /reset) work with RawBody", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-rawbody-reset-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "clawdbot-rawbody-reset-"),
+    );
     const storePath = path.join(root, "sessions.json");
     const cfg = { session: { store: storePath } } as ClawdbotConfig;
 
@@ -156,7 +158,9 @@ describe("initSessionState RawBody", () => {
   });
 
   it("falls back to Body when RawBody is undefined", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-rawbody-fallback-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "clawdbot-rawbody-fallback-"),
+    );
     const storePath = path.join(root, "sessions.json");
     const cfg = { session: { store: storePath } } as ClawdbotConfig;
 

@@ -91,7 +91,7 @@ export function stripStructuralPrefixes(text: string): string {
   const afterMarker = text.includes(marker)
     ? text.slice(text.indexOf(marker) + marker.length).trimStart()
     : text;
-  
+
   return afterMarker
     .replace(/\[[^\]]+\]\s*/g, "")
     .replace(/^[ \t]*[A-Za-z0-9+()\-_. ]+:\s*/gm, "")

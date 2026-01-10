@@ -337,7 +337,9 @@ export async function getReplyFromConfig(
   } = sessionState;
 
   // Prefer RawBody (clean message without structural context) for directive parsing.
-  const rawBody = sessionCtx.RawBody ?? sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
+  // Keep `Body`/`BodyStripped` as the best-available prompt text (may include context).
+  const rawBody =
+    sessionCtx.RawBody ?? sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
   const clearInlineDirectives = (cleaned: string): InlineDirectives => ({
     cleaned,
     hasThinkDirective: false,
@@ -427,8 +429,33 @@ export async function getReplyFromConfig(
         hasQueueDirective: false,
         queueReset: false,
       };
-  sessionCtx.Body = parsedDirectives.cleaned;
-  sessionCtx.BodyStripped = parsedDirectives.cleaned;
+  const marker = "[Current message - respond to this]";
+  const existingBody = sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
+  const cleanedBody = (() => {
+    if (!existingBody) return parsedDirectives.cleaned;
+    if (!sessionCtx.RawBody) {
+      return parseInlineDirectives(existingBody, {
+        modelAliases: configuredAliases,
+      }).cleaned;
+    }
+
+    const markerIndex = existingBody.indexOf(marker);
+    if (markerIndex < 0) {
+      return parseInlineDirectives(existingBody, {
+        modelAliases: configuredAliases,
+      }).cleaned;
+    }
+
+    const head = existingBody.slice(0, markerIndex + marker.length);
+    const tail = existingBody.slice(markerIndex + marker.length);
+    const cleanedTail = parseInlineDirectives(tail, {
+      modelAliases: configuredAliases,
+    }).cleaned;
+    return `${head}${cleanedTail}`;
+  })();
+
+  sessionCtx.Body = cleanedBody;
+  sessionCtx.BodyStripped = cleanedBody;
 
   const messageProviderKey =
     sessionCtx.Provider?.trim().toLowerCase() ??

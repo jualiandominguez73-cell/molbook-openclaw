@@ -277,7 +277,9 @@ export async function initSessionState(params: {
 
   const sessionCtx: TemplateContext = {
     ...ctx,
-    BodyStripped: bodyStripped ?? ctx.RawBody ?? ctx.Body,
+    // Keep BodyStripped aligned with Body (best default for agent prompts).
+    // RawBody is reserved for command/directive parsing and may omit context.
+    BodyStripped: bodyStripped ?? ctx.Body ?? ctx.RawBody,
     SessionId: sessionId,
     IsNewSession: isNewSession ? "true" : "false",
   };

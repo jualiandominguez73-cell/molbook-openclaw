@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { isAbortTrigger } from "./abort.js";
-import { initSessionState } from "./session.js";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
 import type { ClawdbotConfig } from "../../config/config.js";
+import { isAbortTrigger } from "./abort.js";
+import { initSessionState } from "./session.js";
 
 describe("abort detection", () => {
   it("triggerBodyNormalized extracts /stop from RawBody for abort detection", async () => {
