@@ -350,7 +350,14 @@ export function buildCommandText(commandName: string, args?: string): string {
   return trimmedArgs ? `/${commandName} ${trimmedArgs}` : `/${commandName}`;
 }
 
-export function normalizeCommandBody(raw: string): string {
+export type CommandNormalizeOptions = {
+  botUsername?: string;
+};
+
+export function normalizeCommandBody(
+  raw: string,
+  options?: CommandNormalizeOptions,
+): string {
   const trimmed = raw.trim();
   if (!trimmed.startsWith("/")) return trimmed;
 
@@ -363,17 +370,26 @@ export function normalizeCommandBody(raw: string): string {
       })()
     : trimmed;
 
-  const lowered = normalized.toLowerCase();
+  const normalizedBotUsername = options?.botUsername?.trim().toLowerCase();
+  const mentionMatch = normalizedBotUsername
+    ? normalized.match(/^\/([^\s@]+)@([^\s]+)(.*)$/)
+    : null;
+  const commandBody =
+    mentionMatch && mentionMatch[2].toLowerCase() === normalizedBotUsername
+      ? `/${mentionMatch[1]}${mentionMatch[3] ?? ""}`
+      : normalized;
+
+  const lowered = commandBody.toLowerCase();
   const exact = TEXT_ALIAS_MAP.get(lowered);
   if (exact) return exact.canonical;
 
-  const tokenMatch = normalized.match(/^\/([^\s]+)(?:\s+([\s\S]+))?$/);
-  if (!tokenMatch) return normalized;
+  const tokenMatch = commandBody.match(/^\/([^\s]+)(?:\s+([\s\S]+))?$/);
+  if (!tokenMatch) return commandBody;
   const [, token, rest] = tokenMatch;
   const tokenKey = `/${token.toLowerCase()}`;
   const tokenSpec = TEXT_ALIAS_MAP.get(tokenKey);
-  if (!tokenSpec) return normalized;
-  if (rest && !tokenSpec.acceptsArgs) return normalized;
+  if (!tokenSpec) return commandBody;
+  if (rest && !tokenSpec.acceptsArgs) return commandBody;
   const normalizedRest = rest?.trimStart();
   return normalizedRest
     ? `${tokenSpec.canonical} ${normalizedRest}`

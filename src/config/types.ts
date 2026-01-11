@@ -153,6 +153,10 @@ export type WhatsAppConfig = {
   groupPolicy?: GroupPolicy;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   /** Outbound text chunk size (chars). Default: 4000. */
   textChunkLimit?: number;
   /** Maximum media file size in MB. Default: 50. */
@@ -206,6 +210,10 @@ export type WhatsAppAccountConfig = {
   groupPolicy?: GroupPolicy;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   textChunkLimit?: number;
   mediaMaxMb?: number;
   blockStreaming?: boolean;
@@ -385,6 +393,10 @@ export type TelegramAccountConfig = {
   groupPolicy?: GroupPolicy;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   /** Outbound text chunk size (chars). Default: 4000. */
   textChunkLimit?: number;
   /** Disable block streaming for this account. */
@@ -528,6 +540,10 @@ export type DiscordAccountConfig = {
   maxLinesPerMessage?: number;
   mediaMaxMb?: number;
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   /** Retry policy for outbound Discord API calls. */
   retry?: OutboundRetryConfig;
   /** Per-action tool gating (default: true for all). */
@@ -624,6 +640,10 @@ export type SlackAccountConfig = {
   groupPolicy?: GroupPolicy;
   /** Max channel messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   textChunkLimit?: number;
   blockStreaming?: boolean;
   /** Merge streamed block replies before sending. */
@@ -683,6 +703,10 @@ export type SignalAccountConfig = {
   groupPolicy?: GroupPolicy;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   /** Outbound text chunk size (chars). Default: 4000. */
   textChunkLimit?: number;
   blockStreaming?: boolean;
@@ -758,6 +782,10 @@ export type MSTeamsConfig = {
   requireMention?: boolean;
   /** Max group/channel messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   /** Default reply style: "thread" replies to the message, "top-level" posts a new message. */
   replyStyle?: MSTeamsReplyStyle;
   /** Per-team config. Key is team ID (from the /team/ URL path segment). */
@@ -794,6 +822,10 @@ export type IMessageAccountConfig = {
   groupPolicy?: GroupPolicy;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
+  /** Max DM turns to keep as history context. */
+  dmHistoryLimit?: number;
+  /** Per-DM config overrides keyed by user ID. */
+  dms?: Record<string, DmConfig>;
   /** Include attachments + reactions in watch payloads. */
   includeAttachments?: boolean;
   /** Max outbound media size in MB. */
@@ -928,6 +960,10 @@ export type SandboxPruneSettings = {
 
 export type GroupChatConfig = {
   mentionPatterns?: string[];
+  historyLimit?: number;
+};
+
+export type DmConfig = {
   historyLimit?: number;
 };
 
