@@ -41,6 +41,20 @@ export type AudioConfig = {
     command: string[];
     timeoutSeconds?: number;
   };
+  reply?: {
+    // Optional CLI to turn reply text into audio; templated args.
+    // Use {{ReplyText}} or {{ReplyTextFile}} (path with reply text) and {{ReplyAudioPath}}.
+    // Command should print MEDIA:<path> to stdout (or write to ReplyAudioPath).
+    command: string[];
+    timeoutSeconds?: number;
+    /**
+     * When true, suppress text replies and only send synthesized voice.
+     * Text is still accumulated internally for voice synthesis.
+     * Only applies when inbound message is audio.
+     * Default: false (send both text and voice).
+     */
+    voiceOnly?: boolean;
+  };
 };
 
 export type MessagesConfig = {
