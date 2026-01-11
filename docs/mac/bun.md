@@ -42,8 +42,8 @@ Important bundler flags:
 - `--compile`: produces a standalone executable
 - `--bytecode`: reduces startup time / parsing overhead (works here)
 - externals:
-  - `-e electron`
-  - Reason: avoid bundling Electron stubs in the relay binary
+  - `-e electron` – avoid bundling Electron stubs
+  - `-e playwright-core` – load from `node_modules/` at runtime (required for browser automation)
 
 Version injection:
 - `--define "__CLAWDIS_VERSION__=\"<pkg version>\""`

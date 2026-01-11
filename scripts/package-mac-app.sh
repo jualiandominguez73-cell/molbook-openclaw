@@ -112,6 +112,7 @@ if [[ "${SKIP_GATEWAY_PACKAGE:-0}" != "1" ]]; then
 	    --bytecode \
 	    --outfile "$RELAY_OUT" \
 	    -e electron \
+	    -e playwright-core \
 	    --define "__CLAWDIS_VERSION__=\\\"$PKG_VERSION\\\""
 	  chmod +x "$RELAY_OUT"
 
@@ -126,6 +127,25 @@ if [[ "${SKIP_GATEWAY_PACKAGE:-0}" != "1" ]]; then
   echo "🧠 Copying bundled skills"
   rm -rf "$RELAY_DIR/skills"
   cp -R "$ROOT_DIR/skills" "$RELAY_DIR/skills"
+
+  echo "🎭 Bundling playwright-core for browser automation"
+  rm -rf "$RELAY_DIR/node_modules"
+  mkdir -p "$RELAY_DIR/node_modules/playwright-core"
+  if [ -d "$ROOT_DIR/node_modules/playwright-core" ]; then
+    cp -R "$ROOT_DIR/node_modules/playwright-core/"* "$RELAY_DIR/node_modules/playwright-core/"
+    echo "✓ playwright-core bundled successfully"
+  else
+    echo "WARN: playwright-core not found at $ROOT_DIR/node_modules/playwright-core (browser actions will be unavailable)" >&2
+  fi
+
+  echo "🌐 Bundling chromium-bidi for CDP protocol"
+  if [ -d "$ROOT_DIR/node_modules/chromium-bidi" ]; then
+    mkdir -p "$RELAY_DIR/node_modules/chromium-bidi"
+    cp -R "$ROOT_DIR/node_modules/chromium-bidi/"* "$RELAY_DIR/node_modules/chromium-bidi/"
+    echo "✓ chromium-bidi bundled successfully"
+  else
+    echo "WARN: chromium-bidi not found at $ROOT_DIR/node_modules/chromium-bidi (continuing)" >&2
+  fi
 
   echo "📄 Writing embedded runtime package.json (Pi compatibility)"
   cat > "$RELAY_DIR/package.json" <<JSON
