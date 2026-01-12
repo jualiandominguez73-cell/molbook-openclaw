@@ -158,6 +158,7 @@ Notes:
 - `agents.list[].groupChat.mentionPatterns` (or `messages.groupChat.mentionPatterns`) also count as mentions for guild messages.
 - Multi-agent override: set per-agent patterns on `agents.list[].groupChat.mentionPatterns`.
 - If `channels` is present, any channel not listed is denied by default.
+- Bot-authored messages are ignored by default; set `discord.allowBots=true` to allow them (own messages remain filtered).
 
 ### 6) Verify it works
 1. Start the gateway.
