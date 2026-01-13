@@ -1,4 +1,9 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import { resolveAgentWorkspaceDir } from "../agents/agent-scope.js";
 import { resolveEffectiveMessagesConfig } from "../agents/identity.js";
+import { DEFAULT_HEARTBEAT_FILENAME } from "../agents/workspace.js";
 import {
   DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   DEFAULT_HEARTBEAT_EVERY,
@@ -46,6 +51,32 @@ type HeartbeatDeps = OutboundSendDeps &
 
 const log = createSubsystemLogger("gateway/heartbeat");
 let heartbeatsEnabled = true;
+
+async function describeHeartbeatFile(
+  cfg: ClawdbotConfig,
+  sessionKey: string,
+) {
+  const agentId = resolveAgentIdFromSessionKey(sessionKey);
+  const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+  const heartbeatPath = path.join(workspaceDir, DEFAULT_HEARTBEAT_FILENAME);
+  try {
+    const stat = await fs.stat(heartbeatPath);
+    return {
+      workspaceDir,
+      heartbeatPath,
+      exists: stat.isFile(),
+      size: stat.size,
+      mtimeMs: stat.mtimeMs,
+    };
+  } catch (error) {
+    return {
+      workspaceDir,
+      heartbeatPath,
+      exists: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
 
 export function setHeartbeatsEnabled(enabled: boolean) {
   heartbeatsEnabled = enabled;
@@ -240,6 +271,12 @@ export async function runHeartbeatOnce(opts: {
     provider: senderProvider,
   });
   const prompt = resolveHeartbeatPrompt(cfg);
+  const heartbeatFileInfo = await describeHeartbeatFile(cfg, sessionKey);
+  log.debug("heartbeat: workspace heartbeat file", {
+    ...heartbeatFileInfo,
+    promptLength: prompt.length,
+    promptMentionsHeartbeatFile: /HEARTBEAT\\.md/i.test(prompt),
+  });
   const ctx = {
     Body: prompt,
     From: sender,
