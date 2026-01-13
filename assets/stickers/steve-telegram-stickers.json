@@ -1,0 +1,131 @@
+{
+  "pack_name": "steve_fox_by_Steve_The_AI_Bot",
+  "pack_url": "https://t.me/addstickers/steve_fox_by_Steve_The_AI_Bot",
+  "stickers": {
+    "neutral": {
+      "emoji": "😐",
+      "file_id": "CAACAgEAAxUAAWlkmAABKJE-BnON7wKUAWHLUXyd2AACjwUAAn8kIEedlalFKC5vNDgE",
+      "description": "Neutral/deadpan expression"
+    },
+    "happy": {
+      "emoji": "😊",
+      "file_id": "CAACAgEAAxUAAWlkmAABQRwOdPFUjZgU6m0q9DvPAgACgQgAAo1JKEeg0FUi-fZRvDgE",
+      "description": "Happy smile"
+    },
+    "sad": {
+      "emoji": "😢",
+      "file_id": "CAACAgEAAxUAAWlkmAABLAUa1zdirAjlTMYnp_5plAAC9QUAAnRDKEcbUJ3nqkN2STgE",
+      "description": "Sad/disappointed"
+    },
+    "thinking": {
+      "emoji": "🤔",
+      "file_id": "CAACAgEAAxUAAWlkmAABlqktNCnCrH-WfbX5X8WnLAAC5wYAAvEKIUd7aWHtrhwIbTgE",
+      "description": "Thinking/pondering"
+    },
+    "looking": {
+      "emoji": "👀",
+      "file_id": "CAACAgEAAxUAAWlkmAAB5Up8ZEao4OP36368W0peUgACFAUAAkI8IEcd8cDBUvhejTgE",
+      "description": "Looking/watching/curious"
+    },
+    "surprised": {
+      "emoji": "😮",
+      "file_id": "CAACAgEAAxUAAWlkmAABZtuAz7drGd3g3-kkTZ5qggACcgcAAtZ8KEeyHxXjtmkcXjgE",
+      "description": "Surprised/shocked"
+    },
+    "smirk": {
+      "emoji": "😏",
+      "file_id": "CAACAgEAAxUAAWlkmAABBRYlkf97_wFduxkT6dJHFgACxREAAvrYKEeAKLJc7ghHzjgE",
+      "description": "Smirk/sly smile"
+    },
+    "pirate": {
+      "emoji": "🏴‍☠️",
+      "file_id": "CAACAgEAAxUAAWlkmAABPqWzwxlhNH_sWCA1zLwJAAQGAAJpciFH9tueftuh4Q04BA",
+      "description": "Pirate Steve"
+    },
+    "smart": {
+      "emoji": "🎓",
+      "file_id": "CAACAgEAAxUAAWlkmAABnct11dpGVfu0Yap4ctyooAACyAgAAhh9KUeKE70ULaFNpzgE",
+      "description": "Graduate/smart/scholarly"
+    },
+    "santa": {
+      "emoji": "🎅",
+      "file_id": "CAACAgEAAxUAAWlkmAAB3-Sh2_fFBjsfon4CPWSsxwACYAUAAmkgKEctCZwDu_IT5DgE",
+      "description": "Santa Steve"
+    },
+    "fancy": {
+      "emoji": "🎩",
+      "file_id": "CAACAgEAAxUAAWlkmAABlEu225ezZSeDUPzgn6fhYQAChgcAAoQKIEemYYltAfXNkjgE",
+      "description": "Fancy/top hat"
+    },
+    "slight_smile": {
+      "emoji": "🙂",
+      "file_id": "CAACAgEAAxUAAWlkmAABqIaXuNtOKsxX8Qq-HfmN7wACFQcAAjqeKUfkBr_7umMSHjgE",
+      "description": "Slight smile/content"
+    },
+    "ghost": {
+      "emoji": "👻",
+      "file_id": "CAACAgEAAxUAAWlkmAABgB2GOwZp6Pi8a1PN54Nv0AACUgYAAgE2KUcWURCBVFQJOzgE",
+      "description": "Spooky ghost Steve"
+    },
+    "reindeer": {
+      "emoji": "🦌",
+      "file_id": "CAACAgEAAxUAAWlkmAABDG4WVBwN7ZWxYM-9-rAY2QAClgYAAuM8IEdrhx2srApbMTgE",
+      "description": "Reindeer Steve"
+    },
+    "chef": {
+      "emoji": "👨‍🍳",
+      "file_id": "CAACAgEAAxUAAWlkmAABu-0s0JRxdi0L6425hcy9HAACcwYAAmJlKUc0c9Zj_dgmDjgE",
+      "description": "Chef Steve"
+    },
+    "crying": {
+      "emoji": "😢",
+      "file_id": "CAACAgEAAxUAAWlkmAABvLqmZIoMU388X-54fSntBwAChAUAAuBbKEfRVu2VZD8UajgE",
+      "description": "Crying"
+    },
+    "love": {
+      "emoji": "😍",
+      "file_id": "CAACAgEAAxUAAWllDuNf243GEkgFBp-qjIczV-jRAAIkBwACQ_UhR5Yz-1GDcJ7fOAQ",
+      "description": "Heart eyes/in love"
+    },
+    "wink": {
+      "emoji": "😉",
+      "file_id": "CAACAgEAAxUAAWllDuPRboqNQ_a9JtuowRJlE246AAJ2BgACjl4gR2wV_vSvq9JgOAQ",
+      "description": "Winking"
+    },
+    "kiss": {
+      "emoji": "😘",
+      "file_id": "CAACAgEAAxUAAWllDuOwhxxtZp8n2TXAdy3gk8D8AAJ-BQAC9MopR4pCbxW7GDjaOAQ",
+      "description": "Blowing a kiss"
+    },
+    "laughing": {
+      "emoji": "🤣",
+      "file_id": "CAACAgEAAxUAAWllDuMnWN7eHGoyC_G595a2KeLKAAJ8BgACvIIpR9-0ayGnUk9fOAQ",
+      "description": "Laughing hard"
+    },
+    "party": {
+      "emoji": "🥳",
+      "file_id": "CAACAgEAAxUAAWllDuMxem1IEmuA0aCJYSIV9MH9AAIcBgACYGgpRwNw54AitPgAATgE",
+      "description": "Party/celebration"
+    },
+    "sobbing": {
+      "emoji": "😭",
+      "file_id": "CAACAgEAAxUAAWllDuM6HkUGhw2r_FXAJfQKA9J9AAJ6BQACxPwpR-t-dmyhDpMmOAQ",
+      "description": "Crying hard/sobbing"
+    },
+    "thumbs_up": {
+      "emoji": "👍",
+      "file_id": "CAACAgEAAxUAAWllDuNAEonsZwKF6IFc1nhf797TAAL2BwACidQhR7QLgON_maOMOAQ",
+      "description": "Thumbs up/approval"
+    }
+  },
+  "usage_guide": {
+    "greetings": ["happy", "wink", "slight_smile"],
+    "acknowledgment": ["thumbs_up", "looking"],
+    "humor": ["laughing", "smirk", "wink"],
+    "sympathy": ["sad", "crying", "sobbing"],
+    "celebration": ["party", "happy", "love"],
+    "working": ["thinking", "smart", "looking"],
+    "affection": ["love", "kiss", "happy"],
+    "seasonal": ["santa", "reindeer", "ghost"]
+  }
+}
