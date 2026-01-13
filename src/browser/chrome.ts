@@ -94,8 +94,20 @@ async function fetchChromeVersion(
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const base = cdpUrl.replace(/\/$/, "");
-    const res = await fetch(`${base}/json/version`, {
+    const u = new URL(`${base}/json/version`);
+    const username = u.username;
+    const password = u.password;
+    u.username = "";
+    u.password = "";
+    const headers = new Headers();
+    if (username || password) {
+      const auth = Buffer.from(`${username}:${password}`).toString("base64");
+      headers.set("Authorization", `Basic ${auth}`);
+    }
+
+    const res = await fetch(u.toString(), {
       signal: ctrl.signal,
+      headers,
     });
     if (!res.ok) return null;
     const data = (await res.json()) as ChromeVersion;

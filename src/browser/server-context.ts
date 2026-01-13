@@ -53,7 +53,22 @@ async function fetchJson<T>(
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    const u = new URL(url);
+    const username = u.username;
+    const password = u.password;
+    u.username = "";
+    u.password = "";
+    const headers = new Headers(init?.headers);
+    if ((username || password) && !headers.has("Authorization")) {
+      const auth = Buffer.from(`${username}:${password}`).toString("base64");
+      headers.set("Authorization", `Basic ${auth}`);
+    }
+
+    const res = await fetch(u.toString(), {
+      ...init,
+      headers,
+      signal: ctrl.signal,
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as T;
   } finally {
@@ -69,10 +84,158 @@ async function fetchOk(
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    const u = new URL(url);
+    const username = u.username;
+    const password = u.password;
+    u.username = "";
+    u.password = "";
+    const headers = new Headers(init?.headers);
+    if ((username || password) && !headers.has("Authorization")) {
+      const auth = Buffer.from(`${username}:${password}`).toString("base64");
+      headers.set("Authorization", `Basic ${auth}`);
+    }
+
+    const res = await fetch(u.toString(), {
+      ...init,
+      headers,
+      signal: ctrl.signal,
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } finally {
     clearTimeout(t);
+  }
+}
+
+/**
+ * For remote profiles (like Browserless), we need to use Playwright's persistent
+ * connection instead of transient HTTP/CDP calls. This is because Browserless
+ * destroys browser sessions when WebSocket connections close.
+ */
+async function listTabsViaPlaywright(cdpUrl: string): Promise<BrowserTab[]> {
+  try {
+    const mod = await import("./pw-session.js");
+    const page = await mod.getPageForTargetId({ cdpUrl }).catch(() => null);
+    if (!page) return [];
+
+    // Get all pages from the browser context
+    const browser = page.context().browser();
+    if (!browser) return [];
+
+    const contexts = browser.contexts();
+    const allPages = contexts.flatMap((c) => c.pages());
+
+    const tabs: BrowserTab[] = [];
+    for (const p of allPages) {
+      try {
+        const session = await p.context().newCDPSession(p);
+        const info = (await session.send("Target.getTargetInfo")) as {
+          targetInfo?: { targetId?: string };
+        };
+        await session.detach().catch(() => {});
+
+        const targetId = String(info?.targetInfo?.targetId ?? "").trim();
+        if (targetId) {
+          tabs.push({
+            targetId,
+            title: await p.title().catch(() => ""),
+            url: p.url(),
+            wsUrl: undefined, // Not needed for Playwright
+            type: "page",
+          });
+        }
+      } catch {
+        // Skip pages we can't inspect
+      }
+    }
+    return tabs;
+  } catch {
+    return [];
+  }
+}
+
+async function openTabViaPlaywright(
+  cdpUrl: string,
+  url: string,
+): Promise<BrowserTab | null> {
+  try {
+    const mod = await import("./pw-session.js");
+
+    // First ensure we have a connection
+    let page = await mod.getPageForTargetId({ cdpUrl }).catch(() => null);
+
+    // Get or create a browser context
+    const browser = page?.context()?.browser();
+    if (!browser) {
+      // Force a new connection by getting any page
+      page = await mod.getPageForTargetId({ cdpUrl });
+    }
+
+    const context = page?.context();
+    if (!context) throw new Error("No browser context available");
+
+    // Create a new page and navigate
+    const newPage = await context.newPage();
+    await newPage.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+
+    // Get the target ID
+    const session = await newPage.context().newCDPSession(newPage);
+    const info = (await session.send("Target.getTargetInfo")) as {
+      targetInfo?: { targetId?: string };
+    };
+    await session.detach().catch(() => {});
+
+    const targetId = String(info?.targetInfo?.targetId ?? "").trim();
+    if (!targetId) throw new Error("Failed to get targetId for new page");
+
+    return {
+      targetId,
+      title: await newPage.title().catch(() => ""),
+      url: newPage.url(),
+      wsUrl: undefined,
+      type: "page",
+    };
+  } catch (err) {
+    console.error("[browser] openTabViaPlaywright failed:", err);
+    return null;
+  }
+}
+
+async function closeTabViaPlaywright(
+  cdpUrl: string,
+  targetId: string,
+): Promise<boolean> {
+  try {
+    const mod = await import("./pw-session.js");
+    const page = await mod.getPageForTargetId({ cdpUrl }).catch(() => null);
+    if (!page) return false;
+
+    const browser = page.context().browser();
+    if (!browser) return false;
+
+    // Find the page with matching targetId
+    const contexts = browser.contexts();
+    for (const ctx of contexts) {
+      for (const p of ctx.pages()) {
+        try {
+          const session = await p.context().newCDPSession(p);
+          const info = (await session.send("Target.getTargetInfo")) as {
+            targetInfo?: { targetId?: string };
+          };
+          await session.detach().catch(() => {});
+
+          const tid = String(info?.targetInfo?.targetId ?? "").trim();
+          if (tid === targetId) {
+            await p.close();
+            return true;
+          }
+        } catch {
+          // Skip
+        }
+      }
+    }
+    return false;
+  } catch {
+    return false;
   }
 }
 
@@ -104,7 +267,16 @@ function createProfileContext(
     profileState.running = running;
   };
 
+  // Use Playwright for remote profiles, HTTP for local
+  const isRemote = !profile.cdpIsLoopback;
+
   const listTabs = async (): Promise<BrowserTab[]> => {
+    if (isRemote) {
+      // Use Playwright's persistent connection for remote profiles
+      return await listTabsViaPlaywright(profile.cdpUrl);
+    }
+
+    // Local profile - use HTTP
     const raw = await fetchJson<
       Array<{
         id?: string;
@@ -126,6 +298,14 @@ function createProfileContext(
   };
 
   const openTab = async (url: string): Promise<BrowserTab> => {
+    if (isRemote) {
+      // Use Playwright for remote profiles
+      const tab = await openTabViaPlaywright(profile.cdpUrl, url);
+      if (tab) return tab;
+      throw new Error("Failed to open tab via Playwright");
+    }
+
+    // Local profile - use existing logic
     const createdViaCdp = await createTargetViaCdp({
       cdpUrl: profile.cdpUrl,
       url,
@@ -175,6 +355,16 @@ function createProfileContext(
   };
 
   const isReachable = async (timeoutMs = 300) => {
+    if (isRemote) {
+      // For remote profiles, try to connect via Playwright
+      try {
+        const mod = await import("./pw-session.js");
+        const page = await mod.getPageForTargetId({ cdpUrl: profile.cdpUrl });
+        return Boolean(page);
+      } catch {
+        return false;
+      }
+    }
     const wsTimeout = Math.max(200, Math.min(2000, timeoutMs * 2));
     return await isChromeCdpReady(profile.cdpUrl, timeoutMs, wsTimeout);
   };
@@ -201,6 +391,20 @@ function createProfileContext(
     const current = state();
     const remoteCdp = !profile.cdpIsLoopback;
     const profileState = getProfileState();
+
+    if (remoteCdp) {
+      // For remote profiles, just verify we can connect via Playwright
+      try {
+        const mod = await import("./pw-session.js");
+        await mod.getPageForTargetId({ cdpUrl: profile.cdpUrl });
+        return;
+      } catch (err) {
+        throw new Error(
+          `Remote CDP for profile "${profile.name}" is not reachable at ${profile.cdpUrl}. Error: ${err}`,
+        );
+      }
+    }
+
     const httpReachable = await isHttpReachable();
 
     if (!httpReachable) {
@@ -282,11 +486,20 @@ function createProfileContext(
     if (chosen === "AMBIGUOUS") {
       throw new Error("ambiguous target id prefix");
     }
-    if (!chosen?.wsUrl) throw new Error("tab not found");
+    if (!chosen) throw new Error("tab not found");
     return chosen;
   };
 
   const focusTab = async (targetId: string): Promise<void> => {
+    if (isRemote) {
+      // For remote, focusing is not really applicable in headless mode
+      // Just verify the tab exists
+      const tabs = await listTabs();
+      const found = tabs.find((t) => t.targetId === targetId);
+      if (!found) throw new Error("tab not found");
+      return;
+    }
+
     const base = profile.cdpUrl.replace(/\/$/, "");
     const tabs = await listTabs();
     const resolved = resolveTargetIdFromTabs(targetId, tabs);
@@ -300,6 +513,12 @@ function createProfileContext(
   };
 
   const closeTab = async (targetId: string): Promise<void> => {
+    if (isRemote) {
+      const success = await closeTabViaPlaywright(profile.cdpUrl, targetId);
+      if (!success) throw new Error("tab not found");
+      return;
+    }
+
     const base = profile.cdpUrl.replace(/\/$/, "");
     const tabs = await listTabs();
     const resolved = resolveTargetIdFromTabs(targetId, tabs);
@@ -313,6 +532,17 @@ function createProfileContext(
   };
 
   const stopRunningBrowser = async (): Promise<{ stopped: boolean }> => {
+    if (isRemote) {
+      // For remote profiles, close the Playwright connection
+      try {
+        const mod = await import("./pw-ai.js");
+        await mod.closePlaywrightBrowserConnection();
+        return { stopped: true };
+      } catch {
+        return { stopped: false };
+      }
+    }
+
     const profileState = getProfileState();
     if (!profileState.running) return { stopped: false };
     await stopClawdChrome(profileState.running);
@@ -322,10 +552,16 @@ function createProfileContext(
 
   const resetProfile = async () => {
     if (!profile.cdpIsLoopback) {
-      throw new Error(
-        `reset-profile is only supported for local profiles (profile "${profile.name}" is remote).`,
-      );
+      // For remote profiles, just close the connection
+      try {
+        const mod = await import("./pw-ai.js");
+        await mod.closePlaywrightBrowserConnection();
+      } catch {
+        // ignore
+      }
+      return { moved: false, from: profile.cdpUrl };
     }
+
     const userDataDir = resolveClawdUserDataDir(profile.name);
     const profileState = getProfileState();
 
@@ -420,10 +656,10 @@ export function createBrowserRouteContext(
       } else {
         // Check if something is listening on the port
         try {
-          const reachable = await isChromeReachable(profile.cdpUrl, 200);
+          const ctx = createProfileContext(opts, profile);
+          const reachable = await ctx.isReachable(300);
           if (reachable) {
             running = true;
-            const ctx = createProfileContext(opts, profile);
             const tabs = await ctx.listTabs().catch(() => []);
             tabCount = tabs.filter((t) => t.type === "page").length;
           }

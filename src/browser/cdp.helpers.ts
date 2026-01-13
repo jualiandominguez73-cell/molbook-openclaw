@@ -85,7 +85,17 @@ export async function fetchJson<T>(url: string, timeoutMs = 1500): Promise<T> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: ctrl.signal });
+    const u = new URL(url);
+    const username = u.username;
+    const password = u.password;
+    u.username = "";
+    u.password = "";
+    const headers = new Headers();
+    if (username || password) {
+      const auth = Buffer.from(`${username}:${password}`).toString("base64");
+      headers.set("Authorization", `Basic ${auth}`);
+    }
+    const res = await fetch(u.toString(), { signal: ctrl.signal, headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as T;
   } finally {
