@@ -434,3 +434,8 @@ Example:
 - Container not running: it will auto-create per session on demand.
 - Permission errors in sandbox: set `docker.user` to a UID:GID that matches your
   mounted workspace ownership (or chown the workspace folder).
+- Custom tools not found: if you add tools to a custom image and they're not accessible,
+  ensure PATH is set correctly. Clawdbot runs commands with `sh -lc` (login shell), which
+  sources `/etc/profile` and may reset PATH. Set `docker.env.PATH` in your sandbox config
+  to prepend custom paths (e.g., `/custom/bin:/usr/local/share/npm-global/bin`), or add
+  a script to `/etc/profile.d/` in your Dockerfile.

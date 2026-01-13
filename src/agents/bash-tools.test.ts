@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetProcessRegistryForTests } from "./bash-process-registry.js";
 import {
+  buildDockerExecArgs,
   createExecTool,
   createProcessTool,
   execTool,
@@ -250,5 +251,86 @@ describe("exec tool backgrounding", () => {
       sessionId: sessionA,
     });
     expect(pollB.details.status).toBe("failed");
+  });
+});
+
+describe("buildDockerExecArgs", () => {
+  it("prepends custom PATH after login shell sourcing to preserve both custom and system tools", () => {
+    // Login shell (-l) sources /etc/profile which resets PATH to a minimal set,
+    // overriding both Docker ENV and -e PATH=... environment variables.
+    // This test verifies custom PATH is prepended (not replaced) inside the command
+    // so custom tools are accessible while system paths from /etc/profile are preserved.
+    const args = buildDockerExecArgs({
+      containerName: "test-container",
+      command: "echo hello",
+      env: {
+        PATH: "/custom/bin:/usr/local/bin:/usr/bin",
+        HOME: "/home/user",
+      },
+      tty: false,
+    });
+
+    // Should prepend custom PATH to existing $PATH (not replace it)
+    const commandArg = args[args.length - 1];
+    expect(commandArg).toContain(
+      'export PATH="/custom/bin:/usr/local/bin:/usr/bin:$PATH"',
+    );
+    expect(commandArg).toContain("echo hello");
+    // The $PATH is literal in the string, so we check the exact format
+    expect(commandArg).toBe(
+      'export PATH="/custom/bin:/usr/local/bin:/usr/bin:$PATH"; echo hello',
+    );
+  });
+
+  it("does not add PATH export when PATH is not in env", () => {
+    const args = buildDockerExecArgs({
+      containerName: "test-container",
+      command: "echo hello",
+      env: {
+        HOME: "/home/user",
+      },
+      tty: false,
+    });
+
+    const commandArg = args[args.length - 1];
+    expect(commandArg).toBe("echo hello");
+    expect(commandArg).not.toContain("export PATH");
+  });
+
+  it("includes workdir flag when specified", () => {
+    const args = buildDockerExecArgs({
+      containerName: "test-container",
+      command: "pwd",
+      workdir: "/workspace",
+      env: { HOME: "/home/user" },
+      tty: false,
+    });
+
+    expect(args).toContain("-w");
+    expect(args).toContain("/workspace");
+  });
+
+  it("uses login shell for consistent environment", () => {
+    const args = buildDockerExecArgs({
+      containerName: "test-container",
+      command: "echo test",
+      env: { HOME: "/home/user" },
+      tty: false,
+    });
+
+    // Should use sh with -lc (login shell + command)
+    expect(args).toContain("sh");
+    expect(args).toContain("-lc");
+  });
+
+  it("includes tty flag when requested", () => {
+    const args = buildDockerExecArgs({
+      containerName: "test-container",
+      command: "bash",
+      env: { HOME: "/home/user" },
+      tty: true,
+    });
+
+    expect(args).toContain("-t");
   });
 });

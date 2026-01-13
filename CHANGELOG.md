@@ -5,6 +5,8 @@
 ### Fixes
 - Packaging: include `dist/memory/**` in the npm tarball (fixes `ERR_MODULE_NOT_FOUND` for `dist/memory/index.js`).
 - Agents: persist sub-agent registry across gateway restarts and resume announce flow safely. (#831) — thanks @roshanasingh4.
+- Sandbox: restore `docker.binds` config field that was accidentally removed (fixes config validation errors for custom bind mounts). — thanks @akonyer.
+- Sandbox: preserve configured PATH when running commands via `docker exec` (login shell sources `/etc/profile` which resets PATH; now prepends custom PATH to preserve both custom tools and system paths). — thanks @akonyer.
 
 ## 2026.1.12-1
 
