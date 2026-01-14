@@ -14,9 +14,12 @@ export function registerSlackMemberEvents(params: {
 
   ctx.app.event(
     "member_joined_channel",
-    async ({ event }: SlackEventMiddlewareArgs<"member_joined_channel">) => {
+    async (args: SlackEventMiddlewareArgs<"member_joined_channel">) => {
       try {
-        const payload = event as SlackMemberChannelEvent;
+        if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+          return;
+        }
+        const payload = args.event as SlackMemberChannelEvent;
         const channelId = payload.channel;
         const channelInfo = channelId
           ? await ctx.resolveChannelName(channelId)
@@ -57,9 +60,12 @@ export function registerSlackMemberEvents(params: {
 
   ctx.app.event(
     "member_left_channel",
-    async ({ event }: SlackEventMiddlewareArgs<"member_left_channel">) => {
+    async (args: SlackEventMiddlewareArgs<"member_left_channel">) => {
       try {
-        const payload = event as SlackMemberChannelEvent;
+        if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+          return;
+        }
+        const payload = args.event as SlackMemberChannelEvent;
         const channelId = payload.channel;
         const channelInfo = channelId
           ? await ctx.resolveChannelName(channelId)

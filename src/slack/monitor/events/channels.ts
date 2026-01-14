@@ -17,9 +17,12 @@ export function registerSlackChannelEvents(params: {
 
   ctx.app.event(
     "channel_created",
-    async ({ event }: SlackEventMiddlewareArgs<"channel_created">) => {
+    async (args: SlackEventMiddlewareArgs<"channel_created">) => {
       try {
-        const payload = event as SlackChannelCreatedEvent;
+        if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+          return;
+        }
+        const payload = args.event as SlackChannelCreatedEvent;
         const channelId = payload.channel?.id;
         const channelName = payload.channel?.name;
         if (
@@ -50,9 +53,12 @@ export function registerSlackChannelEvents(params: {
 
   ctx.app.event(
     "channel_rename",
-    async ({ event }: SlackEventMiddlewareArgs<"channel_rename">) => {
+    async (args: SlackEventMiddlewareArgs<"channel_rename">) => {
       try {
-        const payload = event as SlackChannelRenamedEvent;
+        if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+          return;
+        }
+        const payload = args.event as SlackChannelRenamedEvent;
         const channelId = payload.channel?.id;
         const channelName =
           payload.channel?.name_normalized ?? payload.channel?.name;

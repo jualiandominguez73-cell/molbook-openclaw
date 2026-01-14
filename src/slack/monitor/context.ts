@@ -29,6 +29,7 @@ export type SlackMonitorContext = {
 
   botUserId: string;
   teamId: string;
+  apiAppId: string;
 
   historyLimit: number;
   channelHistories: Map<string, HistoryEntry[]>;
@@ -67,6 +68,7 @@ export type SlackMonitorContext = {
 
   logger: ReturnType<typeof getChildLogger>;
   markMessageSeen: (channelId: string | undefined, ts?: string) => boolean;
+  shouldDropMismatchedSlackEvent: (body: unknown) => boolean;
   resolveSlackSystemEventSessionKey: (params: {
     channelId?: string | null;
     channelType?: string | null;
@@ -99,6 +101,7 @@ export function createSlackMonitorContext(params: {
 
   botUserId: string;
   teamId: string;
+  apiAppId: string;
 
   historyLimit: number;
   sessionScope: SessionScope;
@@ -313,6 +316,28 @@ export function createSlackMonitorContext(params: {
     return true;
   };
 
+  const shouldDropMismatchedSlackEvent = (body: unknown) => {
+    if (!body || typeof body !== "object") return false;
+    const raw = body as { api_app_id?: unknown; team_id?: unknown };
+    const incomingApiAppId =
+      typeof raw.api_app_id === "string" ? raw.api_app_id : "";
+    const incomingTeamId = typeof raw.team_id === "string" ? raw.team_id : "";
+
+    if (params.apiAppId && incomingApiAppId && incomingApiAppId !== params.apiAppId) {
+      logVerbose(
+        `slack: drop event with api_app_id=${incomingApiAppId} (expected ${params.apiAppId})`,
+      );
+      return true;
+    }
+    if (params.teamId && incomingTeamId && incomingTeamId !== params.teamId) {
+      logVerbose(
+        `slack: drop event with team_id=${incomingTeamId} (expected ${params.teamId})`,
+      );
+      return true;
+    }
+    return false;
+  };
+
   return {
     cfg: params.cfg,
     accountId: params.accountId,
@@ -321,6 +346,7 @@ export function createSlackMonitorContext(params: {
     runtime: params.runtime,
     botUserId: params.botUserId,
     teamId: params.teamId,
+    apiAppId: params.apiAppId,
     historyLimit: params.historyLimit,
     channelHistories,
     sessionScope: params.sessionScope,
@@ -343,6 +369,7 @@ export function createSlackMonitorContext(params: {
     removeAckAfterReply: params.removeAckAfterReply,
     logger,
     markMessageSeen,
+    shouldDropMismatchedSlackEvent,
     resolveSlackSystemEventSessionKey,
     isChannelAllowed,
     resolveChannelName,

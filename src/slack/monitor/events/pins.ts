@@ -12,9 +12,12 @@ export function registerSlackPinEvents(params: { ctx: SlackMonitorContext }) {
 
   ctx.app.event(
     "pin_added",
-    async ({ event }: SlackEventMiddlewareArgs<"pin_added">) => {
+    async (args: SlackEventMiddlewareArgs<"pin_added">) => {
       try {
-        const payload = event as SlackPinEvent;
+        if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+          return;
+        }
+        const payload = args.event as SlackPinEvent;
         const channelId = payload.channel_id;
         const channelInfo = channelId
           ? await ctx.resolveChannelName(channelId)
@@ -59,9 +62,12 @@ export function registerSlackPinEvents(params: { ctx: SlackMonitorContext }) {
 
   ctx.app.event(
     "pin_removed",
-    async ({ event }: SlackEventMiddlewareArgs<"pin_removed">) => {
+    async (args: SlackEventMiddlewareArgs<"pin_removed">) => {
       try {
-        const payload = event as SlackPinEvent;
+        if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+          return;
+        }
+        const payload = args.event as SlackPinEvent;
         const channelId = payload.channel_id;
         const channelInfo = channelId
           ? await ctx.resolveChannelName(channelId)

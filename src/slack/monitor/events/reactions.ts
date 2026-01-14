@@ -90,15 +90,21 @@ export function registerSlackReactionEvents(params: {
 
   ctx.app.event(
     "reaction_added",
-    async ({ event }: SlackEventMiddlewareArgs<"reaction_added">) => {
-      await handleReactionEvent(event as SlackReactionEvent, "added");
+    async (args: SlackEventMiddlewareArgs<"reaction_added">) => {
+      if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+        return;
+      }
+      await handleReactionEvent(args.event as SlackReactionEvent, "added");
     },
   );
 
   ctx.app.event(
     "reaction_removed",
-    async ({ event }: SlackEventMiddlewareArgs<"reaction_removed">) => {
-      await handleReactionEvent(event as SlackReactionEvent, "removed");
+    async (args: SlackEventMiddlewareArgs<"reaction_removed">) => {
+      if (ctx.shouldDropMismatchedSlackEvent((args as { body?: unknown }).body)) {
+        return;
+      }
+      await handleReactionEvent(args.event as SlackReactionEvent, "removed");
     },
   );
 }
