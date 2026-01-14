@@ -1,17 +1,27 @@
-import type { OAuthCredentials } from "@mariozechner/pi-ai";
-import { resolveClawdbotAgentDir } from "../agents/agent-paths.js";
-import { upsertAuthProfile } from "../agents/auth-profiles.js";
-import { OPENCODE_ZEN_DEFAULT_MODEL_REF } from "../agents/opencode-zen-models.js";
-import {
-  buildSyntheticModelDefinition,
-  SYNTHETIC_BASE_URL,
+export {
   SYNTHETIC_DEFAULT_MODEL_ID,
   SYNTHETIC_DEFAULT_MODEL_REF,
-  SYNTHETIC_MODEL_CATALOG,
 } from "../agents/synthetic-models.js";
-import type { ClawdbotConfig } from "../config/config.js";
-import type { ModelDefinitionConfig } from "../config/types.js";
+export {
+  applyAuthProfileConfig,
+  applyMoonshotConfig,
+  applyMoonshotProviderConfig,
+  applyOpenrouterConfig,
+  applyOpenrouterProviderConfig,
+  applySyntheticConfig,
+  applySyntheticProviderConfig,
+  applyZaiConfig,
+} from "./onboard-auth.config-core.js";
+export {
+  applyMinimaxApiConfig,
+  applyMinimaxApiProviderConfig,
+  applyMinimaxConfig,
+  applyMinimaxHostedConfig,
+  applyMinimaxHostedProviderConfig,
+  applyMinimaxProviderConfig,
+} from "./onboard-auth.config-minimax.js";
 
+<<<<<<< HEAD
 const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 const MINIMAX_API_BASE_URL = "https://api.minimax.io/anthropic";
 export const MINIMAX_HOSTED_MODEL_ID = "MiniMax-M2.1";
@@ -782,3 +792,34 @@ export function applyOpencodeZenConfig(cfg: ClawdbotConfig): ClawdbotConfig {
     },
   };
 }
+=======
+export {
+  applyOpencodeZenConfig,
+  applyOpencodeZenProviderConfig,
+} from "./onboard-auth.config-opencode.js";
+export {
+  OPENROUTER_DEFAULT_MODEL_REF,
+  setAnthropicApiKey,
+  setGeminiApiKey,
+  setMinimaxApiKey,
+  setMoonshotApiKey,
+  setOpencodeZenApiKey,
+  setOpenrouterApiKey,
+  setSyntheticApiKey,
+  setZaiApiKey,
+  writeOAuthCredentials,
+  ZAI_DEFAULT_MODEL_REF,
+} from "./onboard-auth.credentials.js";
+export {
+  buildMinimaxApiModelDefinition,
+  buildMinimaxModelDefinition,
+  buildMoonshotModelDefinition,
+  DEFAULT_MINIMAX_BASE_URL,
+  MINIMAX_API_BASE_URL,
+  MINIMAX_HOSTED_MODEL_ID,
+  MINIMAX_HOSTED_MODEL_REF,
+  MOONSHOT_BASE_URL,
+  MOONSHOT_DEFAULT_MODEL_ID,
+  MOONSHOT_DEFAULT_MODEL_REF,
+} from "./onboard-auth.models.js";
+>>>>>>> upstream/main

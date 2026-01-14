@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { loginOpenAICodex, type OAuthCredentials } from "@mariozechner/pi-ai";
 import { resolveAgentModelPrimary } from "../agents/agent-scope.js";
 import {
@@ -1303,3 +1304,8 @@ const PREFERRED_PROVIDER_BY_AUTH_CHOICE: Partial<Record<AuthChoice, string>> = {
   minimax: "lmstudio",
   "opencode-zen": "opencode",
 };
+=======
+export { applyAuthChoice } from "./auth-choice.apply.js";
+export { warnIfModelConfigLooksOff } from "./auth-choice.model-check.js";
+export { resolvePreferredProviderForAuthChoice } from "./auth-choice.preferred-provider.js";
+>>>>>>> upstream/main

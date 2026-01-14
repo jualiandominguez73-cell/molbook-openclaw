@@ -2,8 +2,6 @@ import { html, nothing } from "lit";
 
 import { formatAgo } from "../format";
 import type {
-  ChannelAccountSnapshot,
-  ChannelsStatusSnapshot,
   DiscordStatus,
   IMessageStatus,
 <<<<<<< HEAD
@@ -17,19 +15,15 @@ import type {
   WhatsAppStatus,
 } from "../types";
 import type {
-  DiscordForm,
-  IMessageForm,
-  SlackForm,
-  SignalForm,
-  TelegramForm,
-} from "../ui-types";
-import type {
   ChannelKey,
   ConnectionsChannelData,
   ConnectionsProps,
 } from "./connections.types";
-import { channelEnabled, formatDuration, renderChannelAccountCount } from "./connections.shared";
-import { discordActionOptions, slackActionOptions } from "./connections.action-options";
+import { channelEnabled, renderChannelAccountCount } from "./connections.shared";
+import { renderDiscordCard } from "./connections.discord";
+import { renderIMessageCard } from "./connections.imessage";
+import { renderSignalCard } from "./connections.signal";
+import { renderSlackCard } from "./connections.slack";
 import { renderTelegramCard } from "./connections.telegram";
 import { renderWhatsAppCard } from "./connections.whatsapp";
 
@@ -595,6 +589,7 @@ function renderChannel(
         telegramAccounts: data.channelAccounts?.telegram ?? [],
         accountCountLabel,
       });
+<<<<<<< HEAD
 >>>>>>> upstream/main
     case "discord": {
       const discord = data.discord;
@@ -1908,6 +1903,32 @@ function renderChannel(
         </div>
       `;
     }
+=======
+    case "discord":
+      return renderDiscordCard({
+        props,
+        discord: data.discord,
+        accountCountLabel,
+      });
+    case "slack":
+      return renderSlackCard({
+        props,
+        slack: data.slack,
+        accountCountLabel,
+      });
+    case "signal":
+      return renderSignalCard({
+        props,
+        signal: data.signal,
+        accountCountLabel,
+      });
+    case "imessage":
+      return renderIMessageCard({
+        props,
+        imessage: data.imessage,
+        accountCountLabel,
+      });
+>>>>>>> upstream/main
     default:
       return nothing;
   }

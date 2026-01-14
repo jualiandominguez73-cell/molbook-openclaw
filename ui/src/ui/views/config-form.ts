@@ -1,6 +1,11 @@
-import { html, nothing, type TemplateResult } from "lit";
-import type { ConfigUiHint, ConfigUiHints } from "../types";
+export { renderConfigForm, type ConfigFormProps } from "./config-form.render";
+export {
+  analyzeConfigSchema,
+  type ConfigSchemaAnalysis,
+} from "./config-form.analyze";
+export type { JsonSchema } from "./config-form.shared";
 
+<<<<<<< HEAD
 export type ConfigFormProps = {
   schema: JsonSchema | null;
   uiHints: ConfigUiHints;
@@ -693,3 +698,5 @@ function normalizeEnumValues(values: unknown[]) {
   }
   return { enumValues: unique, nullable };
 }
+=======
+>>>>>>> upstream/main
