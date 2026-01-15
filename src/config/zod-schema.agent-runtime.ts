@@ -107,10 +107,15 @@ export const SandboxPruneSchema = z
   })
   .optional();
 
+export const ToolProfileSchema = z
+  .union([z.literal("minimal"), z.literal("coding"), z.literal("messaging"), z.literal("full")])
+  .optional();
+
 export const ToolPolicySchema = z
   .object({
     allow: z.array(z.string()).optional(),
     deny: z.array(z.string()).optional(),
+    profile: ToolProfileSchema,
   })
   .optional();
 
@@ -142,10 +147,6 @@ export const ToolsWebSchema = z
   })
   .optional();
 
-export const ToolProfileSchema = z
-  .union([z.literal("minimal"), z.literal("coding"), z.literal("messaging"), z.literal("full")])
-  .optional();
-
 // Provider docking: allowlists keyed by provider id (no schema updates when adding providers).
 export const ElevatedAllowFromSchema = z
   .record(z.string(), z.array(z.union([z.string(), z.number()])))
@@ -170,6 +171,7 @@ export const AgentToolsSchema = z
     profile: ToolProfileSchema,
     allow: z.array(z.string()).optional(),
     deny: z.array(z.string()).optional(),
+    byProvider: z.record(z.string(), ToolPolicySchema).optional(),
     elevated: z
       .object({
         enabled: z.boolean().optional(),
@@ -273,6 +275,7 @@ export const ToolsSchema = z
     profile: ToolProfileSchema,
     allow: z.array(z.string()).optional(),
     deny: z.array(z.string()).optional(),
+    byProvider: z.record(z.string(), ToolPolicySchema).optional(),
     web: ToolsWebSchema,
     audio: z
       .object({

@@ -1,4 +1,5 @@
 import type { ClawdbotConfig } from "../config/config.js";
+import type { ToolPolicyConfig } from "../config/types.tools.js";
 import { resolveAgentConfig, resolveAgentIdFromSessionKey } from "./agent-scope.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
 import type { SandboxToolPolicy } from "./sandbox.js";
@@ -40,12 +41,6 @@ export function filterToolsByPolicy(tools: AnyAgentTool[], policy?: SandboxToolP
   if (!policy) return tools;
   return tools.filter((tool) => isToolAllowedByPolicyName(tool.name, policy));
 }
-
-type ToolPolicyConfig = {
-  allow?: string[];
-  deny?: string[];
-  profile?: string;
-};
 
 function pickToolPolicy(config?: ToolPolicyConfig): SandboxToolPolicy | undefined {
   if (!config) return undefined;
