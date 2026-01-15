@@ -65,9 +65,13 @@ describe("clawdbot-tools: subagents", () => {
         const params = request.params as {
           message?: string;
           sessionKey?: string;
+          lane?: string;
         };
-        childRunId = runId;
-        childSessionKey = params?.sessionKey ?? "";
+        // Only capture the first agent call (subagent spawn, not main agent trigger)
+        if (params?.lane === "subagent") {
+          childRunId = runId;
+          childSessionKey = params?.sessionKey ?? "";
+        }
         return {
           runId,
           status: "accepted",
@@ -126,14 +130,21 @@ describe("clawdbot-tools: subagents", () => {
     // Cleanup should patch the label
     expect(patchParams.key).toBe(childSessionKey);
     expect(patchParams.label).toBe("my-task");
-    // No announce LLM step should run (no "Sub-agent announce step." agent call)
-    const announceCalls = calls.filter(
-      (c) =>
-        c.method === "agent" &&
-        (c.params as { message?: string })?.message === "Sub-agent announce step.",
-    );
-    expect(announceCalls.length).toBe(0);
-    // No send to external channel
+
+    // Two agent calls: subagent spawn + main agent trigger
+    const agentCalls = calls.filter((c) => c.method === "agent");
+    expect(agentCalls).toHaveLength(2);
+
+    // First call: subagent spawn
+    const first = agentCalls[0]?.params as { lane?: string } | undefined;
+    expect(first?.lane).toBe("subagent");
+
+    // Second call: main agent trigger (not "Sub-agent announce step." anymore)
+    const second = agentCalls[1]?.params as { sessionKey?: string; message?: string } | undefined;
+    expect(second?.sessionKey).toBe("main");
+    expect(second?.message).toContain("background task");
+
+    // No direct send to external channel (main agent handles delivery)
     const sendCalls = calls.filter((c) => c.method === "send");
     expect(sendCalls.length).toBe(0);
     expect(childSessionKey?.startsWith("agent:main:subagent:")).toBe(true);

@@ -56,11 +56,15 @@ describe("clawdbot-tools: subagents", () => {
           sessionKey?: string;
           channel?: string;
           timeout?: number;
+          lane?: string;
         };
-        childRunId = runId;
-        childSessionKey = params?.sessionKey ?? "";
-        expect(params?.channel).toBe("discord");
-        expect(params?.timeout).toBe(1);
+        // Only capture the first agent call (subagent spawn, not main agent trigger)
+        if (params?.lane === "subagent") {
+          childRunId = runId;
+          childSessionKey = params?.sessionKey ?? "";
+          expect(params?.channel).toBe("discord");
+          expect(params?.timeout).toBe(1);
+        }
         return {
           runId,
           status: "accepted",
@@ -70,8 +74,8 @@ describe("clawdbot-tools: subagents", () => {
       if (request.method === "agent.wait") {
         const params = request.params as { runId?: string; timeoutMs?: number } | undefined;
         waitCalls.push(params ?? {});
-        const status = params?.runId === childRunId ? "timeout" : "ok";
-        return { runId: params?.runId ?? "run-1", status };
+        // Return "ok" with timing info for the child run
+        return { runId: params?.runId ?? "run-1", status: "ok", startedAt: 1000, endedAt: 2000 };
       }
       if (request.method === "sessions.delete") {
         const params = request.params as { key?: string } | undefined;
@@ -115,9 +119,11 @@ describe("clawdbot-tools: subagents", () => {
     const childWait = waitCalls.find((call) => call.runId === childRunId);
     expect(childWait?.timeoutMs).toBe(1000);
 
-    // Only the subagent run, no announce step
+    // Two agent calls: subagent spawn + main agent trigger
     const agentCalls = calls.filter((call) => call.method === "agent");
-    expect(agentCalls).toHaveLength(1);
+    expect(agentCalls).toHaveLength(2);
+
+    // First call: subagent spawn
     const first = agentCalls[0]?.params as
       | {
           lane?: string;
@@ -132,7 +138,19 @@ describe("clawdbot-tools: subagents", () => {
     expect(first?.sessionKey?.startsWith("agent:main:subagent:")).toBe(true);
     expect(childSessionKey?.startsWith("agent:main:subagent:")).toBe(true);
 
-    // No send to external channel (subagent uses report_back tool instead)
+    // Second call: main agent trigger with announce message
+    const second = agentCalls[1]?.params as
+      | {
+          sessionKey?: string;
+          message?: string;
+          deliver?: boolean;
+        }
+      | undefined;
+    expect(second?.sessionKey).toBe("discord:group:req");
+    expect(second?.deliver).toBe(true);
+    expect(second?.message).toContain("background task");
+
+    // No direct send to external channel (main agent handles delivery)
     const sendCalls = calls.filter((c) => c.method === "send");
     expect(sendCalls.length).toBe(0);
 

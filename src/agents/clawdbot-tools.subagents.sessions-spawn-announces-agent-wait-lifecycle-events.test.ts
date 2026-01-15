@@ -55,11 +55,15 @@ describe("clawdbot-tools: subagents", () => {
           sessionKey?: string;
           channel?: string;
           timeout?: number;
+          lane?: string;
         };
-        childRunId = runId;
-        childSessionKey = params?.sessionKey ?? "";
-        expect(params?.channel).toBe("discord");
-        expect(params?.timeout).toBe(1);
+        // Only capture the first agent call (subagent spawn, not main agent trigger)
+        if (params?.lane === "subagent") {
+          childRunId = runId;
+          childSessionKey = params?.sessionKey ?? "";
+          expect(params?.channel).toBe("discord");
+          expect(params?.timeout).toBe(1);
+        }
         return {
           runId,
           status: "accepted",
@@ -108,11 +112,20 @@ describe("clawdbot-tools: subagents", () => {
     expect(childWait?.timeoutMs).toBe(1000);
     expect(childSessionKey?.startsWith("agent:main:subagent:")).toBe(true);
 
-    // No announce LLM step should run (no "Sub-agent announce step." agent call)
+    // Two agent calls: subagent spawn + main agent trigger
     const agentCalls = calls.filter((call) => call.method === "agent");
-    expect(agentCalls).toHaveLength(1); // Only the subagent run, no announce step
+    expect(agentCalls).toHaveLength(2);
 
-    // No send to external channel
+    // First call: subagent spawn
+    const first = agentCalls[0]?.params as { lane?: string } | undefined;
+    expect(first?.lane).toBe("subagent");
+
+    // Second call: main agent trigger
+    const second = agentCalls[1]?.params as { sessionKey?: string; deliver?: boolean } | undefined;
+    expect(second?.sessionKey).toBe("discord:group:req");
+    expect(second?.deliver).toBe(true);
+
+    // No direct send to external channel (main agent handles delivery)
     const sendCalls = calls.filter((c) => c.method === "send");
     expect(sendCalls.length).toBe(0);
 

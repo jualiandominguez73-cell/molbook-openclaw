@@ -3,6 +3,14 @@ import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import { listDeliverableMessageChannels } from "../utils/message-channel.js";
 import type { EmbeddedContextFile } from "./pi-embedded-helpers.js";
 
+/**
+ * Controls which hardcoded sections are included in the system prompt.
+ * - "full": All sections (default, for main agent)
+ * - "minimal": Reduced sections (Tooling, Workspace, Runtime) - used for subagents
+ * - "none": Just basic identity line, no sections
+ */
+export type PromptMode = "full" | "minimal" | "none";
+
 export function buildAgentSystemPrompt(params: {
   workspaceDir: string;
   defaultThinkLevel?: ThinkLevel;
@@ -18,8 +26,8 @@ export function buildAgentSystemPrompt(params: {
   contextFiles?: EmbeddedContextFile[];
   skillsPrompt?: string;
   heartbeatPrompt?: string;
-  /** When true, omits most sections (Skills, Memory, Heartbeats, etc.) to reduce token usage. */
-  isSubagent?: boolean;
+  /** Controls which hardcoded sections to include. Defaults to "full". */
+  promptMode?: PromptMode;
   runtimeInfo?: {
     host?: string;
     os?: string;
@@ -179,11 +187,12 @@ export function buildAgentSystemPrompt(params: {
   const runtimeCapabilitiesLower = new Set(runtimeCapabilities.map((cap) => cap.toLowerCase()));
   const inlineButtonsEnabled = runtimeCapabilitiesLower.has("inlinebuttons");
   const messageChannelOptions = listDeliverableMessageChannels().join("|");
-  const isSubagent = params.isSubagent ?? false;
+  const promptMode = params.promptMode ?? "full";
+  const isMinimal = promptMode === "minimal" || promptMode === "none";
   const skillsLines = skillsPrompt ? [skillsPrompt, ""] : [];
-  // Skip skills section for subagents
+  // Skip skills section for subagent/none modes
   const skillsSection =
-    skillsPrompt && !isSubagent
+    skillsPrompt && !isMinimal
       ? [
           "## Skills",
           `Skills provide task-specific instructions. Use \`${readToolName}\` to load the SKILL.md at the location listed for that skill.`,
@@ -191,15 +200,20 @@ export function buildAgentSystemPrompt(params: {
           "",
         ]
       : [];
-  // Skip memory section for subagents
+  // Skip memory section for subagent/none modes
   const memorySection =
-    !isSubagent && (availableTools.has("memory_search") || availableTools.has("memory_get"))
+    !isMinimal && (availableTools.has("memory_search") || availableTools.has("memory_get"))
       ? [
           "## Memory Recall",
           "Before answering anything about prior work, decisions, dates, people, preferences, or todos: run memory_search on MEMORY.md + memory/*.md; then use memory_get to pull only the needed lines. If low confidence after search, say you checked.",
           "",
         ]
       : [];
+
+  // For "none" mode, return just the basic identity line
+  if (promptMode === "none") {
+    return "You are a personal assistant running inside Clawdbot.";
+  }
 
   const lines = [
     "You are a personal assistant running inside Clawdbot.",
@@ -239,9 +253,9 @@ export function buildAgentSystemPrompt(params: {
     "",
     ...skillsSection,
     ...memorySection,
-    // Skip self-update for subagents
-    hasGateway && !isSubagent ? "## Clawdbot Self-Update" : "",
-    hasGateway && !isSubagent
+    // Skip self-update for subagent/none modes
+    hasGateway && !isMinimal ? "## Clawdbot Self-Update" : "",
+    hasGateway && !isMinimal
       ? [
           "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
           "Do not run config.apply or update.run unless the user explicitly requests an update or config change; if it's not explicit, ask first.",
@@ -249,19 +263,19 @@ export function buildAgentSystemPrompt(params: {
           "After restart, Clawdbot pings the last active session automatically.",
         ].join("\n")
       : "",
-    hasGateway && !isSubagent ? "" : "",
+    hasGateway && !isMinimal ? "" : "",
     "",
-    // Skip model aliases for subagents
-    params.modelAliasLines && params.modelAliasLines.length > 0 && !isSubagent
+    // Skip model aliases for subagent/none modes
+    params.modelAliasLines && params.modelAliasLines.length > 0 && !isMinimal
       ? "## Model Aliases"
       : "",
-    params.modelAliasLines && params.modelAliasLines.length > 0 && !isSubagent
+    params.modelAliasLines && params.modelAliasLines.length > 0 && !isMinimal
       ? "Prefer aliases when specifying model overrides; full provider/model is also accepted."
       : "",
-    params.modelAliasLines && params.modelAliasLines.length > 0 && !isSubagent
+    params.modelAliasLines && params.modelAliasLines.length > 0 && !isMinimal
       ? params.modelAliasLines.join("\n")
       : "",
-    params.modelAliasLines && params.modelAliasLines.length > 0 && !isSubagent ? "" : "",
+    params.modelAliasLines && params.modelAliasLines.length > 0 && !isMinimal ? "" : "",
     "## Workspace",
     `Your working directory is: ${params.workspaceDir}`,
     "Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise.",
@@ -319,10 +333,10 @@ export function buildAgentSystemPrompt(params: {
           .join("\n")
       : "",
     params.sandboxInfo?.enabled ? "" : "",
-    // Skip user identity for subagents
-    ownerLine && !isSubagent ? "## User Identity" : "",
-    ownerLine && !isSubagent ? ownerLine : "",
-    ownerLine && !isSubagent ? "" : "",
+    // Skip user identity for subagent/none modes
+    ownerLine && !isMinimal ? "## User Identity" : "",
+    ownerLine && !isMinimal ? ownerLine : "",
+    ownerLine && !isMinimal ? "" : "",
     "## Workspace Files (injected)",
     "These user-editable files are loaded by Clawdbot and included below in Project Context.",
     "",
@@ -334,8 +348,8 @@ export function buildAgentSystemPrompt(params: {
         }).`
       : "",
     userTimezone || userTime ? "" : "",
-    // Skip reply tags for subagents
-    ...(isSubagent
+    // Skip reply tags for subagent/none modes
+    ...(isMinimal
       ? []
       : [
           "## Reply Tags",
@@ -346,8 +360,8 @@ export function buildAgentSystemPrompt(params: {
           "Tags are stripped before sending; support depends on the current channel config.",
           "",
         ]),
-    // Skip messaging section for subagents
-    ...(isSubagent
+    // Skip messaging section for subagent/none modes
+    ...(isMinimal
       ? []
       : [
           "## Messaging",
@@ -375,8 +389,8 @@ export function buildAgentSystemPrompt(params: {
   ];
 
   if (extraSystemPrompt) {
-    // Rename "Group Chat Context" to "Subagent Context" for subagents
-    const contextHeader = isSubagent ? "## Subagent Context" : "## Group Chat Context";
+    // Use "Subagent Context" header for minimal mode (subagents), otherwise "Group Chat Context"
+    const contextHeader = promptMode === "minimal" ? "## Subagent Context" : "## Group Chat Context";
     lines.push(contextHeader, extraSystemPrompt, "");
   }
   if (params.reactionGuidance) {
@@ -419,8 +433,8 @@ export function buildAgentSystemPrompt(params: {
     }
   }
 
-  // Skip silent replies for subagents
-  if (!isSubagent) {
+  // Skip silent replies for subagent/none modes
+  if (!isMinimal) {
     lines.push(
       "## Silent Replies",
       `When you have nothing to say, respond with ONLY: ${SILENT_REPLY_TOKEN}`,
@@ -437,8 +451,8 @@ export function buildAgentSystemPrompt(params: {
     );
   }
 
-  // Skip heartbeats for subagents
-  if (!isSubagent) {
+  // Skip heartbeats for subagent/none modes
+  if (!isMinimal) {
     lines.push(
       "## Heartbeats",
       heartbeatPromptLine,

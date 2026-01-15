@@ -235,7 +235,7 @@ export async function compactEmbeddedPiSession(params: {
           config: params.config,
         });
         const isDefaultAgent = sessionAgentId === defaultAgentId;
-        const isSubagent = isSubagentSessionKey(params.sessionKey);
+        const promptMode = isSubagentSessionKey(params.sessionKey) ? "minimal" : "full";
         const appendPrompt = buildEmbeddedSystemPrompt({
           workspaceDir: effectiveWorkspace,
           defaultThinkLevel: params.thinkLevel,
@@ -247,7 +247,7 @@ export async function compactEmbeddedPiSession(params: {
             ? resolveHeartbeatPrompt(params.config?.agents?.defaults?.heartbeat?.prompt)
             : undefined,
           skillsPrompt,
-          isSubagent,
+          promptMode,
           runtimeInfo,
           sandboxInfo,
           tools,

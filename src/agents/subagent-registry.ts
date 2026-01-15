@@ -1,7 +1,7 @@
 import { loadConfig } from "../config/config.js";
 import { callGateway } from "../gateway/call.js";
 import { onAgentEvent } from "../infra/agent-events.js";
-import { runSubagentCleanup, type SubagentRunOutcome } from "./subagent-announce.js";
+import { runSubagentAnnounceFlow, type SubagentRunOutcome } from "./subagent-announce.js";
 import {
   loadSubagentRegistryFromDisk,
   saveSubagentRegistryToDisk,
@@ -54,10 +54,20 @@ function resumeSubagentRun(runId: string) {
 
   if (typeof entry.endedAt === "number" && entry.endedAt > 0) {
     if (!beginSubagentCleanup(runId)) return;
-    void runSubagentCleanup({
+    void runSubagentAnnounceFlow({
       childSessionKey: entry.childSessionKey,
+      childRunId: entry.runId,
+      requesterSessionKey: entry.requesterSessionKey,
+      requesterChannel: entry.requesterChannel,
+      requesterDisplayKey: entry.requesterDisplayKey,
+      task: entry.task,
+      timeoutMs: 30_000,
       cleanup: entry.cleanup,
+      waitForCompletion: false,
+      startedAt: entry.startedAt,
+      endedAt: entry.endedAt,
       label: entry.label,
+      outcome: entry.outcome,
     }).then(() => {
       finalizeSubagentCleanup(runId, entry.cleanup);
     });
@@ -184,10 +194,20 @@ function ensureListener() {
     if (!beginSubagentCleanup(evt.runId)) {
       return;
     }
-    void runSubagentCleanup({
+    void runSubagentAnnounceFlow({
       childSessionKey: entry.childSessionKey,
+      childRunId: entry.runId,
+      requesterSessionKey: entry.requesterSessionKey,
+      requesterChannel: entry.requesterChannel,
+      requesterDisplayKey: entry.requesterDisplayKey,
+      task: entry.task,
+      timeoutMs: 30_000,
       cleanup: entry.cleanup,
+      waitForCompletion: false,
+      startedAt: entry.startedAt,
+      endedAt: entry.endedAt,
       label: entry.label,
+      outcome: entry.outcome,
     }).then(() => {
       finalizeSubagentCleanup(evt.runId, entry.cleanup);
     });
@@ -287,10 +307,20 @@ async function waitForSubagentCompletion(runId: string, waitTimeoutMs: number) {
     mutated = true;
     if (mutated) persistSubagentRuns();
     if (!beginSubagentCleanup(runId)) return;
-    void runSubagentCleanup({
+    void runSubagentAnnounceFlow({
       childSessionKey: entry.childSessionKey,
+      childRunId: entry.runId,
+      requesterSessionKey: entry.requesterSessionKey,
+      requesterChannel: entry.requesterChannel,
+      requesterDisplayKey: entry.requesterDisplayKey,
+      task: entry.task,
+      timeoutMs: 30_000,
       cleanup: entry.cleanup,
+      waitForCompletion: false,
+      startedAt: entry.startedAt,
+      endedAt: entry.endedAt,
       label: entry.label,
+      outcome: entry.outcome,
     }).then(() => {
       finalizeSubagentCleanup(runId, entry.cleanup);
     });
