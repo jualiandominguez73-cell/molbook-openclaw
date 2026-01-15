@@ -12,6 +12,7 @@ import { getMachineDisplayName } from "../../../infra/machine-name.js";
 import { resolveTelegramReactionLevel } from "../../../telegram/reaction-level.js";
 import { normalizeMessageChannel } from "../../../utils/message-channel.js";
 import { isReasoningTagProvider } from "../../../utils/provider-utils.js";
+import { isSubagentSessionKey } from "../../../routing/session-key.js";
 import { resolveUserPath } from "../../../utils.js";
 import { resolveClawdbotAgentDir } from "../../agent-paths.js";
 import { resolveSessionAgentIds } from "../../agent-scope.js";
@@ -192,6 +193,7 @@ export async function runEmbeddedAttempt(
       config: params.config,
     });
     const isDefaultAgent = sessionAgentId === defaultAgentId;
+    const isSubagent = isSubagentSessionKey(params.sessionKey);
 
     const appendPrompt = buildEmbeddedSystemPrompt({
       workspaceDir: effectiveWorkspace,
@@ -205,6 +207,7 @@ export async function runEmbeddedAttempt(
         : undefined,
       skillsPrompt,
       reactionGuidance,
+      isSubagent,
       runtimeInfo,
       sandboxInfo,
       tools,

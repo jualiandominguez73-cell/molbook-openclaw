@@ -18,6 +18,8 @@ export function buildEmbeddedSystemPrompt(params: {
     level: "minimal" | "extensive";
     channel: string;
   };
+  /** When true, omits most sections (Skills, Memory, Heartbeats, etc.) to reduce token usage. */
+  isSubagent?: boolean;
   runtimeInfo: {
     host: string;
     os: string;
@@ -45,6 +47,7 @@ export function buildEmbeddedSystemPrompt(params: {
     heartbeatPrompt: params.heartbeatPrompt,
     skillsPrompt: params.skillsPrompt,
     reactionGuidance: params.reactionGuidance,
+    isSubagent: params.isSubagent,
     runtimeInfo: params.runtimeInfo,
     sandboxInfo: params.sandboxInfo,
     toolNames: params.tools.map((tool) => tool.name),
