@@ -63,9 +63,9 @@ Text + native (when enabled):
 - `/cost on|off` (toggle per-response usage line)
 - `/stop`
 - `/restart`
-- `/dock-telegram` (switch replies to Telegram)
-- `/dock-discord` (switch replies to Discord)
-- `/dock-slack` (switch replies to Slack)
+- `/dock-telegram` (alias: `/dock_telegram`) (switch replies to Telegram)
+- `/dock-discord` (alias: `/dock_discord`) (switch replies to Discord)
+- `/dock-slack` (alias: `/dock_slack`) (switch replies to Slack)
 - `/activation mention|always` (groups only)
 - `/send on|off|inherit` (owner-only)
 - `/reset` or `/new`
@@ -91,6 +91,7 @@ Notes:
 - `/verbose` is meant for debugging and extra visibility; keep it **off** in normal use.
 - `/reasoning` (and `/verbose`) are risky in group settings: they may reveal internal reasoning or tool output you did not intend to expose. Prefer leaving them off, especially in group chats.
 - **Fast path:** command-only messages from allowlisted senders are handled immediately (bypass queue + model).
+- **Group mention gating:** command-only messages from allowlisted senders bypass mention requirements.
 - **Inline shortcuts (allowlisted senders only):** certain commands also work when embedded in a normal message and are stripped before the model sees the remaining text.
   - Example: `hey /status` triggers a status reply, and the remaining text continues through the normal flow.
   - Currently: `/help`, `/commands`, `/status` (`/usage`), `/whoami` (`/id`).

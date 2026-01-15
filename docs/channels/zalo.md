@@ -7,6 +7,12 @@ read_when:
 
 Status: experimental. Direct messages only; groups coming soon per Zalo docs.
 
+## Plugin required
+Zalo ships as a plugin and is not bundled with the core install.
+- Install via CLI: `clawdbot plugins install @clawdbot/zalo`
+- Or select **Zalo** during onboarding and confirm the install prompt
+- Details: [Plugins](/plugin)
+
 ## Quick setup (beginner)
 1) Install the Zalo plugin:
    - From a source checkout: `clawdbot plugins install ./extensions/zalo`
@@ -32,6 +38,8 @@ Minimal config:
 ```
 
 ## What it is
+Zalo is a Vietnam-focused messaging app; its Bot API lets the Gateway run a bot for 1:1 conversations.
+It is a good fit for support or notifications where you want deterministic routing back to Zalo.
 - A Zalo Bot API channel owned by the Gateway.
 - Deterministic routing: replies go back to Zalo; the model never chooses channels.
 - DMs share the agent's main session.

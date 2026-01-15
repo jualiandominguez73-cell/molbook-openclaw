@@ -28,16 +28,17 @@ extension ConnectionsStore {
     private func applyUIConfig(_ snap: ConfigSnapshot) {
         let ui = snap.config?[
             "ui",
-        ]?.dictionaryValue
+            ]?.dictionaryValue
         let rawSeam = ui?[
             "seamColor",
-        ]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            ]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         AppStateStore.shared.seamColorHex = rawSeam.isEmpty ? nil : rawSeam
     }
 
     private func resolveChannelConfig(_ snap: ConfigSnapshot, key: String) -> [String: AnyCodable]? {
         if let channels = snap.config?["channels"]?.dictionaryValue,
-           let entry = channels[key]?.dictionaryValue {
+           let entry = channels[key]?.dictionaryValue
+        {
             return entry
         }
         return snap.config?[key]?.dictionaryValue

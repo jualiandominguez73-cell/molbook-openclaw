@@ -99,17 +99,23 @@ function resolveSearchEnabled(params: { search?: WebSearchConfig; sandboxed?: bo
 
 function resolveFetchEnabled(params: { fetch?: WebFetchConfig; sandboxed?: boolean }): boolean {
   if (typeof params.fetch?.enabled === "boolean") return params.fetch.enabled;
-  if (params.sandboxed) return true;
-  return false;
+  return true;
 }
 
 function resolveSearchApiKey(search?: WebSearchConfig): string | undefined {
   const fromConfig =
-    search && "apiKey" in search && typeof search.apiKey === "string"
-      ? search.apiKey.trim()
-      : "";
+    search && "apiKey" in search && typeof search.apiKey === "string" ? search.apiKey.trim() : "";
   const fromEnv = (process.env.BRAVE_API_KEY ?? "").trim();
   return fromConfig || fromEnv || undefined;
+}
+
+function missingSearchKeyPayload() {
+  return {
+    error: "missing_brave_api_key",
+    message:
+      "web_search needs a Brave Search API key. Run `clawdbot configure --section web` to store it, or set BRAVE_API_KEY in the Gateway environment.",
+    docs: "https://docs.clawd.bot/tools/web",
+  };
 }
 
 function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDERS)[number] {
@@ -160,12 +166,7 @@ function readCache<T>(
   return { value: entry.value, cached: true };
 }
 
-function writeCache<T>(
-  cache: Map<string, CacheEntry<T>>,
-  key: string,
-  value: T,
-  ttlMs: number,
-) {
+function writeCache<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T, ttlMs: number) {
   if (ttlMs <= 0) return;
   if (cache.size >= DEFAULT_CACHE_MAX_ENTRIES) {
     const oldest = cache.keys().next();
@@ -319,7 +320,7 @@ async function runWebSearch(params: {
   }
 
   const data = (await res.json()) as BraveSearchResponse;
-  const results = Array.isArray(data.web?.results) ? data.web?.results ?? [] : [];
+  const results = Array.isArray(data.web?.results) ? (data.web?.results ?? []) : [];
   const mapped = results.map((entry) => ({
     title: entry.title ?? "",
     url: entry.url ?? "",
@@ -419,8 +420,6 @@ export function createWebSearchTool(options?: {
 }): AnyAgentTool | null {
   const search = resolveSearchConfig(options?.config);
   if (!resolveSearchEnabled({ search, sandboxed: options?.sandboxed })) return null;
-  const apiKey = resolveSearchApiKey(search);
-  if (!apiKey) return null;
   return {
     label: "Web Search",
     name: "web_search",
@@ -428,6 +427,10 @@ export function createWebSearchTool(options?: {
       "Search the web using Brave Search API. Returns titles, URLs, and snippets for fast research.",
     parameters: WebSearchSchema,
     execute: async (_toolCallId, args) => {
+      const apiKey = resolveSearchApiKey(search);
+      if (!apiKey) {
+        return jsonResult(missingSearchKeyPayload());
+      }
       const params = args as Record<string, unknown>;
       const query = readStringParam(params, "query", { required: true });
       const count =
@@ -463,8 +466,7 @@ export function createWebFetchTool(options?: {
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
       const url = readStringParam(params, "url", { required: true });
-      const extractMode =
-        readStringParam(params, "extractMode") === "text" ? "text" : "markdown";
+      const extractMode = readStringParam(params, "extractMode") === "text" ? "text" : "markdown";
       const maxChars = readNumberParam(params, "maxChars", { integer: true });
       const result = await runWebFetch({
         url,

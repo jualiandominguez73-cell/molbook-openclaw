@@ -430,6 +430,22 @@ For groups, use `channels.whatsapp.groupPolicy` + `channels.whatsapp.groupAllowF
 }
 ```
 
+### `channels.whatsapp.sendReadReceipts`
+
+Controls whether inbound WhatsApp messages are marked as read (blue ticks). Default: `true`.
+
+Self-chat mode always skips read receipts, even when enabled.
+
+Per-account override: `channels.whatsapp.accounts.<id>.sendReadReceipts`.
+
+```json5
+{
+  channels: {
+    whatsapp: { sendReadReceipts: false }
+  }
+}
+```
+
 ### `channels.whatsapp.accounts` (multi-account)
 
 Run multiple WhatsApp accounts in one gateway:
@@ -1034,6 +1050,10 @@ Slack runs in Socket Mode and requires both a bot token and app token:
       reactionNotifications: "own", // off | own | all | allowlist
       reactionAllowlist: ["U123"],
       replyToMode: "off",           // off | first | all
+      thread: {
+        historyScope: "thread",     // thread | channel
+        inheritParent: false
+      },
       actions: {
         reactions: true,
         messages: true,
@@ -1066,6 +1086,10 @@ Reaction notification modes:
 - `own`: reactions on the bot's own messages (default).
 - `all`: all reactions on all messages.
 - `allowlist`: reactions from `channels.slack.reactionAllowlist` on all messages (empty list disables).
+
+Thread session isolation:
+- `channels.slack.thread.historyScope` controls whether thread history is per-thread (`thread`, default) or shared across the channel (`channel`).
+- `channels.slack.thread.inheritParent` controls whether new thread sessions inherit the parent channel transcript (default: false).
 
 Slack action groups (gate `slack` tool actions):
 | Action group | Default | Notes |
@@ -1208,6 +1232,31 @@ streaming, final replies) across channels unless already present.
 
 If `messages.responsePrefix` is unset, no prefix is applied by default.
 Set it to `"auto"` to derive `[{identity.name}]` for the routed agent (when set).
+
+#### Template variables
+
+The `responsePrefix` string can include template variables that resolve dynamically:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{model}` | Short model name | `claude-opus-4-5`, `gpt-4o` |
+| `{modelFull}` | Full model identifier | `anthropic/claude-opus-4-5` |
+| `{provider}` | Provider name | `anthropic`, `openai` |
+| `{thinkingLevel}` | Current thinking level | `high`, `low`, `off` |
+| `{identity.name}` | Agent identity name | (same as `"auto"` mode) |
+
+Variables are case-insensitive (`{MODEL}` = `{model}`). `{think}` is an alias for `{thinkingLevel}`.
+Unresolved variables remain as literal text.
+
+```json5
+{
+  messages: {
+    responsePrefix: "[{model} | think:{thinkingLevel}]"
+  }
+}
+```
+
+Example output: `[claude-opus-4-5 | think:high] Here's my response...`
 
 WhatsApp inbound prefix is configured via `channels.whatsapp.messagePrefix` (deprecated:
 `messages.messagePrefix`). Default stays **unchanged**: `"[clawdbot]"` when
@@ -1500,7 +1549,7 @@ See [/concepts/session-pruning](/concepts/session-pruning) for behavior details.
 
 #### `agents.defaults.compaction` (reserve headroom + memory flush)
 
-`agents.defaults.compaction.mode` selects the compaction summarization strategy. Defaults to `default`; set `safeguard` to enable chunked summarization for very long histories. See [/compaction](/compaction).
+`agents.defaults.compaction.mode` selects the compaction summarization strategy. Defaults to `default`; set `safeguard` to enable chunked summarization for very long histories. See [/concepts/compaction](/concepts/compaction).
 
 `agents.defaults.compaction.reserveTokensFloor` enforces a minimum `reserveTokens`
 value for Pi compaction (default: `20000`). Set it to `0` to disable the floor.
@@ -2474,6 +2523,7 @@ Convenience flags (CLI):
 - `clawdbot --profile <name> …` → uses `~/.clawdbot-<name>` (port via config/env/flags)
 
 See [Gateway runbook](/gateway) for the derived port mapping (gateway/bridge/browser/canvas).
+See [Multiple gateways](/gateway/multiple-gateways) for browser/CDP port isolation details.
 
 Example:
 ```bash

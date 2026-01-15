@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { connectOk, installGatewayTestHooks, onceMessage, startServerWithClient } from "./test-helpers.js";
+import { resolveConfigSnapshotHash } from "../config/config.js";
+
+import {
+  connectOk,
+  installGatewayTestHooks,
+  onceMessage,
+  startServerWithClient,
+} from "./test-helpers.js";
 
 installGatewayTestHooks();
 
@@ -23,7 +30,10 @@ describe("gateway config.patch", () => {
         },
       }),
     );
-    const setRes = await onceMessage<{ ok: boolean }>(ws, (o) => o.type === "res" && o.id === setId);
+    const setRes = await onceMessage<{ ok: boolean }>(
+      ws,
+      (o) => o.type === "res" && o.id === setId,
+    );
     expect(setRes.ok).toBe(true);
 
     const getId = "req-get";
@@ -35,12 +45,15 @@ describe("gateway config.patch", () => {
         params: {},
       }),
     );
-    const getRes = await onceMessage<{ ok: boolean; payload?: { hash?: string } }>(
+    const getRes = await onceMessage<{ ok: boolean; payload?: { hash?: string; raw?: string } }>(
       ws,
       (o) => o.type === "res" && o.id === getId,
     );
     expect(getRes.ok).toBe(true);
-    const baseHash = getRes.payload?.hash;
+    const baseHash = resolveConfigSnapshotHash({
+      hash: getRes.payload?.hash,
+      raw: getRes.payload?.raw,
+    });
     expect(typeof baseHash).toBe("string");
 
     const patchId = "req-patch";
@@ -80,7 +93,9 @@ describe("gateway config.patch", () => {
     );
     const get2Res = await onceMessage<{
       ok: boolean;
-      payload?: { config?: { gateway?: { mode?: string }; channels?: { telegram?: { botToken?: string } } } };
+      payload?: {
+        config?: { gateway?: { mode?: string }; channels?: { telegram?: { botToken?: string } } };
+      };
     }>(ws, (o) => o.type === "res" && o.id === get2Id);
     expect(get2Res.ok).toBe(true);
     expect(get2Res.payload?.config?.gateway?.mode).toBe("local");
@@ -107,7 +122,10 @@ describe("gateway config.patch", () => {
         },
       }),
     );
-    const setRes = await onceMessage<{ ok: boolean }>(ws, (o) => o.type === "res" && o.id === setId);
+    const setRes = await onceMessage<{ ok: boolean }>(
+      ws,
+      (o) => o.type === "res" && o.id === setId,
+    );
     expect(setRes.ok).toBe(true);
 
     const patchId = "req-patch-2";
@@ -149,7 +167,10 @@ describe("gateway config.patch", () => {
         },
       }),
     );
-    const setRes = await onceMessage<{ ok: boolean }>(ws, (o) => o.type === "res" && o.id === setId);
+    const setRes = await onceMessage<{ ok: boolean }>(
+      ws,
+      (o) => o.type === "res" && o.id === setId,
+    );
     expect(setRes.ok).toBe(true);
 
     const set2Id = "req-set-4";

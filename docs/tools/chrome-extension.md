@@ -70,6 +70,66 @@ Then target it:
   - Badge shows `ON` when attached.
 - Click again to detach.
 
+## Which tab does it control?
+
+- It does **not** automatically control “whatever tab you’re looking at”.
+- It controls **only the tab(s) you explicitly attached** by clicking the toolbar button.
+- To switch: open the other tab and click the extension icon there.
+
+## Badge + common errors
+
+- `ON`: attached; Clawdbot can drive that tab.
+- `…`: connecting to the local relay.
+- `!`: relay not reachable (most common: browser relay server isn’t running on this machine).
+
+If you see `!`:
+- Make sure the Gateway is running locally (default setup), or run `clawdbot browser serve` on this machine (remote gateway setup).
+- Open the extension Options page; it shows whether the relay is reachable.
+
+## Do I need `clawdbot browser serve`?
+
+### Local Gateway (same machine as Chrome) — usually **no**
+
+If the Gateway is running on the same machine as Chrome and your `browser.controlUrl` is loopback (default),
+you typically **do not** need `clawdbot browser serve`.
+
+The Gateway’s built-in browser control server will start on `http://127.0.0.1:18791/` and Clawdbot will
+auto-start the local relay server when you use a profile with `driver="extension"`.
+
+### Remote Gateway (Gateway runs elsewhere) — **yes**
+
+If your Gateway runs on another machine, run `clawdbot browser serve` on the machine that runs Chrome
+(and publish it via Tailscale Serve / TLS). See the section below.
+
+## Sandboxing (tool containers)
+
+If your agent session is sandboxed (`agents.defaults.sandbox.mode != "off"`), the `browser` tool can be restricted:
+
+- By default, sandboxed sessions often target the **sandbox browser** (`target="sandbox"`), not your host Chrome.
+- Chrome extension relay takeover requires controlling the **host** browser control server.
+
+Options:
+- Easiest: use the extension from a **non-sandboxed** session/agent.
+- Or allow host browser control for sandboxed sessions:
+
+```json5
+{
+  agents: {
+    defaults: {
+      sandbox: {
+        browser: {
+          allowHostControl: true
+        }
+      }
+    }
+  }
+}
+```
+
+Then ensure the tool isn’t denied by tool policy, and (if needed) call `browser` with `target="host"`.
+
+Debugging: `clawdbot sandbox explain`
+
 ## Remote Gateway (recommended: Tailscale Serve)
 
 Goal: Gateway runs on one machine, but Chrome runs somewhere else.

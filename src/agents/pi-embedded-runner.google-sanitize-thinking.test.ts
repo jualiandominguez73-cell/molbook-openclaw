@@ -24,9 +24,9 @@ describe("sanitizeSessionHistory (google thinking)", () => {
       sessionId: "session:google",
     });
 
-    const assistant = out.find(
-      (msg) => (msg as { role?: string }).role === "assistant",
-    ) as { content?: Array<{ type?: string; text?: string }> };
+    const assistant = out.find((msg) => (msg as { role?: string }).role === "assistant") as {
+      content?: Array<{ type?: string; text?: string }>;
+    };
     expect(assistant.content?.map((block) => block.type)).toEqual(["text"]);
     expect(assistant.content?.[0]?.text).toBe("reasoning");
   });
@@ -51,9 +51,9 @@ describe("sanitizeSessionHistory (google thinking)", () => {
       sessionId: "session:google",
     });
 
-    const assistant = out.find(
-      (msg) => (msg as { role?: string }).role === "assistant",
-    ) as { content?: Array<{ type?: string; thinking?: string; thinkingSignature?: string }> };
+    const assistant = out.find((msg) => (msg as { role?: string }).role === "assistant") as {
+      content?: Array<{ type?: string; thinking?: string; thinkingSignature?: string }>;
+    };
     expect(assistant.content?.map((block) => block.type)).toEqual(["thinking"]);
     expect(assistant.content?.[0]?.thinking).toBe("reasoning");
     expect(assistant.content?.[0]?.thinkingSignature).toBe("sig");
@@ -83,9 +83,9 @@ describe("sanitizeSessionHistory (google thinking)", () => {
       sessionId: "session:google-mixed",
     });
 
-    const assistant = out.find(
-      (msg) => (msg as { role?: string }).role === "assistant",
-    ) as { content?: Array<{ type?: string; text?: string }> };
+    const assistant = out.find((msg) => (msg as { role?: string }).role === "assistant") as {
+      content?: Array<{ type?: string; text?: string }>;
+    };
     expect(assistant.content?.map((block) => block.type)).toEqual(["text", "text", "text"]);
     expect(assistant.content?.[1]?.text).toBe("internal note");
   });
@@ -113,9 +113,9 @@ describe("sanitizeSessionHistory (google thinking)", () => {
       sessionId: "session:google-mixed-signatures",
     });
 
-    const assistant = out.find(
-      (msg) => (msg as { role?: string }).role === "assistant",
-    ) as { content?: Array<{ type?: string; thinking?: string; text?: string }> };
+    const assistant = out.find((msg) => (msg as { role?: string }).role === "assistant") as {
+      content?: Array<{ type?: string; thinking?: string; text?: string }>;
+    };
     expect(assistant.content?.map((block) => block.type)).toEqual(["thinking", "text"]);
     expect(assistant.content?.[0]?.thinking).toBe("signed");
     expect(assistant.content?.[1]?.text).toBe("unsigned");
@@ -141,9 +141,7 @@ describe("sanitizeSessionHistory (google thinking)", () => {
       sessionId: "session:google-empty",
     });
 
-    const assistant = out.find(
-      (msg) => (msg as { role?: string }).role === "assistant",
-    );
+    const assistant = out.find((msg) => (msg as { role?: string }).role === "assistant");
     expect(assistant).toBeUndefined();
   });
 
@@ -167,9 +165,41 @@ describe("sanitizeSessionHistory (google thinking)", () => {
       sessionId: "session:openai",
     });
 
-    const assistant = out.find(
-      (msg) => (msg as { role?: string }).role === "assistant",
-    ) as { content?: Array<{ type?: string }> };
+    const assistant = out.find((msg) => (msg as { role?: string }).role === "assistant") as {
+      content?: Array<{ type?: string }>;
+    };
     expect(assistant.content?.map((block) => block.type)).toEqual(["thinking"]);
+  });
+
+  it("sanitizes tool call ids for OpenAI-compatible APIs", async () => {
+    const sessionManager = SessionManager.inMemory();
+    const longId = `call_${"a".repeat(60)}`;
+    const input = [
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: longId, name: "read", arguments: {} }],
+      },
+      {
+        role: "toolResult",
+        toolCallId: longId,
+        toolName: "read",
+        content: [{ type: "text", text: "ok" }],
+      },
+    ] satisfies AgentMessage[];
+
+    const out = await sanitizeSessionHistory({
+      messages: input,
+      modelApi: "openai-responses",
+      sessionManager,
+      sessionId: "session:openai",
+    });
+
+    const assistant = out[0] as Extract<AgentMessage, { role: "assistant" }>;
+    const toolCall = assistant.content?.[0] as { id?: string };
+    expect(toolCall.id).toBeDefined();
+    expect(toolCall.id?.length).toBeLessThanOrEqual(40);
+
+    const toolResult = out[1] as Extract<AgentMessage, { role: "toolResult" }>;
+    expect(toolResult.toolCallId).toBe(toolCall.id);
   });
 });

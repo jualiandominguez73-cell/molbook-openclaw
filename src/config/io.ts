@@ -52,7 +52,22 @@ const SHELL_ENV_EXPECTED_KEYS = [
 export type ParseConfigJson5Result = { ok: true; parsed: unknown } | { ok: false; error: string };
 
 function hashConfigRaw(raw: string | null): string {
-  return crypto.createHash("sha256").update(raw ?? "").digest("hex");
+  return crypto
+    .createHash("sha256")
+    .update(raw ?? "")
+    .digest("hex");
+}
+
+export function resolveConfigSnapshotHash(snapshot: {
+  hash?: string;
+  raw?: string | null;
+}): string | null {
+  if (typeof snapshot.hash === "string") {
+    const trimmed = snapshot.hash.trim();
+    if (trimmed) return trimmed;
+  }
+  if (typeof snapshot.raw !== "string") return null;
+  return hashConfigRaw(snapshot.raw);
 }
 
 export type ConfigIoDeps = {

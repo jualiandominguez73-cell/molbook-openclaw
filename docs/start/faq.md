@@ -277,7 +277,18 @@ without WhatsApp/Telegram.
 
 ### Telegram: what goes in `allowFrom`?
 
-`channels.telegram.allowFrom` is **the human sender’s Telegram user ID** (numeric, recommended) or `@username`. It is not the bot username. To find your ID, DM `@userinfobot` or read the `from.id` in the gateway log for a DM. See [/channels/telegram](/channels/telegram#access-control-dms--groups).
+`channels.telegram.allowFrom` is **the human sender’s Telegram user ID** (numeric, recommended) or `@username`. It is not the bot username.
+
+Safer (no third-party bot):
+- DM your bot, then run `clawdbot logs --follow` and read `from.id`.
+
+Official Bot API:
+- DM your bot, then call `https://api.telegram.org/bot<bot_token>/getUpdates` and read `message.from.id`.
+
+Third-party (less private):
+- DM `@userinfobot` or `@getidsbot`.
+
+See [/channels/telegram](/channels/telegram#access-control-dms--groups).
 
 ### Can multiple people use one WhatsApp number with different Clawdbots?
 
@@ -412,6 +423,9 @@ clawdbot browser extension path
 Then Chrome → `chrome://extensions` → enable “Developer mode” → “Load unpacked” → pick that folder.
 
 Full guide (including remote Gateway via Tailscale + security notes): [Chrome extension](/tools/chrome-extension)
+
+If the Gateway runs on the same machine as Chrome (default setup), you usually **do not** need `clawdbot browser serve`.
+You still need to click the extension button on the tab you want to control (it doesn’t auto-attach).
 
 ## Sandboxing and memory
 
@@ -599,7 +613,7 @@ Gateway process.
 
 Notes:
 - If you use allowlists, add `web_search`/`web_fetch` or `group:web`.
-- In sandboxed sessions, `web_fetch` auto-enables unless explicitly disabled.
+- `web_fetch` is enabled by default (unless explicitly disabled).
 - Daemons read env vars from `~/.clawdbot/.env` (or the service environment).
 
 Docs: [Web tools](/tools/web).
@@ -1276,6 +1290,7 @@ Quick setup (recommended):
 - Install a per-profile daemon: `clawdbot --profile <name> daemon install`.
 
 Profiles also suffix service names (`com.clawdbot.<profile>`, `clawdbot-gateway-<profile>.service`, `Clawdbot Gateway (<profile>)`).
+Full guide: [Multiple gateways](/gateway/multiple-gateways).
 
 ### What does “invalid handshake” / code 1008 mean?
 
@@ -1398,6 +1413,7 @@ abort
 esc
 wait
 exit
+interrupt
 ```
 
 These are abort triggers (not slash commands).

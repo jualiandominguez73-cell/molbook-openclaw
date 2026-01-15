@@ -5,6 +5,7 @@ import { loadConfig } from "../config/config.js";
 import { defaultRuntime } from "../runtime.js";
 import { runSecurityAudit } from "../security/audit.js";
 import { fixSecurityFootguns } from "../security/fix.js";
+import { formatDocsLink } from "../terminal/links.js";
 import { isRich, theme } from "../terminal/theme.js";
 
 type SecurityAuditOptions = {
@@ -26,7 +27,14 @@ function formatSummary(summary: { critical: number; warn: number; info: number }
 }
 
 export function registerSecurityCli(program: Command) {
-  const security = program.command("security").description("Security tools (audit)");
+  const security = program
+    .command("security")
+    .description("Security tools (audit)")
+    .addHelpText(
+      "after",
+      () =>
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/security", "docs.clawd.bot/cli/security")}\n`,
+    );
 
   security
     .command("audit")
@@ -80,8 +88,10 @@ export function registerSecurityCli(program: Command) {
           for (const action of fixResult.actions) {
             const mode = action.mode.toString(8).padStart(3, "0");
             if (action.ok) lines.push(muted(`  chmod ${mode} ${action.path}`));
-            else if (action.skipped) lines.push(muted(`  skip chmod ${mode} ${action.path} (${action.skipped})`));
-            else if (action.error) lines.push(muted(`  chmod ${mode} ${action.path} failed: ${action.error}`));
+            else if (action.skipped)
+              lines.push(muted(`  skip chmod ${mode} ${action.path} (${action.skipped})`));
+            else if (action.error)
+              lines.push(muted(`  chmod ${mode} ${action.path} failed: ${action.error}`));
           }
           if (fixResult.errors.length > 0) {
             for (const err of fixResult.errors) lines.push(muted(`  error: ${err}`));
