@@ -1,0 +1,6 @@
+# Beads Configuration
+issue-prefix: "cb"
+
+# Git sync config - use origin (jalehman fork)
+sync-branch: "beads-sync"
+sync-remote: "origin"
