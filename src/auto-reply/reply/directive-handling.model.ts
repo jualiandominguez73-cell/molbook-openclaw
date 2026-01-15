@@ -18,7 +18,6 @@ import {
 import {
   buildModelPickerItems,
   type ModelPickerCatalogEntry,
-  pickProviderForModel,
   resolveProviderEndpointLabel,
 } from "./directive-handling.model-picker.js";
 import type { InlineDirectives } from "./directive-handling.parse.js";
@@ -236,22 +235,13 @@ export function resolveModelSelectionFromDirective(params: {
         errorText: `Invalid model selection "${raw}". Use /model to list.`,
       };
     }
-    const picked = pickProviderForModel({
-      item,
-      preferredProvider: params.provider,
-    });
-    if (!picked) {
-      return {
-        errorText: `Invalid model selection "${raw}". Use /model to list.`,
-      };
-    }
-    const key = `${picked.provider}/${picked.model}`;
+    const key = `${item.provider}/${item.model}`;
     const aliases = params.aliasIndex.byKey.get(key);
     const alias = aliases && aliases.length > 0 ? aliases[0] : undefined;
     modelSelection = {
-      provider: picked.provider,
-      model: picked.model,
-      isDefault: picked.provider === params.defaultProvider && picked.model === params.defaultModel,
+      provider: item.provider,
+      model: item.model,
+      isDefault: item.provider === params.defaultProvider && item.model === params.defaultModel,
       ...(alias ? { alias } : {}),
     };
   } else {

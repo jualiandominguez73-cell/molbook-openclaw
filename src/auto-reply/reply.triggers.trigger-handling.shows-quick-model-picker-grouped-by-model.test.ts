@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { normalizeTestText } from "../../test/helpers/normalize-text.js";
@@ -96,7 +95,7 @@ afterEach(() => {
 });
 
 describe("trigger handling", () => {
-  it("shows a quick /model picker grouped by model with providers", async () => {
+  it("shows a quick /model picker listing provider/model pairs", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
       const res = await getReplyFromConfig(
