@@ -227,7 +227,7 @@ For per-account configuration:
 
 Use the message tool with the `buttons` parameter:
 
-```json
+```json5
 {
   "action": "send",
   "channel": "telegram",
