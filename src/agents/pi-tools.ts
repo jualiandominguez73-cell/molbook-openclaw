@@ -22,6 +22,7 @@ import { wrapToolWithAbortSignal } from "./pi-tools.abort.js";
 import {
   filterToolsByPolicy,
   isToolAllowedByPolicies,
+  isSenderAllowedForTools,
   resolveEffectiveToolPolicy,
   resolveSubagentToolPolicy,
 } from "./pi-tools.policy.js";
@@ -80,6 +81,7 @@ export function createClawdbotCodingTools(options?: {
   exec?: ExecToolDefaults & ProcessToolDefaults;
   messageProvider?: string;
   agentAccountId?: string;
+  senderE164?: string;
   sandbox?: SandboxContext | null;
   sessionKey?: string;
   agentDir?: string;
@@ -109,6 +111,20 @@ export function createClawdbotCodingTools(options?: {
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
+  
+  // Check if sender is allowed to execute tools (WhatsApp group gating)
+  const canExecuteTools = isSenderAllowedForTools({
+    config: options?.config,
+    sessionKey: options?.sessionKey,
+    senderE164: options?.senderE164,
+    messageProvider: options?.messageProvider,
+  });
+  
+  if (!canExecuteTools) {
+    // Return empty tool array - bot can chat but not execute tools
+    return [];
+  }
+  
   const {
     agentId,
     globalPolicy,

@@ -143,3 +143,63 @@ export function isToolAllowedByPolicies(
 ) {
   return policies.every((policy) => isToolAllowedByPolicyName(name, policy));
 }
+
+/**
+ * Check if sender is allowed to execute tools in a WhatsApp group.
+ * Returns true if:
+ * - Not a WhatsApp group session
+ * - No groupToolAllowFrom configured (all groupAllowFrom users can use tools)
+ * - Sender is in groupToolAllowFrom
+ */
+export function isSenderAllowedForTools(params: {
+  config?: ClawdbotConfig;
+  sessionKey?: string;
+  senderE164?: string;
+  messageProvider?: string;
+}): boolean {
+  // Not WhatsApp or not a group - allow
+  if (params.messageProvider !== "whatsapp") return true;
+  if (!params.sessionKey?.includes(":group:")) return true;
+
+  // No sender info - deny (safety)
+  if (!params.senderE164) return false;
+
+  const cfg = params.config;
+  if (!cfg?.channels?.whatsapp) return true;
+
+  const whatsappCfg = cfg.channels.whatsapp;
+  const accountId = extractAccountIdFromSessionKey(params.sessionKey);
+
+  // Check account-specific config first
+  const accountCfg = accountId ? whatsappCfg.accounts?.[accountId] : undefined;
+  const groupToolAllowFrom =
+    (accountCfg && typeof accountCfg === "object" ? accountCfg.groupToolAllowFrom : undefined) ??
+    whatsappCfg.groupToolAllowFrom;
+
+  // If no groupToolAllowFrom, all groupAllowFrom users can use tools
+  if (!groupToolAllowFrom || groupToolAllowFrom.length === 0) {
+    return true;
+  }
+
+  // Normalize and check
+  const senderE164 = params.senderE164;
+  // Simple normalization - remove spaces and convert to lowercase
+  const normalize = (num: string) => String(num).trim().toLowerCase().replace(/\s+/g, "");
+  const normalizedSender = normalize(senderE164);
+  const allowedSet = new Set(groupToolAllowFrom.map(normalize));
+
+  return allowedSet.has(normalizedSender);
+}
+
+/**
+ * Extract account ID from session key format: agent:agentId:whatsapp:accountId:...
+ */
+function extractAccountIdFromSessionKey(sessionKey?: string): string | undefined {
+  if (!sessionKey) return undefined;
+  const parts = sessionKey.split(":");
+  // Format: agent:agentId:whatsapp:accountId:group:groupId
+  if (parts.length >= 4 && parts[2] === "whatsapp") {
+    return parts[3];
+  }
+  return undefined;
+}

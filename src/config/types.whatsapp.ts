@@ -32,6 +32,12 @@ export type WhatsAppConfig = {
   /** Optional allowlist for WhatsApp group senders (E.164). */
   groupAllowFrom?: string[];
   /**
+   * Optional allowlist for tool execution in WhatsApp groups (E.164).
+   * Must be a subset of groupAllowFrom. If not specified, all users
+   * in groupAllowFrom can execute tools.
+   */
+  groupToolAllowFrom?: string[];
+  /**
    * Controls how group messages are handled:
    * - "open": groups bypass allowFrom, only mention-gating applies
    * - "disabled": block all group messages entirely
@@ -100,6 +106,7 @@ export type WhatsAppAccountConfig = {
   selfChatMode?: boolean;
   allowFrom?: string[];
   groupAllowFrom?: string[];
+  groupToolAllowFrom?: string[];
   groupPolicy?: GroupPolicy;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;

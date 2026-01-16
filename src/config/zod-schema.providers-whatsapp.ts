@@ -21,6 +21,7 @@ export const WhatsAppAccountSchema = z
     selfChatMode: z.boolean().optional(),
     allowFrom: z.array(z.string()).optional(),
     groupAllowFrom: z.array(z.string()).optional(),
+    groupToolAllowFrom: z.array(z.string()).optional(),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
     historyLimit: z.number().int().min(0).optional(),
     dmHistoryLimit: z.number().int().min(0).optional(),
@@ -57,6 +58,30 @@ export const WhatsAppAccountSchema = z
       path: ["allowFrom"],
       message: 'channels.whatsapp.accounts.*.dmPolicy="open" requires allowFrom to include "*"',
     });
+  })
+  .superRefine((value, ctx) => {
+    // Validate groupToolAllowFrom is subset of groupAllowFrom
+    if (!value.groupToolAllowFrom || value.groupToolAllowFrom.length === 0) return;
+    if (!value.groupAllowFrom || value.groupAllowFrom.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["groupToolAllowFrom"],
+        message:
+          "groupToolAllowFrom requires groupAllowFrom to be configured",
+      });
+      return;
+    }
+    const normalizePhone = (p: unknown) => String(p).trim().toLowerCase();
+    const allowSet = new Set(value.groupAllowFrom.map(normalizePhone));
+    const toolAllowList = value.groupToolAllowFrom.map(normalizePhone);
+    const invalid = toolAllowList.filter((num) => !allowSet.has(num));
+    if (invalid.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["groupToolAllowFrom"],
+        message: `groupToolAllowFrom entries must be in groupAllowFrom: ${invalid.join(", ")}`,
+      });
+    }
   });
 
 export const WhatsAppConfigSchema = z
@@ -70,6 +95,7 @@ export const WhatsAppConfigSchema = z
     selfChatMode: z.boolean().optional(),
     allowFrom: z.array(z.string()).optional(),
     groupAllowFrom: z.array(z.string()).optional(),
+    groupToolAllowFrom: z.array(z.string()).optional(),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
     historyLimit: z.number().int().min(0).optional(),
     dmHistoryLimit: z.number().int().min(0).optional(),
@@ -114,4 +140,28 @@ export const WhatsAppConfigSchema = z
       message:
         'channels.whatsapp.dmPolicy="open" requires channels.whatsapp.allowFrom to include "*"',
     });
+  })
+  .superRefine((value, ctx) => {
+    // Validate groupToolAllowFrom is subset of groupAllowFrom
+    if (!value.groupToolAllowFrom || value.groupToolAllowFrom.length === 0) return;
+    if (!value.groupAllowFrom || value.groupAllowFrom.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["groupToolAllowFrom"],
+        message:
+          "channels.whatsapp.groupToolAllowFrom requires channels.whatsapp.groupAllowFrom to be configured",
+      });
+      return;
+    }
+    const normalizePhone = (p: string) => String(p).trim().toLowerCase();
+    const allowSet = new Set(value.groupAllowFrom.map(normalizePhone));
+    const toolAllowList = value.groupToolAllowFrom.map(normalizePhone);
+    const invalid = toolAllowList.filter((num) => !allowSet.has(num));
+    if (invalid.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["groupToolAllowFrom"],
+        message: `channels.whatsapp.groupToolAllowFrom entries must be in groupAllowFrom: ${invalid.join(", ")}`,
+      });
+    }
   });

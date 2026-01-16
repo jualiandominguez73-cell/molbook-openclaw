@@ -195,6 +195,7 @@ export async function runAgentTurnWithFallback(params: {
             sessionKey: params.sessionKey,
             messageProvider: params.sessionCtx.Provider?.trim().toLowerCase() || undefined,
             agentAccountId: params.sessionCtx.AccountId,
+            senderE164: params.sessionCtx.SenderE164,
             // Provider threading context for tool auto-injection
             ...buildThreadingToolContext({
               sessionCtx: params.sessionCtx,

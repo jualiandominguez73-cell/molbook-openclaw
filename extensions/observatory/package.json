@@ -1,0 +1,25 @@
+{
+  "name": "@clawdbot/observatory",
+  "version": "1.0.0",
+  "description": "Real-time agent event observatory with mobile-first web UI",
+  "type": "module",
+  "main": "src/index.ts",
+  "clawdbot": {
+    "extensions": ["./src/index.ts"]
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}
