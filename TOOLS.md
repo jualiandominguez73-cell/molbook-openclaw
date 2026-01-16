@@ -81,6 +81,39 @@ Global bins: `/Users/dbhurley/Library/pnpm/`
 ### MS Teams
 - **Tunnel**: opie.ngrok.app → localhost:3978
 
+## Credentials Access
+
+### Standard: clawdbot.json
+All credentials should be stored in `~/.clawdbot/clawdbot.json` under `skills.entries.<skill-name>.env`:
+```json
+{
+  "skills": {
+    "entries": {
+      "my-skill": {
+        "env": {
+          "MY_API_KEY": "...",
+          "MY_SECRET": "..."
+        }
+      }
+    }
+  }
+}
+```
+
+Scripts run by cron jobs can reference these via environment variables in the job prompt, or the agent can read them at runtime.
+
+### Fallback: 1Password
+If a credential is **not** in clawdbot.json, use the 1Password skill via the `op-safe` tmux session:
+```bash
+tmux send-keys -t op-safe "op item get 'Item Name' --fields password" Enter
+tmux capture-pane -p -t op-safe -S -5
+```
+
+### Cron Script Guidelines
+- **Never hardcode credentials** in scripts
+- Scripts should output meaningful text for actions, or **nothing** for no-action (silent ack)
+- HEARTBEAT_OK only works for heartbeat runs, not isolated cron sessions
+
 ---
 
 Add whatever helps you do your job. This is your cheat sheet.
