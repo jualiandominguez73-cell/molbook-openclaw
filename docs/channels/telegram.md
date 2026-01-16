@@ -250,9 +250,12 @@ When a user clicks a button, the callback data is sent back to the agent as a me
 
 ### Configuration options
 
-- `channels.telegram.capabilities`: Global capability list for the default account
-- `channels.telegram.accounts.<account>.capabilities`: Per-account capabilities
+Telegram capabilities can be configured at two levels:
 
+- `channels.telegram.capabilities`: Global default capability list applied to all Telegram accounts unless overridden.
+- `channels.telegram.accounts.<account>.capabilities`: Per-account capabilities that override or extend the global defaults for that specific account.
+
+Use the global setting when all Telegram bots/accounts should behave the same. Use per-account configuration when different bots need different behaviors (for example, one account only handles DMs while another is allowed in groups or has extra capabilities).
 ## Access control (DMs + groups)
 
 ### DM access
