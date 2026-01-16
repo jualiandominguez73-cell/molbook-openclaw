@@ -26,6 +26,7 @@ import {
   normalizeMediaUnderstandingChatType,
   resolveMediaUnderstandingScope,
 } from "../../media-understanding/scope.js";
+import type { MediaUnderstandingOutput } from "../../media-understanding/types.js";
 import { resolveAudioAttachment } from "./attachments.js";
 import { extractMediaUserText, formatMediaUnderstandingBody } from "../../media-understanding/format.js";
 
@@ -116,14 +117,15 @@ export async function getReplyFromConfig(
       ctx.CommandBody = transcribed.text;
       ctx.RawBody = transcribed.text;
       if (mediaUnderstanding.appliedVideo || (ctx.MediaUnderstanding?.length ?? 0) > 0) {
-        const mergedOutputs = [
+        const audioOutput: MediaUnderstandingOutput = {
+          kind: "audio.transcription",
+          attachmentIndex: audioAttachment.index,
+          text: transcribed.text,
+          provider: "cli",
+        };
+        const mergedOutputs: MediaUnderstandingOutput[] = [
           ...(ctx.MediaUnderstanding ?? []),
-          {
-            kind: "audio.transcription",
-            attachmentIndex: audioAttachment.index,
-            text: transcribed.text,
-            provider: "cli",
-          },
+          audioOutput,
         ].sort((a, b) => a.attachmentIndex - b.attachmentIndex);
         ctx.MediaUnderstanding = mergedOutputs;
         ctx.Body = formatMediaUnderstandingBody({
