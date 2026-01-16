@@ -51,7 +51,7 @@ function sanitizeAssistantTextBlocks(messages: AgentMessage[]): AgentMessage[] {
 
     return {
       ...assistantMsg,
-      content: filteredContent.length > 0 ? filteredContent : assistantMsg.content,
+      content: filteredContent.length > 0 ? (filteredContent as unknown[] as ContentBlock[] ) : assistantMsg.content,
     };
   });
 }
