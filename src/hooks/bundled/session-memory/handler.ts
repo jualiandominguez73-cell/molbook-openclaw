@@ -114,16 +114,20 @@ const saveSessionToMemory: InternalHookHandler = async (event) => {
     }
 
     let slug: string | null = null;
+    let sessionContent: string | null = null;
+
     if (sessionFile && cfg) {
       // Get recent conversation content
-      const sessionContent = await getRecentSessionContent(sessionFile);
+      sessionContent = await getRecentSessionContent(sessionFile);
       console.log('[session-memory] sessionContent length:', sessionContent?.length || 0);
 
       if (sessionContent) {
         console.log('[session-memory] Calling generateSlugViaLLM...');
         // Dynamically import the LLM slug generator (avoids module caching issues)
+        // When compiled, handler is at dist/hooks/bundled/session-memory/handler.js
+        // Going up ../.. puts us at dist/hooks/, so just add llm-slug-generator.js
         const clawdbotRoot = path.resolve(path.dirname(import.meta.url.replace('file://', '')), '../..');
-        const slugGenPath = path.join(clawdbotRoot, 'dist/hooks/llm-slug-generator.js');
+        const slugGenPath = path.join(clawdbotRoot, 'llm-slug-generator.js');
         const { generateSlugViaLLM } = await import(slugGenPath);
 
         // Use LLM to generate a descriptive slug
@@ -153,14 +157,21 @@ const saveSessionToMemory: InternalHookHandler = async (event) => {
     const source = (context.commandSource as string) || 'unknown';
 
     // Build Markdown entry
-    const entry = [
+    const entryParts = [
       `# Session: ${dateStr} ${timeStr} UTC`,
       '',
       `- **Session Key**: ${event.sessionKey}`,
       `- **Session ID**: ${sessionId}`,
       `- **Source**: ${source}`,
       '',
-    ].join('\n');
+    ];
+
+    // Include conversation content if available
+    if (sessionContent) {
+      entryParts.push('## Conversation Summary', '', sessionContent, '');
+    }
+
+    const entry = entryParts.join('\n');
 
     // Write to new memory file
     await fs.writeFile(memoryFilePath, entry, 'utf-8');
