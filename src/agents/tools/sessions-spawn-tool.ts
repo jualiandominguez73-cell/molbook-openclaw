@@ -136,7 +136,8 @@ export function createSessionsSpawnTool(opts?: {
       const resolvedModel =
         normalizeModelSelection(modelOverride) ??
         normalizeModelSelection(targetAgentConfig?.subagents?.model) ??
-        normalizeModelSelection(cfg.agents?.defaults?.subagents?.model);
+        normalizeModelSelection(cfg.agents?.defaults?.subagents?.model) ??
+        normalizeModelSelection(targetAgentConfig?.model);
       if (resolvedModel) {
         try {
           await callGateway({
