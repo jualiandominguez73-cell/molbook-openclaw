@@ -22,10 +22,14 @@ All other scripts in this directory come from upstream and should **not** be mod
 
 ## Validation
 
-Run this to verify fork-specific scripts haven't been added to upstream:
-
+**Fork safety audit** (verify scripts are fork-only):
 ```bash
 ./.workflow/scripts/audit-fork-config.sh
+```
+
+**Shellcheck linting** (verify code quality):
+```bash
+./.workflow/scripts/lint-fork-scripts.sh
 ```
 
 ## Guidelines
