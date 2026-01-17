@@ -1,5 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Lint all fork-specific scripts with shellcheck
+
+set -euo pipefail
 
 echo "Linting fork-specific scripts..."
 echo "================================="
@@ -28,7 +30,7 @@ ALL_SCRIPTS=("${FORK_SCRIPTS[@]}" "${WORKFLOW_SCRIPTS[@]}")
 
 FAILED=0
 for script in "${ALL_SCRIPTS[@]}"; do
-  if [ ! -f "$script" ]; then
+  if [[ ! -f "$script" ]]; then
     echo "⚠️  $script (not found)"
     continue
   fi
@@ -43,7 +45,7 @@ for script in "${ALL_SCRIPTS[@]}"; do
   echo ""
 done
 
-if [ $FAILED -gt 0 ]; then
+if [[ $FAILED -gt 0 ]]; then
   echo "❌ $FAILED script(s) failed shellcheck"
   exit 1
 else

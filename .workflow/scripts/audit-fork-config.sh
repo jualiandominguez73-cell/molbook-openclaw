@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Audit fork configuration to ensure merge=ours is only used for fork-specific files
 #
 # Usage: ./.workflow/scripts/audit-fork-config.sh
@@ -36,10 +36,10 @@ VIOLATIONS_FOUND=false
 echo -e "${BLUE}[1/3] Validating .gitattributes merge=ours patterns...${NC}"
 echo ""
 
-if [ -f .gitattributes ]; then
+if [[ -f .gitattributes ]]; then
     MERGE_OURS_PATTERNS=$(grep -E '^\s*[^#].*merge=ours' .gitattributes | awk '{print $1}' || true)
 
-    if [ -n "$MERGE_OURS_PATTERNS" ]; then
+    if [[ -n "$MERGE_OURS_PATTERNS" ]]; then
         echo "Found patterns with merge=ours:"
         while IFS= read -r pattern; do
             echo "  - $pattern"
@@ -49,7 +49,7 @@ if [ -f .gitattributes ]; then
         ATTR_VIOLATIONS=""
         while IFS= read -r pattern; do
             # Skip CLAUDE.md - it's the only allowed exception
-            if [ "$pattern" = "CLAUDE.md" ]; then
+            if [[ "$pattern" = "CLAUDE.md" ]]; then
                 echo -e "  ${GREEN}✓${NC} $pattern (allowed exception)"
                 continue
             fi
@@ -76,7 +76,7 @@ if [ -f .gitattributes ]; then
             fi
         done <<< "$MERGE_OURS_PATTERNS"
 
-        if [ -n "$ATTR_VIOLATIONS" ]; then
+        if [[ -n "$ATTR_VIOLATIONS" ]]; then
             echo ""
             echo -e "${RED}❌ .gitattributes violations found:${NC}"
             echo -e "$ATTR_VIOLATIONS"
@@ -110,7 +110,7 @@ FORK_SCRIPTS=(
 
 SCRIPT_VIOLATIONS=""
 for script in "${FORK_SCRIPTS[@]}"; do
-    if [ ! -f "scripts/$script" ]; then
+    if [[ ! -f "scripts/$script" ]]; then
         echo -e "  ${YELLOW}⚠${NC}  scripts/$script (not found locally)"
         continue
     fi
@@ -133,7 +133,7 @@ for script in "${FORK_SCRIPTS[@]}"; do
     fi
 done
 
-if [ -n "$SCRIPT_VIOLATIONS" ]; then
+if [[ -n "$SCRIPT_VIOLATIONS" ]]; then
     echo ""
     echo -e "${RED}❌ scripts/ violations found:${NC}"
     echo -e "$SCRIPT_VIOLATIONS"
@@ -148,7 +148,7 @@ echo ""
 echo -e "${BLUE}[3/3] Checking .workflow/scripts/ (all must be fork-only)...${NC}"
 echo ""
 
-if [ -d .workflow/scripts ]; then
+if [[ -d .workflow/scripts ]]; then
     WORKFLOW_VIOLATIONS=""
     shopt -s nullglob
     for script in .workflow/scripts/*.sh; do
@@ -181,7 +181,7 @@ if [ -d .workflow/scripts ]; then
     done
     shopt -u nullglob
 
-    if [ -n "$WORKFLOW_VIOLATIONS" ]; then
+    if [[ -n "$WORKFLOW_VIOLATIONS" ]]; then
         echo ""
         echo -e "${RED}❌ .workflow/scripts/ violations found:${NC}"
         echo -e "$WORKFLOW_VIOLATIONS"
@@ -197,7 +197,7 @@ echo ""
 # ============================================================================
 
 echo -e "${BLUE}════════════════════════════════════════════════${NC}"
-if [ "$VIOLATIONS_FOUND" = true ]; then
+if [[ "$VIOLATIONS_FOUND" = true ]]; then
     echo -e "${RED}❌ AUDIT FAILED - Violations found!${NC}"
     echo ""
     echo "ACTION REQUIRED:"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Daily x86 build and tests on k8s cluster
 # Runs lint, build, test on x86 architecture (matches upstream CI)
 #

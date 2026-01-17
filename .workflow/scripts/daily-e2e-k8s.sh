@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Daily E2E tests on k8s cluster
 # Runs E2E tests against a gateway instance in the cluster
 #

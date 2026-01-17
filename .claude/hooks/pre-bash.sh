@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Pre-bash hook: Validate commands before execution
 # Reads command from stdin as JSON
 
-set -e
+set -euo pipefail
 
 # Read the tool input from stdin
 INPUT=$(cat)

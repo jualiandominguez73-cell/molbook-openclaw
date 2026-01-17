@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Check status of all registered Clawdbot instances
 #
 # Usage:

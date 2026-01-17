@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Master daily build script - runs ARM (local) and x86 (k8s) in parallel
 #
 # This is the main entry point for daily builds, designed to be run via launchd.

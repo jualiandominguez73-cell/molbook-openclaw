@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Start a test gateway and run E2E tests against it
 # Usage: ./scripts/e2e-with-gateway.sh [port] [test-pattern]
 
-set -e
+set -euo pipefail
 
 TEST_PORT="${1:-8081}"
 TEST_PATTERN="${2:-}"
@@ -51,7 +51,7 @@ for i in {1..30}; do
     echo "Gateway is ready!"
     break
   fi
-  if [ "$i" -eq 30 ]; then
+  if [[ "$i" -eq 30 ]]; then
     echo "Error: Gateway failed to start within 30 seconds"
     exit 1
   fi
@@ -63,7 +63,7 @@ echo "Running E2E tests..."
 echo ""
 
 # Run tests
-if [ -n "$TEST_PATTERN" ]; then
+if [[ -n "$TEST_PATTERN" ]]; then
   CLAWDBOT_GATEWAY_PORT=$TEST_PORT pnpm --dir "$REPO_ROOT" test:e2e -- --grep "$TEST_PATTERN"
 else
   CLAWDBOT_GATEWAY_PORT=$TEST_PORT pnpm --dir "$REPO_ROOT" test:e2e
@@ -72,7 +72,7 @@ fi
 TEST_EXIT=$?
 
 echo ""
-if [ $TEST_EXIT -eq 0 ]; then
+if [[ $TEST_EXIT -eq 0 ]]; then
   echo "E2E tests passed!"
 else
   echo "E2E tests failed (exit code: $TEST_EXIT)"

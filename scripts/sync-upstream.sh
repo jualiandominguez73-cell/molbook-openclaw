@@ -14,7 +14,7 @@ notify() {
 }
 
 fail() {
-    if [ "${STASHED:-false}" = true ]; then
+    if [[ "${STASHED:-false}" = true ]]; then
         echo "📦 Restoring stashed changes before exit..."
         if git stash pop; then
             notify "Clawdbot Sync Failed" "$1 (stashed changes restored)"
@@ -33,15 +33,15 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') Starting sync..."
 
 # Validate .gitattributes merge=ours patterns
 echo "🔍 Validating .gitattributes merge strategy..."
-if [ -f .gitattributes ]; then
+if [[ -f .gitattributes ]]; then
     # Extract all patterns with merge=ours (excluding comments and empty lines)
     MERGE_OURS_PATTERNS=$(grep -E '^\s*[^#].*merge=ours' .gitattributes | awk '{print $1}' || true)
 
-    if [ -n "$MERGE_OURS_PATTERNS" ]; then
+    if [[ -n "$MERGE_OURS_PATTERNS" ]]; then
         VIOLATIONS=""
         while IFS= read -r pattern; do
             # Skip CLAUDE.md - it's allowed to exist in upstream
-            if [ "$pattern" = "CLAUDE.md" ]; then
+            if [[ "$pattern" = "CLAUDE.md" ]]; then
                 continue
             fi
 
@@ -61,7 +61,7 @@ if [ -f .gitattributes ]; then
             fi
         done <<< "$MERGE_OURS_PATTERNS"
 
-        if [ -n "$VIOLATIONS" ]; then
+        if [[ -n "$VIOLATIONS" ]]; then
             echo "❌ .gitattributes validation failed!"
             echo "The following merge=ours patterns match files that exist in upstream:"
             echo -e "$VIOLATIONS"
@@ -78,7 +78,7 @@ if [ -f .gitattributes ]; then
 fi
 
 # Check for git lock
-if [ -f .git/index.lock ]; then
+if [[ -f .git/index.lock ]]; then
     fail "Git lock file exists. Another git process may be running."
 fi
 
@@ -92,7 +92,7 @@ fi
 
 # Ensure we're on the right branch
 CURRENT_BRANCH=$(git branch --show-current) || fail "Could not determine current branch"
-if [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
+if [[ "$CURRENT_BRANCH" != "$BRANCH" ]]; then
     echo "⚠️  On branch '$CURRENT_BRANCH', switching to '$BRANCH'..."
     git checkout "$BRANCH" || fail "Could not checkout $BRANCH"
 fi
@@ -111,7 +111,7 @@ fi
 # Check if we're already up to date
 LOCAL=$(git rev-parse "$BRANCH") || fail "Could not resolve local $BRANCH"
 UPSTREAM=$(git rev-parse "upstream/$BRANCH") || fail "Could not resolve upstream/$BRANCH"
-if [ "$LOCAL" = "$UPSTREAM" ]; then
+if [[ "$LOCAL" = "$UPSTREAM" ]]; then
     echo "✅ Already up to date with upstream."
     exit 0
 fi
@@ -136,7 +136,7 @@ if ! git push --force-with-lease dev "$BRANCH"; then
 fi
 
 # Restore stashed changes
-if [ "$STASHED" = true ]; then
+if [[ "$STASHED" = true ]]; then
     echo "📦 Restoring stashed changes..."
     git stash pop || notify "Clawdbot Sync Warning" "Sync succeeded but stash pop failed. Run 'git stash pop' manually."
 fi

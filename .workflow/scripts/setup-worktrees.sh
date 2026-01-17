@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Setup git worktrees for parallel agent development
 # Usage: ./.workflow/scripts/setup-worktrees.sh [sandbox-root]
 
-set -e
+set -euo pipefail
 
 SANDBOX_ROOT="${1:-$HOME/clawdbot-sandboxes}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -26,7 +26,7 @@ for name in "${WORKTREES[@]}"; do
   worktree_path="$SANDBOX_ROOT/$name"
   branch_name="sandbox/$name"
 
-  if [ -d "$worktree_path" ]; then
+  if [[ -d "$worktree_path" ]]; then
     echo "  [exists] $name -> $worktree_path"
   else
     echo "  [create] $name -> $worktree_path"
@@ -40,7 +40,7 @@ echo "Installing dependencies in each worktree..."
 
 for name in "${WORKTREES[@]}"; do
   worktree_path="$SANDBOX_ROOT/$name"
-  if [ -d "$worktree_path" ]; then
+  if [[ -d "$worktree_path" ]]; then
     echo "  [install] $name"
     (cd "$worktree_path" && pnpm install --silent 2>/dev/null) || echo "    (skipped - may need manual install)"
   fi

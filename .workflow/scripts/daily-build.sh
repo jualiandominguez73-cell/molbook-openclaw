@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Daily upstream sync, build, and test validation (ARM/Apple Silicon)
 # Run via launchd at 06:00 daily or manually: ./.workflow/scripts/daily-build.sh
 #
