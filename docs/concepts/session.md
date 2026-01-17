@@ -57,6 +57,7 @@ the workspace is writable. See [Memory](/concepts/memory) and
 - Idle expiry: `session.idleMinutes` (default 60). After the timeout a new `sessionId` is minted on the next message.
 - Reset triggers: exact `/new` or `/reset` (plus any extras in `resetTriggers`) start a fresh session id and pass the remainder of the message through. If `/new` or `/reset` is sent alone, Clawdbot runs a short “hello” greeting turn to confirm the reset.
 - Manual reset: delete specific keys from the store or remove the JSONL transcript; the next message recreates them.
+- Isolated cron jobs always mint a fresh `sessionId` per run (no idle reuse).
 
 ## Send policy (optional)
 Block delivery for specific session types without listing individual ids.
@@ -105,7 +106,7 @@ Send these as standalone messages so they register.
 - `clawdbot gateway call sessions.list --params '{}'` — fetch sessions from the running gateway (use `--url`/`--token` for remote gateway access).
 - Send `/status` as a standalone message in chat to see whether the agent is reachable, how much of the session context is used, current thinking/verbose toggles, and when your WhatsApp web creds were last refreshed (helps spot relink needs).
 - Send `/context list` or `/context detail` to see what’s in the system prompt and injected workspace files (and the biggest context contributors).
-- Send `/stop` as a standalone message to abort the current run.
+- Send `/stop` as a standalone message to abort the current run, clear queued followups for that session, and stop any sub-agent runs spawned from it (the reply includes the stopped count).
 - Send `/compact` (optional instructions) as a standalone message to summarize older context and free up window space. See [/concepts/compaction](/concepts/compaction).
 - JSONL transcripts can be opened directly to review full turns.
 

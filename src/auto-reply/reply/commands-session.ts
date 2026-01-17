@@ -6,7 +6,13 @@ import { scheduleGatewaySigusr1Restart, triggerClawdbotRestart } from "../../inf
 import { parseAgentSessionKey } from "../../routing/session-key.js";
 import { parseActivationCommand } from "../group-activation.js";
 import { parseSendPolicyCommand } from "../send-policy.js";
-import { isAbortTrigger, setAbortMemory } from "./abort.js";
+import {
+  formatAbortReplyText,
+  isAbortTrigger,
+  setAbortMemory,
+  stopSubagentsForRequester,
+} from "./abort.js";
+import { clearSessionQueues } from "./queue.js";
 import type { CommandHandler } from "./commands-types.js";
 
 function resolveSessionEntryForKey(
@@ -189,6 +195,12 @@ export const handleStopCommand: CommandHandler = async (params, allowTextCommand
   if (abortTarget.sessionId) {
     abortEmbeddedPiRun(abortTarget.sessionId);
   }
+  const cleared = clearSessionQueues([abortTarget.key, abortTarget.sessionId]);
+  if (cleared.followupCleared > 0 || cleared.laneCleared > 0) {
+    logVerbose(
+      `stop: cleared followups=${cleared.followupCleared} lane=${cleared.laneCleared} keys=${cleared.keys.join(",")}`,
+    );
+  }
   if (abortTarget.entry && params.sessionStore && abortTarget.key) {
     abortTarget.entry.abortedLastRun = true;
     abortTarget.entry.updatedAt = Date.now();
@@ -201,7 +213,14 @@ export const handleStopCommand: CommandHandler = async (params, allowTextCommand
   } else if (params.command.abortKey) {
     setAbortMemory(params.command.abortKey, true);
   }
-  return { shouldContinue: false, reply: { text: "⚙️ Agent was aborted." } };
+  const { stopped } = stopSubagentsForRequester({
+    cfg: params.cfg,
+    requesterSessionKey: abortTarget.key ?? params.sessionKey,
+  });
+  return {
+    shouldContinue: false,
+    reply: { text: formatAbortReplyText(stopped) },
+  };
 };
 
 export const handleAbortTrigger: CommandHandler = async (params, allowTextCommands) => {
@@ -216,6 +235,12 @@ export const handleAbortTrigger: CommandHandler = async (params, allowTextComman
   if (abortTarget.sessionId) {
     abortEmbeddedPiRun(abortTarget.sessionId);
   }
+  const cleared = clearSessionQueues([abortTarget.key, abortTarget.sessionId]);
+  if (cleared.followupCleared > 0 || cleared.laneCleared > 0) {
+    logVerbose(
+      `stop-trigger: cleared followups=${cleared.followupCleared} lane=${cleared.laneCleared} keys=${cleared.keys.join(",")}`,
+    );
+  }
   if (abortTarget.entry && params.sessionStore && abortTarget.key) {
     abortTarget.entry.abortedLastRun = true;
     abortTarget.entry.updatedAt = Date.now();
@@ -228,5 +253,12 @@ export const handleAbortTrigger: CommandHandler = async (params, allowTextComman
   } else if (params.command.abortKey) {
     setAbortMemory(params.command.abortKey, true);
   }
-  return { shouldContinue: false, reply: { text: "⚙️ Agent was aborted." } };
+  const { stopped } = stopSubagentsForRequester({
+    cfg: params.cfg,
+    requesterSessionKey: abortTarget.key ?? params.sessionKey,
+  });
+  return {
+    shouldContinue: false,
+    reply: { text: formatAbortReplyText(stopped) },
+  };
 };
