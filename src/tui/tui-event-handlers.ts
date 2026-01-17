@@ -65,6 +65,7 @@ export function createEventHandlers(context: EventHandlerContext) {
       noteFinalizedRun(evt.runId);
       state.activeChatRunId = null;
       setActivityStatus(stopReason === "error" ? "error" : "idle");
+      void refreshSessionInfo(); // Refresh token counts after run completes
     }
     if (evt.state === "aborted") {
       chatLog.addSystem("run aborted");
