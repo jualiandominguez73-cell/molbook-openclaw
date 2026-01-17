@@ -9,6 +9,9 @@
 - Sessions: add `session.identityLinks` for cross-platform DM session linking. (#1033) — thanks @thewilloftheshadow.
 - Hooks: add internal hooks system with bundled hooks, CLI tooling, and docs. (#1028) — thanks @ThomsenDrake.
 
+### Features
+- Channels: add the BlueBubbles plugin (REST send/receive, typing/read, reactions, webhook pairing). (#1077) — thanks @thewilloftheshadow.
+
 ### Breaking
 - **BREAKING:** Channel auth now prefers config over env for Discord/Telegram/Matrix (env is fallback only). (#1040) — thanks @thewilloftheshadow.
 - **BREAKING:** `clawdbot message` and message tool now require `target` (dropping `to`/`channelId` for destinations). (#1034) — thanks @tobalsan.
