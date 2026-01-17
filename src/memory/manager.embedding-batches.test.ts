@@ -6,40 +6,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMemorySearchManager, type MemoryIndexManager } from "./index.js";
 
-vi.mock("./embeddings.js", () => {
-  const embedText = (text: string) => {
-    const lower = text.toLowerCase();
-    const alpha = lower.split("alpha").length - 1;
-    const beta = lower.split("beta").length - 1;
-    return [alpha, beta, 1];
-  };
-  return {
-    createEmbeddingProvider: async () => ({
-      requestedProvider: "openai",
-      provider: {
-        id: "mock",
-        model: "mock-embed",
-        embedQuery: async (text: string) => embedText(text),
-        embedBatch: async (texts: string[]) => texts.map(embedText),
-      },
-    }),
-  };
-});
+const embedBatch = vi.fn(async (texts: string[]) => texts.map(() => [0, 1, 0]));
+const embedQuery = vi.fn(async () => [0, 1, 0]);
 
-describe("memory index", () => {
+vi.mock("./embeddings.js", () => ({
+  createEmbeddingProvider: async () => ({
+    requestedProvider: "openai",
+    provider: {
+      id: "mock",
+      model: "mock-embed",
+      embedQuery,
+      embedBatch,
+    },
+  }),
+}));
+
+describe("memory embedding batches", () => {
   let workspaceDir: string;
   let indexPath: string;
   let manager: MemoryIndexManager | null = null;
 
   beforeEach(async () => {
+    embedBatch.mockClear();
+    embedQuery.mockClear();
     workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-mem-"));
     indexPath = path.join(workspaceDir, "index.sqlite");
     await fs.mkdir(path.join(workspaceDir, "memory"));
-    await fs.writeFile(
-      path.join(workspaceDir, "memory", "2026-01-12.md"),
-      "# Log\nAlpha memory line.\nAnother line.",
-    );
-    await fs.writeFile(path.join(workspaceDir, "MEMORY.md"), "Beta knowledge base entry.");
   });
 
   afterEach(async () => {
@@ -50,7 +42,11 @@ describe("memory index", () => {
     await fs.rm(workspaceDir, { recursive: true, force: true });
   });
 
-  it("indexes memory files and searches by vector", async () => {
+  it("splits large files across multiple embedding batches", async () => {
+    const line = "a".repeat(200);
+    const content = Array.from({ length: 200 }, () => line).join("\n");
+    await fs.writeFile(path.join(workspaceDir, "memory", "2026-01-03.md"), content);
+
     const cfg = {
       agents: {
         defaults: {
@@ -59,34 +55,35 @@ describe("memory index", () => {
             provider: "openai",
             model: "mock-embed",
             store: { path: indexPath },
-            sync: { watch: false, onSessionStart: false, onSearch: true },
+            chunking: { tokens: 200, overlap: 0 },
+            sync: { watch: false, onSessionStart: false, onSearch: false },
             query: { minScore: 0 },
           },
         },
         list: [{ id: "main", default: true }],
       },
     };
+
     const result = await getMemorySearchManager({ cfg, agentId: "main" });
     expect(result.manager).not.toBeNull();
     if (!result.manager) throw new Error("manager missing");
     manager = result.manager;
-    await result.manager.sync({ force: true });
-    const results = await result.manager.search("alpha");
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.path).toContain("memory/2026-01-12.md");
-    const status = result.manager.status();
-    expect(status.sourceCounts).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          source: "memory",
-          files: status.files,
-          chunks: status.chunks,
-        }),
-      ]),
+    await manager.sync({ force: true });
+
+    const status = manager.status();
+    const totalTexts = embedBatch.mock.calls.reduce(
+      (sum, call) => sum + (call[0]?.length ?? 0),
+      0,
     );
+    expect(totalTexts).toBe(status.chunks);
+    expect(embedBatch.mock.calls.length).toBeGreaterThan(1);
   });
 
-  it("reports vector availability after probe", async () => {
+  it("keeps small files in a single embedding batch", async () => {
+    const line = "b".repeat(120);
+    const content = Array.from({ length: 12 }, () => line).join("\n");
+    await fs.writeFile(path.join(workspaceDir, "memory", "2026-01-04.md"), content);
+
     const cfg = {
       agents: {
         defaults: {
@@ -95,24 +92,29 @@ describe("memory index", () => {
             provider: "openai",
             model: "mock-embed",
             store: { path: indexPath },
+            chunking: { tokens: 200, overlap: 0 },
             sync: { watch: false, onSessionStart: false, onSearch: false },
+            query: { minScore: 0 },
           },
         },
         list: [{ id: "main", default: true }],
       },
     };
+
     const result = await getMemorySearchManager({ cfg, agentId: "main" });
     expect(result.manager).not.toBeNull();
     if (!result.manager) throw new Error("manager missing");
     manager = result.manager;
-    const available = await result.manager.probeVectorAvailability();
-    const status = result.manager.status();
-    expect(status.vector?.enabled).toBe(true);
-    expect(typeof status.vector?.available).toBe("boolean");
-    expect(status.vector?.available).toBe(available);
+    await manager.sync({ force: true });
+
+    expect(embedBatch.mock.calls.length).toBe(1);
   });
 
-  it("rejects reading non-memory paths", async () => {
+  it("reports sync progress totals", async () => {
+    const line = "c".repeat(120);
+    const content = Array.from({ length: 20 }, () => line).join("\n");
+    await fs.writeFile(path.join(workspaceDir, "memory", "2026-01-05.md"), content);
+
     const cfg = {
       agents: {
         defaults: {
@@ -121,16 +123,30 @@ describe("memory index", () => {
             provider: "openai",
             model: "mock-embed",
             store: { path: indexPath },
-            sync: { watch: false, onSessionStart: false, onSearch: true },
+            chunking: { tokens: 200, overlap: 0 },
+            sync: { watch: false, onSessionStart: false, onSearch: false },
+            query: { minScore: 0 },
           },
         },
         list: [{ id: "main", default: true }],
       },
     };
+
     const result = await getMemorySearchManager({ cfg, agentId: "main" });
     expect(result.manager).not.toBeNull();
     if (!result.manager) throw new Error("manager missing");
     manager = result.manager;
-    await expect(result.manager.readFile({ relPath: "NOTES.md" })).rejects.toThrow("path required");
+    const updates: Array<{ completed: number; total: number; label?: string }> = [];
+    await manager.sync({
+      force: true,
+      progress: (update) => {
+        updates.push(update);
+      },
+    });
+
+    expect(updates.length).toBeGreaterThan(0);
+    const last = updates[updates.length - 1];
+    expect(last?.total).toBeGreaterThan(0);
+    expect(last?.completed).toBe(last?.total);
   });
 });

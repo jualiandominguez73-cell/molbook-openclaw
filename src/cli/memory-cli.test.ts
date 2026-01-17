@@ -20,14 +20,17 @@ vi.mock("../agents/agent-scope.js", () => ({
 afterEach(() => {
   vi.restoreAllMocks();
   getMemorySearchManager.mockReset();
+  process.exitCode = undefined;
 });
 
 describe("memory cli", () => {
   it("prints vector status when available", async () => {
     const { registerMemoryCli } = await import("./memory-cli.js");
     const { defaultRuntime } = await import("../runtime.js");
+    const close = vi.fn(async () => {});
     getMemorySearchManager.mockResolvedValueOnce({
       manager: {
+        probeVectorAvailability: vi.fn(async () => true),
         status: () => ({
           files: 2,
           chunks: 5,
@@ -44,6 +47,7 @@ describe("memory cli", () => {
             dims: 1024,
           },
         }),
+        close,
       },
     });
 
@@ -55,16 +59,17 @@ describe("memory cli", () => {
 
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector: ready"));
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector dims: 1024"));
-    expect(log).toHaveBeenCalledWith(
-      expect.stringContaining("Vector path: /opt/sqlite-vec.dylib"),
-    );
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector path: /opt/sqlite-vec.dylib"));
+    expect(close).toHaveBeenCalled();
   });
 
   it("prints vector error when unavailable", async () => {
     const { registerMemoryCli } = await import("./memory-cli.js");
     const { defaultRuntime } = await import("../runtime.js");
+    const close = vi.fn(async () => {});
     getMemorySearchManager.mockResolvedValueOnce({
       manager: {
+        probeVectorAvailability: vi.fn(async () => false),
         status: () => ({
           files: 0,
           chunks: 0,
@@ -80,6 +85,7 @@ describe("memory cli", () => {
             loadError: "load failed",
           },
         }),
+        close,
       },
     });
 
@@ -91,5 +97,129 @@ describe("memory cli", () => {
 
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector: unavailable"));
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector error: load failed"));
+    expect(close).toHaveBeenCalled();
+  });
+
+  it("prints embeddings status when deep", async () => {
+    const { registerMemoryCli } = await import("./memory-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    const close = vi.fn(async () => {});
+    const probeEmbeddingAvailability = vi.fn(async () => ({ ok: true }));
+    getMemorySearchManager.mockResolvedValueOnce({
+      manager: {
+        probeVectorAvailability: vi.fn(async () => true),
+        probeEmbeddingAvailability,
+        status: () => ({
+          files: 1,
+          chunks: 1,
+          dirty: false,
+          workspaceDir: "/tmp/clawd",
+          dbPath: "/tmp/memory.sqlite",
+          provider: "openai",
+          model: "text-embedding-3-small",
+          requestedProvider: "openai",
+          vector: { enabled: true, available: true },
+        }),
+        close,
+      },
+    });
+
+    const log = vi.spyOn(defaultRuntime, "log").mockImplementation(() => {});
+    const program = new Command();
+    program.name("test");
+    registerMemoryCli(program);
+    await program.parseAsync(["memory", "status", "--deep"], { from: "user" });
+
+    expect(probeEmbeddingAvailability).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Embeddings: ready"));
+    expect(close).toHaveBeenCalled();
+  });
+
+  it("reindexes on status --index", async () => {
+    const { registerMemoryCli } = await import("./memory-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    const close = vi.fn(async () => {});
+    const sync = vi.fn(async () => {});
+    const probeEmbeddingAvailability = vi.fn(async () => ({ ok: true }));
+    getMemorySearchManager.mockResolvedValueOnce({
+      manager: {
+        probeVectorAvailability: vi.fn(async () => true),
+        probeEmbeddingAvailability,
+        sync,
+        status: () => ({
+          files: 1,
+          chunks: 1,
+          dirty: false,
+          workspaceDir: "/tmp/clawd",
+          dbPath: "/tmp/memory.sqlite",
+          provider: "openai",
+          model: "text-embedding-3-small",
+          requestedProvider: "openai",
+          vector: { enabled: true, available: true },
+        }),
+        close,
+      },
+    });
+
+    vi.spyOn(defaultRuntime, "log").mockImplementation(() => {});
+    const program = new Command();
+    program.name("test");
+    registerMemoryCli(program);
+    await program.parseAsync(["memory", "status", "--index"], { from: "user" });
+
+    expect(sync).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "cli", progress: expect.any(Function) }),
+    );
+    expect(probeEmbeddingAvailability).toHaveBeenCalled();
+    expect(close).toHaveBeenCalled();
+  });
+
+  it("closes manager after index", async () => {
+    const { registerMemoryCli } = await import("./memory-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    const close = vi.fn(async () => {});
+    const sync = vi.fn(async () => {});
+    getMemorySearchManager.mockResolvedValueOnce({
+      manager: {
+        sync,
+        close,
+      },
+    });
+
+    const log = vi.spyOn(defaultRuntime, "log").mockImplementation(() => {});
+    const program = new Command();
+    program.name("test");
+    registerMemoryCli(program);
+    await program.parseAsync(["memory", "index"], { from: "user" });
+
+    expect(sync).toHaveBeenCalledWith({ reason: "cli", force: false });
+    expect(close).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith("Memory index updated.");
+  });
+
+  it("closes manager after search error", async () => {
+    const { registerMemoryCli } = await import("./memory-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    const close = vi.fn(async () => {});
+    const search = vi.fn(async () => {
+      throw new Error("boom");
+    });
+    getMemorySearchManager.mockResolvedValueOnce({
+      manager: {
+        search,
+        close,
+      },
+    });
+
+    const error = vi.spyOn(defaultRuntime, "error").mockImplementation(() => {});
+    const program = new Command();
+    program.name("test");
+    registerMemoryCli(program);
+    await program.parseAsync(["memory", "search", "oops"], { from: "user" });
+
+    expect(search).toHaveBeenCalled();
+    expect(close).toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("Memory search failed: boom"));
+    expect(process.exitCode).toBe(1);
   });
 });
