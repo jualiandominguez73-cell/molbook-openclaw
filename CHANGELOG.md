@@ -2,7 +2,7 @@
 
 Docs: https://docs.clawd.bot
 
-## 2026.1.16 (unreleased)
+## 2026.1.17
 
 ### Highlights
 - Hooks: add hooks system with bundled hooks, CLI tooling, and docs. (#1028) — thanks @ThomsenDrake. https://docs.clawd.bot/hooks
@@ -21,6 +21,8 @@ Docs: https://docs.clawd.bot
 - **BREAKING:** `clawdbot plugins install <path>` now copies into `~/.clawdbot/extensions` (use `--link` to keep path-based loading).
 
 ### Changes
+- Plugins: ship bundled plugins disabled by default and allow overrides by installed versions. (#1066) — thanks @ItzR3NO.
+- Plugins: add bundled Antigravity + Gemini CLI OAuth + Copilot Proxy provider plugins. (#1066) — thanks @ItzR3NO.
 - Tools: improve `web_fetch` extraction using Readability (with fallback).
 - Tools: add Firecrawl fallback for `web_fetch` when configured.
 - Tools: send Chrome-like headers by default for `web_fetch` to improve extraction on bot-sensitive sites.
@@ -31,6 +33,7 @@ Docs: https://docs.clawd.bot
 - Tools: add `process submit` helper to send CR for PTY sessions.
 - Tools: respond to PTY cursor position queries to unblock interactive TUIs.
 - Tools: include tool outputs in verbose mode and expand verbose tool feedback.
+- Skills: update coding-agent guidance to prefer PTY-enabled exec runs and simplify tmux usage.
 - TUI: refresh session token counts after runs complete or fail. (#1079) — thanks @d-ploutarchos.
 - Status: trim `/status` to current-provider usage only and drop the OAuth/token block.
 - Directory: unify `clawdbot directory` across channels and plugin channels.
@@ -42,6 +45,7 @@ Docs: https://docs.clawd.bot
 - Messages: refresh live directory cache results when resolving targets.
 - Messages: mirror delivered outbound text/media into session transcripts. (#1031) — thanks @TSavo.
 - Messages: avoid redundant sender envelopes for iMessage + Signal group chats. (#1080) — thanks @tyler6204.
+- Media: normalize Deepgram audio upload bytes for fetch compatibility.
 - Cron: isolated cron jobs now start a fresh session id on every run to prevent context buildup.
 - Docs: add `/help` hub, Node/npm PATH guide, and expand directory CLI docs.
 - Config: support env var substitution in config values. (#1044) — thanks @sebslight.
@@ -51,13 +55,16 @@ Docs: https://docs.clawd.bot
 
 ### Fixes
 - macOS: drain subprocess pipes before waiting to avoid deadlocks. (#1081) — thanks @thesash.
+- Verbose: wrap tool summaries/output in markdown only for markdown-capable channels.
 - Telegram: accept tg/group/telegram prefixes + topic targets for inline button validation. (#1072) — thanks @danielz1z.
 - Telegram: split long captions into follow-up messages.
+- Config: block startup on invalid config, preserve best-effort doctor config, and keep rolling config backups. (#1083) — thanks @mukhtharcm.
 - Sub-agents: normalize announce delivery origin + queue bucketing by accountId to keep multi-account routing stable. (#1061, #1058) — thanks @adam91holt.
 - Sessions: include deliveryContext in sessions.list and reuse normalized delivery routing for announce/restart fallbacks. (#1058)
 - Sessions: propagate deliveryContext into last-route updates to keep account/channel routing stable. (#1058)
 - Sessions: preserve overrides on `/new` reset.
 - Memory: prevent unhandled rejections when watch/interval sync fails. (#1076) — thanks @roshanasingh4.
+- Memory: avoid gateway crash when embeddings return 429/insufficient_quota (disable tool + surface error). (#1004)
 - Gateway: honor explicit delivery targets without implicit accountId fallback; preserve lastAccountId for implicit routing.
 - Gateway: avoid reusing last-to/accountId when the requested channel differs; sync deliveryContext with last route fields.
 - Build: allow `@lydell/node-pty` builds on supported platforms.
@@ -80,6 +87,7 @@ Docs: https://docs.clawd.bot
 - WhatsApp: scope self-chat response prefix; inject pending-only group history and clear after any processed message.
 - WhatsApp: include `linked` field in `describeAccount`.
 - Agents: drop unsigned Gemini tool calls and avoid JSON Schema `format` keyword collisions.
+- Agents: hide the image tool when the primary model already supports images.
 - Agents: avoid duplicate sends by replying with `NO_REPLY` after `message` tool sends.
 - Auth: inherit/merge sub-agent auth profiles from the main agent.
 - Gateway: resolve local auth for security probe and validate gateway token/password file modes. (#1011, #1022) — thanks @ivanrvpereira, @kkarimi.
