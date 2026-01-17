@@ -803,55 +803,79 @@ async function processMessage(
     OriginatingTo: `bluebubbles:${outboundTarget}`,
   };
 
-  await deps.dispatchReplyWithBufferedBlockDispatcher({
-    ctx: ctxPayload,
-    cfg: config,
-    dispatcherOptions: {
-      deliver: async (payload) => {
-        const textLimit =
-          account.config.textChunkLimit && account.config.textChunkLimit > 0
-            ? account.config.textChunkLimit
-            : DEFAULT_TEXT_LIMIT;
-        const chunks = deps.chunkMarkdownText(payload.text ?? "", textLimit);
-        if (!chunks.length && payload.text) chunks.push(payload.text);
-        if (!chunks.length) return;
-        for (const chunk of chunks) {
-          await sendMessageBlueBubbles(outboundTarget, chunk, {
+  if (chatGuidForActions && baseUrl && password) {
+    logVerbose(deps, runtime, `typing start (pre-dispatch) chatGuid=${chatGuidForActions}`);
+    try {
+      await sendBlueBubblesTyping(chatGuidForActions, true, {
+        cfg: config,
+        accountId: account.accountId,
+      });
+    } catch (err) {
+      runtime.error?.(`[bluebubbles] typing start failed: ${String(err)}`);
+    }
+  }
+
+  try {
+    await deps.dispatchReplyWithBufferedBlockDispatcher({
+      ctx: ctxPayload,
+      cfg: config,
+      dispatcherOptions: {
+        deliver: async (payload) => {
+          const textLimit =
+            account.config.textChunkLimit && account.config.textChunkLimit > 0
+              ? account.config.textChunkLimit
+              : DEFAULT_TEXT_LIMIT;
+          const chunks = deps.chunkMarkdownText(payload.text ?? "", textLimit);
+          if (!chunks.length && payload.text) chunks.push(payload.text);
+          if (!chunks.length) return;
+          for (const chunk of chunks) {
+            await sendMessageBlueBubbles(outboundTarget, chunk, {
+              cfg: config,
+              accountId: account.accountId,
+            });
+            statusSink?.({ lastOutboundAt: Date.now() });
+          }
+        },
+        onReplyStart: async () => {
+          if (!chatGuidForActions) return;
+          if (!baseUrl || !password) return;
+          logVerbose(deps, runtime, `typing start chatGuid=${chatGuidForActions}`);
+          try {
+            await sendBlueBubblesTyping(chatGuidForActions, true, {
+              cfg: config,
+              accountId: account.accountId,
+            });
+          } catch (err) {
+            runtime.error?.(`[bluebubbles] typing start failed: ${String(err)}`);
+          }
+        },
+        onIdle: () => {
+          if (!chatGuidForActions) return;
+          if (!baseUrl || !password) return;
+          logVerbose(deps, runtime, `typing stop chatGuid=${chatGuidForActions}`);
+          void sendBlueBubblesTyping(chatGuidForActions, false, {
             cfg: config,
             accountId: account.accountId,
+          }).catch((err) => {
+            runtime.error?.(`[bluebubbles] typing stop failed: ${String(err)}`);
           });
-          statusSink?.({ lastOutboundAt: Date.now() });
-        }
+        },
+        onError: (err, info) => {
+          runtime.error?.(`BlueBubbles ${info.kind} reply failed: ${String(err)}`);
+        },
       },
-      onReplyStart: async () => {
-        if (!chatGuidForActions) return;
-        if (!baseUrl || !password) return;
-        logVerbose(deps, runtime, `typing start chatGuid=${chatGuidForActions}`);
-        try {
-          await sendBlueBubblesTyping(chatGuidForActions, true, {
-            cfg: config,
-            accountId: account.accountId,
-          });
-        } catch (err) {
-          runtime.error?.(`[bluebubbles] typing start failed: ${String(err)}`);
-        }
-      },
-      onIdle: () => {
-        if (!chatGuidForActions) return;
-        if (!baseUrl || !password) return;
-        logVerbose(deps, runtime, `typing stop chatGuid=${chatGuidForActions}`);
-        void sendBlueBubblesTyping(chatGuidForActions, false, {
-          cfg: config,
-          accountId: account.accountId,
-        }).catch((err) => {
-          runtime.error?.(`[bluebubbles] typing stop failed: ${String(err)}`);
-        });
-      },
-      onError: (err, info) => {
-        runtime.error?.(`BlueBubbles ${info.kind} reply failed: ${String(err)}`);
-      },
-    },
-  });
+    });
+  } finally {
+    if (chatGuidForActions && baseUrl && password) {
+      logVerbose(deps, runtime, `typing stop (finalize) chatGuid=${chatGuidForActions}`);
+      void sendBlueBubblesTyping(chatGuidForActions, false, {
+        cfg: config,
+        accountId: account.accountId,
+      }).catch((err) => {
+        runtime.error?.(`[bluebubbles] typing stop failed: ${String(err)}`);
+      });
+    }
+  }
 }
 
 async function processReaction(
