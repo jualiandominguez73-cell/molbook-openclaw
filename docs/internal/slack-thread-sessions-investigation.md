@@ -76,17 +76,26 @@ export const DEFAULT_IDLE_MINUTES = 60;
 
 ---
 
-## Hypothesis
+## Root Cause Confirmed
 
-The issue is the **idle timeout** applying to thread sessions. Threads are meant to be long-running conversations that you return to, but the 60-minute idle timeout treats them as expired.
+The **60-minute idle timeout** applies to thread sessions the same as DMs. When returning to a thread after >60 min, a new session is created, losing all conversation history.
 
-### Possible Fixes
+**Evidence from OpenProse thread:**
+- Original session `996378c0`: Last activity `2026-01-17T23:12:44Z`, had 41 messages with full research
+- New session `b3307ab8`: Started `2026-01-18T03:23:05Z` (4+ hours later), only got thread starter context
+- All AI research/responses from original session = lost
 
-1. **Longer/infinite idle for threads:** Thread sessions could have a much longer (or no) idle timeout since they're explicitly threaded conversations.
+## Expected Behavior
 
-2. **Per-session-type idle:** Add config like `session.threadIdleMinutes` separate from `session.idleMinutes`.
+**Threads are explicit conversation continuations.** When a user replies in a thread, they're intentionally continuing that specific conversation and expect the full thread context to always be available.
 
-3. **Thread sessions never expire:** Since threads have explicit context (the thread itself), treat them differently.
+- Thread sessions should have **infinite idle timeout** (never expire)
+- User can manually `/compact` or `/new` if they want to reset
+- This matches user mental model: "I'm replying in this thread = continue this conversation"
+
+## Fix Implemented
+
+Check for `:thread:` in session key and skip idle timeout for thread sessions.
 
 ---
 

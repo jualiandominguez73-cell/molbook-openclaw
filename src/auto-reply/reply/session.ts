@@ -171,7 +171,11 @@ export async function initSessionState(params: {
   const entry = sessionStore[sessionKey];
   const previousSessionEntry = resetTriggered && entry ? { ...entry } : undefined;
   const idleMs = idleMinutes * 60_000;
-  const freshEntry = entry && Date.now() - entry.updatedAt <= idleMs;
+  // Thread sessions (e.g. Slack threads) should never expire due to idle timeout.
+  // Users explicitly continue conversations in threads and expect full context.
+  // They can manually /compact or /new if needed.
+  const isThreadSession = sessionKey.includes(":thread:");
+  const freshEntry = entry && (isThreadSession || Date.now() - entry.updatedAt <= idleMs);
 
   if (!isNewSession && freshEntry) {
     sessionId = entry.sessionId;
