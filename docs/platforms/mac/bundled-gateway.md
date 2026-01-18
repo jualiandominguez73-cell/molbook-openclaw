@@ -8,8 +8,15 @@ read_when:
 
 # Bundled Gateway (macOS)
 
+<<<<<<< HEAD
 Goal: ship **Clawdbot.app** with a self-contained relay that can run the CLI and
 Gateway daemon. No global `npm install -g clawdbot`, no system Node requirement.
+=======
+Clawdbot.app no longer bundles Node/Bun or the Gateway runtime. The macOS app
+expects an **external** `clawdbot` CLI install, does not spawn the Gateway as a
+child process, and manages a per‑user launchd service to keep the Gateway
+running (or attaches to an existing local Gateway if one is already running).
+>>>>>>> upstream/main
 
 ## What gets bundled
 
@@ -84,7 +91,12 @@ Manager:
 Behavior:
 - “Clawdbot Active” enables/disables the LaunchAgent.
 - App quit does **not** stop the gateway (launchd keeps it alive).
+<<<<<<< HEAD
 - CLI install (`clawdbot daemon install`) writes the same LaunchAgent; `--force` rewrites it.
+=======
+- If a Gateway is already running on the configured port, the app attaches to
+  it instead of starting a new one.
+>>>>>>> upstream/main
 
 Logging:
 - launchd stdout/err: `/tmp/clawdbot/clawdbot-gateway.log`
