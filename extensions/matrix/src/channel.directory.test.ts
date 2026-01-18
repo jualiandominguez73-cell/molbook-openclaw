@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import type { PluginRuntime } from "clawdbot/plugin-sdk";
 import type { CoreConfig } from "./types.js";
 
 import { matrixPlugin } from "./channel.js";
+import { setMatrixRuntime } from "./runtime.js";
 
 describe("matrix directory", () => {
+  beforeEach(() => {
+    setMatrixRuntime({} as PluginRuntime);
+  });
+
   it("lists peers and groups from config", async () => {
     const cfg = {
       channels: {
