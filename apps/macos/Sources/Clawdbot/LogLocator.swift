@@ -47,7 +47,7 @@ enum LogLocator {
         return stdoutLog.path
     }
 
-    /// Path to use for the Gateway launchd job stdout/err.
+    /// Path to use for the embedded Gateway launchd job stdout/err.
     static var launchdGatewayLogPath: String {
         self.ensureLogDirExists()
         return gatewayLog.path

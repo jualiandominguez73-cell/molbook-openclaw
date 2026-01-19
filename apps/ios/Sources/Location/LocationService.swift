@@ -115,11 +115,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+<<<<<<< HEAD
+        let latest = locations.last
+        Task { @MainActor in
+            guard let cont = self.locationContinuation else { return }
+            self.locationContinuation = nil
+            if let latest {
+=======
         let locs = locations
         Task { @MainActor in
             guard let cont = self.locationContinuation else { return }
             self.locationContinuation = nil
             if let latest = locs.last {
+>>>>>>> upstream/main
                 cont.resume(returning: latest)
             } else {
                 cont.resume(throwing: Error.unavailable)
@@ -128,11 +136,18 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Swift.Error) {
+<<<<<<< HEAD
+        Task { @MainActor in
+            guard let cont = self.locationContinuation else { return }
+            self.locationContinuation = nil
+            cont.resume(throwing: error)
+=======
         let err = error
         Task { @MainActor in
             guard let cont = self.locationContinuation else { return }
             self.locationContinuation = nil
             cont.resume(throwing: err)
+>>>>>>> upstream/main
         }
     }
 }

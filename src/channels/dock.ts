@@ -102,6 +102,19 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       resolveRequireMention: resolveTelegramGroupRequireMention,
     },
     threading: {
+<<<<<<< HEAD
+<<<<<<< HEAD:src/providers/dock.ts
+      resolveReplyToMode: ({ cfg }) => cfg.telegram?.replyToMode ?? "first",
+=======
+      resolveReplyToMode: ({ cfg }) =>
+        cfg.channels?.telegram?.replyToMode ?? "first",
+>>>>>>> upstream/main:src/channels/dock.ts
+      buildToolContext: ({ context, hasRepliedRef }) => ({
+        currentChannelId: context.To?.trim() || undefined,
+        currentThreadTs: context.ReplyToId,
+        hasRepliedRef,
+      }),
+=======
       resolveReplyToMode: ({ cfg }) => cfg.channels?.telegram?.replyToMode ?? "first",
       buildToolContext: ({ context, hasRepliedRef }) => {
         const threadId = context.MessageThreadId ?? context.ReplyToId;
@@ -111,6 +124,7 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
           hasRepliedRef,
         };
       },
+>>>>>>> upstream/main
     },
   },
   whatsapp: {
@@ -188,7 +202,16 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       stripPatterns: () => ["<@!?\\d+>"],
     },
     threading: {
+<<<<<<< HEAD
+<<<<<<< HEAD:src/providers/dock.ts
+      resolveReplyToMode: ({ cfg }) => cfg.discord?.replyToMode ?? "off",
+=======
+      resolveReplyToMode: ({ cfg }) =>
+        cfg.channels?.discord?.replyToMode ?? "off",
+>>>>>>> upstream/main:src/channels/dock.ts
+=======
       resolveReplyToMode: ({ cfg }) => cfg.channels?.discord?.replyToMode ?? "off",
+>>>>>>> upstream/main
       buildToolContext: ({ context, hasRepliedRef }) => ({
         currentChannelId: context.To?.trim() || undefined,
         currentThreadTs: context.ReplyToId,

@@ -67,6 +67,8 @@ Alternative (global install):
 npm install -g clawdbot@latest
 ```
 
+Or:
+
 ```bash
 pnpm add -g clawdbot@latest
 ```

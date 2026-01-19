@@ -1,13 +1,61 @@
 {
   "version": 1,
   "skills": {
-    "morning-email-rollup": {
-      "version": "2.0.0",
-      "installedAt": 1768587669505
+    "openhue": {
+      "version": "1.0.0",
+      "installedAt": 1767556754940
+    },
+    "nano-pdf": {
+      "version": "1.0.0",
+      "installedAt": 1767564035219
+    },
+    "nano-banana-pro": {
+      "version": "1.0.0",
+      "installedAt": 1767566175155
+    },
+    "apple-notes": {
+      "version": "1.0.0",
+      "installedAt": 1767570758502
     },
     "gog": {
       "version": "1.0.0",
-      "installedAt": 1768686150134
+      "installedAt": 1768686586768
+    },
+    "bird": {
+      "version": "1.0.0",
+      "installedAt": 1767586194563
+    },
+    "reddit": {
+      "version": "1.0.0",
+      "installedAt": 1767650864262
+    },
+    "1password": {
+      "version": "1.0.0",
+      "installedAt": 1767668517959
+    },
+    "otter": {
+      "version": "1.0.0",
+      "installedAt": 1767714704384
+    },
+    "icloud-findmy": {
+      "version": "1.0.0",
+      "installedAt": 1767826270493
+    },
+    "anylist": {
+      "version": "0.1.0",
+      "installedAt": 1768168566093
+    },
+    "paprika": {
+      "version": "0.1.0",
+      "installedAt": 1768168572757
+    },
+    "clawdbot-skill-update": {
+      "version": "1.0.2",
+      "installedAt": 1768322849616
+    },
+    "news-summary": {
+      "version": "1.0.1",
+      "installedAt": 1768324886260
     }
   }
 }

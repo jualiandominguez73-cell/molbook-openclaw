@@ -175,8 +175,8 @@ elif [ "$SIGN" -eq 1 ]; then
   unset SIGN_IDENTITY
 fi
 
-# 3) Package app (no embedded gateway).
-run_step "package app" bash -lc "cd '${ROOT_DIR}' && SKIP_TSC=${SKIP_TSC:-1} '${ROOT_DIR}/scripts/package-mac-app.sh'"
+# 3) Package app (default to bundling the embedded gateway + CLI).
+run_step "package app" bash -lc "cd '${ROOT_DIR}' && SKIP_TSC=${SKIP_TSC:-1} SKIP_GATEWAY_PACKAGE=${SKIP_GATEWAY_PACKAGE:-0} '${ROOT_DIR}/scripts/package-mac-app.sh'"
 
 choose_app_bundle() {
   if [[ -n "${APP_BUNDLE}" && -d "${APP_BUNDLE}" ]]; then
@@ -251,6 +251,11 @@ else
   fail "App exited immediately. Check ${LOG_PATH} or Console.app (User Reports)."
 fi
 
+<<<<<<< HEAD
+# When unsigned, launchd cannot exec the app relay binary. Ensure the gateway
+# LaunchAgent targets the repo CLI instead (after the app has launched).
+=======
+>>>>>>> upstream/main
 if [ "$NO_SIGN" -eq 1 ]; then
   run_step "show gateway launch agent args (unsigned)" bash -lc "/usr/bin/plutil -p '${HOME}/Library/LaunchAgents/com.clawdbot.gateway.plist' | head -n 40 || true"
 fi

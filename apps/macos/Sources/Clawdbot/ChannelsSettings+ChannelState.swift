@@ -1,7 +1,15 @@
 import ClawdbotProtocol
 import SwiftUI
 
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+extension ConnectionsSettings {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+    var whatsAppTint: Color {
+        guard let status = self.store.snapshot?.whatsapp else { return .secondary }
+=======
+=======
 extension ChannelsSettings {
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ChannelsSettings+ChannelState.swift
     private func channelStatus<T: Decodable>(
         _ id: String,
         as type: T.Type) -> T?
@@ -12,6 +20,7 @@ extension ChannelsSettings {
     var whatsAppTint: Color {
         guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
         else { return .secondary }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return .secondary }
         if !status.linked { return .red }
         if status.lastError != nil { return .orange }
@@ -21,8 +30,12 @@ extension ChannelsSettings {
     }
 
     var telegramTint: Color {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.telegram else { return .secondary }
+=======
         guard let status = self.channelStatus("telegram", as: ChannelsStatusSnapshot.TelegramStatus.self)
         else { return .secondary }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return .secondary }
         if status.lastError != nil { return .orange }
         if status.probe?.ok == false { return .orange }
@@ -31,8 +44,12 @@ extension ChannelsSettings {
     }
 
     var discordTint: Color {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.discord else { return .secondary }
+=======
         guard let status = self.channelStatus("discord", as: ChannelsStatusSnapshot.DiscordStatus.self)
         else { return .secondary }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return .secondary }
         if status.lastError != nil { return .orange }
         if status.probe?.ok == false { return .orange }
@@ -41,8 +58,12 @@ extension ChannelsSettings {
     }
 
     var signalTint: Color {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.signal else { return .secondary }
+=======
         guard let status = self.channelStatus("signal", as: ChannelsStatusSnapshot.SignalStatus.self)
         else { return .secondary }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return .secondary }
         if status.lastError != nil { return .orange }
         if status.probe?.ok == false { return .orange }
@@ -51,8 +72,12 @@ extension ChannelsSettings {
     }
 
     var imessageTint: Color {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.imessage else { return .secondary }
+=======
         guard let status = self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)
         else { return .secondary }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return .secondary }
         if status.lastError != nil { return .orange }
         if status.probe?.ok == false { return .orange }
@@ -61,8 +86,12 @@ extension ChannelsSettings {
     }
 
     var whatsAppSummary: String {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.whatsapp else { return "Checking…" }
+=======
         guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
         else { return "Checking…" }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.linked { return "Not linked" }
         if status.connected { return "Connected" }
         if status.running { return "Running" }
@@ -70,40 +99,60 @@ extension ChannelsSettings {
     }
 
     var telegramSummary: String {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.telegram else { return "Checking…" }
+=======
         guard let status = self.channelStatus("telegram", as: ChannelsStatusSnapshot.TelegramStatus.self)
         else { return "Checking…" }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return "Not configured" }
         if status.running { return "Running" }
         return "Configured"
     }
 
     var discordSummary: String {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.discord else { return "Checking…" }
+=======
         guard let status = self.channelStatus("discord", as: ChannelsStatusSnapshot.DiscordStatus.self)
         else { return "Checking…" }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return "Not configured" }
         if status.running { return "Running" }
         return "Configured"
     }
 
     var signalSummary: String {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.signal else { return "Checking…" }
+=======
         guard let status = self.channelStatus("signal", as: ChannelsStatusSnapshot.SignalStatus.self)
         else { return "Checking…" }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return "Not configured" }
         if status.running { return "Running" }
         return "Configured"
     }
 
     var imessageSummary: String {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.imessage else { return "Checking…" }
+=======
         guard let status = self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)
         else { return "Checking…" }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         if !status.configured { return "Not configured" }
         if status.running { return "Running" }
         return "Configured"
     }
 
     var whatsAppDetails: String? {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.whatsapp else { return nil }
+=======
         guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
         else { return nil }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         var lines: [String] = []
         if let e164 = status.`self`?.e164 ?? status.`self`?.jid {
             lines.append("Linked as \(e164)")
@@ -133,8 +182,12 @@ extension ChannelsSettings {
     }
 
     var telegramDetails: String? {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.telegram else { return nil }
+=======
         guard let status = self.channelStatus("telegram", as: ChannelsStatusSnapshot.TelegramStatus.self)
         else { return nil }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         var lines: [String] = []
         if let source = status.tokenSource {
             lines.append("Token source: \(source)")
@@ -165,8 +218,12 @@ extension ChannelsSettings {
     }
 
     var discordDetails: String? {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.discord else { return nil }
+=======
         guard let status = self.channelStatus("discord", as: ChannelsStatusSnapshot.DiscordStatus.self)
         else { return nil }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         var lines: [String] = []
         if let source = status.tokenSource {
             lines.append("Token source: \(source)")
@@ -194,8 +251,12 @@ extension ChannelsSettings {
     }
 
     var signalDetails: String? {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.signal else { return nil }
+=======
         guard let status = self.channelStatus("signal", as: ChannelsStatusSnapshot.SignalStatus.self)
         else { return nil }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         var lines: [String] = []
         lines.append("Base URL: \(status.baseUrl)")
         if let probe = status.probe {
@@ -221,8 +282,12 @@ extension ChannelsSettings {
     }
 
     var imessageDetails: String? {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        guard let status = self.store.snapshot?.imessage else { return nil }
+=======
         guard let status = self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)
         else { return nil }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
         var lines: [String] = []
         if let cliPath = status.cliPath, !cliPath.isEmpty {
             lines.append("CLI: \(cliPath)")
@@ -243,6 +308,26 @@ extension ChannelsSettings {
         return lines.isEmpty ? nil : lines.joined(separator: " · ")
     }
 
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+    var isTelegramTokenLocked: Bool {
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+        self.store.snapshot?.telegram.tokenSource == "env"
+    }
+
+    var isDiscordTokenLocked: Bool {
+        self.store.snapshot?.discord?.tokenSource == "env"
+=======
+        self.channelStatus("telegram", as: ChannelsStatusSnapshot.TelegramStatus.self)?.tokenSource == "env"
+    }
+
+    var isDiscordTokenLocked: Bool {
+        self.channelStatus("discord", as: ChannelsStatusSnapshot.DiscordStatus.self)?.tokenSource == "env"
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+    }
+
+    var orderedChannels: [ConnectionChannel] {
+        ConnectionChannel.allCases.sorted { lhs, rhs in
+=======
     var orderedChannels: [ChannelItem] {
         let fallback = ["whatsapp", "telegram", "discord", "slack", "signal", "imessage"]
         let order = self.store.snapshot?.channelOrder ?? fallback
@@ -255,6 +340,7 @@ extension ChannelsSettings {
                 sortOrder: index)
         }
         return channels.sorted { lhs, rhs in
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ChannelsSettings+ChannelState.swift
             let lhsEnabled = self.channelEnabled(lhs)
             let rhsEnabled = self.channelEnabled(rhs)
             if lhsEnabled != rhsEnabled { return lhsEnabled && !rhsEnabled }
@@ -280,6 +366,47 @@ extension ChannelsSettings {
         }
     }
 
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+    func channelEnabled(_ channel: ConnectionChannel) -> Bool {
+        switch channel {
+        case .whatsapp:
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+            guard let status = self.store.snapshot?.whatsapp else { return false }
+            return status.configured || status.linked || status.running
+        case .telegram:
+            guard let status = self.store.snapshot?.telegram else { return false }
+            return status.configured || status.running
+        case .discord:
+            guard let status = self.store.snapshot?.discord else { return false }
+            return status.configured || status.running
+        case .signal:
+            guard let status = self.store.snapshot?.signal else { return false }
+            return status.configured || status.running
+        case .imessage:
+            guard let status = self.store.snapshot?.imessage else { return false }
+=======
+            guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
+            else { return false }
+            return status.configured || status.linked || status.running
+        case .telegram:
+            guard let status = self.channelStatus("telegram", as: ChannelsStatusSnapshot.TelegramStatus.self)
+            else { return false }
+            return status.configured || status.running
+        case .discord:
+            guard let status = self.channelStatus("discord", as: ChannelsStatusSnapshot.DiscordStatus.self)
+            else { return false }
+            return status.configured || status.running
+        case .signal:
+            guard let status = self.channelStatus("signal", as: ChannelsStatusSnapshot.SignalStatus.self)
+            else { return false }
+            return status.configured || status.running
+        case .imessage:
+            guard let status = self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)
+            else { return false }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+            return status.configured || status.running
+        }
+=======
     func channelEnabled(_ channel: ChannelItem) -> Bool {
         let status = self.channelStatusDictionary(channel.id)
         let configured = status?["configured"]?.boolValue ?? false
@@ -288,6 +415,7 @@ extension ChannelsSettings {
         let accountActive = self.store.snapshot?.channelAccounts[channel.id]?.contains(
             where: { $0.configured == true || $0.running == true || $0.connected == true }) ?? false
         return configured || running || connected || accountActive
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ChannelsSettings+ChannelState.swift
     }
 
     @ViewBuilder
@@ -363,9 +491,27 @@ extension ChannelsSettings {
         return relativeAge(from: date)
     }
 
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+    func channelLastCheck(_ channel: ConnectionChannel) -> Date? {
+        switch channel {
+        case .whatsapp:
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+            guard let status = self.store.snapshot?.whatsapp else { return nil }
+            return self.date(fromMs: status.lastEventAt ?? status.lastMessageAt ?? status.lastConnectedAt)
+        case .telegram:
+            return self.date(fromMs: self.store.snapshot?.telegram.lastProbeAt)
+        case .discord:
+            return self.date(fromMs: self.store.snapshot?.discord?.lastProbeAt)
+        case .signal:
+            return self.date(fromMs: self.store.snapshot?.signal?.lastProbeAt)
+        case .imessage:
+            return self.date(fromMs: self.store.snapshot?.imessage?.lastProbeAt)
+=======
+=======
     func channelLastCheck(_ channel: ChannelItem) -> Date? {
         switch channel.id {
         case "whatsapp":
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ChannelsSettings+ChannelState.swift
             guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
             else { return nil }
             return self.date(fromMs: status.lastEventAt ?? status.lastMessageAt ?? status.lastConnectedAt)
@@ -384,6 +530,30 @@ extension ChannelsSettings {
             return self
                 .date(fromMs: self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)?
                     .lastProbeAt)
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
+        }
+    }
+
+    func channelHasError(_ channel: ConnectionChannel) -> Bool {
+        switch channel {
+        case .whatsapp:
+<<<<<<< HEAD:apps/macos/Sources/Clawdbot/ConnectionsSettings+ProviderState.swift
+            guard let status = self.store.snapshot?.whatsapp else { return false }
+            return status.lastError?.isEmpty == false || status.lastDisconnect?.loggedOut == true
+        case .telegram:
+            guard let status = self.store.snapshot?.telegram else { return false }
+            return status.lastError?.isEmpty == false || status.probe?.ok == false
+        case .discord:
+            guard let status = self.store.snapshot?.discord else { return false }
+            return status.lastError?.isEmpty == false || status.probe?.ok == false
+        case .signal:
+            guard let status = self.store.snapshot?.signal else { return false }
+            return status.lastError?.isEmpty == false || status.probe?.ok == false
+        case .imessage:
+            guard let status = self.store.snapshot?.imessage else { return false }
+=======
+=======
         default:
             let status = self.channelStatusDictionary(channel.id)
             if let probeAt = status?["lastProbeAt"]?.doubleValue {
@@ -400,6 +570,7 @@ extension ChannelsSettings {
     func channelHasError(_ channel: ChannelItem) -> Bool {
         switch channel.id {
         case "whatsapp":
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ChannelsSettings+ChannelState.swift
             guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
             else { return false }
             return status.lastError?.isEmpty == false || status.lastDisconnect?.loggedOut == true
@@ -418,6 +589,7 @@ extension ChannelsSettings {
         case "imessage":
             guard let status = self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)
             else { return false }
+>>>>>>> upstream/main:apps/macos/Sources/Clawdbot/ConnectionsSettings+ChannelState.swift
             return status.lastError?.isEmpty == false || status.probe?.ok == false
         default:
             let status = self.channelStatusDictionary(channel.id)

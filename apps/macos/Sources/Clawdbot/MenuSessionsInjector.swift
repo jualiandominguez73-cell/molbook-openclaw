@@ -411,13 +411,13 @@ extension MenuSessionsInjector {
     private func controlChannelStatusText(for state: ControlChannel.ConnectionState) -> String {
         switch state {
         case .connected:
-            "Loading sessions…"
+            return "Loading sessions…"
         case .connecting:
-            "Connecting…"
+            return "Connecting…"
         case let .degraded(message):
-            message.nonEmpty ?? "Gateway disconnected"
+            return message.nonEmpty ?? "Gateway disconnected"
         case .disconnected:
-            "Gateway disconnected"
+            return "Gateway disconnected"
         }
     }
 

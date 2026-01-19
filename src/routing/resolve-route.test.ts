@@ -226,4 +226,26 @@ describe("resolveAgentRoute", () => {
     expect(route.agentId).toBe("home");
     expect(route.sessionKey).toBe("agent:home:main");
   });
+  test("explicit binding is respected even if agent is not in registry", () => {
+    const cfg: ClawdbotConfig = {
+      agents: {
+        list: [{ id: "main", default: true }],
+      },
+      bindings: [
+        {
+          agentId: "opie",
+          match: { provider: "telegram", accountId: "opie" },
+        },
+      ],
+    };
+    const route = resolveAgentRoute({
+      cfg,
+      provider: "telegram",
+      accountId: "opie",
+      peer: { kind: "dm", id: "123" },
+    });
+    expect(route.agentId).toBe("opie");
+    expect(route.sessionKey).toBe("agent:opie:main");
+  });
 });
+

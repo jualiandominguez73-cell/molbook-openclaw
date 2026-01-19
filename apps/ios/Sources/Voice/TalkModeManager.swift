@@ -295,8 +295,13 @@ final class TalkModeManager: NSObject {
             self.chatSubscribedSessionKeys.insert(key)
             self.logger.info("chat.subscribe ok sessionKey=\(key, privacy: .public)")
         } catch {
+<<<<<<< HEAD
+            self.logger.warning(
+                "chat.subscribe failed sessionKey=\(key, privacy: .public) err=\(error.localizedDescription, privacy: .public)")
+=======
             let err = error.localizedDescription
             self.logger.warning("chat.subscribe failed key=\(key, privacy: .public) err=\(err, privacy: .public)")
+>>>>>>> upstream/main
         }
     }
 
@@ -534,8 +539,13 @@ final class TalkModeManager: NSObject {
                     self.lastPlaybackWasPCM = false
                     result = await self.mp3Player.play(stream: stream)
                 }
+<<<<<<< HEAD
+                self.logger.info(
+                    "elevenlabs stream finished=\(result.finished, privacy: .public) dur=\(Date().timeIntervalSince(started), privacy: .public)s")
+=======
                 let duration = Date().timeIntervalSince(started)
                 self.logger.info("elevenlabs stream finished=\(result.finished, privacy: .public) dur=\(duration, privacy: .public)s")
+>>>>>>> upstream/main
                 if !result.finished, let interruptedAt = result.interruptedAt {
                     self.lastInterruptedAtSeconds = interruptedAt
                 }

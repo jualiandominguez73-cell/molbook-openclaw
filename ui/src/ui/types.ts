@@ -1,5 +1,13 @@
 export type ChannelsStatusSnapshot = {
   ts: number;
+<<<<<<< HEAD
+  whatsapp: WhatsAppStatus;
+  telegram: TelegramStatus;
+  discord?: DiscordStatus | null;
+  slack?: SlackStatus | null;
+  signal?: SignalStatus | null;
+  imessage?: IMessageStatus | null;
+=======
   channelOrder: string[];
   channelLabels: Record<string, string>;
   channels: Record<string, unknown>;
@@ -37,6 +45,7 @@ export type ChannelAccountSnapshot = {
   probe?: unknown;
   audit?: unknown;
   application?: unknown;
+>>>>>>> upstream/main
 };
 
 export type WhatsAppSelf = {
@@ -188,23 +197,6 @@ export type IMessageStatus = {
   lastProbeAt?: number | null;
 };
 
-export type MSTeamsProbe = {
-  ok: boolean;
-  error?: string | null;
-  appId?: string | null;
-};
-
-export type MSTeamsStatus = {
-  configured: boolean;
-  running: boolean;
-  lastStartAt?: number | null;
-  lastStopAt?: number | null;
-  lastError?: string | null;
-  port?: number | null;
-  probe?: MSTeamsProbe | null;
-  lastProbeAt?: number | null;
-};
-
 export type ConfigSnapshotIssue = {
   path: string;
   message: string;
@@ -331,8 +323,7 @@ export type CronPayload =
         | "discord"
         | "slack"
         | "signal"
-        | "imessage"
-        | "msteams";
+        | "imessage";
       to?: string;
       bestEffortDeliver?: boolean;
     };

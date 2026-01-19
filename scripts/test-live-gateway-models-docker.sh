@@ -18,9 +18,11 @@ docker build -t "$IMAGE_NAME" -f "$ROOT_DIR/Dockerfile" "$ROOT_DIR"
 echo "==> Run gateway live model tests (profile keys)"
 docker run --rm -t \
   --entrypoint bash \
-  -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   -e HOME=/home/node \
+<<<<<<< HEAD
+=======
   -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
+>>>>>>> upstream/main
   -e CLAWDBOT_LIVE_TEST=1 \
   -e CLAWDBOT_LIVE_GATEWAY_MODELS="${CLAWDBOT_LIVE_GATEWAY_MODELS:-all}" \
   -e CLAWDBOT_LIVE_GATEWAY_PROVIDERS="${CLAWDBOT_LIVE_GATEWAY_PROVIDERS:-}" \

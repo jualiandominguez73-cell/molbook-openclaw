@@ -242,6 +242,8 @@ final class InstancesStore {
         do {
             let data = try await ControlChannel.shared.health(timeout: 8)
             guard let snap = decodeHealthSnapshot(from: data) else { return }
+<<<<<<< HEAD
+=======
             let linkId = snap.channelOrder?.first(where: {
                 if let summary = snap.channels[$0] { return summary.linked != nil }
                 return false
@@ -254,6 +256,7 @@ final class InstancesStore {
                 linkId.flatMap { snap.channelLabels?[$0] } ??
                 linkId?.capitalized ??
                 "channel"
+>>>>>>> upstream/main
             let entry = InstanceInfo(
                 id: "health-\(snap.ts)",
                 host: "gateway (health)",
@@ -265,7 +268,7 @@ final class InstancesStore {
                 lastInputSeconds: nil,
                 mode: "health",
                 reason: "health probe",
-                text: "Health ok · \(linkLabel) linked=\(linked)",
+                text: "Health ok · linked=\(snap.web.linked)",
                 ts: snap.ts)
             if !self.instances.contains(where: { $0.id == entry.id }) {
                 self.instances.insert(entry, at: 0)

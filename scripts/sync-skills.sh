@@ -1,7 +1,7 @@
 #!/bin/bash
 # Sync clawd workspace: pull upstream + push changes + notify
 
-cd /Users/steve/clawd
+cd /Users/dbhurley/clawd
 
 UPSTREAM_CHANGES=0
 LOCAL_CHANGES=0

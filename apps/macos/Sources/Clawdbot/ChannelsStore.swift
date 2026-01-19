@@ -121,6 +121,14 @@ struct ChannelsStatusSnapshot: Codable {
         let lastProbeAt: Double?
     }
 
+<<<<<<< HEAD
+    let ts: Double
+    let whatsapp: WhatsAppStatus
+    let telegram: TelegramStatus
+    let discord: DiscordStatus?
+    let signal: SignalStatus?
+    let imessage: IMessageStatus?
+=======
     struct ChannelAccountSnapshot: Codable {
         let accountId: String
         let name: String?
@@ -169,6 +177,7 @@ struct ChannelsStatusSnapshot: Codable {
             return nil
         }
     }
+>>>>>>> upstream/main
 }
 
 struct ConfigSnapshot: Codable {

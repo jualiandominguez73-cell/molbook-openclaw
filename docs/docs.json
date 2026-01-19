@@ -756,10 +756,6 @@
     {
       "source": "/oauth",
       "destination": "/concepts/oauth"
-    },
-    {
-      "source": "/plugins",
-      "destination": "/plugin"
     }
   ],
   "navigation": {
@@ -1050,7 +1046,6 @@
         "pages": [
           "testing",
           "scripts",
-          "reference/session-management-compaction",
           "reference/rpc",
           "reference/device-models",
           "reference/test",

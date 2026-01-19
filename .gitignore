@@ -52,10 +52,4 @@ apps/ios/*.dSYM.zip
 # provisioning profiles (local)
 apps/ios/*.mobileprovision
 .env
-
-# Local untracked files
-.local/
-.vscode/
-IDENTITY.md
-USER.md
-.tgz
+.env

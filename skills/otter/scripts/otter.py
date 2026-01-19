@@ -23,26 +23,6 @@ import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 
-def _parse_since_to_cutoff_epoch_seconds(since: str) -> int:
-    """Parse values like '24h', '7d', '30m' into an epoch cutoff (seconds)."""
-
-    s = (since or "").strip().lower()
-    if not s:
-        raise ValueError("--since requires a value like 24h, 7d, or 30m")
-
-    units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
-    unit = s[-1]
-    if unit not in units:
-        raise ValueError("--since must end with one of: s, m, h, d")
-
-    num_str = s[:-1].strip()
-    if not num_str.isdigit():
-        raise ValueError("--since must be an integer followed by a unit, e.g. 24h")
-
-    seconds = int(num_str) * units[unit]
-    return int(datetime.now().timestamp()) - seconds
-
-
 class OtterClient:
     """Otter.ai API client"""
     
@@ -269,10 +249,6 @@ def main():
     # list
     list_p = subparsers.add_parser("list", help="List recent transcripts")
     list_p.add_argument("--limit", type=int, default=10, help="Number of results")
-    list_p.add_argument(
-        "--since",
-        help="Only include transcripts created within this window (e.g. 24h, 7d, 30m)",
-    )
     
     # get
     get_p = subparsers.add_parser("get", help="Get full transcript")
@@ -320,23 +296,7 @@ def main():
     
     # Execute command
     if args.command == "list":
-        fetch_limit = args.limit
-        cutoff = None
-        if args.since:
-            try:
-                cutoff = _parse_since_to_cutoff_epoch_seconds(args.since)
-            except ValueError as e:
-                print(f"Error: {e}", file=sys.stderr)
-                sys.exit(2)
-            fetch_limit = max(fetch_limit, 100)
-
-        speeches = client.get_speeches(limit=fetch_limit)
-        if cutoff is not None:
-            speeches = [s for s in speeches if int(s.get("created", 0) or 0) >= cutoff]
-
-        # Preserve existing --limit semantics after filtering
-        speeches = speeches[: args.limit]
-
+        speeches = client.get_speeches(limit=args.limit)
         if args.json:
             print(json.dumps(speeches, indent=2))
         else:

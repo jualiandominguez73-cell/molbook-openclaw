@@ -18,7 +18,6 @@ docker build -t "$IMAGE_NAME" -f "$ROOT_DIR/Dockerfile" "$ROOT_DIR"
 echo "==> Run live model tests (profile keys)"
 docker run --rm -t \
   --entrypoint bash \
-  -e COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   -e HOME=/home/node \
   -e NODE_OPTIONS=--disable-warning=ExperimentalWarning \
   -e CLAWDBOT_LIVE_TEST=1 \

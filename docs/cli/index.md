@@ -95,10 +95,13 @@ clawdbot [--dev] [--profile <name>] <command>
     set
     unset
   doctor
+<<<<<<< HEAD
+=======
   security
     audit
   reset
   uninstall
+>>>>>>> upstream/main
   update
   channels
     list
@@ -371,6 +374,16 @@ Options:
 Manage chat channel accounts (WhatsApp/Telegram/Discord/Slack/Signal/iMessage/MS Teams).
 
 Subcommands:
+<<<<<<< HEAD
+- `providers list`: show configured chat providers and auth profiles (Claude Code + Codex CLI OAuth sync included).
+- `providers status`: check gateway reachability and provider health (`--probe` runs extra checks; use `clawdbot health` or `clawdbot status --deep` for gateway health probes).
+- Tip: `providers status` prints warnings with suggested fixes when it can detect common misconfigurations (then points you to `clawdbot doctor`).
+- `providers logs`: show recent provider logs from the gateway log file.
+- `providers add`: wizard-style setup when no flags are passed; flags switch to non-interactive mode.
+- `providers remove`: disable by default; pass `--delete` to remove config entries without prompts.
+- `providers login`: interactive provider login (WhatsApp Web only).
+- `providers logout`: log out of a provider session (WhatsApp Web only).
+=======
 - `channels list`: show configured channels and auth profiles (Claude Code + Codex CLI OAuth sync included).
 - `channels status`: check gateway reachability and channel health (`--probe` runs extra checks; use `clawdbot health` or `clawdbot status --deep` for gateway health probes).
 - Tip: `channels status` prints warnings with suggested fixes when it can detect common misconfigurations (then points you to `clawdbot doctor`).
@@ -379,6 +392,7 @@ Subcommands:
 - `channels remove`: disable by default; pass `--delete` to remove config entries without prompts.
 - `channels login`: interactive channel login (WhatsApp Web only).
 - `channels logout`: log out of a channel session (if supported).
+>>>>>>> upstream/main
 
 Common options:
 - `--channel <name>`: `whatsapp|telegram|discord|slack|signal|imessage|msteams`
@@ -390,8 +404,13 @@ Common options:
 - `--account <id>`
 - `--verbose`
 
+<<<<<<< HEAD
+`providers logout` options:
+- `--provider <provider>` (default `whatsapp`; supports `whatsapp`/`web`)
+=======
 `channels logout` options:
 - `--channel <channel>` (default `whatsapp`)
+>>>>>>> upstream/main
 - `--account <id>`
 
 `channels list` options:
@@ -574,36 +593,6 @@ Options:
 - `--verbose`
 - `--store <path>`
 - `--active <minutes>`
-
-## Reset / Uninstall
-
-### `reset`
-Reset local config/state (keeps the CLI installed).
-
-Options:
-- `--scope <config|config+creds+sessions|full>`
-- `--yes`
-- `--non-interactive`
-- `--dry-run`
-
-Notes:
-- `--non-interactive` requires `--scope` and `--yes`.
-
-### `uninstall`
-Uninstall the gateway service + local data (CLI remains).
-
-Options:
-- `--service`
-- `--state`
-- `--workspace`
-- `--app`
-- `--all`
-- `--yes`
-- `--non-interactive`
-- `--dry-run`
-
-Notes:
-- `--non-interactive` requires `--yes` and explicit scopes (or `--all`).
 
 ## Gateway
 

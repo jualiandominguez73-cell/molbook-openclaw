@@ -1,7 +1,8 @@
 {
   "lastChecks": {
-    "email": 1737103405,
-    "calendar": 1737103405,
-    "weather": 1737103405
-  }
+    "email": null,
+    "calendar": 1736357700,
+    "weather": null
+  },
+  "notes": "Calendar checked - Erin's LCA teaching schedule. Kate flight tomorrow Jan 9 (cron reminder at 1:30pm)"
 }

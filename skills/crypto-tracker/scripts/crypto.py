@@ -333,18 +333,15 @@ def check_alerts(json_output: bool):
         return
     
     if not triggered:
-        # click.echo("✓ No alerts triggered")
+        click.echo("✓ No alerts triggered")
         return
     
+    click.echo(f"🚨 {len(triggered)} alert(s) triggered:\n")
     for t in triggered:
-        # Green for up, red for down
-        change = t['change_24h']
-        color = "🟢" if change >= 0 else "🔴"
-        coin = t['coin'].upper()
-        # Short coin symbols
-        short = {"BITCOIN": "BTC", "ETHEREUM": "ETH", "SOLANA": "SOL", "DOGECOIN": "DOGE"}.get(coin, coin[:4])
-        
-        click.echo(f"{color} {short} {change:+.1f}% ${t['current_price']:,.2f}")
+        click.echo(f"  User: {t['user_id']}")
+        click.echo(f"  Coin: {t['coin'].upper()} @ ${t['current_price']:,.2f} ({t['change_24h']:+.2f}%)")
+        click.echo(f"  Reason: {t['reason']}")
+        click.echo()
 
 
 @cli.command("list-all")

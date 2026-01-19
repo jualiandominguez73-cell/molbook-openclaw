@@ -222,6 +222,11 @@ final class GatewayProcessManager {
     private func describe(details instance: String?, port: Int, snap: HealthSnapshot?) -> String {
         let instanceText = instance ?? "pid unknown"
         if let snap {
+<<<<<<< HEAD
+            let linked = snap.web.linked ? "linked" : "not linked"
+            let authAge = snap.web.authAgeMs.flatMap(msToAge) ?? "unknown age"
+            return "port \(port), \(linked), auth \(authAge), \(instanceText)"
+=======
             let linkId = snap.channelOrder?.first(where: {
                 if let summary = snap.channels[$0] { return summary.linked != nil }
                 return false
@@ -237,6 +242,7 @@ final class GatewayProcessManager {
                 "channel"
             let linkText = linked ? "linked" : "not linked"
             return "port \(port), \(label) \(linkText), auth \(authAge), \(instanceText)"
+>>>>>>> upstream/main
         }
         return "port \(port), health probe succeeded, \(instanceText)"
     }
