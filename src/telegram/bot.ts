@@ -134,7 +134,29 @@ export function createTelegramBot(opts: TelegramBotOptions) {
       : undefined;
 
   const bot = new Bot(opts.token, client ? { client } : undefined);
-  bot.api.config.use(apiThrottler());
+  // Add jobExpiration to prevent hung requests from blocking the throttler queue
+  const jobExpiration = timeoutSeconds ? (timeoutSeconds + 5) * 1000 : 65000;
+  bot.api.config.use(apiThrottler({
+    global: {
+      reservoir: 30,
+      reservoirRefreshAmount: 30,
+      reservoirRefreshInterval: 1000,
+      jobExpiration,
+    },
+    group: {
+      maxConcurrent: 1,
+      minTime: 1000,
+      reservoir: 20,
+      reservoirRefreshAmount: 20,
+      reservoirRefreshInterval: 60000,
+      jobExpiration,
+    },
+    out: {
+      maxConcurrent: 1,
+      minTime: 1000,
+      jobExpiration,
+    },
+  }));
   bot.use(sequentialize(getTelegramSequentialKey));
 
   const recentUpdates = createTelegramUpdateDedupe();

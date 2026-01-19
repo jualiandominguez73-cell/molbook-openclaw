@@ -12,11 +12,16 @@ export type GeminiBatchRequest = {
 export type GeminiBatchStatus = {
   name?: string;
   state?: string;
+  done?: boolean;
   outputConfig?: { file?: string; fileId?: string };
   metadata?: {
+    state?: string;
     output?: {
       responsesFile?: string;
     };
+  };
+  response?: {
+    responsesFile?: string;
   };
   error?: { message?: string };
 };
@@ -244,12 +249,17 @@ async function waitForGeminiBatch(params: {
         gemini: params.gemini,
         batchName: params.batchName,
       }));
-    const state = status.state ?? "UNKNOWN";
-    if (["SUCCEEDED", "COMPLETED", "DONE"].includes(state)) {
+    // State can be at root level or nested in metadata, and may have BATCH_STATE_ prefix
+    const rawState = status.state ?? status.metadata?.state ?? "UNKNOWN";
+    const state = rawState.replace(/^BATCH_STATE_/, "");
+    // Also check done flag as alternative success indicator
+    const isDone = status.done === true;
+    if (isDone || ["SUCCEEDED", "COMPLETED", "DONE"].includes(state)) {
       const outputFileId =
         status.outputConfig?.file ??
         status.outputConfig?.fileId ??
-        status.metadata?.output?.responsesFile;
+        status.metadata?.output?.responsesFile ??
+        status.response?.responsesFile;
       if (!outputFileId) {
         throw new Error(`gemini batch ${params.batchName} completed without output file`);
       }

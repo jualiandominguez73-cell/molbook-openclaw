@@ -3,6 +3,8 @@
 // low-risk parallelism (e.g. cron jobs) without interleaving stdin / logs for
 // the main auto-reply workflow.
 
+import { logLaneEnqueue, logLaneDequeue, diagnosticLogger as diag } from "../logging/diagnostic.js";
+
 type QueueEntry = {
   task: () => Promise<unknown>;
   resolve: (value: unknown) => void;
@@ -47,16 +49,21 @@ function drainLane(lane: string) {
       const waitedMs = Date.now() - entry.enqueuedAt;
       if (waitedMs >= entry.warnAfterMs) {
         entry.onWait?.(waitedMs, state.queue.length);
+        diag.warn(`lane wait exceeded: lane=${lane} waitedMs=${waitedMs} queueAhead=${state.queue.length}`);
       }
+      logLaneDequeue(lane, waitedMs, state.queue.length);
       state.active += 1;
       void (async () => {
+        const startTime = Date.now();
         try {
           const result = await entry.task();
           state.active -= 1;
+          diag.debug(`lane task done: lane=${lane} durationMs=${Date.now() - startTime} active=${state.active} queued=${state.queue.length}`);
           pump();
           entry.resolve(result);
         } catch (err) {
           state.active -= 1;
+          diag.error(`lane task error: lane=${lane} durationMs=${Date.now() - startTime} error="${String(err)}"`);
           pump();
           entry.reject(err);
         }
@@ -86,6 +93,7 @@ export function enqueueCommandInLane<T>(
   const cleaned = lane.trim() || "main";
   const warnAfterMs = opts?.warnAfterMs ?? 2_000;
   const state = getLaneState(cleaned);
+  logLaneEnqueue(cleaned, state.queue.length + state.active);
   return new Promise<T>((resolve, reject) => {
     state.queue.push({
       task: () => task(),
@@ -130,4 +138,18 @@ export function clearCommandLane(lane = "main") {
   const removed = state.queue.length;
   state.queue.length = 0;
   return removed;
+}
+
+// New: Get lane statistics for diagnostics
+export function getLaneStats(): { lane: string; queued: number; active: number; maxConcurrent: number }[] {
+  const stats: { lane: string; queued: number; active: number; maxConcurrent: number }[] = [];
+  for (const [lane, state] of lanes) {
+    stats.push({
+      lane,
+      queued: state.queue.length,
+      active: state.active,
+      maxConcurrent: state.maxConcurrent,
+    });
+  }
+  return stats;
 }

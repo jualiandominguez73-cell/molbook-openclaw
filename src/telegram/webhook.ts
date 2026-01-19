@@ -7,6 +7,12 @@ import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveTelegramAllowedUpdates } from "./allowed-updates.js";
 import { createTelegramBot } from "./bot.js";
+import { 
+  logWebhookReceived, 
+  logWebhookProcessed, 
+  logWebhookError,
+  startDiagnosticHeartbeat 
+} from "../logging/diagnostic.js";
 
 export async function startTelegramWebhook(opts: {
   token: string;
@@ -36,7 +42,11 @@ export async function startTelegramWebhook(opts: {
   });
   const handler = webhookCallback(bot, "http", {
     secretToken: opts.secret,
+    timeoutMilliseconds: 300000,
   });
+
+  // Start diagnostic heartbeat
+  startDiagnosticHeartbeat();
 
   const server = createServer((req, res) => {
     if (req.url === healthPath) {
@@ -49,13 +59,23 @@ export async function startTelegramWebhook(opts: {
       res.end();
       return;
     }
+    
+    const startTime = Date.now();
+    logWebhookReceived('telegram-post', undefined);
+    
     const handled = handler(req, res);
     if (handled && typeof (handled as Promise<void>).catch === "function") {
-      void (handled as Promise<void>).catch((err) => {
-        runtime.log?.(`webhook handler failed: ${formatErrorMessage(err)}`);
-        if (!res.headersSent) res.writeHead(500);
-        res.end();
-      });
+      void (handled as Promise<void>)
+        .then(() => {
+          logWebhookProcessed('telegram-post', undefined, Date.now() - startTime);
+        })
+        .catch((err) => {
+          const errMsg = formatErrorMessage(err);
+          logWebhookError('telegram-post', errMsg);
+          runtime.log?.(`webhook handler failed: ${errMsg}`);
+          if (!res.headersSent) res.writeHead(500);
+          res.end();
+        });
     }
   });
 

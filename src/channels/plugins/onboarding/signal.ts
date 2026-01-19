@@ -1,4 +1,5 @@
 import { detectBinary } from "../../../commands/onboard-helpers.js";
+import type { WizardPrompter } from "../../../wizard/prompts.js";
 import { installSignalCli } from "../../../commands/signal-install.js";
 import type { ClawdbotConfig } from "../../../config/config.js";
 import type { DmPolicy } from "../../../config/types.js";
@@ -104,7 +105,7 @@ async function promptSignalAllowFrom(params: {
     message: "Signal allowFrom (E.164 or uuid)",
     placeholder: "+15555550123, uuid:123e4567-e89b-12d3-a456-426614174000",
     initialValue: existing[0] ? String(existing[0]) : undefined,
-    validate: (value) => {
+    validate: (value: string | undefined) => {
       const raw = String(value ?? "").trim();
       if (!raw) return "Required";
       const parts = parseSignalAllowFromInput(raw);
@@ -237,7 +238,7 @@ export const signalOnboardingAdapter: ChannelOnboardingAdapter = {
       account = String(
         await prompter.text({
           message: "Signal bot number (E.164)",
-          validate: (value) => (value?.trim() ? undefined : "Required"),
+          validate: (value: string | undefined) => (value?.trim() ? undefined : "Required"),
         }),
       ).trim();
     }
