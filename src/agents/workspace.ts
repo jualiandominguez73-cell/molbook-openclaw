@@ -135,7 +135,7 @@ After the user chooses, update:
 - Notes
 
 3) ~/.clawdbot/clawdbot.json
-Set identity.name, identity.theme, identity.emoji to match IDENTITY.md.
+Under agents.list[0].identity, set name, theme, and emoji to match IDENTITY.md.
 
 ## Cleanup
 Delete BOOTSTRAP.md once this is complete.
