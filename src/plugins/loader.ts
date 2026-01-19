@@ -5,7 +5,7 @@ import { createJiti } from "jiti";
 
 import type { ClawdbotConfig } from "../config/config.js";
 import type { GatewayRequestHandler } from "../gateway/server-methods/types.js";
-import { createSubsystemLogger } from "../logging.js";
+import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveUserPath } from "../utils.js";
 import { discoverClawdbotPlugins } from "./discovery.js";
 import { initializeGlobalHookRunner } from "./hook-runner-global.js";
@@ -101,12 +101,17 @@ const normalizePluginsConfig = (config?: ClawdbotConfig["plugins"]): NormalizedP
 
 const resolvePluginSdkAlias = (): string | null => {
   try {
+    const preferDist = process.env.VITEST || process.env.NODE_ENV === "test";
     let cursor = path.dirname(fileURLToPath(import.meta.url));
     for (let i = 0; i < 6; i += 1) {
-      const distCandidate = path.join(cursor, "dist", "plugin-sdk", "index.js");
-      if (fs.existsSync(distCandidate)) return distCandidate;
       const srcCandidate = path.join(cursor, "src", "plugin-sdk", "index.ts");
-      if (fs.existsSync(srcCandidate)) return srcCandidate;
+      const distCandidate = path.join(cursor, "dist", "plugin-sdk", "index.js");
+      const orderedCandidates = preferDist
+        ? [distCandidate, srcCandidate]
+        : [srcCandidate, distCandidate];
+      for (const candidate of orderedCandidates) {
+        if (fs.existsSync(candidate)) return candidate;
+      }
       const parent = path.dirname(cursor);
       if (parent === cursor) break;
       cursor = parent;
@@ -322,6 +327,7 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
   const pluginSdkAlias = resolvePluginSdkAlias();
   const jiti = createJiti(import.meta.url, {
     interopDefault: true,
+    extensions: [".ts", ".tsx", ".mts", ".cts", ".mtsx", ".ctsx", ".js", ".mjs", ".cjs", ".json"],
     ...(pluginSdkAlias ? { alias: { "clawdbot/plugin-sdk": pluginSdkAlias } } : {}),
   });
 
@@ -376,6 +382,7 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
     try {
       mod = jiti(candidate.source) as ClawdbotPluginModule;
     } catch (err) {
+      logger.error(`[plugins] ${record.id} failed to load from ${record.source}: ${String(err)}`);
       record.status = "error";
       record.error = String(err);
       registry.plugins.push(record);
@@ -460,6 +467,7 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
     });
 
     if (!validatedConfig.ok) {
+      logger.error(`[plugins] ${record.id} invalid config: ${validatedConfig.errors?.join(", ")}`);
       record.status = "error";
       record.error = `invalid config: ${validatedConfig.errors?.join(", ")}`;
       registry.plugins.push(record);
@@ -474,6 +482,7 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
     }
 
     if (typeof register !== "function") {
+      logger.error(`[plugins] ${record.id} missing register/activate export`);
       record.status = "error";
       record.error = "plugin export missing register/activate";
       registry.plugins.push(record);
@@ -505,6 +514,9 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
       registry.plugins.push(record);
       seenIds.set(candidate.idHint, candidate.origin);
     } catch (err) {
+      logger.error(
+        `[plugins] ${record.id} failed during register from ${record.source}: ${String(err)}`,
+      );
       record.status = "error";
       record.error = String(err);
       registry.plugins.push(record);

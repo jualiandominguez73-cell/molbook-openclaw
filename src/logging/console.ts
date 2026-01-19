@@ -1,11 +1,12 @@
 import { createRequire } from "node:module";
 import util from "node:util";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ClawdbotConfig } from "../config/types.js";
 import { isVerbose } from "../globals.js";
 import { stripAnsi } from "../terminal/ansi.js";
 import { type LogLevel, normalizeLogLevel } from "./levels.js";
 import { getLogger, type LoggerSettings } from "./logger.js";
+import { readLoggingConfig } from "./config.js";
 import { loggingState } from "./state.js";
 
 export type ConsoleStyle = "pretty" | "compact" | "json";
@@ -31,10 +32,9 @@ function normalizeConsoleStyle(style?: string): ConsoleStyle {
 }
 
 function resolveConsoleSettings(): ConsoleSettings {
-  let cfg: ClawdbotConfig["logging"] | undefined;
-  if (loggingState.overrideSettings) {
-    cfg = loggingState.overrideSettings as LoggerSettings;
-  } else {
+  let cfg: ClawdbotConfig["logging"] | undefined =
+    (loggingState.overrideSettings as LoggerSettings | null) ?? readLoggingConfig();
+  if (!cfg) {
     try {
       const loaded = requireConfig("../config/config.js") as {
         loadConfig?: () => ClawdbotConfig;
@@ -150,7 +150,13 @@ export function enableConsoleCapture(): void {
   if (loggingState.consolePatched) return;
   loggingState.consolePatched = true;
 
-  const logger = getLogger();
+  let logger: ReturnType<typeof getLogger> | null = null;
+  const getLoggerLazy = () => {
+    if (!logger) {
+      logger = getLogger();
+    }
+    return logger;
+  };
 
   const original = {
     log: console.log,
@@ -182,19 +188,20 @@ export function enableConsoleCapture(): void {
         ? formatConsoleTimestamp(getConsoleSettings().style)
         : "";
       try {
+        const resolvedLogger = getLoggerLazy();
         // Map console levels to file logger
         if (level === "trace") {
-          logger.trace(formatted);
+          resolvedLogger.trace(formatted);
         } else if (level === "debug") {
-          logger.debug(formatted);
+          resolvedLogger.debug(formatted);
         } else if (level === "info") {
-          logger.info(formatted);
+          resolvedLogger.info(formatted);
         } else if (level === "warn") {
-          logger.warn(formatted);
+          resolvedLogger.warn(formatted);
         } else if (level === "error" || level === "fatal") {
-          logger.error(formatted);
+          resolvedLogger.error(formatted);
         } else {
-          logger.info(formatted);
+          resolvedLogger.info(formatted);
         }
       } catch {
         // never block console output on logging failures

@@ -6,7 +6,7 @@ Skills define *how* tools work. This file is for *your* specifics — the stuff 
 
 **IMPORTANT:** Use the existing `op-safe` tmux session for all 1Password operations!
 - Session name: `op-safe` (default tmux socket)
-- Already authenticated (may need re-auth periodically)
+- Already authenticated (may need re-auth periodically use clawdbot.json to re-auth)
 - Commands: `tmux send-keys -t op-safe "op <command>" Enter`
 - Capture output: `tmux capture-pane -p -t op-safe -S -20`
 
@@ -36,7 +36,6 @@ Do NOT create new tmux sessions for op commands — use op-safe!
 
 ### Hue Bridge
 - **IP**: 192.168.4.95
-- **Status**: Connection issues as of Jan 4, 2026
 - **Rooms**: Master Suite (need to map lights)
 
 ## Media Server (Synology)
@@ -112,7 +111,6 @@ tmux capture-pane -p -t op-safe -S -5
 ### Cron Script Guidelines
 - **Never hardcode credentials** in scripts
 - Scripts should output meaningful text for actions, or **nothing** for no-action (silent ack)
-- HEARTBEAT_OK only works for heartbeat runs, not isolated cron sessions
 
 ---
 
