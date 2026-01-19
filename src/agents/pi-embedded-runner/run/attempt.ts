@@ -145,6 +145,7 @@ export async function runEmbeddedAttempt(
       sandbox,
       messageProvider: params.messageChannel ?? params.messageProvider,
       agentAccountId: params.agentAccountId,
+      messageTo: params.messageTo,
       sessionKey: params.sessionKey ?? params.sessionId,
       agentDir,
       workspaceDir: effectiveWorkspace,

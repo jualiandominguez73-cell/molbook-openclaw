@@ -27,6 +27,8 @@ export function createClawdbotTools(options?: {
   agentSessionKey?: string;
   agentChannel?: GatewayMessageChannel;
   agentAccountId?: string;
+  /** Delivery target (e.g. telegram:group:123:topic:456) for topic/thread routing. */
+  agentTo?: string;
   agentDir?: string;
   sandboxRoot?: string;
   workspaceDir?: string;
@@ -108,6 +110,7 @@ export function createClawdbotTools(options?: {
       agentSessionKey: options?.agentSessionKey,
       agentChannel: options?.agentChannel,
       agentAccountId: options?.agentAccountId,
+      agentTo: options?.agentTo,
       sandboxed: options?.sandboxed,
     }),
     createSessionStatusTool({

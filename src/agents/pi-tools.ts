@@ -102,6 +102,8 @@ export function createClawdbotCodingTools(options?: {
   exec?: ExecToolDefaults & ProcessToolDefaults;
   messageProvider?: string;
   agentAccountId?: string;
+  /** Delivery target (e.g. telegram:group:123:topic:456) for topic/thread routing. */
+  messageTo?: string;
   sandbox?: SandboxContext | null;
   sessionKey?: string;
   agentDir?: string;
@@ -265,6 +267,7 @@ export function createClawdbotCodingTools(options?: {
       agentSessionKey: options?.sessionKey,
       agentChannel: resolveGatewayMessageChannel(options?.messageProvider),
       agentAccountId: options?.agentAccountId,
+      agentTo: options?.messageTo,
       agentDir: options?.agentDir,
       sandboxRoot,
       workspaceDir: options?.workspaceDir,

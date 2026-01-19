@@ -19,6 +19,8 @@ export type EmbeddedRunAttemptParams = {
   messageChannel?: string;
   messageProvider?: string;
   agentAccountId?: string;
+  /** Delivery target (e.g. telegram:group:123:topic:456) for topic/thread routing. */
+  messageTo?: string;
   currentChannelId?: string;
   currentThreadTs?: string;
   replyToMode?: "off" | "first" | "all";
