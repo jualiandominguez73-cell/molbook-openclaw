@@ -30,8 +30,8 @@ ENV CLAWDBOT_PREFER_PNPM=1
 RUN pnpm ui:install
 RUN pnpm ui:build
 
-# Install tsx globally for TypeScript extension support
-RUN npm install -g tsx
+# Install tsx and clawdhub globally for TypeScript extension and skill management
+RUN npm install -g tsx clawdhub
 
 ENV NODE_ENV=production
 
