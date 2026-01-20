@@ -20,7 +20,7 @@ export function markdownToNextcloudTalk(text: string): string {
  */
 export function escapeNextcloudTalkMarkdown(text: string): string {
   // Escape characters that have special meaning in markdown
-  return text.replace(/([*_`~\[\]()#>+\-=|{}!\\])/g, "\\$1");
+  return text.replace(/([*_`~[\]()#>+\-=|{}!\\])/g, "\\$1");
 }
 
 /**

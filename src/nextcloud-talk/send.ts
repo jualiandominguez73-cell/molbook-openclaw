@@ -1,6 +1,5 @@
 import { loadConfig } from "../config/config.js";
 import { recordChannelActivity } from "../infra/channel-activity.js";
-import { formatErrorMessage } from "../infra/errors.js";
 import { resolveNextcloudTalkAccount } from "./accounts.js";
 import { generateNextcloudTalkSignature } from "./signature.js";
 import type { NextcloudTalkSendResult } from "./types.js";

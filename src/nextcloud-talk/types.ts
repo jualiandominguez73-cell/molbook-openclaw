@@ -22,7 +22,7 @@ export type NextcloudTalkObject = {
   /** Message content. */
   content: string;
   /** Media type of the content. */
-  mediaType: "text/plain" | "text/markdown" | string;
+  mediaType: string;
 };
 
 /** Target conversation/room. */

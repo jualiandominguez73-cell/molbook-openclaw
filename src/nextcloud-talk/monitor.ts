@@ -197,7 +197,7 @@ export async function monitorNextcloudTalkProvider(
   const host = account.config.webhookHost ?? DEFAULT_WEBHOOK_HOST;
   const path = account.config.webhookPath ?? DEFAULT_WEBHOOK_PATH;
 
-  const { server, start, stop } = createNextcloudTalkWebhookServer({
+  const { start, stop } = createNextcloudTalkWebhookServer({
     port,
     host,
     path,
