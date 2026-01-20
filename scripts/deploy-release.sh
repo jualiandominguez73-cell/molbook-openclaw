@@ -79,8 +79,12 @@ sudo cp -R "$APP_SOURCE" "$APP_TARGET"
 
 echo "🔒 Setting ownership and permissions..."
 sudo xattr -cr "$APP_TARGET"
-sudo chown -R root:wheel "$APP_TARGET"
-sudo chmod -R go+rX "$APP_TARGET"
+
+# Set ownership to the user who invoked the script (not root)
+ACTUAL_USER="${SUDO_USER:-$(whoami)}"
+ACTUAL_GROUP=$(id -gn "$ACTUAL_USER")
+sudo chown -R "$ACTUAL_USER:$ACTUAL_GROUP" "$APP_TARGET"
+sudo chmod -R u+rwX,go+rX "$APP_TARGET"
 sudo chmod +x "$APP_TARGET/Contents/MacOS/Clawdbot"
 
 echo ""
