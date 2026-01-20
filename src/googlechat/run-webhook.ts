@@ -77,7 +77,14 @@ function runAgent(message: string, sessionId: string, callback: (err: Error | nu
       console.error(`[googlechat] Agent stderr: ${stderr}`);
       callback(new Error(`Agent exited with code ${code}: ${stderr}`), "");
     } else {
-      callback(null, stdout.trim());
+      // Filter out ANSI-coded log lines that leak from the agent
+      // These look like: [33m[subsystem][39m [36mmessage[39m
+      const filtered = stdout
+        .split('\n')
+        .filter(line => !line.match(/^\x1b\[\d+m\[/))  // Filter ANSI log lines
+        .join('\n')
+        .trim();
+      callback(null, filtered);
     }
   });
 
