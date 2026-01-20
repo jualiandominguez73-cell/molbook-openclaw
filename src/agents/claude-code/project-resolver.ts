@@ -3,6 +3,12 @@
  *
  * Resolves project identifiers like "juzi" or "juzi @experimental" to
  * actual filesystem paths, handling worktrees correctly.
+ *
+ * Project resolution order:
+ * 1. Absolute paths (starts with /)
+ * 2. Explicit aliases from config (claudeCode.projects)
+ * 3. Auto-discovery in config dirs (claudeCode.projectDirs)
+ * 4. Auto-discovery in default dirs (hardcoded fallbacks)
  */
 
 import fs from "node:fs";
@@ -10,17 +16,64 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import os from "node:os";
 import type { ResolvedProject } from "./types.js";
+import { loadConfig } from "../../config/config.js";
+import type { ClaudeCodeConfig } from "../../config/types.claude-code.js";
 
 /**
- * Common project base directories to search.
+ * Default project base directories to search (fallback when no config).
  */
-const PROJECT_BASES = [
+const DEFAULT_PROJECT_BASES = [
   path.join(os.homedir(), "clawd", "projects"),
   path.join(os.homedir(), "Documents", "agent"),
   path.join(os.homedir(), "projects"),
   path.join(os.homedir(), "code"),
   path.join(os.homedir(), "dev"),
 ];
+
+/**
+ * Get Claude Code config from the main config file.
+ */
+function getClaudeCodeConfig(): ClaudeCodeConfig {
+  try {
+    const config = loadConfig();
+    return config.claudeCode ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Get project base directories, combining config and defaults.
+ * Config dirs are searched first, then defaults.
+ */
+function getProjectBases(): string[] {
+  const config = getClaudeCodeConfig();
+  const configDirs = (config.projectDirs ?? []).map((dir) =>
+    dir.startsWith("~") ? path.join(os.homedir(), dir.slice(1)) : dir,
+  );
+  // Config dirs first, then defaults (deduped)
+  const seen = new Set<string>();
+  const bases: string[] = [];
+  for (const dir of [...configDirs, ...DEFAULT_PROJECT_BASES]) {
+    if (!seen.has(dir)) {
+      seen.add(dir);
+      bases.push(dir);
+    }
+  }
+  return bases;
+}
+
+/**
+ * Get explicit project aliases from config.
+ */
+function getProjectAliases(): Record<string, string> {
+  const config = getClaudeCodeConfig();
+  const aliases: Record<string, string> = {};
+  for (const [name, dir] of Object.entries(config.projects ?? {})) {
+    aliases[name] = dir.startsWith("~") ? path.join(os.homedir(), dir.slice(1)) : dir;
+  }
+  return aliases;
+}
 
 /**
  * Parse project identifier into components.
@@ -87,9 +140,20 @@ export function isGitWorktree(dir: string): boolean {
 
 /**
  * Find project directory by name.
+ * Checks explicit aliases first, then auto-discovers in project bases.
  */
 function findProjectByName(name: string): string | undefined {
-  for (const base of PROJECT_BASES) {
+  // Check explicit aliases first
+  const aliases = getProjectAliases();
+  if (aliases[name]) {
+    const aliasPath = aliases[name];
+    if (fs.existsSync(aliasPath) && fs.statSync(aliasPath).isDirectory()) {
+      return aliasPath;
+    }
+  }
+
+  // Auto-discover in project bases
+  for (const base of getProjectBases()) {
     if (!fs.existsSync(base)) continue;
 
     const candidate = path.join(base, name);
@@ -290,4 +354,72 @@ export function encodeClaudeProjectPath(dir: string): string {
 export function getSessionDir(workingDir: string): string {
   const encoded = encodeClaudeProjectPath(workingDir);
   return path.join(os.homedir(), ".claude", "projects", encoded);
+}
+
+/**
+ * List all known projects (explicit aliases + auto-discovered).
+ */
+export function listKnownProjects(): Array<{
+  name: string;
+  path: string;
+  source: "alias" | "discovered";
+}> {
+  const results: Array<{ name: string; path: string; source: "alias" | "discovered" }> = [];
+  const seen = new Set<string>();
+
+  // Explicit aliases first
+  const aliases = getProjectAliases();
+  for (const [name, dir] of Object.entries(aliases)) {
+    if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+      results.push({ name, path: dir, source: "alias" });
+      seen.add(name);
+    }
+  }
+
+  // Auto-discovered projects
+  for (const base of getProjectBases()) {
+    if (!fs.existsSync(base)) continue;
+    try {
+      const entries = fs.readdirSync(base);
+      for (const entry of entries) {
+        if (seen.has(entry)) continue;
+        const fullPath = path.join(base, entry);
+        try {
+          if (fs.statSync(fullPath).isDirectory()) {
+            results.push({ name: entry, path: fullPath, source: "discovered" });
+            seen.add(entry);
+          }
+        } catch {
+          // Skip inaccessible entries
+        }
+      }
+    } catch {
+      // Skip inaccessible directories
+    }
+  }
+
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Get the current project bases (for display purposes).
+ */
+export function getConfiguredProjectBases(): string[] {
+  return getProjectBases();
+}
+
+/**
+ * Get the default permission mode from config.
+ */
+export function getDefaultPermissionMode(): "default" | "acceptEdits" | "bypassPermissions" {
+  const config = getClaudeCodeConfig();
+  return config.permissionMode ?? "default";
+}
+
+/**
+ * Get the default model from config.
+ */
+export function getDefaultModel(): string | undefined {
+  const config = getClaudeCodeConfig();
+  return config.model;
 }

@@ -68,6 +68,10 @@ export {
   getGitBranch,
   decodeClaudeProjectPath,
   encodeClaudeProjectPath,
+  listKnownProjects,
+  getConfiguredProjectBases,
+  getDefaultPermissionMode,
+  getDefaultModel,
 } from "./project-resolver.js";
 
 // Session parsing
