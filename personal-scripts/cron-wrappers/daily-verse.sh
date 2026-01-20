@@ -2,6 +2,10 @@
 # System cron wrapper for daily-verse
 # Schedule: 6:05 AM daily (5 6 * * *)
 
+# Ensure gateway is running
+source /Users/steve/clawd/personal-scripts/cron-wrappers/ensure-gateway.sh
+ensure_gateway
+
 CLAWDBOT="/Users/steve/Library/pnpm/clawdbot"
 
 # Run the verse script

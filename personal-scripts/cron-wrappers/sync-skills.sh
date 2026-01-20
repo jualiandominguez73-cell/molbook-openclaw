@@ -3,6 +3,10 @@
 # Schedule: every 4 hours (0 */4 * * *)
 
 SCRIPT="/Users/steve/clawd/personal-scripts/sync-skills.sh"
+# Ensure gateway is running
+source /Users/steve/clawd/personal-scripts/cron-wrappers/ensure-gateway.sh
+ensure_gateway
+
 CLAWDBOT="/Users/steve/Library/pnpm/clawdbot"
 
 # Run the actual script

@@ -3,6 +3,10 @@
 # Schedule: every 2 hours (0 */2 * * *)
 
 SCRIPT="/Users/steve/clawd/personal-scripts/archive-media.sh"
+# Ensure gateway is running
+source /Users/steve/clawd/personal-scripts/cron-wrappers/ensure-gateway.sh
+ensure_gateway
+
 CLAWDBOT="/Users/steve/Library/pnpm/clawdbot"
 
 # Run the actual script

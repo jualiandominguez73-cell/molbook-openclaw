@@ -3,6 +3,10 @@
 # Schedule: 5:00 PM daily (0 17 * * *)
 
 SCRIPT="/Users/steve/clawd/personal-scripts/daily-recap-steve.sh"
+# Ensure gateway is running
+source /Users/steve/clawd/personal-scripts/cron-wrappers/ensure-gateway.sh
+ensure_gateway
+
 CLAWDBOT="/Users/steve/Library/pnpm/clawdbot"
 
 # Run the actual script
