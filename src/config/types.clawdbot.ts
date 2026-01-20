@@ -5,7 +5,6 @@ import type { BrowserConfig } from "./types.browser.js";
 import type { ChannelsConfig } from "./types.channels.js";
 import type { CronConfig } from "./types.cron.js";
 import type {
-  BridgeConfig,
   CanvasHostConfig,
   DiscoveryConfig,
   GatewayConfig,
@@ -56,8 +55,8 @@ export type ClawdbotConfig = {
   };
   logging?: LoggingConfig;
   update?: {
-    /** Update channel for npm installs ("stable" or "beta"). */
-    channel?: "stable" | "beta";
+    /** Update channel for git + npm installs ("stable", "beta", or "dev"). */
+    channel?: "stable" | "beta" | "dev";
     /** Check for updates on gateway start (npm installs only). */
     checkOnStart?: boolean;
   };
@@ -81,7 +80,6 @@ export type ClawdbotConfig = {
   channels?: ChannelsConfig;
   cron?: CronConfig;
   hooks?: HooksConfig;
-  bridge?: BridgeConfig;
   discovery?: DiscoveryConfig;
   canvasHost?: CanvasHostConfig;
   talk?: TalkConfig;
@@ -107,5 +105,6 @@ export type ConfigFileSnapshot = {
   config: ClawdbotConfig;
   hash?: string;
   issues: ConfigValidationIssue[];
+  warnings: ConfigValidationIssue[];
   legacyIssues: LegacyConfigIssue[];
 };

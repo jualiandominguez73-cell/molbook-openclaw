@@ -45,7 +45,7 @@ import type { createModelSelectionState } from "./model-selection.js";
 import { resolveQueueSettings } from "./queue.js";
 import { ensureSkillSnapshot, prependSystemEvents } from "./session-updates.js";
 import type { TypingController } from "./typing.js";
-import { createTypingSignaler, resolveTypingMode } from "./typing-mode.js";
+import { resolveTypingMode } from "./typing-mode.js";
 
 type AgentDefaults = NonNullable<ClawdbotConfig["agents"]>["defaults"];
 type ExecOverrides = Pick<ExecToolDefaults, "host" | "security" | "ask" | "node">;
@@ -251,11 +251,6 @@ export async function runPreparedReply(
     wasMentioned,
     isHeartbeat,
   });
-  const typingSignals = createTypingSignaler({
-    typing,
-    mode: typingMode,
-    isHeartbeat,
-  });
   const shouldInjectGroupIntro = Boolean(
     isGroupChat && (isFirstTurnInSession || sessionEntry?.groupActivationNeedsSystemIntro),
   );
@@ -377,9 +372,14 @@ export async function runPreparedReply(
   const sessionIdFinal = sessionId ?? crypto.randomUUID();
   const sessionFile = resolveSessionFilePath(sessionIdFinal, sessionEntry);
   const queueBodyBase = [threadStarterNote, baseBodyFinal].filter(Boolean).join("\n\n");
-  const queuedBody = mediaNote
-    ? [mediaNote, mediaReplyHint, queueBodyBase].filter(Boolean).join("\n").trim()
+  const queueMessageId = sessionCtx.MessageSid?.trim();
+  const queueMessageIdHint = queueMessageId ? `[message_id: ${queueMessageId}]` : "";
+  const queueBodyWithId = queueMessageIdHint
+    ? `${queueBodyBase}\n${queueMessageIdHint}`
     : queueBodyBase;
+  const queuedBody = mediaNote
+    ? [mediaNote, mediaReplyHint, queueBodyWithId].filter(Boolean).join("\n").trim()
+    : queueBodyWithId;
   const resolvedQueue = resolveQueueSettings({
     cfg,
     channel: sessionCtx.Provider,
@@ -455,10 +455,6 @@ export async function runPreparedReply(
       ...(isReasoningTagProvider(provider) ? { enforceFinalTag: true } : {}),
     },
   };
-
-  if (typingSignals.shouldStartImmediately) {
-    await typingSignals.signalRunStart();
-  }
 
   return runReplyAgent({
     commandBody: prefixedCommandBody,

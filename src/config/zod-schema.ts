@@ -73,7 +73,7 @@ export const ClawdbotSchema = z
       .optional(),
     update: z
       .object({
-        channel: z.union([z.literal("stable"), z.literal("beta")]).optional(),
+        channel: z.union([z.literal("stable"), z.literal("beta"), z.literal("dev")]).optional(),
         checkOnStart: z.boolean().optional(),
       })
       .strict()
@@ -195,26 +195,6 @@ export const ClawdbotSchema = z
       .strict()
       .optional(),
     channels: ChannelsSchema,
-    bridge: z
-      .object({
-        enabled: z.boolean().optional(),
-        port: z.number().int().positive().optional(),
-        bind: z
-          .union([z.literal("auto"), z.literal("lan"), z.literal("tailnet"), z.literal("loopback")])
-          .optional(),
-        tls: z
-          .object({
-            enabled: z.boolean().optional(),
-            autoGenerate: z.boolean().optional(),
-            certPath: z.string().optional(),
-            keyPath: z.string().optional(),
-            caPath: z.string().optional(),
-          })
-          .strict()
-          .optional(),
-      })
-      .strict()
-      .optional(),
     discovery: z
       .object({
         wideArea: z
@@ -251,7 +231,7 @@ export const ClawdbotSchema = z
         port: z.number().int().positive().optional(),
         mode: z.union([z.literal("local"), z.literal("remote")]).optional(),
         bind: z
-          .union([z.literal("auto"), z.literal("lan"), z.literal("tailnet"), z.literal("loopback")])
+          .union([z.literal("auto"), z.literal("lan"), z.literal("loopback"), z.literal("custom")])
           .optional(),
         controlUi: z
           .object({
@@ -281,6 +261,7 @@ export const ClawdbotSchema = z
             url: z.string().optional(),
             token: z.string().optional(),
             password: z.string().optional(),
+            tlsFingerprint: z.string().optional(),
             sshTarget: z.string().optional(),
             sshIdentity: z.string().optional(),
           })
@@ -300,6 +281,15 @@ export const ClawdbotSchema = z
           })
           .strict()
           .optional(),
+        tls: z
+          .object({
+            enabled: z.boolean().optional(),
+            autoGenerate: z.boolean().optional(),
+            certPath: z.string().optional(),
+            keyPath: z.string().optional(),
+            caPath: z.string().optional(),
+          })
+          .optional(),
         http: z
           .object({
             endpoints: z
@@ -310,9 +300,52 @@ export const ClawdbotSchema = z
                   })
                   .strict()
                   .optional(),
+                responses: z
+                  .object({
+                    enabled: z.boolean().optional(),
+                    maxBodyBytes: z.number().int().positive().optional(),
+                    files: z
+                      .object({
+                        allowUrl: z.boolean().optional(),
+                        allowedMimes: z.array(z.string()).optional(),
+                        maxBytes: z.number().int().positive().optional(),
+                        maxChars: z.number().int().positive().optional(),
+                        maxRedirects: z.number().int().nonnegative().optional(),
+                        timeoutMs: z.number().int().positive().optional(),
+                        pdf: z
+                          .object({
+                            maxPages: z.number().int().positive().optional(),
+                            maxPixels: z.number().int().positive().optional(),
+                            minTextChars: z.number().int().nonnegative().optional(),
+                          })
+                          .strict()
+                          .optional(),
+                      })
+                      .strict()
+                      .optional(),
+                    images: z
+                      .object({
+                        allowUrl: z.boolean().optional(),
+                        allowedMimes: z.array(z.string()).optional(),
+                        maxBytes: z.number().int().positive().optional(),
+                        maxRedirects: z.number().int().nonnegative().optional(),
+                        timeoutMs: z.number().int().positive().optional(),
+                      })
+                      .strict()
+                      .optional(),
+                  })
+                  .strict()
+                  .optional(),
               })
               .strict()
               .optional(),
+          })
+          .strict()
+          .optional(),
+        nodes: z
+          .object({
+            allowCommands: z.array(z.string()).optional(),
+            denyCommands: z.array(z.string()).optional(),
           })
           .strict()
           .optional(),

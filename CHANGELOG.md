@@ -2,22 +2,70 @@
 
 Docs: https://docs.clawd.bot
 
+## 2026.1.20-1
+
+### Changes
+- Deps: update workspace + memory-lancedb dependencies.
+- Repo: remove the Peekaboo git submodule now that the SPM release is used.
+- Plugins: require manifest-embedded config schemas, validate configs without loading plugin code, and surface plugin config warnings. (#1272) — thanks @thewilloftheshadow.
+- Plugins: move channel catalog metadata into plugin manifests; align Nextcloud Talk policy helpers with core patterns. (#1290) — thanks @NicholaiVogel.
+- Discord: fall back to /skill when native command limits are exceeded; expose /skill globally. (#1287) — thanks @thewilloftheshadow.
+- Docs: refresh bird skill install metadata and usage notes. (#1302) — thanks @odysseus0.
+- Matrix: migrate to matrix-bot-sdk with E2EE support, location handling, and group allowlist upgrades. (#1298) — thanks @sibbl.
+- Plugins/UI: let channel plugin metadata drive UI labels/icons and cron channel options. (#1306) — thanks @steipete.
+- Zalouser: add channel dock metadata, config schema, setup wiring, probe, and status issues. (#1219) — thanks @suminhthanh.
+### Fixes
+- Web search: infer Perplexity base URL from API key source (direct vs OpenRouter).
+- TUI: keep thinking blocks ordered before content during streaming and isolate per-run assembly. (#1202) — thanks @aaronveklabs.
+- CLI: avoid duplicating --profile/--dev flags when formatting commands.
+- Exec: prefer bash when fish is default shell, falling back to sh if bash is missing. (#1297) — thanks @ysqander.
+- Plugins: add Nextcloud Talk manifest for plugin config validation. (#1297) — thanks @ysqander.
+
+## 2026.1.19-3
+
+### Changes
+- Android: remove legacy bridge transport code now that nodes use the gateway protocol.
+- Android: send structured payloads in node events/invokes and include user-agent metadata in gateway connects.
+- Gateway: expand `/v1/responses` to support file/image inputs, tool_choice, usage, and output limits. (#1229) — thanks @RyanLisse.
+- Docs: surface Amazon Bedrock in provider lists and clarify Bedrock auth env vars. (#1289) — thanks @steipete.
+
+### Fixes
+- Gateway: strip inbound envelope headers from chat history messages to keep clients clean.
+- UI: prevent double-scroll in Control UI chat by locking chat layout to the viewport. (#1283) — thanks @bradleypriest.
+
+### Fixes
+- Config: allow Perplexity as a web_search provider in config validation. (#1230)
+
+## 2026.1.19-2
+
+### Changes
+- Android: migrate node transport to the Gateway WebSocket protocol with TLS pinning support + gateway discovery naming.
+- Android: bump okhttp + dnsjava to satisfy lint dependency checks.
+- Docs: refresh Android node discovery docs for the Gateway WS service type.
+
+### Fixes
+- Tests: stabilize Windows gateway/CLI tests by skipping sidecars, normalizing argv, and extending timeouts.
+- CLI: skip runner rebuilds when dist is fresh. (#1231) — thanks @mukhtharcm, @thewilloftheshadow.
+
 ## 2026.1.19-1
 
 ### Breaking
 - **BREAKING:** Reject invalid/unknown config entries and refuse to start the gateway for safety; run `clawdbot doctor --fix` to repair. 
 
 ### Changes
+- Gateway: add `/v1/responses` endpoint (OpenResponses API) for agentic workflows with item-based input and semantic streaming events. Enable via `gateway.http.endpoints.responses.enabled: true`.
 - Usage: add `/usage cost` summaries and macOS menu cost submenu with daily charting.
 - Agents: clarify node_modules read-only guidance in agent instructions.
 - TUI: add syntax highlighting for code blocks. (#1200) — thanks @vignesh07.
 
 ### Fixes
 - UI: enable shell mode for sync Windows spawns to avoid `pnpm ui:build` EINVAL. (#1212) — thanks @longmaba.
+- Agents: add `clawdbot agents set-identity` helper and update bootstrap guidance for multi-agent setups. (#1222) — thanks @ThePickle31.
 - Plugins: surface plugin load/register/config errors in gateway logs with plugin/source context.
 - Agents: propagate accountId into embedded runs so sub-agent announce routing honors the originating account. (#1058)
 - Compaction: include tool failure summaries in safeguard compaction to prevent retry loops. (#1084)
 - Daemon: include HOME in service environments to avoid missing HOME errors. (#1214) — thanks @ameno-.
+- Memory: show total file counts + scan issues in `clawdbot memory status`; fall back to non-batch embeddings after repeated batch failures.
 - TUI: show generic empty-state text for searchable pickers. (#1201) — thanks @vignesh07.
 - Doctor: canonicalize legacy session keys in session stores to prevent stale metadata. (#1169)
 - CLI: centralize CLI command registration to keep fast-path routing and program wiring in sync. (#1207) — thanks @gumadeiras.
@@ -47,8 +95,8 @@ Docs: https://docs.clawd.bot
 ## 2026.1.18-4
 
 ### Changes
-- macOS: switch PeekabooBridge integration to the tagged Swift Package Manager release (no submodule).
-- macOS: stop syncing Peekaboo as a git submodule in postinstall.
+- macOS: switch PeekabooBridge integration to the tagged Swift Package Manager release.
+- macOS: stop syncing Peekaboo in postinstall.
 - Swabble: use the tagged Commander Swift package release.
 - CLI: add `clawdbot acp client` interactive ACP harness for debugging.
 - Plugins: route command detection/text chunking helpers through the plugin runtime and drop runtime exports from the SDK.
