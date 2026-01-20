@@ -1,4 +1,9 @@
 export { CHANNEL_MESSAGE_ACTION_NAMES } from "../channels/plugins/message-action-names.js";
+export {
+  BLUEBUBBLES_ACTIONS,
+  BLUEBUBBLES_ACTION_NAMES,
+  BLUEBUBBLES_GROUP_ACTIONS,
+} from "../channels/plugins/bluebubbles-actions.js";
 export type {
   ChannelAccountSnapshot,
   ChannelAccountState,
@@ -60,7 +65,9 @@ export type { ClawdbotConfig } from "../config/config.js";
 export type { ChannelDock } from "../channels/dock.js";
 export { getChatChannelMeta } from "../channels/registry.js";
 export type {
+  BlockStreamingCoalesceConfig,
   DmPolicy,
+  DmConfig,
   GroupPolicy,
   MSTeamsChannelConfig,
   MSTeamsConfig,
@@ -76,6 +83,14 @@ export {
   TelegramConfigSchema,
 } from "../config/zod-schema.providers-core.js";
 export { WhatsAppConfigSchema } from "../config/zod-schema.providers-whatsapp.js";
+export {
+  BlockStreamingCoalesceSchema,
+  DmConfigSchema,
+  DmPolicySchema,
+  GroupPolicySchema,
+  normalizeAllowFrom,
+  requireOpenAllowFrom,
+} from "../config/zod-schema.core.js";
 export type { RuntimeEnv } from "../runtime.js";
 export type { WizardPrompter } from "../wizard/prompts.js";
 export { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
@@ -89,9 +104,15 @@ export {
 } from "../auto-reply/reply/history.js";
 export type { HistoryEntry } from "../auto-reply/reply/history.js";
 export { mergeAllowlist, summarizeMapping } from "../channels/allowlists/resolve-utils.js";
-export { resolveMentionGating } from "../channels/mention-gating.js";
-export { resolveChannelMediaMaxBytes } from "../channels/plugins/media-limits.js";
 export {
+  resolveMentionGating,
+  resolveMentionGatingWithBypass,
+} from "../channels/mention-gating.js";
+export { resolveChannelMediaMaxBytes } from "../channels/plugins/media-limits.js";
+export type { NormalizedLocation } from "../channels/location.js";
+export { formatLocationText, toLocationContext } from "../channels/location.js";
+export {
+  resolveBlueBubblesGroupRequireMention,
   resolveDiscordGroupRequireMention,
   resolveIMessageGroupRequireMention,
   resolveSlackGroupRequireMention,
@@ -229,3 +250,6 @@ export {
   normalizeWhatsAppMessagingTarget,
 } from "../channels/plugins/normalize/whatsapp.js";
 export { collectWhatsAppStatusIssues } from "../channels/plugins/status-issues/whatsapp.js";
+
+// Channel: BlueBubbles
+export { collectBlueBubblesStatusIssues } from "../channels/plugins/status-issues/bluebubbles.js";
