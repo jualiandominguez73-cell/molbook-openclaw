@@ -1,0 +1,15 @@
+{
+  "price_id": "price_1SrpEoEJ7b5sfPTDNRZ1tcY0",
+  "product_name": "Tree Amigos Pro",
+  "amount_cents": 500,
+  "interval": "month",
+  "currency": "usd",
+  "gated_skills": [
+    "tree-doctor"
+  ],
+  "checkout_success_url": "https://treeamigos.vercel.app/thanks.html?session_id={CHECKOUT_SESSION_ID}",
+  "checkout_cancel_url": "https://treeamigos.vercel.app/pricing.html",
+  "trial_days": 0,
+  "webhook_url": "https://treeamigos-webhook.vercel.app/api/stripe-webhook",
+  "product_id": "prod_TpUDzqiAkZ3DAo"
+}

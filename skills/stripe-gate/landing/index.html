@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Amigos - AI Tree Disease Diagnosis</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .logo { font-size: 4rem; margin-bottom: 20px; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .tagline { font-size: 1.2rem; opacity: 0.9; margin-bottom: 40px; }
+        .card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px 0;
+        }
+        .price { font-size: 3rem; font-weight: bold; }
+        .price span { font-size: 1rem; opacity: 0.8; }
+        .features {
+            text-align: left;
+            margin: 30px 0;
+            list-style: none;
+        }
+        .features li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        .features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #7bed9f;
+        }
+        .cta {
+            display: inline-block;
+            background: #7bed9f;
+            color: #1a472a;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s;
+        }
+        .cta:hover { transform: scale(1.05); }
+        .how-it-works {
+            margin-top: 60px;
+            text-align: left;
+        }
+        .how-it-works h2 { text-align: center; margin-bottom: 30px; }
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .step-num {
+            background: #7bed9f;
+            color: #1a472a;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        footer {
+            margin-top: 60px;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🌳</div>
+        <h1>Tree Amigos</h1>
+        <p class="tagline">AI-Powered Tree Disease Diagnosis</p>
+        
+        <div class="card">
+            <div class="price">$5<span>/month</span></div>
+            <ul class="features">
+                <li>Instant AI diagnosis from photos</li>
+                <li>Identify diseases, pests & environmental issues</li>
+                <li>Treatment recommendations</li>
+                <li>Prevention tips</li>
+                <li>Unlimited queries via Telegram</li>
+                <li>Works with any tree species</li>
+            </ul>
+            <a href="https://t.me/TreeAmigosBot" class="cta">Message Us on Telegram →</a>
+        </div>
+        
+        <div class="how-it-works">
+            <h2>How It Works</h2>
+            <div class="step">
+                <div class="step-num">1</div>
+                <div>Send us a photo of your tree's problem area (leaves, bark, branches)</div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div>Our AI analyzes the image and identifies the issue</div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div>Get a detailed diagnosis with treatment options and prevention tips</div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Questions? Message us on Telegram or email support@treeamigos.com</p>
+        </footer>
+    </div>
+</body>
+</html>

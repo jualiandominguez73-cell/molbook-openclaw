@@ -23,11 +23,14 @@ while IFS= read -r line; do
     fi
 done <<< "$OUTPUT"
 
-# Send directly via message send
-if [ -n "$TEXT_OUTPUT" ]; then
+# Send directly via message send (only if we have content)
+TEXT_OUTPUT=$(echo "$TEXT_OUTPUT" | sed '/^$/d')  # Remove empty lines
+if [ -n "$TEXT_OUTPUT" ] && [ ${#TEXT_OUTPUT} -gt 1 ]; then
     if [ -n "$MEDIA_PATH" ] && [ -f "$MEDIA_PATH" ]; then
         "$CLAWDBOT" message send --channel telegram --account steve --target 1191367022 --message "$TEXT_OUTPUT" --media "$MEDIA_PATH" 2>&1
     else
         "$CLAWDBOT" message send --channel telegram --account steve --target 1191367022 --message "$TEXT_OUTPUT" 2>&1
     fi
+else
+    echo "⚠️ daily-recap produced no output (quiet day or no memory file)"
 fi

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Tree Amigos!</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .logo { font-size: 5rem; margin-bottom: 20px; }
+        h1 { font-size: 2.5rem; margin-bottom: 20px; color: #7bed9f; }
+        p { font-size: 1.2rem; margin-bottom: 30px; line-height: 1.6; }
+        .cta {
+            display: inline-block;
+            background: #7bed9f;
+            color: #1a472a;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s;
+        }
+        .cta:hover { transform: scale(1.05); }
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .instructions h3 { margin-bottom: 15px; }
+        .instructions ol { margin-left: 20px; }
+        .instructions li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎉</div>
+        <h1>You're In!</h1>
+        <p>Welcome to Tree Amigos Pro! Your subscription is now active.</p>
+        
+        <div class="instructions">
+            <h3>What's Next?</h3>
+            <ol>
+                <li>Open Telegram and find <strong>@TreeAmigosBot</strong></li>
+                <li>Send a photo of any tree problem</li>
+                <li>Get instant AI-powered diagnosis!</li>
+            </ol>
+        </div>
+        
+        <a href="https://t.me/TreeAmigosBot" class="cta">Open Telegram →</a>
+        
+        <p style="margin-top: 40px; opacity: 0.7; font-size: 0.9rem;">
+            Your subscription will automatically renew monthly. Cancel anytime.
+        </p>
+    </div>
+</body>
+</html>
