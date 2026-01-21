@@ -113,6 +113,8 @@ export async function runReplyAgent(params: {
     isHeartbeat,
   });
 
+  // Signal typing immediately for instant mode
+  await typingSignals.signalRunStart();
   const shouldEmitToolResult = createShouldEmitToolResult({
     sessionKey,
     storePath,
