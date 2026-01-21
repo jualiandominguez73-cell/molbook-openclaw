@@ -17,13 +17,21 @@ Docs: https://docs.clawd.bot
 - Matrix: migrate to matrix-bot-sdk with E2EE support, location handling, and group allowlist upgrades. (#1298) — thanks @sibbl.
 - Plugins/UI: let channel plugin metadata drive UI labels/icons and cron channel options. (#1306) — thanks @steipete.
 - Zalouser: add channel dock metadata, config schema, setup wiring, probe, and status issues. (#1219) — thanks @suminhthanh.
+- Security: warn when <=300B models run without sandboxing and with web tools enabled.
+- Skills: add download installs with OS-filtered install options; add local sherpa-onnx-tts skill.
+- Docs: clarify WhatsApp voice notes and Windows WSL portproxy LAN access notes.
 ### Fixes
 - Discovery: shorten Bonjour DNS-SD service type to `_clawdbot-gw._tcp` and update discovery clients/docs.
 - Agents: preserve subagent announce thread/topic routing + queued replies across channels. (#1241) — thanks @gnarco.
 - Agents: avoid treating timeout errors with "aborted" messages as user aborts, so model fallback still runs.
+- Diagnostics: export OTLP logs, correct queue depth tracking, and document message-flow telemetry.
+- Diagnostics: emit message-flow diagnostics across channels via shared dispatch; gate heartbeat/webhook logging. (#1244) — thanks @oscargavin.
+- Model catalog: avoid caching import failures, log transient discovery errors, and keep partial results. (#1332) — thanks @dougvk.
 - Doctor: clarify plugin auto-enable hint text in the startup banner.
 - Gateway: clarify unauthorized handshake responses with token/password mismatch guidance.
+- Gateway: reschedule per-agent heartbeats on config hot reload without restarting the runner.
 - UI: keep config form enums typed, preserve empty strings, protect sensitive defaults, and deepen config search. (#1315) — thanks @MaudeBot.
+- UI: preserve ordered list numbering in chat markdown. (#1341) — thanks @bradleypriest.
 - Web search: infer Perplexity base URL from API key source (direct vs OpenRouter).
 - TUI: keep thinking blocks ordered before content during streaming and isolate per-run assembly. (#1202) — thanks @aaronveklabs.
 - TUI: align custom editor initialization with the latest pi-tui API. (#1298) — thanks @sibbl.
