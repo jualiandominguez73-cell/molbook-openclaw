@@ -8,7 +8,9 @@ import {
   DEFAULT_BOOTSTRAP_FILENAME,
   DEFAULT_HEARTBEAT_FILENAME,
   DEFAULT_IDENTITY_FILENAME,
+  DEFAULT_MEMORY_FILENAME,
   DEFAULT_SOUL_FILENAME,
+  DEFAULT_START_HERE_FILENAME,
   DEFAULT_TOOLS_FILENAME,
   DEFAULT_USER_FILENAME,
   ensureAgentWorkspace,
@@ -106,6 +108,18 @@ describe("filterBootstrapFilesForSession", () => {
       content: "bootstrap",
       missing: false,
     },
+    {
+      name: DEFAULT_START_HERE_FILENAME,
+      path: "/tmp/START_HERE.md",
+      content: "start here",
+      missing: false,
+    },
+    {
+      name: DEFAULT_MEMORY_FILENAME,
+      path: "/tmp/MEMORY.md",
+      content: "memory",
+      missing: false,
+    },
   ];
 
   it("keeps full bootstrap set for non-subagent sessions", () => {
@@ -118,6 +132,7 @@ describe("filterBootstrapFilesForSession", () => {
     expect(result.map((file) => file.name)).toEqual([
       DEFAULT_AGENTS_FILENAME,
       DEFAULT_TOOLS_FILENAME,
+      DEFAULT_START_HERE_FILENAME,
     ]);
   });
 });
