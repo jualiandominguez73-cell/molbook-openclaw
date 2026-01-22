@@ -209,7 +209,12 @@ export function buildBubbleKeyboard(
   // Session has ended (process exited): show [continue] [cancel] to allow resume
   // Note: With takopi-style stdin.end(), we can't send input to running sessions,
   // so "continue" only makes sense when the process has actually exited
-  if (state.status === "completed" || state.status === "cancelled" || state.status === "failed") {
+  if (
+    state.status === "completed" ||
+    state.status === "cancelled" ||
+    state.status === "failed" ||
+    state.status === "blocked"
+  ) {
     return [
       [
         { text: "continue", callback_data: `${prefix}:continue:${tokenPrefix}` },

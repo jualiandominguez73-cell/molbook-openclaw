@@ -36,6 +36,13 @@ export interface ClaudeCodeSessionParams {
 
   /** Callback for session state changes */
   onStateChange?: (state: SessionState) => void;
+
+  /**
+   * Callback when a blocker is detected.
+   * Return true if you'll handle resolution (session stays alive).
+   * Return false to let session transition to done/blocked state.
+   */
+  onBlocker?: (blocker: BlockerInfo) => Promise<boolean>;
 }
 
 /**
@@ -78,7 +85,22 @@ export type SessionStatus =
   | "idle"
   | "completed"
   | "cancelled"
-  | "failed";
+  | "failed"
+  | "blocked"; // Session hit a blocker that needs external intervention
+
+/**
+ * Information about a detected blocker.
+ */
+export interface BlockerInfo {
+  /** The detected blocker reason */
+  reason: string;
+  /** The full last message containing blocker context */
+  lastMessage: string;
+  /** Extracted context if parseable (wallet address, amounts, etc.) */
+  extractedContext?: Record<string, unknown>;
+  /** Patterns that triggered the blocker detection */
+  matchedPatterns: string[];
+}
 
 /**
  * Snapshot of session state for UI updates.
@@ -119,6 +141,9 @@ export interface SessionState {
 
   /** Whether session is idle (no active tool use) */
   isIdle: boolean;
+
+  /** Blocker info if session is blocked */
+  blockerInfo?: BlockerInfo;
 }
 
 /**
@@ -156,6 +181,7 @@ export interface ClaudeCodeSessionData {
   onEvent?: (event: SessionEvent) => void;
   onQuestion?: (question: string) => Promise<string | null>;
   onStateChange?: (state: SessionState) => void;
+  onBlocker?: (blocker: BlockerInfo) => Promise<boolean>;
 
   /** File watcher abort controller */
   watcherAbort?: AbortController;
@@ -186,6 +212,9 @@ export interface ClaudeCodeSessionData {
 
   /** Timestamp when session started (for filtering old events on resume) */
   sessionStartTime?: number;
+
+  /** Blocker info if session hit a blocker */
+  blockerInfo?: BlockerInfo;
 }
 
 /**

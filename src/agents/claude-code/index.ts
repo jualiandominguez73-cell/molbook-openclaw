@@ -45,7 +45,11 @@ export type {
   SessionStatus,
   SessionStartResult,
   ResolvedProject,
+  BlockerInfo,
 } from "./types.js";
+
+// Blocker detection
+export { detectBlocker, checkEventsForBlocker } from "./blocker-detector.js";
 
 // Session management
 export {

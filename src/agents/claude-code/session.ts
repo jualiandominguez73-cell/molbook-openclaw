@@ -20,7 +20,9 @@ import type {
   SessionState,
   SessionStatus,
   SessionStartResult,
+  BlockerInfo,
 } from "./types.js";
+import { checkEventsForBlocker } from "./blocker-detector.js";
 import {
   resolveProject,
   findSessionFile,
@@ -230,6 +232,7 @@ export async function startSession(params: ClaudeCodeSessionParams): Promise<Ses
     onEvent: params.onEvent,
     onQuestion: params.onQuestion,
     onStateChange: params.onStateChange,
+    onBlocker: params.onBlocker,
     eventCount: 0,
     events: [],
     recentActions: [],
@@ -312,7 +315,7 @@ function setupProcessHandlers(session: ClaudeCodeSessionData): void {
   });
 
   // Handle process exit
-  child.on("close", (code, signal) => {
+  child.on("close", async (code, signal) => {
     log.info(`[${session.id}] Process exited with code=${code}, signal=${signal}`);
     log.info(`[${session.id}] Total events received: ${session.eventCount}`);
     log.info(`[${session.id}] Resume token: ${session.resumeToken || "(none)"}`);
@@ -330,6 +333,32 @@ function setupProcessHandlers(session: ClaudeCodeSessionData): void {
 
     // Stop file watcher
     session.watcherAbort?.abort();
+
+    // Check for blockers when session completes (not cancelled)
+    if (session.status === "completed" || session.status === "failed") {
+      const blocker = checkEventsForBlocker(session.events);
+      if (blocker) {
+        log.info(
+          `[${session.id}] Blocker detected on exit: ${blocker.reason} (patterns: ${blocker.matchedPatterns.length})`,
+        );
+        session.blockerInfo = blocker;
+
+        // If onBlocker callback is registered, let it handle the blocker
+        if (session.onBlocker) {
+          try {
+            const handled = await session.onBlocker(blocker);
+            if (handled) {
+              log.info(`[${session.id}] Blocker will be handled by orchestrator`);
+              session.status = "blocked"; // Orchestrator is working on it
+            } else {
+              log.info(`[${session.id}] Blocker not handled, staying in ${session.status} state`);
+            }
+          } catch (err) {
+            log.error(`[${session.id}] onBlocker callback failed: ${err}`);
+          }
+        }
+      }
+    }
 
     // Notify state change
     notifyStateChange(session);
@@ -670,6 +699,7 @@ export function getSessionState(session: ClaudeCodeSessionData): SessionState {
     questionText: session.currentQuestion ?? "",
     totalEvents: session.eventCount,
     isIdle: session.status === "idle",
+    blockerInfo: session.blockerInfo,
   };
 }
 

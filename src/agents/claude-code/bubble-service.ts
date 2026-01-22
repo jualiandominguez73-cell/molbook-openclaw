@@ -65,7 +65,18 @@ function formatHybridBubbleMessage(state: SessionState, sessionId: string): stri
   // IMPORTANT: "done" should only show when session process has ended
   const sessionEnded =
     state.status === "completed" || state.status === "cancelled" || state.status === "failed";
-  const statusLabel = sessionEnded ? "done" : "working";
+  const isBlocked = state.status === "blocked";
+
+  // Determine status label
+  let statusLabel: string;
+  if (isBlocked) {
+    statusLabel = "⚠️ blocked";
+  } else if (sessionEnded) {
+    statusLabel = state.blockerInfo ? "⏸️ partial" : "done";
+  } else {
+    statusLabel = "working";
+  }
+
   const runtime = compactRuntime(state.runtimeStr);
   const header = `${statusLabel} · ${state.projectName} · ${runtime}`;
 
@@ -75,28 +86,50 @@ function formatHybridBubbleMessage(state: SessionState, sessionId: string): stri
   // Build body lines (no list markers, use hard breaks)
   const bodyLines: string[] = [];
 
-  if (sessionEnded) {
-    // === DONE STATE ===
-    // Don't show DyDo command - focus on the result, not what was asked
+  // === BLOCKED STATE ===
+  if (isBlocked && state.blockerInfo) {
+    bodyLines.push(`⚠️ Blocker: ${state.blockerInfo.reason}`);
+    bodyLines.push("");
+    bodyLines.push("_DyDo is attempting to resolve..._");
+  }
+  // === DONE STATE (with possible blocker) ===
+  else if (sessionEnded) {
+    // Show blocker info if present
+    if (state.blockerInfo) {
+      bodyLines.push(`⚠️ Blocked: ${state.blockerInfo.reason}`);
+      bodyLines.push("");
 
-    // Find last Claude message for summary (show more text in done state)
-    const lastMessage = state.recentActions
-      .slice()
-      .reverse()
-      .find((a) => a.icon === "💬");
-    if (lastMessage) {
-      // Use fullText if available (contains complete message), otherwise fall back to description
-      const fullMsg = lastMessage.fullText || lastMessage.description;
-      // Allow up to 2500 chars for the summary in done state
-      // (Telegram limit is 4096, header+footer ~200 chars)
-      const maxSummaryLength = 2500;
-      const msg =
-        fullMsg.length > maxSummaryLength
-          ? fullMsg.slice(0, maxSummaryLength - 3) + "..."
-          : fullMsg;
-      bodyLines.push(`💬 ${msg}`);
+      // Show extracted context if available
+      if (state.blockerInfo.extractedContext) {
+        const ctx = state.blockerInfo.extractedContext;
+        if (ctx.wallet) bodyLines.push(`Wallet: \`${ctx.wallet}\``);
+        if (ctx.current !== undefined && ctx.needed !== undefined) {
+          bodyLines.push(`Balance: ${ctx.current} SOL (need ${ctx.needed} SOL)`);
+        }
+        bodyLines.push("");
+      }
+
+      bodyLines.push("_Click Continue after resolving the blocker_");
     } else {
-      bodyLines.push("_(session complete)_");
+      // Normal done state - show last message summary
+      const lastMessage = state.recentActions
+        .slice()
+        .reverse()
+        .find((a) => a.icon === "💬");
+      if (lastMessage) {
+        // Use fullText if available (contains complete message), otherwise fall back to description
+        const fullMsg = lastMessage.fullText || lastMessage.description;
+        // Allow up to 2500 chars for the summary in done state
+        // (Telegram limit is 4096, header+footer ~200 chars)
+        const maxSummaryLength = 2500;
+        const msg =
+          fullMsg.length > maxSummaryLength
+            ? fullMsg.slice(0, maxSummaryLength - 3) + "..."
+            : fullMsg;
+        bodyLines.push(`💬 ${msg}`);
+      } else {
+        bodyLines.push("_(session complete)_");
+      }
     }
   } else {
     // === WORKING STATE ===
@@ -436,7 +469,10 @@ export async function updateSessionBubble(params: {
 
   // Log incoming update for debugging
   const isSessionEnded =
-    state.status === "completed" || state.status === "cancelled" || state.status === "failed";
+    state.status === "completed" ||
+    state.status === "cancelled" ||
+    state.status === "failed" ||
+    state.status === "blocked";
   log.info(
     `[${sessionId}] updateSessionBubble called: status=${state.status}, ended=${isSessionEnded}, hasBubble=${!!bubble}, token=${state.resumeToken?.slice(0, 8) || "none"}`,
   );
