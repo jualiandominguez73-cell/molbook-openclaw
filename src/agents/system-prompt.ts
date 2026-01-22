@@ -148,6 +148,7 @@ export function buildAgentSystemPrompt(params: {
   skillsPrompt?: string;
   heartbeatPrompt?: string;
   docsPath?: string;
+  workspaceNotes?: string[];
   /** Controls which hardcoded sections to include. Defaults to "full". */
   promptMode?: PromptMode;
   runtimeInfo?: {
@@ -160,6 +161,7 @@ export function buildAgentSystemPrompt(params: {
     defaultModel?: string;
     channel?: string;
     capabilities?: string[];
+    repoRoot?: string;
   };
   messageToolHints?: string[];
   sandboxInfo?: {
@@ -175,7 +177,7 @@ export function buildAgentSystemPrompt(params: {
     allowedControlPorts?: number[];
     elevated?: {
       allowed: boolean;
-      defaultLevel: "on" | "off";
+      defaultLevel: "on" | "off" | "ask" | "full";
     };
   };
   /** Reaction guidance for the agent (for Telegram minimal/extensive modes). */
@@ -326,6 +328,7 @@ export function buildAgentSystemPrompt(params: {
     isMinimal,
     readToolName,
   });
+  const workspaceNotes = (params.workspaceNotes ?? []).map((note) => note.trim()).filter(Boolean);
 
   // For "none" mode, return just the basic identity line
   if (promptMode === "none") {
@@ -402,6 +405,7 @@ export function buildAgentSystemPrompt(params: {
     "## Workspace",
     `Your working directory is: ${params.workspaceDir}`,
     "Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise.",
+    ...workspaceNotes,
     "",
     ...docsSection,
     params.sandboxInfo?.enabled ? "## Sandbox" : "",
@@ -443,12 +447,14 @@ export function buildAgentSystemPrompt(params: {
           params.sandboxInfo.elevated?.allowed
             ? "Elevated exec is available for this session."
             : "",
-          params.sandboxInfo.elevated?.allowed ? "User can toggle with /elevated on|off." : "",
           params.sandboxInfo.elevated?.allowed
-            ? "You may also send /elevated on|off when needed."
+            ? "User can toggle with /elevated on|off|ask|full."
             : "",
           params.sandboxInfo.elevated?.allowed
-            ? `Current elevated level: ${params.sandboxInfo.elevated.defaultLevel} (on runs exec on host; off runs in sandbox).`
+            ? "You may also send /elevated on|off|ask|full when needed."
+            : "",
+          params.sandboxInfo.elevated?.allowed
+            ? `Current elevated level: ${params.sandboxInfo.elevated.defaultLevel} (ask runs exec on host with approvals; full auto-approves).`
             : "",
         ]
           .filter(Boolean)
@@ -570,6 +576,7 @@ export function buildRuntimeLine(
     node?: string;
     model?: string;
     defaultModel?: string;
+    repoRoot?: string;
   },
   runtimeChannel?: string,
   runtimeCapabilities: string[] = [],
@@ -578,6 +585,7 @@ export function buildRuntimeLine(
   return `Runtime: ${[
     runtimeInfo?.agentId ? `agent=${runtimeInfo.agentId}` : "",
     runtimeInfo?.host ? `host=${runtimeInfo.host}` : "",
+    runtimeInfo?.repoRoot ? `repo=${runtimeInfo.repoRoot}` : "",
     runtimeInfo?.os
       ? `os=${runtimeInfo.os}${runtimeInfo?.arch ? ` (${runtimeInfo.arch})` : ""}`
       : runtimeInfo?.arch
