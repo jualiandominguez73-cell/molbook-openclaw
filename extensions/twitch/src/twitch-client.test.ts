@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TwitchClientManager } from "./twitch-client.js";
 import type {
-	ProviderLogger,
+	ChannelLogSink,
 	TwitchAccountConfig,
 	TwitchChatMessage,
 } from "./types.js";
@@ -58,7 +58,7 @@ vi.mock("@twurple/auth", () => ({
 
 describe("TwitchClientManager", () => {
 	let manager: TwitchClientManager;
-	let mockLogger: ProviderLogger;
+	let mockLogger: ChannelLogSink;
 
 	const testAccount: TwitchAccountConfig = {
 		username: "testbot",

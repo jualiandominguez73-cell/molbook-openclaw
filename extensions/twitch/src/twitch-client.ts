@@ -1,10 +1,12 @@
 import { RefreshingAuthProvider, StaticAuthProvider } from "@twurple/auth";
 import { ChatClient, LogLevel } from "@twurple/chat";
+import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
 import type {
-	ProviderLogger,
+	ChannelLogSink,
 	TwitchAccountConfig,
 	TwitchChatMessage,
 } from "./types.js";
+import { resolveTwitchToken } from "./token.js";
 
 /**
  * Manages Twitch chat client connections
@@ -16,12 +18,15 @@ export class TwitchClientManager {
 		(message: TwitchChatMessage) => void
 	>();
 
-	constructor(private logger: ProviderLogger) {}
+	constructor(private logger: ChannelLogSink) {}
 
 	/**
 	 * Get or create a chat client for an account
 	 */
-	async getClient(account: TwitchAccountConfig): Promise<ChatClient> {
+	async getClient(
+		account: TwitchAccountConfig,
+		cfg?: ClawdbotConfig,
+	): Promise<ChatClient> {
 		const key = this.getAccountKey(account);
 
 		const existing = this.clients.get(key);
@@ -29,17 +34,33 @@ export class TwitchClientManager {
 			return existing;
 		}
 
-		if (!account.clientId || !account.token) {
+		// Resolve token from config or environment
+		const tokenResolution = resolveTwitchToken(cfg, {
+			accountId: account.username,
+		});
+
+		if (!tokenResolution.token) {
 			this.logger.error(
-				`[twitch] Missing Twitch client ID or token for account ${account.username}`,
+				`[twitch] Missing Twitch token for account ${account.username} (set channels.twitch.accounts.${account.username}.token or CLAWDBOT_TWITCH_ACCESS_TOKEN for default)`,
 			);
-			throw new Error("Missing Twitch client ID or token");
+			throw new Error("Missing Twitch token");
+		}
+
+		this.logger.debug(
+			`[twitch] Using ${tokenResolution.source} token source for ${account.username}`,
+		);
+
+		if (!account.clientId) {
+			this.logger.error(
+				`[twitch] Missing Twitch client ID for account ${account.username}`,
+			);
+			throw new Error("Missing Twitch client ID");
 		}
 
 		// Normalize token - strip oauth: prefix if present (Twurple doesn't need it)
-		const normalizedToken = account.token.startsWith("oauth:")
-			? account.token.slice(6)
-			: account.token;
+		const normalizedToken = tokenResolution.token.startsWith("oauth:")
+			? tokenResolution.token.slice(6)
+			: tokenResolution.token;
 
 		// Use RefreshingAuthProvider if clientSecret is provided (supports optional refresh tokens)
 		let authProvider: StaticAuthProvider | RefreshingAuthProvider;
@@ -251,9 +272,10 @@ export class TwitchClientManager {
 		account: TwitchAccountConfig,
 		channel: string,
 		message: string,
+		cfg?: ClawdbotConfig,
 	): Promise<{ ok: boolean; error?: string; messageId?: string }> {
 		try {
-			const client = await this.getClient(account);
+			const client = await this.getClient(account, cfg);
 
 			// Generate a message ID (Twurple's say() doesn't return the message ID, so we generate one)
 			const messageId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;

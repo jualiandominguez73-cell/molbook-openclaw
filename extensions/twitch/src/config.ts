@@ -1,5 +1,5 @@
+import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
 import type {
-	CoreConfig,
 	TwitchAccountConfig,
 	TwitchPluginConfig,
 } from "./types.js";
@@ -50,7 +50,7 @@ export function parsePluginConfig(value: unknown): TwitchPluginConfig {
 /**
  * List all configured account IDs
  */
-export function listAccountIds(cfg: CoreConfig): string[] {
+export function listAccountIds(cfg: ClawdbotConfig): string[] {
 	const accounts = (cfg as Record<string, unknown>).channels as
 		| Record<string, unknown>
 		| undefined;

@@ -7,7 +7,7 @@
 
 import { DEFAULT_ACCOUNT_ID, getAccountConfig } from "./config.js";
 import { TwitchClientManager } from "./twitch-client.js";
-import type { CoreConfig } from "./types.js";
+import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
 import { stripMarkdownForTwitch } from "./utils/markdown.js";
 import {
 	generateMessageId,
@@ -138,7 +138,7 @@ export async function sendMessageTwitch(
 export async function sendMessageTwitchInternal(
 	channel: string,
 	text: string,
-	cfg: CoreConfig,
+	cfg: ClawdbotConfig,
 	accountId: string = DEFAULT_ACCOUNT_ID,
 	stripMarkdown: boolean = true,
 	logger: Console = console,
@@ -188,6 +188,7 @@ export async function sendMessageTwitchInternal(
 			account,
 			normalizeTwitchChannel(normalizedChannel),
 			cleanedText,
+			cfg,
 		);
 
 		if (!result.ok) {

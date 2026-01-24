@@ -6,6 +6,8 @@
  */
 
 import { checkTwitchAccessControl } from "./access-control.js";
+import { resolveAgentRoute } from "../../../src/routing/resolve-route.js";
+import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
 import { twitchMessageActions } from "./actions.js";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -19,14 +21,12 @@ import { collectTwitchStatusIssues } from "./status.js";
 import { TwitchClientManager } from "./twitch-client.js";
 import type {
   ChannelAccountSnapshot,
+  ChannelCapabilities,
+  ChannelLogSink,
   ChannelMeta,
   ChannelPlugin,
   ChannelResolveKind,
   ChannelResolveResult,
-  ChatCapabilities,
-  CoreConfig,
-  PluginAPI,
-  ProviderLogger,
   TwitchAccountConfig,
 } from "./types.js";
 
@@ -63,16 +63,16 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
   /** Supported chat capabilities */
   capabilities: {
     chatTypes: ["group", "direct"],
-  } satisfies ChatCapabilities,
+  } satisfies ChannelCapabilities,
 
   /** Account configuration management */
   config: {
     /** List all configured account IDs */
-    listAccountIds: (cfg: CoreConfig): string[] => listAccountIds(cfg),
+    listAccountIds: (cfg: ClawdbotConfig): string[] => listAccountIds(cfg),
 
     /** Resolve an account config by ID */
     resolveAccount: (
-      cfg: CoreConfig,
+      cfg: ClawdbotConfig,
       accountId?: string | null,
     ): TwitchAccountConfig | null =>
       getAccountConfig(cfg, accountId ?? DEFAULT_ACCOUNT_ID),
@@ -81,7 +81,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
     defaultAccountId: (): string => DEFAULT_ACCOUNT_ID,
 
     /** Check if an account is configured */
-    isConfigured: (_account: unknown, cfg: CoreConfig): boolean => {
+    isConfigured: (_account: unknown, cfg: ClawdbotConfig): boolean => {
       const account = getAccountConfig(cfg, DEFAULT_ACCOUNT_ID);
       return isConfigured(account);
     },
@@ -113,11 +113,11 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
       kind,
       runtime,
     }: {
-      cfg: CoreConfig;
+      cfg: ClawdbotConfig;
       accountId?: string | null;
       inputs: string[];
       kind: ChannelResolveKind;
-      runtime: { log?: ProviderLogger };
+      runtime: { log?: ChannelLogSink };
     }): Promise<ChannelResolveResult[]> => {
       const account = getAccountConfig(cfg, accountId ?? DEFAULT_ACCOUNT_ID);
 
@@ -177,7 +177,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
       probe,
     }: {
       account: TwitchAccountConfig;
-      cfg: CoreConfig;
+      cfg: ClawdbotConfig;
       runtime?: ChannelAccountSnapshot;
       probe?: unknown;
     }): ChannelAccountSnapshot => {
@@ -227,16 +227,33 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
         });
 
         if (!access.allowed) {
-          console.info(
+          ctx.log?.info(
             `[twitch] Ignored message from ${message.username}: ${access.reason ?? "blocked"}`,
           );
           return;
         }
 
-        // TODO: Implement inbound message routing to Clawdbot
-        // This requires integration with Clawdbot's message handling system
-        console.info(
-          `[twitch] Received message from ${message.username}: ${message.message}`,
+        // Resolve route for this message
+        const route = resolveAgentRoute({
+          cfg: ctx.cfg,
+          channel: "twitch",
+          accountId,
+          peer: {
+            kind: "group", // Twitch chat is always group-like
+            id: message.channel,
+          },
+        });
+
+        // Build message preview
+        const preview = message.message.replace(/\s+/g, " ").slice(0, 160);
+
+        // Dispatch to agent system
+        ctx.runtime.system.enqueueSystemEvent(
+          `Twitch message from ${message.displayName ?? message.username}: ${preview}`,
+          {
+            sessionKey: route.sessionKey,
+            contextKey: `twitch:message:${message.channel}:${message.id ?? "unknown"}`,
+          },
         );
       });
 
@@ -253,7 +270,7 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
       );
 
       try {
-        await clientManager.getClient(account);
+        await clientManager.getClient(account, ctx.cfg);
         ctx.log?.info(`[twitch] Connected to Twitch as ${account.username}`);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -287,18 +304,3 @@ export const twitchPlugin: ChannelPlugin<TwitchAccountConfig> = {
     },
   },
 };
-
-/**
- * Extension entry point for registering the Twitch plugin with Clawdbot.
- *
- * @param api - Plugin API provided by Clawdbot
- */
-export function registerTwitchPlugin(api: PluginAPI): void {
-  api.registerChannel({ plugin: twitchPlugin });
-  api.logger?.info("[twitch] Plugin registered");
-}
-
-/**
- * Default export for CommonJS compatibility.
- */
-export default twitchPlugin;

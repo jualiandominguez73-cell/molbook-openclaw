@@ -8,7 +8,7 @@
 import { ApiClient } from "@twurple/api";
 import { StaticAuthProvider } from "@twurple/auth";
 import type { ChannelResolveKind, ChannelResolveResult } from "./types.js";
-import type { ProviderLogger, TwitchAccountConfig } from "./types.js";
+import type { ChannelLogSink, TwitchAccountConfig } from "./types.js";
 
 /**
  * Normalize a Twitch username - strip @ prefix and convert to lowercase
@@ -24,7 +24,7 @@ function normalizeUsername(input: string): string {
 /**
  * Create a logger that includes the Twitch prefix
  */
-function createLogger(logger?: ProviderLogger): ProviderLogger {
+function createLogger(logger?: ChannelLogSink): ChannelLogSink {
   return {
     info: (msg: string) => logger?.info(`[twitch] ${msg}`),
     warn: (msg: string) => logger?.warn(`[twitch] ${msg}`),
@@ -46,7 +46,7 @@ export async function resolveTwitchTargets(
   inputs: string[],
   account: TwitchAccountConfig,
   kind: ChannelResolveKind,
-  logger?: ProviderLogger,
+  logger?: ChannelLogSink,
 ): Promise<ChannelResolveResult[]> {
   const log = createLogger(logger);
 
