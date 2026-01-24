@@ -4,10 +4,15 @@ Docs: https://docs.clawd.bot
 
 ## 2026.1.23 (Unreleased)
 
+### Highlights
+- TTS: allow model-driven TTS tags by default for expressive audio replies (laughter, singing cues, etc.).
+
 ### Changes
+- Gateway: add /tools/invoke HTTP endpoint for direct tool calls and document it. (#1575) Thanks @vignesh07.
 - Agents: keep system prompt time zone-only and move current time to `session_status` for better cache hits.
 - Agents: remove redundant bash tool alias from tool registration/display. (#1571) Thanks @Takhoffman.
 - Browser: add node-host proxy auto-routing for remote gateways (configurable per gateway/node).
+- Heartbeat: add per-channel visibility controls (OK/alerts/indicator). (#1452) Thanks @dlauer.
 - Plugins: add optional llm-task JSON-only tool for workflows. (#1498) Thanks @vignesh07.
 - CLI: restart the gateway by default after `clawdbot update`; add `--no-restart` to skip it.
 - CLI: add live auth probes to `clawdbot models status` for per-profile verification.
@@ -21,7 +26,13 @@ Docs: https://docs.clawd.bot
 - TTS: move Telegram TTS into core with auto-replies, commands, and gateway methods. (#1559) Thanks @Glucksberg.
 
 ### Fixes
+- Sessions: accept non-UUID sessionIds for history/send/status while preserving agent scoping. (#1518)
 - Gateway: compare Linux process start time to avoid PID recycling lock loops; keep locks unless stale. (#1572) Thanks @steipete.
+- Messaging: mirror outbound sends into target session keys (threads + dmScope) and create session entries on send. (#1520)
+- Sessions: normalize session key casing to lowercase for consistent routing.
+- BlueBubbles: normalize group session keys for outbound mirroring. (#1520)
+- Slack: match auto-thread mirroring channel ids case-insensitively. (#1520)
+- Gateway: lowercase provided session keys when mirroring outbound sends. (#1520)
 - Skills: gate bird Homebrew install to macOS. (#1569) Thanks @bradleypriest.
 - Slack: honor open groupPolicy for unlisted channels in message + slash gating. (#1563) Thanks @itsjaydesu.
 - Agents: show tool error fallback when the last assistant turn only invoked tools (prevents silent stops).
@@ -36,6 +47,7 @@ Docs: https://docs.clawd.bot
 - Agents: add CLI log hint to "agent failed before reply" messages. (#1550) Thanks @sweepies.
 - Discord: limit autoThread mention bypass to bot-owned threads; keep ack reactions mention-gated. (#1511) Thanks @pvoo.
 - Discord: retry rate-limited allowlist resolution + command deploy to avoid gateway crashes.
+- Mentions: ignore mentionPattern matches when another explicit mention is present in group chats (Slack/Discord/Telegram/WhatsApp).
 - Gateway: accept null optional fields in exec approval requests. (#1511) Thanks @pvoo.
 - Exec: honor tools.exec ask/security defaults for elevated approvals (avoid unwanted prompts).
 - TUI: forward unknown slash commands (for example, `/context`) to the Gateway.

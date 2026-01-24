@@ -73,10 +73,37 @@ async function deployDiscordCommands(params: {
   try {
     await runWithRetry(() => params.client.handleDeployRequest(), "command deploy");
   } catch (err) {
+    const details = formatDiscordDeployErrorDetails(err);
     params.runtime.error?.(
-      danger(`discord: failed to deploy native commands: ${formatErrorMessage(err)}`),
+      danger(`discord: failed to deploy native commands: ${formatErrorMessage(err)}${details}`),
     );
   }
+}
+
+function formatDiscordDeployErrorDetails(err: unknown): string {
+  if (!err || typeof err !== "object") return "";
+  const status = (err as { status?: unknown }).status;
+  const discordCode = (err as { discordCode?: unknown }).discordCode;
+  const rawBody = (err as { rawBody?: unknown }).rawBody;
+  const details: string[] = [];
+  if (typeof status === "number") details.push(`status=${status}`);
+  if (typeof discordCode === "number" || typeof discordCode === "string") {
+    details.push(`code=${discordCode}`);
+  }
+  if (rawBody !== undefined) {
+    let bodyText = "";
+    try {
+      bodyText = JSON.stringify(rawBody);
+    } catch {
+      bodyText = String(rawBody);
+    }
+    if (bodyText) {
+      const maxLen = 800;
+      const trimmed = bodyText.length > maxLen ? `${bodyText.slice(0, maxLen)}...` : bodyText;
+      details.push(`body=${trimmed}`);
+    }
+  }
+  return details.length > 0 ? ` (${details.join(", ")})` : "";
 }
 
 export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
@@ -346,11 +373,13 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
   const maxDiscordCommands = 100;
   let skillCommands =
     nativeEnabled && nativeSkillsEnabled ? listSkillCommandsForAgents({ cfg }) : [];
-  let commandSpecs = nativeEnabled ? listNativeCommandSpecsForConfig(cfg, { skillCommands }) : [];
+  let commandSpecs = nativeEnabled
+    ? listNativeCommandSpecsForConfig(cfg, { skillCommands, provider: "discord" })
+    : [];
   const initialCommandCount = commandSpecs.length;
   if (nativeEnabled && nativeSkillsEnabled && commandSpecs.length > maxDiscordCommands) {
     skillCommands = [];
-    commandSpecs = listNativeCommandSpecsForConfig(cfg, { skillCommands: [] });
+    commandSpecs = listNativeCommandSpecsForConfig(cfg, { skillCommands: [], provider: "discord" });
     runtime.log?.(
       warn(
         `discord: ${initialCommandCount} commands exceeds limit; removing per-skill commands and keeping /skill.`,

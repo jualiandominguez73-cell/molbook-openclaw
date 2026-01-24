@@ -387,7 +387,7 @@
     },
     {
       "source": "/faq",
-      "destination": "/start/faq"
+      "destination": "/help/faq"
     },
     {
       "source": "/gateway-lock",
@@ -448,10 +448,6 @@
     {
       "source": "/location-command",
       "destination": "/nodes/location-command"
-    },
-    {
-      "source": "/logging",
-      "destination": "/gateway/logging"
     },
     {
       "source": "/lore",
@@ -762,20 +758,12 @@
       "destination": "/start/wizard"
     },
     {
-      "source": "/install/node",
-      "destination": "/install#nodejs--npm-path-sanity"
-    },
-    {
-      "source": "/install/node/",
-      "destination": "/install#nodejs--npm-path-sanity"
-    },
-    {
       "source": "/start/faq",
-      "destination": "/help"
+      "destination": "/help/faq"
     },
     {
       "source": "/start/faq/",
-      "destination": "/help"
+      "destination": "/help/faq"
     },
     {
       "source": "/oauth",
@@ -912,6 +900,7 @@
           "gateway/configuration-examples",
           "gateway/authentication",
           "gateway/openai-http-api",
+          "gateway/tools-invoke-http-api",
           "gateway/cli-backends",
           "gateway/local-models",
           "gateway/background-process",
