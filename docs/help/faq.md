@@ -9,6 +9,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
 - [What is Clawdbot?](#what-is-clawdbot)
   - [What is Clawdbot, in one paragraph?](#what-is-clawdbot-in-one-paragraph)
+  - [What’s the value proposition?](#whats-the-value-proposition)
 - [Quick start and first-run setup](#quick-start-and-first-run-setup)
   - [What’s the recommended way to install and set up Clawdbot?](#whats-the-recommended-way-to-install-and-set-up-clawdbot)
   - [How do I open the dashboard after onboarding?](#how-do-i-open-the-dashboard-after-onboarding)
@@ -18,10 +19,14 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Can I migrate my setup to a new machine (Mac mini) without redoing onboarding?](#can-i-migrate-my-setup-to-a-new-machine-mac-mini-without-redoing-onboarding)
   - [Where do I see what’s new in the latest version?](#where-do-i-see-whats-new-in-the-latest-version)
   - [I can't access docs.clawd.bot (SSL error). What now?](#i-cant-access-docsclawdbot-ssl-error-what-now)
+  - [What’s the difference between stable and beta?](#whats-the-difference-between-stable-and-beta)
   - [How do I install the beta version, and what’s the difference between beta and dev?](#how-do-i-install-the-beta-version-and-whats-the-difference-between-beta-and-dev)
   - [The docs didn’t answer my question — how do I get a better answer?](#the-docs-didnt-answer-my-question--how-do-i-get-a-better-answer)
+  - [How do I install Clawdbot on Linux?](#how-do-i-install-clawdbot-on-linux)
   - [How do I install Clawdbot on a VPS?](#how-do-i-install-clawdbot-on-a-vps)
+  - [Can I ask Clawd to update itself?](#can-i-ask-clawd-to-update-itself)
   - [What does the onboarding wizard actually do?](#what-does-the-onboarding-wizard-actually-do)
+  - [Do I need a Claude or OpenAI subscription to run this?](#do-i-need-a-claude-or-openai-subscription-to-run-this)
   - [How does Anthropic "setup-token" auth work?](#how-does-anthropic-setup-token-auth-work)
   - [Where do I find an Anthropic setup-token?](#where-do-i-find-an-anthropic-setup-token)
   - [Do you support Claude subscription auth (Claude Code OAuth)?](#do-you-support-claude-subscription-auth-claude-code-oauth)
@@ -32,11 +37,13 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Is a local model OK for casual chats?](#is-a-local-model-ok-for-casual-chats)
   - [How do I keep hosted model traffic in a specific region?](#how-do-i-keep-hosted-model-traffic-in-a-specific-region)
   - [Do I have to buy a Mac Mini to install this?](#do-i-have-to-buy-a-mac-mini-to-install-this)
+  - [Do I need a Mac mini for iMessage support?](#do-i-need-a-mac-mini-for-imessage-support)
   - [Can I use Bun?](#can-i-use-bun)
   - [Telegram: what goes in `allowFrom`?](#telegram-what-goes-in-allowfrom)
   - [Can multiple people use one WhatsApp number with different Clawdbots?](#can-multiple-people-use-one-whatsapp-number-with-different-clawdbots)
   - [Can I run a "fast chat" agent and an "Opus for coding" agent?](#can-i-run-a-fast-chat-agent-and-an-opus-for-coding-agent)
   - [Does Homebrew work on Linux?](#does-homebrew-work-on-linux)
+  - [What’s the difference between the hackable (git) install and npm install?](#whats-the-difference-between-the-hackable-git-install-and-npm-install)
   - [Can I switch between npm and git installs later?](#can-i-switch-between-npm-and-git-installs-later)
   - [Should I run the Gateway on my laptop or a VPS?](#should-i-run-the-gateway-on-my-laptop-or-a-vps)
 - [Skills and automation](#skills-and-automation)
@@ -56,6 +63,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 - [Where things live on disk](#where-things-live-on-disk)
   - [Where does Clawdbot store its data?](#where-does-clawdbot-store-its-data)
   - [Where should AGENTS.md / SOUL.md / USER.md / MEMORY.md live?](#where-should-agentsmd--soulmd--usermd--memorymd-live)
+  - [What’s the recommended backup strategy?](#whats-the-recommended-backup-strategy)
   - [How do I completely uninstall Clawdbot?](#how-do-i-completely-uninstall-clawdbot)
   - [Can agents work outside the workspace?](#can-agents-work-outside-the-workspace)
   - [I’m in remote mode — where is the session store?](#im-in-remote-mode-where-is-the-session-store)
@@ -96,6 +104,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 - [Models: defaults, selection, aliases, switching](#models-defaults-selection-aliases-switching)
   - [What is the “default model”?](#what-is-the-default-model)
   - [What model do you recommend?](#what-model-do-you-recommend)
+  - [What do Clawd, Flawd, and Krill use for models?](#what-do-clawd-flawd-and-krill-use-for-models)
   - [How do I switch models on the fly (without restarting)?](#how-do-i-switch-models-on-the-fly-without-restarting)
   - [Why do I see “Model … is not allowed” and then no reply?](#why-do-i-see-model-is-not-allowed-and-then-no-reply)
   - [Why do I see “Unknown model: minimax/MiniMax-M2.1”?](#why-do-i-see-unknown-model-minimaxminimax-m21)
@@ -196,6 +205,28 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
 Clawdbot is a personal AI assistant you run on your own devices. It replies on the messaging surfaces you already use (WhatsApp, Telegram, Slack, Mattermost (plugin), Discord, Signal, iMessage, WebChat) and can also do voice + a live Canvas on supported platforms. The **Gateway** is the always-on control plane; the assistant is the product.
 
+### What’s the value proposition?
+
+Clawdbot is not “just a Claude wrapper.” It’s a **local-first control plane** that lets you run a
+capable assistant on **your own hardware**, reachable from the chat apps you already use, with
+stateful sessions, memory, and tools — without handing control of your workflows to a hosted
+SaaS.
+
+Highlights:
+- **Your devices, your data:** run the Gateway wherever you want (Mac, Linux, VPS) and keep the
+  workspace + session history local.  
+- **Real channels, not a web sandbox:** WhatsApp/Telegram/Slack/Discord/Signal/iMessage/etc,
+  plus mobile voice and Canvas on supported platforms.  
+- **Model-agnostic:** use Anthropic, OpenAI, MiniMax, OpenRouter, etc., with per‑agent routing
+  and failover.  
+- **Local-only option:** run local models so **all data can stay on your device** if you want.
+- **Multi-agent routing:** separate agents per channel, account, or task, each with its own
+  workspace and defaults.  
+- **Open source and hackable:** inspect, extend, and self-host without vendor lock‑in.
+
+Docs: [Gateway](/gateway), [Channels](/channels), [Multi‑agent](/concepts/multi-agent),
+[Memory](/concepts/memory).
+
 ## Quick start and first-run setup
 
 ### What’s the recommended way to install and set up Clawdbot?
@@ -254,7 +285,9 @@ not a hard minimum.
 
 ### Can I migrate my setup to a new machine (Mac mini) without redoing onboarding?
 
-Yes. Copy the **state directory** and **workspace**, then run Doctor once:
+Yes. Copy the **state directory** and **workspace**, then run Doctor once. This
+keeps your bot “exactly the same” (memory, session history, auth, and channel
+state) as long as you copy **both** locations:
 
 1) Install Clawdbot on the new machine.
 2) Copy `$CLAWDBOT_STATE_DIR` (default: `~/.clawdbot`) from the old machine.
@@ -263,6 +296,10 @@ Yes. Copy the **state directory** and **workspace**, then run Doctor once:
 
 That preserves config, auth profiles, WhatsApp creds, sessions, and memory. If you’re in
 remote mode, remember the gateway host owns the session store and workspace.
+
+**Important:** if you only commit/push your workspace to GitHub, you’re backing
+up **memory + bootstrap files**, but **not** session history or auth. Those live
+under `~/.clawdbot/` (for example `~/.clawdbot/agents/<agentId>/sessions/`).
 
 Related: [Where things live on disk](/help/faq#where-does-clawdbot-store-its-data),
 [Agent workspace](/concepts/agent-workspace), [Doctor](/gateway/doctor),
@@ -282,13 +319,27 @@ section is the latest shipped version. Entries are grouped by **Highlights**, **
 Some Comcast/Xfinity connections incorrectly block `docs.clawd.bot` via Xfinity
 Advanced Security. Disable it or allowlist `docs.clawd.bot`, then retry. More
 detail: [Troubleshooting](/help/troubleshooting#docsclawdbot-shows-an-ssl-error-comcastxfinity).
+Please help us unblock it by reporting here: https://spa.xfinity.com/check_url_status.
 
 If you still can't reach the site, the docs are mirrored on GitHub:
 https://github.com/clawdbot/clawdbot/tree/main/docs
 
+### What’s the difference between stable and beta?
+
+**Stable** and **beta** are **npm dist‑tags**, not separate code lines:
+- `latest` = stable
+- `beta` = early build for testing
+
+We ship builds to **beta**, test them, and once a build is solid we **promote
+that same version to `latest`**. That’s why beta and stable can point at the
+**same version**.
+
+See what changed:  
+https://github.com/clawdbot/clawdbot/blob/main/CHANGELOG.md
+
 ### How do I install the beta version, and what’s the difference between beta and dev?
 
-**Beta** is a prerelease tag (`vYYYY.M.D-beta.N`) published to the npm dist‑tag `beta`.  
+**Beta** is the npm dist‑tag `beta` (may match `latest`).  
 **Dev** is the moving head of `main` (git); when published, it uses the npm dist‑tag `dev`.
 
 One‑liners (macOS/Linux):
@@ -317,12 +368,45 @@ curl -fsSL https://clawd.bot/install.sh | bash -s -- --install-method git
 
 More detail: [Install](/install) and [Installer flags](/install/installer).
 
+### How do I install Clawdbot on Linux?
+
+Short answer: follow the Linux guide, then run the onboarding wizard.
+
+- Linux quick path + service install: [Linux](/platforms/linux).
+- Full walkthrough: [Getting Started](/start/getting-started).
+- Installer + updates: [Install & updates](/install/updating).
+
 ### How do I install Clawdbot on a VPS?
 
 Any Linux VPS works. Install on the server, then use SSH/Tailscale to reach the Gateway.
 
 Guides: [exe.dev](/platforms/exe-dev), [Hetzner](/platforms/hetzner), [Fly.io](/platforms/fly).  
 Remote access: [Gateway remote](/gateway/remote).
+
+### Can I ask Clawd to update itself?
+
+Short answer: **possible, not recommended**. The update flow can restart the
+Gateway (which drops the active session), may need a clean git checkout, and
+can prompt for confirmation. Safer: run updates from a shell as the operator.
+
+Use the CLI:
+
+```bash
+clawdbot update
+clawdbot update status
+clawdbot update --channel stable|beta|dev
+clawdbot update --tag <dist-tag|version>
+clawdbot update --no-restart
+```
+
+If you must automate from an agent:
+
+```bash
+clawdbot update --yes --no-restart
+clawdbot gateway restart
+```
+
+Docs: [Update](/cli/update), [Updating](/install/updating).
 
 ### What does the onboarding wizard actually do?
 
@@ -336,6 +420,15 @@ Remote access: [Gateway remote](/gateway/remote).
 - **Health checks** and **skills** selection
 
 It also warns if your configured model is unknown or missing auth.
+
+### Do I need a Claude or OpenAI subscription to run this?
+
+No. You can run Clawdbot with **API keys** (Anthropic/OpenAI/others) or with
+**local‑only models** so your data stays on your device. Subscriptions (Claude
+Pro/Max or OpenAI Codex) are optional ways to authenticate those providers.
+
+Docs: [Anthropic](/providers/anthropic), [OpenAI](/providers/openai),
+[Local models](/gateway/local-models), [Models](/concepts/models).
 
 ### How does Anthropic "setup-token" auth work?
 
@@ -406,6 +499,20 @@ If you want other macOS‑only tools, run the Gateway on a Mac or pair a macOS n
 
 Docs: [iMessage](/channels/imessage), [Nodes](/nodes), [Mac remote mode](/platforms/mac/remote).
 
+### Do I need a Mac mini for iMessage support?
+
+You need **some macOS device** signed into Messages. It does **not** have to be a Mac mini —
+any Mac works. Clawdbot’s iMessage integrations run on macOS (BlueBubbles or `imsg`), while
+the Gateway can run elsewhere.
+
+Common setups:
+- Run the Gateway on Linux/VPS, and point `channels.imessage.cliPath` at an SSH wrapper that
+  runs `imsg` on the Mac.
+- Run everything on the Mac if you want the simplest single‑machine setup.
+
+Docs: [iMessage](/channels/imessage), [BlueBubbles](/channels/bluebubbles),
+[Mac remote mode](/platforms/mac/remote).
+
 ### Can I use Bun?
 
 Bun is **not recommended**. We see runtime bugs, especially with WhatsApp and Telegram.
@@ -450,6 +557,15 @@ brew install <formula>
 
 If you run Clawdbot via systemd, ensure the service PATH includes `/home/linuxbrew/.linuxbrew/bin` (or your brew prefix) so `brew`-installed tools resolve in non‑login shells.
 Recent builds also prepend common user bin dirs on Linux systemd services (for example `~/.local/bin`, `~/.npm-global/bin`, `~/.local/share/pnpm`, `~/.bun/bin`) and honor `PNPM_HOME`, `NPM_CONFIG_PREFIX`, `BUN_INSTALL`, `VOLTA_HOME`, `ASDF_DATA_DIR`, `NVM_DIR`, and `FNM_DIR` when set.
+
+### What’s the difference between the hackable (git) install and npm install?
+
+- **Hackable (git) install:** full source checkout, editable, best for contributors.
+  You run builds locally and can patch code/docs.
+- **npm install:** global CLI install, no repo, best for “just run it.”
+  Updates come from npm dist‑tags.
+
+Docs: [Getting started](/start/getting-started), [Updating](/install/updating).
 
 ### Can I switch between npm and git installs later?
 
@@ -705,6 +821,18 @@ workspace on every launch (and remember: remote mode uses the **gateway host’s
 workspace, not your local laptop).
 
 See [Agent workspace](/concepts/agent-workspace) and [Memory](/concepts/memory).
+
+### What’s the recommended backup strategy?
+
+Put your **agent workspace** in a **private** git repo and back it up somewhere
+private (for example GitHub private). This captures memory + AGENTS/SOUL/USER
+files, and lets you restore the assistant’s “mind” later.
+
+Do **not** commit anything under `~/.clawdbot` (credentials, sessions, tokens).
+If you need a full restore, back up both the workspace and the state directory
+separately (see the migration question above).
+
+Docs: [Agent workspace](/concepts/agent-workspace).
 
 ### How do I completely uninstall Clawdbot?
 
@@ -1219,6 +1347,11 @@ Strong warning: weaker/over-quantized models are more vulnerable to prompt
 injection and unsafe behavior. See [Security](/gateway/security).
 
 More context: [Models](/concepts/models).
+
+### What do Clawd, Flawd, and Krill use for models?
+
+- **Clawd + Flawd:** Anthropic Opus (`anthropic/claude-opus-4-5`) — see [Anthropic](/providers/anthropic).
+- **Krill:** MiniMax M2.1 (`minimax/MiniMax-M2.1`) — see [MiniMax](/providers/minimax).
 
 ### How do I switch models on the fly (without restarting)?
 
