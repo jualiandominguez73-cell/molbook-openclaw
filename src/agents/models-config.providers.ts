@@ -393,11 +393,10 @@ export async function resolveImplicitProviders(params: {
     };
   }
 
-  // Ollama doesn't require an API key by default
+  // Ollama provider - only add if explicitly configured
   const ollamaKey =
     resolveEnvApiKeyVarName("ollama") ??
-    resolveApiKeyFromProfiles({ provider: "ollama", store: authStore }) ??
-    "ollama-local";
+    resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
   if (ollamaKey) {
     providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
   }
