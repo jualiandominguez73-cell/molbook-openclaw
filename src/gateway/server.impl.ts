@@ -344,9 +344,18 @@ export async function startGatewayServer(
 
   setSkillsRemoteRegistry(nodeRegistry);
   void primeRemoteSkillsCache();
+  // Throttle skills-triggered node probes to avoid feedback loops and rapid-fire invokes.
+  // Skills changes can happen in bursts (e.g., file watcher events), and each probe
+  // takes time to complete. A 30-second delay ensures we batch changes together.
+  let skillsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  const skillsRefreshDelayMs = 30_000;
   registerSkillsChangeListener(() => {
-    const latest = loadConfig();
-    void refreshRemoteBinsForConnectedNodes(latest);
+    if (skillsRefreshTimer) return;
+    skillsRefreshTimer = setTimeout(() => {
+      skillsRefreshTimer = null;
+      const latest = loadConfig();
+      void refreshRemoteBinsForConnectedNodes(latest);
+    }, skillsRefreshDelayMs);
   });
 
   const { tickInterval, healthInterval, dedupeCleanup } = startGatewayMaintenanceTimers({

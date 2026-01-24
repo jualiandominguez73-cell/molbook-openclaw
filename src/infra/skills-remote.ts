@@ -29,7 +29,16 @@ function describeNode(nodeId: string): string {
   return ip ? `${base} @ ${ip}` : base;
 }
 
-function extractErrorMessage(err: unknown): string | undefined {
+/**
+ * Extracts a human-readable message from an unknown error value.
+ * Handles Error objects, error-like objects with message property,
+ * primitives, and arbitrary objects (via JSON.stringify).
+ *
+ * @returns The error message string, or undefined if extraction fails
+ *          (e.g., null input, circular references in objects)
+ * @internal exported for testing
+ */
+export function extractErrorMessage(err: unknown): string | undefined {
   if (!err) return undefined;
   if (typeof err === "string") return err;
   if (err instanceof Error) return err.message;
@@ -52,13 +61,26 @@ function extractErrorMessage(err: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Checks if an error indicates the node is unavailable (not connected or disconnected mid-operation).
+ * This includes:
+ * - "node not connected" - node wasn't connected when attempting to invoke
+ * - "node disconnected" - node was connected but disconnected during the operation
+ * @internal exported for testing
+ */
+export function isNodeUnavailableError(err: unknown): boolean {
+  const message = extractErrorMessage(err);
+  if (!message) return false;
+  return message.includes("node not connected") || message.includes("node disconnected");
+}
+
 function logRemoteBinProbeFailure(nodeId: string, err: unknown) {
   const message = extractErrorMessage(err);
   const label = describeNode(nodeId);
-  if (message?.includes("node not connected")) {
-    log.info(
-      `remote bin probe skipped: node not connected (${label}); check nodes list/status for ${label}`,
-    );
+  // Handle node unavailable errors (not connected or disconnected mid-operation) at info level
+  // since these are expected when nodes have transient connections
+  if (isNodeUnavailableError(err)) {
+    log.info(`remote bin probe skipped: node unavailable (${label})`);
     return;
   }
   if (message?.includes("invoke timed out") || message?.includes("timeout")) {

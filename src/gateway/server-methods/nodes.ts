@@ -468,7 +468,10 @@ export const nodeHandlers: GatewayRequestHandlers = {
       error: p.error ?? null,
     });
     if (!ok) {
-      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown invoke id"));
+      // Late-arriving results (after invoke timeout) are expected and harmless.
+      // Return success with a "late" flag instead of an error to reduce log noise.
+      // The client can safely discard this response.
+      respond(true, { ok: true, late: true }, undefined);
       return;
     }
     respond(true, { ok: true }, undefined);
