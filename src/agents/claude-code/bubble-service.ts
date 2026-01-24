@@ -162,13 +162,29 @@ function formatHybridBubbleMessage(state: SessionState, sessionId: string): stri
         if (!fullMsg || fullMsg.length < 10) {
           bodyLines.push("_(session complete)_");
         } else {
-          // Allow up to 2500 chars for the summary in done state
-          // (Telegram limit is 4096, header+footer ~200 chars)
-          const maxSummaryLength = 2500;
-          const msg =
-            fullMsg.length > maxSummaryLength
-              ? fullMsg.slice(0, maxSummaryLength - 3) + "..."
-              : fullMsg;
+          // Telegram limit: 4096 chars total
+          // Header ~80 chars, footer ~150 chars = ~230 chars overhead
+          // Leave 3800 chars for summary (with safety margin)
+          const maxSummaryLength = 3800;
+
+          let msg = fullMsg;
+          if (fullMsg.length > maxSummaryLength) {
+            // Smart truncation: find last complete sentence or newline within limit
+            const truncated = fullMsg.slice(0, maxSummaryLength - 10);
+            const lastNewline = truncated.lastIndexOf("\n");
+            const lastPeriod = truncated.lastIndexOf(". ");
+
+            // Prefer breaking at sentence or paragraph boundary
+            const breakPoint = Math.max(lastNewline, lastPeriod);
+            if (breakPoint > maxSummaryLength * 0.8) {
+              // Only use smart break if it's >80% of target length
+              msg = fullMsg.slice(0, breakPoint + (lastPeriod > 0 ? 2 : 1)) + "\n\n_(truncated)_";
+            } else {
+              // Fall back to hard truncation if no good break point
+              msg = truncated + "...";
+            }
+          }
+
           bodyLines.push(`💬 ${msg}`);
         }
       } else {
