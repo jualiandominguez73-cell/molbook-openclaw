@@ -397,6 +397,10 @@ const handler = createAIDrivenQuestionHandler({
 - Session analytics
 - Multi-tenant bubble routing
 
+## Attribution
+
+The Telegram bubble integration design is inspired by [takopi](https://github.com/banteg/takopi) by @banteg - a Telegram-first Claude Code wrapper with real-time status bubbles.
+
 ## License
 
 MIT
