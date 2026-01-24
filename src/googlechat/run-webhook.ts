@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import express, { type Request, type Response } from "express";
 
-const PORT = 18792;
+const PORT = 18793;
 const app = express();
 app.use(express.json());
 
@@ -27,7 +27,9 @@ function enqueueMessage(spaceId: string, message: QueuedMessage): void {
     messageQueues.set(spaceId, []);
   }
   messageQueues.get(spaceId)!.push(message);
-  console.log(`[googlechat] Queued message for space ${spaceId} (queue size: ${messageQueues.get(spaceId)!.length})`);
+  console.log(
+    `[googlechat] Queued message for space ${spaceId} (queue size: ${messageQueues.get(spaceId)!.length})`,
+  );
   processQueue(spaceId);
 }
 
@@ -57,7 +59,9 @@ function processQueue(spaceId: string): void {
       sendChatMessage(spaceId, "Sorry, I encountered an error processing your message.");
     } else {
       const responseText = response || "I processed your message but have no response.";
-      console.log(`[googlechat] AI Response (${responseText.length} chars): ${responseText.slice(0, 100)}...`);
+      console.log(
+        `[googlechat] AI Response (${responseText.length} chars): ${responseText.slice(0, 100)}...`,
+      );
       sendChatMessage(spaceId, responseText);
     }
 
@@ -87,7 +91,11 @@ function sendChatMessage(spaceId: string, text: string): void {
 
     proc.on("close", (code) => {
       // Small delay ensures Python has finished reading the file
-      setTimeout(() => { try { unlinkSync(tmpFile); } catch {} }, 100);
+      setTimeout(() => {
+        try {
+          unlinkSync(tmpFile);
+        } catch {}
+      }, 100);
       if (code !== 0) {
         console.error(`[googlechat] Send failed with code ${code}`);
       }
@@ -95,25 +103,31 @@ function sendChatMessage(spaceId: string, text: string): void {
 
     proc.on("error", (err) => {
       console.error("[googlechat] Send error:", err.message);
-      setTimeout(() => { try { unlinkSync(tmpFile); } catch {} }, 100);
+      setTimeout(() => {
+        try {
+          unlinkSync(tmpFile);
+        } catch {}
+      }, 100);
     });
-
   } catch (e) {
     console.error("[googlechat] Failed to write temp file:", e);
   }
 }
 
 // Run clawdbot agent (no shell, direct spawn)
-function runAgent(message: string, sessionId: string, callback: (err: Error | null, response: string) => void): void {
-  const proc = spawn("clawdbot", [
-    "agent",
-    "--message", message,
-    "--session-id", sessionId,
-    "--local"
-  ], {
-    timeout: 300000,
-    env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` }
-  });
+function runAgent(
+  message: string,
+  sessionId: string,
+  callback: (err: Error | null, response: string) => void,
+): void {
+  const proc = spawn(
+    "clawdbot",
+    ["agent", "--message", message, "--session-id", sessionId, "--local"],
+    {
+      timeout: 300000,
+      env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` },
+    },
+  );
 
   let stdout = "";
   let stderr = "";
@@ -134,9 +148,9 @@ function runAgent(message: string, sessionId: string, callback: (err: Error | nu
       // Filter out ANSI-coded log lines that leak from the agent
       // These look like: [33m[subsystem][39m [36mmessage[39m
       const filtered = stdout
-        .split('\n')
-        .filter(line => !line.match(/^\x1b\[\d+m\[/))  // Filter ANSI log lines
-        .join('\n')
+        .split("\n")
+        .filter((line) => !line.match(/^\x1b\[\d+m\[/)) // Filter ANSI log lines
+        .join("\n")
         .trim();
       callback(null, filtered);
     }
@@ -192,7 +206,7 @@ app.post("/webhook/googlechat", async (req: Request, res: Response) => {
       res.json({});
 
       const sessionId = `googlechat:${spaceId}`;
-      
+
       // Queue the message instead of processing immediately
       enqueueMessage(spaceId, { text, sessionId, spaceId });
 

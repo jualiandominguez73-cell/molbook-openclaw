@@ -11,13 +11,13 @@ echo "🦞 Starting Clawdbot Google Chat..."
 echo ""
 
 # Kill any existing processes
-pkill -f "ngrok http 18792" 2>/dev/null
+pkill -f "ngrok http 18793" 2>/dev/null
 pkill -f "run-webhook" 2>/dev/null
 sleep 1
 
 # Start ngrok in background
 echo "1. Starting ngrok tunnel..."
-ngrok http 18792 > /tmp/ngrok.log 2>&1 &
+ngrok http 18793 > /tmp/ngrok.log 2>&1 &
 sleep 4
 
 # Get the ngrok URL
@@ -64,7 +64,7 @@ npx tsx src/googlechat/run-webhook.ts > /tmp/googlechat-webhook.log 2>&1 &
 sleep 3
 
 # Verify webhook is running
-if lsof -i :18792 > /dev/null 2>&1; then
+if lsof -i :18793 > /dev/null 2>&1; then
     echo "   ✓ Webhook running"
 else
     echo "   ❌ ERROR: Webhook failed to start"
