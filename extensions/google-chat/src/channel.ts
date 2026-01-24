@@ -222,4 +222,19 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
       return { provider: "googlechat", ...result };
     },
   },
+  gateway: {
+    startAccount: async (ctx) => {
+      const account = ctx.account;
+      ctx.log?.info(`[${account.accountId}] starting Google Chat provider`);
+
+      const { monitorGoogleChatProvider } = await import("./monitor.js");
+
+      return monitorGoogleChatProvider({
+        account,
+        config: ctx.cfg,
+        runtime: ctx.runtime,
+        abortSignal: ctx.abortSignal,
+      });
+    },
+  },
 };
