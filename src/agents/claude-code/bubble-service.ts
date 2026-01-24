@@ -17,6 +17,9 @@
  * - Non-blocking edits
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { sendMessageTelegram, editMessageTelegram } from "../../telegram/send.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { buildBubbleKeyboard } from "./bubble-manager.js";
@@ -24,6 +27,21 @@ import { logDyDoCommand, getLatestDyDoCommand } from "./orchestrator.js";
 import type { SessionState, SessionEvent } from "./types.js";
 
 const log = createSubsystemLogger("claude-code/bubble-service");
+
+// Persistent bubble registry for recovery on restart
+const BUBBLE_REGISTRY_PATH = path.join(os.homedir(), ".clawdbot", "bubble-registry.json");
+
+interface BubbleRegistryEntry {
+  sessionId: string;
+  resumeToken: string;
+  chatId: string;
+  messageId: string;
+  threadId?: number;
+  accountId?: string;
+  projectName: string;
+  workingDir: string;
+  createdAt: number;
+}
 
 // ============================================================================
 // Takopi-style Hybrid Bubble Format
@@ -302,6 +320,61 @@ interface ActiveBubble {
 const activeBubbles = new Map<string, ActiveBubble>();
 
 /**
+ * Load bubble registry from disk.
+ */
+function loadBubbleRegistry(): BubbleRegistryEntry[] {
+  try {
+    if (!fs.existsSync(BUBBLE_REGISTRY_PATH)) {
+      return [];
+    }
+    const data = fs.readFileSync(BUBBLE_REGISTRY_PATH, "utf-8");
+    return JSON.parse(data);
+  } catch (err) {
+    log.error(`Failed to load bubble registry: ${err}`);
+    return [];
+  }
+}
+
+/**
+ * Save bubble registry to disk.
+ */
+function saveBubbleRegistry(entries: BubbleRegistryEntry[]): void {
+  try {
+    const dir = path.dirname(BUBBLE_REGISTRY_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(BUBBLE_REGISTRY_PATH, JSON.stringify(entries, null, 2), "utf-8");
+  } catch (err) {
+    log.error(`Failed to save bubble registry: ${err}`);
+  }
+}
+
+/**
+ * Add bubble to persistent registry.
+ */
+function addToBubbleRegistry(entry: BubbleRegistryEntry): void {
+  const registry = loadBubbleRegistry();
+  // Remove any existing entry for this session
+  const filtered = registry.filter((e) => e.sessionId !== entry.sessionId);
+  filtered.push(entry);
+  saveBubbleRegistry(filtered);
+  log.info(`[${entry.sessionId}] Added to bubble registry (${filtered.length} total)`);
+}
+
+/**
+ * Remove bubble from persistent registry.
+ */
+function removeFromBubbleRegistry(sessionId: string): void {
+  const registry = loadBubbleRegistry();
+  const filtered = registry.filter((e) => e.sessionId !== sessionId);
+  if (filtered.length < registry.length) {
+    saveBubbleRegistry(filtered);
+    log.info(`[${sessionId}] Removed from bubble registry (${filtered.length} remaining)`);
+  }
+}
+
+/**
  * Format a session event for Telegram message forwarding.
  * Uses emoji convention: 🐶 = user, 💬 = Claude, ▸ = tool start, ✓ = tool done
  */
@@ -447,6 +520,19 @@ export async function createSessionBubble(params: {
 
     activeBubbles.set(sessionId, bubble);
     log.info(`[${sessionId}] Created bubble: ${result.messageId}`);
+
+    // Add to persistent registry for recovery on restart
+    addToBubbleRegistry({
+      sessionId,
+      resumeToken,
+      chatId: result.chatId,
+      messageId: result.messageId,
+      threadId,
+      accountId,
+      projectName: state.projectName,
+      workingDir,
+      createdAt: Date.now(),
+    });
 
     return { messageId: result.messageId };
   } catch (err) {
@@ -618,6 +704,7 @@ export async function completeSessionBubble(params: {
     activeBubbles.delete(sessionId);
     pendingUpdates.delete(sessionId);
     clearQAState(sessionId);
+    removeFromBubbleRegistry(sessionId);
 
     log.info(`[${sessionId}] Completed bubble`);
     return true;
@@ -627,6 +714,7 @@ export async function completeSessionBubble(params: {
     activeBubbles.delete(sessionId);
     pendingUpdates.delete(sessionId);
     clearQAState(sessionId);
+    removeFromBubbleRegistry(sessionId);
     return false;
   }
 }
@@ -657,6 +745,118 @@ export function getBubbleByTokenPrefix(
  */
 export function removeSessionBubble(sessionId: string): void {
   activeBubbles.delete(sessionId);
+  removeFromBubbleRegistry(sessionId);
+}
+
+/**
+ * Recover orphaned bubbles on gateway restart.
+ * Scans bubble registry and updates bubbles for ended sessions.
+ */
+export async function recoverOrphanedBubbles(): Promise<void> {
+  const registry = loadBubbleRegistry();
+  if (registry.length === 0) {
+    log.info("No bubbles to recover");
+    return;
+  }
+
+  log.info(`Recovering ${registry.length} bubbles from registry...`);
+
+  for (const entry of registry) {
+    try {
+      // Check if session file exists
+      const sessionFile = path.join(
+        entry.workingDir,
+        ".claude",
+        "projects",
+        entry.workingDir.replace(/\//g, "-"),
+        `${entry.resumeToken}.jsonl`,
+      );
+
+      // Alternative: scan for session file by token
+      const { findSessionFile } = await import("./project-resolver.js");
+      const actualSessionFile = findSessionFile(entry.resumeToken);
+
+      if (!actualSessionFile) {
+        log.warn(`[${entry.sessionId}] Session file not found, skipping recovery`);
+        removeFromBubbleRegistry(entry.sessionId);
+        continue;
+      }
+
+      // Check if process is still running
+      const { getSessionByToken } = await import("./session.js");
+      const activeSession = getSessionByToken(entry.resumeToken);
+
+      if (activeSession) {
+        log.info(`[${entry.sessionId}] Session still active, re-registering bubble`);
+        // Re-register bubble in activeBubbles (but don't create new message)
+        activeBubbles.set(entry.sessionId, {
+          chatId: entry.chatId,
+          messageId: entry.messageId,
+          threadId: entry.threadId,
+          resumeToken: entry.resumeToken,
+          lastUpdate: entry.createdAt,
+          accountId: entry.accountId,
+          workingDir: entry.workingDir,
+          projectName: entry.projectName,
+          startedAt: entry.createdAt,
+          runtimeLimitHours: 3.0,
+          isPaused: false,
+          lastForwardedEventIndex: 0,
+        });
+        continue;
+      }
+
+      // Session ended - parse final state from session file
+      log.info(`[${entry.sessionId}] Session ended, updating bubble to final state`);
+
+      // Parse session file to get final status
+      const sessionData = fs.readFileSync(actualSessionFile, "utf-8");
+      const lines = sessionData.trim().split("\n");
+      let finalStatus: "completed" | "cancelled" | "failed" = "completed";
+      let totalEvents = lines.length;
+
+      // Check last few events for error/cancellation
+      const lastEvents = lines.slice(-10);
+      for (const line of lastEvents.reverse()) {
+        try {
+          const event = JSON.parse(line);
+          if (event.type === "result" && event.is_error) {
+            finalStatus = "failed";
+            break;
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
+
+      // Build final state message
+      const runtimeSeconds = (Date.now() - entry.createdAt) / 1000;
+      const hours = Math.floor(runtimeSeconds / 3600);
+      const minutes = Math.floor((runtimeSeconds % 3600) / 60);
+      const runtime = `${hours}h ${minutes}m`;
+
+      const statusEmoji = finalStatus === "completed" ? "✓" : finalStatus === "failed" ? "✗" : "⊗";
+      const header = `${statusEmoji} · ${entry.projectName} · ${runtime}`;
+      const body = `${totalEvents.toLocaleString()} events processed`;
+      const resumeLine = `\`claude --resume ${entry.resumeToken}\``;
+      const text = [header, body, resumeLine].join("\n\n");
+
+      // Update bubble to final state
+      await editMessageTelegram(entry.chatId, entry.messageId, text, {
+        accountId: entry.accountId,
+        buttons: [], // Clear buttons
+        disableLinkPreview: true,
+      });
+
+      log.info(`[${entry.sessionId}] Bubble recovered: ${finalStatus}`);
+      removeFromBubbleRegistry(entry.sessionId);
+    } catch (err) {
+      log.error(`[${entry.sessionId}] Recovery failed: ${err}`);
+      // Keep in registry for next attempt
+    }
+  }
+
+  log.info("Bubble recovery complete");
 }
 
 /**
