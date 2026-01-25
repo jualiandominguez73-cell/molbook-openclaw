@@ -94,15 +94,20 @@ function maskToken(token: string): string {
 }
 
 function isPasswordKey(key: string): boolean {
-  return /(pass(word)?|passwd)\b/i.test(key);
+  const lower = key.toLowerCase();
+  return lower.includes("password") || lower.includes("passwd");
 }
 
 function isSensitiveKey(key: string): boolean {
-  return (
-    /(pass(word)?|passwd|token|secret|api[-_]?key|access[-_]?token|refresh[-_]?token|authorization|cookie)\b/i.test(
-      key,
-    ) || /^x-api-key$/i.test(key)
-  );
+  const lower = key.toLowerCase();
+  if (lower.includes("password") || lower.includes("passwd")) return true;
+  if (lower.includes("token")) return true;
+  if (lower.includes("secret")) return true;
+  if (lower.includes("authorization")) return true;
+  if (lower.includes("cookie")) return true;
+  if (lower.includes("api-key") || lower.includes("api_key") || lower.includes("apikey"))
+    return true;
+  return false;
 }
 
 function redactPemBlock(block: string): string {
@@ -113,7 +118,7 @@ function redactPemBlock(block: string): string {
 
 function redactMatch(match: string, groups: string[]): string {
   if (match.includes("PRIVATE KEY-----")) return redactPemBlock(match);
-  const shouldFullyRedact = /\bpass(word)?\b/i.test(match) || /\bpasswd\b/i.test(match);
+  const shouldFullyRedact = /password/i.test(match) || /passwd/i.test(match);
   const token =
     groups.filter((value) => typeof value === "string" && value.length > 0).at(-1) ?? match;
   const masked = shouldFullyRedact ? "***" : maskToken(token);

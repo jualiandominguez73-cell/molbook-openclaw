@@ -75,7 +75,7 @@ plist-dev:
 	@echo '      <string>/opt/homebrew/bin/node</string>' >> $(LAUNCHD_PLIST_DEV)
 	@echo '      <string>--import</string>' >> $(LAUNCHD_PLIST_DEV)
 	@echo '      <string>tsx</string>' >> $(LAUNCHD_PLIST_DEV)
-	@echo '      <string>$(PROJECT_DIR)/src/cli/index.ts</string>' >> $(LAUNCHD_PLIST_DEV)
+	@echo '      <string>$(PROJECT_DIR)/src/index.ts</string>' >> $(LAUNCHD_PLIST_DEV)
 	@echo '      <string>gateway</string>' >> $(LAUNCHD_PLIST_DEV)
 	@echo '      <string>--port</string>' >> $(LAUNCHD_PLIST_DEV)
 	@echo '      <string>$(GATEWAY_PORT)</string>' >> $(LAUNCHD_PLIST_DEV)

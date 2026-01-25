@@ -6,6 +6,7 @@ import { chatHandlers } from "./server-methods/chat.js";
 import { configHandlers } from "./server-methods/config.js";
 import { connectHandlers } from "./server-methods/connect.js";
 import { cronHandlers } from "./server-methods/cron.js";
+import { decisionHandlers } from "./server-methods/decisions.js";
 import { deviceHandlers } from "./server-methods/devices.js";
 import { execApprovalsHandlers } from "./server-methods/exec-approvals.js";
 import { healthHandlers } from "./server-methods/health.js";
@@ -74,6 +75,8 @@ const READ_METHODS = new Set([
   "chat.history",
   "overseer.status",
   "overseer.goal.status",
+  "decision.list",
+  "decision.get",
 ]);
 const WRITE_METHODS = new Set([
   "send",
@@ -94,6 +97,8 @@ const WRITE_METHODS = new Set([
   "overseer.goal.resume",
   "overseer.work.update",
   "overseer.tick",
+  "decision.create",
+  "decision.respond",
 ]);
 
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
@@ -177,6 +182,7 @@ export const coreGatewayHandlers: GatewayRequestHandlers = {
   ...agentHandlers,
   ...agentsHandlers,
   ...overseerHandlers,
+  ...decisionHandlers,
 };
 
 export async function handleGatewayRequest(
