@@ -1,14 +1,22 @@
 {
   "id": "action-receipts",
   "name": "Action Receipts",
-  "description": "Optional reference extension that writes tool-call receipts to local state for debugging/audit.",
+  "description": "Record tool calls as local receipts for debugging and audits.",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "enabled": { "type": "boolean", "default": true },
-      "receiptsDir": { "type": "string" },
-      "includeParams": { "type": "boolean", "default": true }
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      },
+      "receiptsDir": {
+        "type": "string"
+      },
+      "includeParams": {
+        "type": "boolean",
+        "default": true
+      }
     }
   }
 }
