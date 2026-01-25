@@ -417,6 +417,19 @@ export const buildTelegramMessageContext = async ({
         )
       : null;
 
+  // Voice/audio message reaction - immediate feedback while transcribing
+  const isVoiceMessage = Boolean(msg.audio || msg.voice);
+  const voiceReactionPromise =
+    isVoiceMessage && msg.message_id && reactionApi
+      ? reactionApi(chatId, msg.message_id, [{ type: "emoji", emoji: "🎧" }]).then(
+          () => true,
+          (err) => {
+            logVerbose(`telegram voice reaction failed for chat ${chatId}: ${String(err)}`);
+            return false;
+          },
+        )
+      : null;
+
   const replyTarget = describeReplyTarget(msg);
   const forwardOrigin = normalizeForwardedContext(msg);
   const replySuffix = replyTarget
@@ -587,6 +600,7 @@ export const buildTelegramMessageContext = async ({
     sendTyping,
     sendRecordVoice,
     ackReactionPromise,
+    voiceReactionPromise,
     reactionApi,
     removeAckAfterReply,
     accountId: account.accountId,
