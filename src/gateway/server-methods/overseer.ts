@@ -552,4 +552,85 @@ export const overseerHandlers: GatewayRequestHandlers = {
     const res = await context.overseerRunner?.tickNow({ reason: request.reason });
     respond(true, res ?? { ok: false, didWork: false }, undefined);
   },
+
+  // Simulator methods
+  "overseer.simulator.load": async ({ respond }) => {
+    // Load simulator state from store metadata
+    const store = loadOverseerStoreFromDisk();
+    const simulatorData = (store as Record<string, unknown>).simulatorState as
+      | {
+          rules?: unknown[];
+          scenarios?: unknown[];
+        }
+      | undefined;
+    respond(true, simulatorData ?? { rules: [], scenarios: [] }, undefined);
+  },
+
+  "overseer.simulator.save": async ({ params, respond }) => {
+    const request = params as { rules?: unknown[]; scenarios?: unknown[] };
+    await updateOverseerStore(async (store) => {
+      (store as Record<string, unknown>).simulatorState = {
+        rules: request.rules ?? [],
+        scenarios: request.scenarios ?? [],
+      };
+      return { store, result: true };
+    });
+    respond(true, { ok: true }, undefined);
+  },
+
+  "overseer.simulator.injectEvent": async ({ params, respond, context }) => {
+    const request = params as {
+      type: string;
+      goalId?: string;
+      assignmentId?: string;
+      sessionKey?: string;
+      data?: Record<string, unknown>;
+    };
+
+    const now = Date.now();
+
+    await updateOverseerStore(async (store) => {
+      // Log the simulated event
+      appendOverseerEvent(store, {
+        ts: now,
+        type: `simulator.${request.type}`,
+        goalId: request.goalId,
+        assignmentId: request.assignmentId,
+        data: { source: "simulator", ...request.data },
+      });
+
+      // Handle specific event types
+      if (request.type === "assignment_stalled" && request.assignmentId) {
+        const assignment = store.assignments[request.assignmentId];
+        if (assignment) {
+          assignment.status = "stalled";
+          assignment.updatedAt = now;
+        }
+      } else if (request.type === "assignment_active" && request.assignmentId) {
+        const assignment = store.assignments[request.assignmentId];
+        if (assignment) {
+          assignment.status = "active";
+          assignment.lastObservedActivityAt = now;
+          assignment.updatedAt = now;
+        }
+      } else if (request.type === "goal_completed" && request.goalId) {
+        const goal = store.goals[request.goalId];
+        if (goal) {
+          goal.status = "completed";
+          goal.updatedAt = now;
+        }
+      }
+
+      return { store, result: true };
+    });
+
+    // Trigger a tick if requested
+    if (request.type === "tick_triggered") {
+      const res = await context.overseerRunner?.tickNow({ reason: "simulator" });
+      respond(true, { ok: true, tickResult: res }, undefined);
+      return;
+    }
+
+    respond(true, { ok: true }, undefined);
+  },
 };

@@ -11,4 +11,5 @@
 /* New modular view styles */
 @import "./styles/logs.css";
 @import "./styles/channel-wizard.css";
+@import "./styles/overseer-simulator.css";
 @import "./styles/chat/task-sidebar.css";

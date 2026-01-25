@@ -3,6 +3,22 @@ import type {
   OverseerGoalStatusResult,
   OverseerStatusResult,
 } from "../types/overseer";
+import {
+  createInitialSimulatorState,
+  RULE_TEMPLATES,
+  SCENARIO_TEMPLATES,
+  type SimulatorState,
+  type SimulatorRule,
+  type SimulatorScenario,
+  type RuleCondition,
+  type RuleAction,
+  type SimulatedEventType,
+  type QueuedSimulatedEvent,
+} from "../types/overseer-simulator";
+import * as SimulatorController from "./overseer-simulator";
+
+// Re-export for convenience
+export { RULE_TEMPLATES, SCENARIO_TEMPLATES } from "../types/overseer-simulator";
 
 export type OverseerState = {
   client: GatewayBrowserClient | null;
@@ -14,6 +30,8 @@ export type OverseerState = {
   overseerGoalError: string | null;
   overseerSelectedGoalId: string | null;
   overseerGoal: OverseerGoalStatusResult | null;
+  // Simulator state
+  simulator: SimulatorState;
 };
 
 export async function loadOverseerStatus(
@@ -85,7 +103,264 @@ export async function tickOverseer(state: OverseerState, reason?: string) {
   if (!state.client || !state.connected) return;
   try {
     await state.client.request("overseer.tick", { reason });
+    // Log tick in simulator
+    state.simulator = SimulatorController.recordTick(state.simulator);
   } catch (err) {
     state.overseerError = String(err);
   }
+}
+
+// ============================================================================
+// Simulator State Management
+// ============================================================================
+
+export function initializeSimulator(state: OverseerState): void {
+  state.simulator = createInitialSimulatorState();
+}
+
+export function toggleSimulatorPanel(state: OverseerState): void {
+  state.simulator = SimulatorController.toggleSimulatorPanel(state.simulator);
+}
+
+export function setSimulatorSection(
+  state: OverseerState,
+  section: SimulatorState["activeSection"],
+): void {
+  state.simulator = SimulatorController.setSimulatorSection(state.simulator, section);
+}
+
+export function setSimulatorMode(
+  state: OverseerState,
+  mode: SimulatorState["mode"],
+): void {
+  state.simulator = SimulatorController.setSimulatorMode(state.simulator, mode);
+}
+
+// Rule operations
+export function addSimulatorRule(state: OverseerState, rule?: Partial<SimulatorRule>): void {
+  state.simulator = SimulatorController.addRule(state.simulator, rule);
+}
+
+export function addSimulatorRuleFromTemplate(state: OverseerState, templateKey: string): void {
+  state.simulator = SimulatorController.addRuleFromTemplate(
+    state.simulator,
+    templateKey as keyof typeof SimulatorController.RULE_TEMPLATES,
+  );
+}
+
+export function updateSimulatorRule(
+  state: OverseerState,
+  ruleId: string,
+  updates: Partial<SimulatorRule>,
+): void {
+  state.simulator = SimulatorController.updateRule(state.simulator, ruleId, updates);
+}
+
+export function deleteSimulatorRule(state: OverseerState, ruleId: string): void {
+  state.simulator = SimulatorController.deleteRule(state.simulator, ruleId);
+}
+
+export function toggleSimulatorRuleEnabled(state: OverseerState, ruleId: string): void {
+  state.simulator = SimulatorController.toggleRuleEnabled(state.simulator, ruleId);
+}
+
+export function selectSimulatorRule(state: OverseerState, ruleId: string | null): void {
+  state.simulator = SimulatorController.selectRule(state.simulator, ruleId);
+}
+
+export function closeSimulatorRuleEditor(state: OverseerState): void {
+  state.simulator = SimulatorController.closeRuleEditor(state.simulator);
+}
+
+export function saveSimulatorDraftRule(state: OverseerState): void {
+  state.simulator = SimulatorController.saveDraftRule(state.simulator);
+}
+
+export function addSimulatorCondition(state: OverseerState): void {
+  state.simulator = SimulatorController.addConditionToDraft(state.simulator);
+}
+
+export function updateSimulatorCondition(
+  state: OverseerState,
+  conditionId: string,
+  updates: Partial<RuleCondition>,
+): void {
+  state.simulator = SimulatorController.updateConditionInDraft(state.simulator, conditionId, updates);
+}
+
+export function deleteSimulatorCondition(state: OverseerState, conditionId: string): void {
+  state.simulator = SimulatorController.deleteConditionFromDraft(state.simulator, conditionId);
+}
+
+export function addSimulatorAction(state: OverseerState): void {
+  state.simulator = SimulatorController.addActionToDraft(state.simulator);
+}
+
+export function updateSimulatorAction(
+  state: OverseerState,
+  actionId: string,
+  updates: Partial<RuleAction>,
+): void {
+  state.simulator = SimulatorController.updateActionInDraft(state.simulator, actionId, updates);
+}
+
+export function deleteSimulatorAction(state: OverseerState, actionId: string): void {
+  state.simulator = SimulatorController.deleteActionFromDraft(state.simulator, actionId);
+}
+
+// Filter operations
+export function updateSimulatorFilters(
+  state: OverseerState,
+  updates: Partial<SimulatorState["filters"]>,
+): void {
+  state.simulator = SimulatorController.updateFilters(state.simulator, updates);
+}
+
+export function clearSimulatorFilters(state: OverseerState): void {
+  state.simulator = SimulatorController.clearFilters(state.simulator);
+}
+
+// Event operations
+export function queueSimulatorEvent(
+  state: OverseerState,
+  event: {
+    type: SimulatedEventType;
+    goalId?: string;
+    assignmentId?: string;
+    data?: Record<string, unknown>;
+    delay?: number;
+  },
+): void {
+  state.simulator = SimulatorController.queueSimulatedEvent(state.simulator, event);
+}
+
+export function removeSimulatorQueuedEvent(state: OverseerState, eventId: string): void {
+  state.simulator = SimulatorController.removeQueuedEvent(state.simulator, eventId);
+}
+
+export function clearSimulatorEventQueue(state: OverseerState): void {
+  state.simulator = SimulatorController.clearEventQueue(state.simulator);
+}
+
+export async function executeSimulatorEvent(
+  state: OverseerState,
+  eventId: string,
+): Promise<void> {
+  const event = state.simulator.eventQueue.find((e) => e.id === eventId);
+  if (!event) return;
+
+  state.simulator = SimulatorController.updateEventStatus(state.simulator, eventId, "executing");
+
+  const result = await SimulatorController.executeSimulatedEvent(state.client, event);
+
+  state.simulator = SimulatorController.updateEventStatus(
+    state.simulator,
+    eventId,
+    result.success ? "completed" : "failed",
+    result.result,
+    result.error,
+  );
+
+  // Refresh overseer status after event execution
+  await refreshOverseer(state, { quiet: true });
+}
+
+// Scenario operations
+export function addSimulatorScenario(
+  state: OverseerState,
+  scenario?: Partial<SimulatorScenario>,
+): void {
+  state.simulator = SimulatorController.addScenario(state.simulator, scenario);
+}
+
+export function addSimulatorScenarioFromTemplate(
+  state: OverseerState,
+  templateKey: string,
+): void {
+  state.simulator = SimulatorController.addScenarioFromTemplate(
+    state.simulator,
+    templateKey as keyof typeof SimulatorController.SCENARIO_TEMPLATES,
+  );
+}
+
+export function updateSimulatorScenario(
+  state: OverseerState,
+  scenarioId: string,
+  updates: Partial<SimulatorScenario>,
+): void {
+  state.simulator = SimulatorController.updateScenario(state.simulator, scenarioId, updates);
+}
+
+export function deleteSimulatorScenario(state: OverseerState, scenarioId: string): void {
+  state.simulator = SimulatorController.deleteScenario(state.simulator, scenarioId);
+}
+
+export function selectSimulatorScenario(state: OverseerState, scenarioId: string | null): void {
+  state.simulator = SimulatorController.selectScenario(state.simulator, scenarioId);
+}
+
+export function closeSimulatorScenarioEditor(state: OverseerState): void {
+  state.simulator = SimulatorController.closeScenarioEditor(state.simulator);
+}
+
+export function saveSimulatorDraftScenario(state: OverseerState): void {
+  state.simulator = SimulatorController.saveDraftScenario(state.simulator);
+}
+
+// Run operations
+export function startSimulatorRun(state: OverseerState, scenarioId?: string): void {
+  state.simulator = SimulatorController.startSimulationRun(state.simulator, scenarioId);
+}
+
+export function pauseSimulatorRun(state: OverseerState): void {
+  state.simulator = SimulatorController.pauseSimulationRun(state.simulator);
+}
+
+export function resumeSimulatorRun(state: OverseerState): void {
+  state.simulator = SimulatorController.resumeSimulationRun(state.simulator);
+}
+
+export function stopSimulatorRun(state: OverseerState): void {
+  state.simulator = SimulatorController.stopSimulationRun(state.simulator);
+}
+
+export function resetSimulator(state: OverseerState): void {
+  state.simulator = SimulatorController.resetSimulation(state.simulator);
+}
+
+// Activity operations
+export function clearSimulatorActivityLog(state: OverseerState): void {
+  state.simulator = SimulatorController.clearActivityLog(state.simulator);
+}
+
+// Settings operations
+export function updateSimulatorSettings(
+  state: OverseerState,
+  updates: Partial<SimulatorState["settings"]>,
+): void {
+  state.simulator = SimulatorController.updateSettings(state.simulator, updates);
+}
+
+// Persistence
+export async function loadSimulatorStateFromGateway(state: OverseerState): Promise<void> {
+  const data = await SimulatorController.loadSimulatorState(state.client);
+  if (data) {
+    if (data.rules) {
+      for (const rule of data.rules) {
+        state.simulator = SimulatorController.addRule(state.simulator, rule);
+      }
+    }
+    if (data.scenarios) {
+      for (const scenario of data.scenarios) {
+        state.simulator = SimulatorController.addScenario(state.simulator, scenario);
+      }
+    }
+  }
+}
+
+export async function saveSimulatorStateToGateway(state: OverseerState): Promise<boolean> {
+  return SimulatorController.saveSimulatorState(state.client, {
+    rules: state.simulator.rules,
+    scenarios: state.simulator.scenarios,
+  });
 }
