@@ -18,6 +18,7 @@ import {
   createRuvectorFeedbackTool,
   createRuvectorGraphTool,
   createRuvectorRecallTool,
+  createRuvectorLearnTool,
 } from "./tool.js";
 import { ruvectorConfigSchema, type RuvectorConfig } from "./config.js";
 import { createDatabase } from "./db.js";
@@ -682,6 +683,123 @@ function registerLocalMode(api: ClawdbotPluginApi, config: RuvectorConfig): void
     { name: "ruvector_recall", optional: true },
   );
 
+  // ruvector_learn tool (manual knowledge injection)
+  api.registerTool(
+    {
+      name: "ruvector_learn",
+      label: "Manual Knowledge Learning",
+      description:
+        "Explicitly learn and index new knowledge with optional graph relationships. " +
+        "Use this to inject important facts, decisions, or preferences into the memory system.",
+      parameters: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "The content/knowledge to learn" },
+          category: {
+            type: "string",
+            enum: ["preference", "fact", "decision", "entity", "other"],
+            description: "Category for the knowledge (default: fact)",
+          },
+          importance: {
+            type: "number",
+            description: "Importance score from 0-1 (default: 0.5)",
+          },
+          relationships: {
+            type: "array",
+            items: { type: "string" },
+            description: "Related document IDs to link to",
+          },
+        },
+        required: ["content"],
+      },
+      async execute(_toolCallId, params, ctx) {
+        const {
+          content,
+          category = "fact",
+          importance = 0.5,
+          relationships = [],
+        } = params as {
+          content: string;
+          category?: string;
+          importance?: number;
+          relationships?: string[];
+        };
+
+        try {
+          const vector = await embeddings.embed(content);
+
+          // Check for duplicates
+          const existing = await db.search(vector, { limit: 1, minScore: 0.95 });
+          if (existing.length > 0) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Similar knowledge already exists: "${existing[0].document.content.slice(0, 100)}..."`,
+                },
+              ],
+              details: { indexed: false, duplicate: true, existingId: existing[0].document.id },
+            };
+          }
+
+          const validCategories = ["preference", "fact", "decision", "entity", "other"];
+          const validCategory = validCategories.includes(category) ? category : "fact";
+          const clampedImportance = Math.max(0, Math.min(1, importance));
+
+          const id = await db.insert({
+            content,
+            vector,
+            direction: "outbound",
+            channel: "ruvector_learn",
+            sessionKey: ctx?.sessionKey,
+            agentId: ctx?.agentId,
+            timestamp: Date.now(),
+            category: validCategory,
+            importance: clampedImportance,
+          });
+
+          // Create graph edges if relationships provided
+          let edgesCreated = 0;
+          const hasGraphSupport =
+            "linkMessages" in db &&
+            typeof (db as Record<string, unknown>).linkMessages === "function";
+
+          if (hasGraphSupport && relationships.length > 0) {
+            const graphDb = db as typeof db & {
+              linkMessages: (source: string, target: string, rel: string) => Promise<boolean>;
+            };
+            for (const targetId of relationships) {
+              try {
+                const created = await graphDb.linkMessages(id, targetId, "RELATED_TO");
+                if (created) edgesCreated++;
+              } catch {
+                // Skip failed edges
+              }
+            }
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Learned: "${content.slice(0, 100)}${content.length > 100 ? "..." : ""}" [${validCategory}] with ${edgesCreated} relationship(s)`,
+              },
+            ],
+            details: { indexed: true, id, category: validCategory, importance: clampedImportance, edges: edgesCreated },
+          };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          api.logger.warn(`ruvector_learn: learning failed: ${message}`);
+          return {
+            content: [{ type: "text", text: `Learning failed: ${message}` }],
+            details: { indexed: false, error: message },
+          };
+        }
+      },
+    },
+    { name: "ruvector_learn", optional: true },
+  );
+
   // =========================================================================
   // Register CLI Commands
   // =========================================================================
@@ -821,6 +939,38 @@ function registerLocalMode(api: ClawdbotPluginApi, config: RuvectorConfig): void
           } else {
             console.log(`Found ${neighbors.length} neighbor(s) at depth ${depth}:`);
             console.log(JSON.stringify(neighbors, null, 2));
+          }
+        });
+
+      // GNN link command
+      rv.command("link")
+        .description("Create a relationship between two messages")
+        .argument("<sourceId>", "Source message ID")
+        .argument("<targetId>", "Target message ID")
+        .option("--relationship <rel>", "Relationship type", "RELATES_TO")
+        .action(async (sourceId, targetId, opts) => {
+          const hasGraphSupport = "linkMessages" in db && typeof (db as Record<string, unknown>).linkMessages === "function";
+
+          if (!hasGraphSupport) {
+            console.log("GNN graph features not available.");
+            console.log("Requires ruvector with graph extension enabled.");
+            return;
+          }
+
+          const relationship = opts.relationship || "RELATES_TO";
+          const graphDb = db as typeof db & { linkMessages: (source: string, target: string, rel: string) => Promise<boolean> };
+
+          try {
+            const created = await graphDb.linkMessages(sourceId, targetId, relationship);
+            if (created) {
+              console.log(`Created link: ${sourceId} -[${relationship}]-> ${targetId}`);
+            } else {
+              console.log(`Link already exists or could not be created.`);
+            }
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`Failed to create link: ${message}`);
+            process.exitCode = 1;
           }
         });
 

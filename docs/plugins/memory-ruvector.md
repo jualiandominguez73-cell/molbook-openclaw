@@ -269,39 +269,11 @@ clawdbot ruvector sona-stats
 
 Query message relationships using Neo4j-compatible Cypher syntax. This enables finding conversation threads, reply chains, and topic relationships.
 
-### Configuration
-
-```json5
-{
-  plugins: {
-    entries: {
-      "memory-ruvector": {
-        enabled: true,
-        config: {
-          embedding: {
-            provider: "openai",
-            apiKey: "${OPENAI_API_KEY}"
-          },
-          graph: {
-            enabled: true,              // Enable graph features
-            autoLink: true,             // Auto-create edges for replies/threads
-            maxDepth: 5                 // Maximum traversal depth
-          }
-        }
-      }
-    }
-  }
-}
-```
+Graph features are automatically available when the ruvector library is built with graph extension support. No additional configuration is needed.
 
 ### Linking messages
 
-**Automatic linking** (when `autoLink: true`):
-- Messages in the same conversation are linked with `IN_CONVERSATION`
-- Reply messages are linked with `REPLIED_BY`
-- Messages from the same user are linked with `FROM_USER`
-
-**Manual linking** via the `ruvector_graph` tool:
+**Manual linking** via the `ruvector_graph` tool or CLI:
 
 ```json5
 {
