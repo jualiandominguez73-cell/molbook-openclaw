@@ -299,9 +299,9 @@ function buildChatCommands(): ChatCommandDefinition[] {
       textAlias: "/restart",
     }),
     defineChatCommand({
-      key: "restart-from-backup",
+      key: "restore_config",
       description: "List or restore config from backup.",
-      textAlias: "/restart-from-backup",
+      textAlias: "/restore_config",
       scope: "text",
       args: [
         {
