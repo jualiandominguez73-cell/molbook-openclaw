@@ -69,3 +69,10 @@ USER.md
 
 # local tooling
 .serena/
+
+# TypeScript build artifacts (output from TS compilation)
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+
