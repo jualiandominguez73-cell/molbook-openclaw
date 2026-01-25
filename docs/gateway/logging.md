@@ -49,15 +49,17 @@ You can tune console verbosity independently via:
 - `logging.consoleLevel` (default `info`)
 - `logging.consoleStyle` (`pretty` | `compact` | `json`)
 
-## Tool summary redaction
+## Sensitive redaction
 
-Verbose tool summaries (e.g. `🛠️ Exec: ...`) can mask sensitive tokens before they hit the
-console stream. This is **tools-only** and does not alter file logs.
+Clawdbot can mask sensitive values (passwords, tokens, API keys) before they hit the
+console stream or file logs. This applies to structured log objects, console capture,
+and verbose tool summaries (e.g. `🛠️ Exec: ...`).
 
 - `logging.redactSensitive`: `off` | `tools` (default: `tools`)
 - `logging.redactPatterns`: array of regex strings (overrides defaults)
   - Use raw regex strings (auto `gi`), or `/pattern/flags` if you need custom flags.
   - Matches are masked by keeping the first 6 + last 4 chars (length >= 18), otherwise `***`.
+  - Structured fields with keys like `password`, `token`, `apiKey`, and `authorization` are also masked (`password`/`passwd` always becomes `***`).
   - Defaults cover common key assignments, CLI flags, JSON fields, bearer headers, PEM blocks, and popular token prefixes.
 
 ## Gateway WebSocket logs
