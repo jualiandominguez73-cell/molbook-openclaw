@@ -5,7 +5,7 @@ import { isCliProvider } from "../../agents/model-selection.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import { type SessionEntry, updateSessionStore } from "../../config/sessions.js";
-import { type ContextWarningResult, shouldShowContextWarning } from "./context-warnings.js";
+import { checkContextWarning, type ContextWarningResult } from "./context-warnings.js";
 
 type RunResult = Awaited<
   ReturnType<(typeof import("../../agents/pi-embedded.js"))["runEmbeddedPiAgent"]>
@@ -74,16 +74,15 @@ export async function updateSessionStoreAfterAgentRun(params: {
   }
 
   // Check for context usage warnings
-  const contextWarning = shouldShowContextWarning({
-    entry,
+  const previousLevel = entry?.contextWarningLevel ?? "none";
+  const contextWarning = checkContextWarning({
     totalTokens: next.totalTokens,
     contextTokens,
+    previousWarningLevel: previousLevel,
   });
 
-  // Update the warning level in session if it changed
-  if (contextWarning.level !== "none") {
-    next.contextWarningLevel = contextWarning.level;
-  }
+  // Always update warning level (including reset to "none" after /compact)
+  next.contextWarningLevel = contextWarning.level;
 
   sessionStore[sessionKey] = next;
   await updateSessionStore(storePath, (store) => {

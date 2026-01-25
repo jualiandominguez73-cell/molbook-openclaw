@@ -1,15 +1,16 @@
 /**
  * Context usage warnings - alerts users when approaching context limits.
  *
- * Thresholds:
+ * Default thresholds:
  * - 75%: Soft warning - "consider managing context soon"
  * - 90%: Urgent warning - "compact now or system will auto-compact"
  */
 
-import type { SessionEntry } from "../../config/sessions.js";
+/** Default threshold for soft warning (percentage). */
+export const DEFAULT_CONTEXT_WARNING_THRESHOLD_SOFT = 75;
 
-export const CONTEXT_WARNING_THRESHOLD_SOFT = 75;
-export const CONTEXT_WARNING_THRESHOLD_URGENT = 90;
+/** Default threshold for urgent warning (percentage). */
+export const DEFAULT_CONTEXT_WARNING_THRESHOLD_URGENT = 90;
 
 export type ContextWarningLevel = "none" | "soft" | "urgent";
 
@@ -17,6 +18,11 @@ export interface ContextWarningResult {
   level: ContextWarningLevel;
   percentUsed: number;
   message: string | null;
+}
+
+export interface ContextWarningThresholds {
+  soft: number;
+  urgent: number;
 }
 
 /**
@@ -27,8 +33,13 @@ export function checkContextWarning(params: {
   totalTokens: number | undefined;
   contextTokens: number | undefined;
   previousWarningLevel?: ContextWarningLevel;
+  thresholds?: ContextWarningThresholds;
 }): ContextWarningResult {
   const { totalTokens, contextTokens, previousWarningLevel } = params;
+  const thresholds = params.thresholds ?? {
+    soft: DEFAULT_CONTEXT_WARNING_THRESHOLD_SOFT,
+    urgent: DEFAULT_CONTEXT_WARNING_THRESHOLD_URGENT,
+  };
 
   if (!totalTokens || !contextTokens || contextTokens <= 0) {
     return { level: "none", percentUsed: 0, message: null };
@@ -38,9 +49,9 @@ export function checkContextWarning(params: {
 
   // Determine current warning level
   let level: ContextWarningLevel = "none";
-  if (percentUsed >= CONTEXT_WARNING_THRESHOLD_URGENT) {
+  if (percentUsed >= thresholds.urgent) {
     level = "urgent";
-  } else if (percentUsed >= CONTEXT_WARNING_THRESHOLD_SOFT) {
+  } else if (percentUsed >= thresholds.soft) {
     level = "soft";
   }
 
@@ -62,41 +73,15 @@ export function checkContextWarning(params: {
 
 /**
  * Format the warning message based on level.
+ * Uses plain text with emoji for cross-channel compatibility.
  */
 export function formatContextWarning(level: ContextWarningLevel, percentUsed: number): string {
   switch (level) {
     case "soft":
-      return `📊 **${percentUsed}% context used** — consider \`/compact\` or \`/new\` soon`;
+      return `📊 ${percentUsed}% context used — consider /compact or /new soon`;
     case "urgent":
-      return `⚠️ **${percentUsed}% context used** — use \`/compact\` now or system will auto-compact at limit`;
+      return `⚠️ ${percentUsed}% context used — use /compact now or system will auto-compact at limit`;
     default:
       return "";
   }
-}
-
-/**
- * Get the warning level to store in the session entry.
- */
-export function getWarningLevelFromSession(entry: SessionEntry | undefined): ContextWarningLevel {
-  const stored = entry?.contextWarningLevel;
-  if (stored === "soft" || stored === "urgent") return stored;
-  return "none";
-}
-
-/**
- * Check if we should append a context warning to the response.
- */
-export function shouldShowContextWarning(params: {
-  entry: SessionEntry | undefined;
-  totalTokens: number | undefined;
-  contextTokens: number | undefined;
-}): ContextWarningResult {
-  const { entry, totalTokens, contextTokens } = params;
-  const previousLevel = getWarningLevelFromSession(entry);
-
-  return checkContextWarning({
-    totalTokens,
-    contextTokens,
-    previousWarningLevel: previousLevel,
-  });
 }
