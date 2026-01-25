@@ -72,7 +72,7 @@ function formatBackupList(backups: BackupInfo[]): string {
     lines.push(`  ${backup.index}: ${age} ago [${status}]`);
   }
   lines.push("");
-  lines.push("Usage: /restart-from-backup <index>");
+  lines.push("Usage: /restore_config <index>");
 
   return lines.join("\n");
 }
@@ -126,7 +126,7 @@ async function restoreBackup(
 
     // Backup current config before overwriting
     try {
-      await fs.promises.copyFile(configPath, `${configPath}.pre-restore.bak`);
+      await fs.promises.copyFile(configPath, `${configPath}.bak`); // Backup current config to index 0
     } catch {
       // Best effort - current config might not exist or be corrupt
     }
@@ -148,15 +148,15 @@ function triggerRestart(): { ok: boolean; method: string; detail?: string } {
   return triggerClawdbotRestart();
 }
 
-export const handleRestartFromBackupCommand: CommandHandler = async (params, allowTextCommands) => {
+export const handleRestoreConfigCommand: CommandHandler = async (params, allowTextCommands) => {
   if (!allowTextCommands) return null;
 
   const normalized = params.command.commandBodyNormalized;
-  if (!normalized.startsWith("/restart-from-backup")) return null;
+  if (!normalized.startsWith("/restore_config")) return null;
 
   if (!params.command.isAuthorizedSender) {
     logVerbose(
-      `Ignoring /restart-from-backup from unauthorized sender: ${params.command.senderId || "<unknown>"}`,
+      `Ignoring /restore_config from unauthorized sender: ${params.command.senderId || "<unknown>"}`,
     );
     return { shouldContinue: false };
   }
@@ -166,13 +166,13 @@ export const handleRestartFromBackupCommand: CommandHandler = async (params, all
     return {
       shouldContinue: false,
       reply: {
-        text: "⚠️ /restart-from-backup requires restart permission. Set commands.restart=true to enable.",
+        text: "⚠️ /restore_config requires restart permission. Set commands.restart=true to enable.",
       },
     };
   }
 
   const configPath = resolveConfigPath();
-  const args = normalized.slice("/restart-from-backup".length).trim();
+  const args = normalized.slice("/restore_config".length).trim();
 
   // No args: list backups
   if (!args) {
@@ -219,3 +219,6 @@ export const handleRestartFromBackupCommand: CommandHandler = async (params, all
     },
   };
 };
+
+// Alias for backward compatibility
+export const handleRestartFromBackupCommand = handleRestoreConfigCommand;

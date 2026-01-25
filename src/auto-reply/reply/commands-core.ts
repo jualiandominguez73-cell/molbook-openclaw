@@ -26,7 +26,7 @@ import {
   handleStopCommand,
   handleUsageCommand,
 } from "./commands-session.js";
-import { handleRestartFromBackupCommand } from "./commands-restore.js";
+import { handleRestoreConfigCommand } from "./commands-restore.js";
 import { handlePluginCommand } from "./commands-plugin.js";
 import type {
   CommandHandler,
@@ -42,7 +42,7 @@ const HANDLERS: CommandHandler[] = [
   handleSendPolicyCommand,
   handleUsageCommand,
   handleRestartCommand,
-  handleRestartFromBackupCommand,
+  handleRestoreConfigCommand,
   handleTtsCommands,
   handleHelpCommand,
   handleCommandsListCommand,
