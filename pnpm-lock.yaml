@@ -262,6 +262,12 @@ importers:
         specifier: 3.15.0
         version: 3.15.0(typescript@5.9.3)
 
+  extensions/action-receipts:
+    dependencies:
+      clawdbot:
+        specifier: '>=2026.1.24'
+        version: link:../..
+
   extensions/bluebubbles: {}
 
   extensions/copilot-proxy: {}
