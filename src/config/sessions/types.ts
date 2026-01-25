@@ -73,6 +73,8 @@ export type SessionEntry = {
   model?: string;
   contextTokens?: number;
   compactionCount?: number;
+  /** Last context warning level shown to prevent duplicate warnings. */
+  contextWarningLevel?: "none" | "soft" | "urgent";
   memoryFlushAt?: number;
   memoryFlushCompactionCount?: number;
   cliSessionIds?: Record<string, string>;

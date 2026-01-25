@@ -488,8 +488,9 @@ export async function agentCommand(
     }
 
     // Update token+model fields in the session store.
+    let contextWarningMessage: string | null = null;
     if (sessionStore && sessionKey) {
-      await updateSessionStoreAfterAgentRun({
+      const storeResult = await updateSessionStoreAfterAgentRun({
         cfg,
         contextTokensOverride: agentCfg?.contextTokens,
         sessionId,
@@ -502,9 +503,14 @@ export async function agentCommand(
         fallbackModel,
         result,
       });
+      contextWarningMessage = storeResult.contextWarning.message;
     }
 
+    // Append context warning to payloads if present
     const payloads = result.payloads ?? [];
+    if (contextWarningMessage) {
+      payloads.push({ text: `\n\n---\n${contextWarningMessage}` });
+    }
     return await deliverAgentCommandResult({
       cfg,
       deps,
