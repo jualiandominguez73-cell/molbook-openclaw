@@ -5,7 +5,7 @@ Docs: https://docs.clawd.bot
 ## 2026.1.25
 
 ### Changes
-- TBD.
+- Message tool: disable cross-context origin marker by default; set `tools.message.crossContext.marker.enabled: true` to restore. (#1869)
 
 ## 2026.1.24-3
 
