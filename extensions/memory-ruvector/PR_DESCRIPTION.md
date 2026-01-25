@@ -26,17 +26,9 @@ While clawdbot already has excellent memory capabilities via `memory-lancedb`, t
 
 ## Architecture
 
-### Dual-Mode Operation
+### Configuration
 
 ```yaml
-# Remote Mode - Connect to external ruvector server
-plugins:
-  memory-ruvector:
-    url: https://ruvector.example.com
-    apiKey: ${RUVECTOR_API_KEY}
-    collection: clawdbot-memory
-
-# Local Mode - Embedded database with full hook support
 plugins:
   memory-ruvector:
     embedding:
@@ -52,7 +44,7 @@ plugins:
 
 ```
 extensions/memory-ruvector/
-├── index.ts              # Plugin registration, dual-mode routing
+├── index.ts              # Plugin registration and tool setup
 ├── service.ts            # Lifecycle management (start/stop), SONA + Graph init
 ├── client.ts             # RuvectorClient wrapper for native API
 ├── db.ts                 # High-level database abstraction

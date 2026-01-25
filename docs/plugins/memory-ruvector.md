@@ -34,10 +34,6 @@ Restart the Gateway afterwards.
 
 Set config under `plugins.entries.memory-ruvector.config`:
 
-### Local mode (recommended)
-
-Local mode runs an embedded ruvector database with full hook support for automatic message indexing.
-
 ```json5
 {
   plugins: {
@@ -60,28 +56,6 @@ Local mode runs an embedded ruvector database with full hook support for automat
             batchSize: 10,                // messages per batch
             debounceMs: 500               // delay before flushing
           }
-        }
-      }
-    }
-  }
-}
-```
-
-### Remote mode
-
-Remote mode connects to an external ruvector server. Note: remote mode does not support automatic message indexing hooks.
-
-```json5
-{
-  plugins: {
-    entries: {
-      "memory-ruvector": {
-        enabled: true,
-        config: {
-          url: "https://ruvector.example.com",
-          apiKey: "${RUVECTOR_API_KEY}",
-          collection: "clawdbot-memory",
-          timeoutMs: 5000
         }
       }
     }
