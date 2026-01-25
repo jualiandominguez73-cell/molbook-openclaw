@@ -67,7 +67,7 @@ downgrade—prefer HTTPS (Tailscale Serve) or open the UI on `127.0.0.1`.
 
 If you run the Gateway behind a reverse proxy (nginx, Caddy, Traefik, etc.), you should configure `gateway.trustedProxies` for proper client IP detection.
 
-When the Gateway detects proxy headers (`X-Forwarded-For` or `X-Real-IP`) but `trustedProxies` is not configured, it will **not** treat connections as local clients. This prevents authentication bypass where all proxied connections would otherwise appear to come from localhost and receive automatic trust.
+When the Gateway detects proxy headers (`X-Forwarded-For` or `X-Real-IP`) from an address that is **not** in `trustedProxies`, it will **not** treat connections as local clients. If gateway auth is disabled, those connections are rejected. This prevents authentication bypass where proxied connections would otherwise appear to come from localhost and receive automatic trust.
 
 ```yaml
 gateway:
