@@ -77,6 +77,10 @@ export type SlackThreadConfig = {
 export type SlackAccountConfig = {
   /** Optional display name for this account (used in CLI/UI lists). */
   name?: string;
+  /** Custom loading messages shown while processing (rotates randomly). */
+  loadingMessages?: string[];
+  /** Status text shown while typing (default: "is typing..."). */
+  typingStatus?: string;
   /** Slack connection mode (socket|http). Default: socket. */
   mode?: "socket" | "http";
   /** Slack signing secret (required for HTTP mode). */
