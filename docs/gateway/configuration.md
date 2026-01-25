@@ -456,7 +456,7 @@ Metadata written by CLI wizards (`onboard`, `configure`, `doctor`).
 - Console output can be tuned separately via:
   - `logging.consoleLevel` (defaults to `info`, bumps to `debug` when `--verbose`)
   - `logging.consoleStyle` (`pretty` | `compact` | `json`)
-- Tool summaries can be redacted to avoid leaking secrets:
+- Logs and tool summaries can be redacted to avoid leaking secrets:
   - `logging.redactSensitive` (`off` | `tools`, default: `tools`)
   - `logging.redactPatterns` (array of regex strings; overrides defaults)
 

@@ -137,6 +137,7 @@ Clawdbot can redact common secrets (passwords, tokens, API keys) before they hit
 - `logging.redactPatterns`: list of regex strings to override the default set
 
 Redaction applies to both **console output** and **file logs**.
+Structured fields with keys like `password`, `token`, and `apiKey` are also masked.
 
 ## Diagnostics + OpenTelemetry
 

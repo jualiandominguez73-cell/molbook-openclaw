@@ -373,7 +373,7 @@ Logs and transcripts can leak sensitive info even when access controls are corre
 - Session transcripts can include pasted secrets, file contents, command output, and links.
 
 Recommendations:
-- Keep tool summary redaction on (`logging.redactSensitive: "tools"`; default).
+- Keep log redaction on (`logging.redactSensitive: "tools"`; default).
 - Add custom patterns for your environment via `logging.redactPatterns` (tokens, hostnames, internal URLs).
 - When sharing diagnostics, prefer `clawdbot status --all` (pasteable, secrets redacted) over raw logs.
 - Prune old session transcripts and log files if you don’t need long retention.
