@@ -72,7 +72,7 @@ describe("buildAllowedModelSet", () => {
         mode: "merge",
         providers: {
           moonshot: {
-            baseUrl: "https://api.moonshot.ai/v1",
+            baseUrl: "https://api.moonshot.cn/v1",
             apiKey: "x",
             api: "openai-completions",
             models: [{ id: "kimi-k2-0905-preview", name: "Kimi" }],
