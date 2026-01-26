@@ -1,0 +1,36 @@
+{
+  "name": "@clawdbot/feishu",
+  "version": "2026.1.25",
+  "type": "module",
+  "description": "Clawdbot Feishu (Lark) channel plugin",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "feishu",
+      "label": "Feishu",
+      "selectionLabel": "Feishu (飞书/Lark)",
+      "docsPath": "/channels/feishu",
+      "docsLabel": "feishu",
+      "blurb": "Enterprise messaging platform with Bot API.",
+      "aliases": [
+        "lark",
+        "fs"
+      ],
+      "order": 81,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@clawdbot/feishu",
+      "localPath": "extensions/feishu",
+      "defaultChoice": "npm"
+    }
+  },
+  "devDependencies": {
+    "clawdbot": "workspace:*"
+  },
+  "peerDependencies": {
+    "clawdbot": ">=2026.1.24"
+  }
+}
