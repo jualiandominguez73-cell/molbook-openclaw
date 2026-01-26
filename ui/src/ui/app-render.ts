@@ -485,12 +485,11 @@ export function renderApp(state: AppViewState) {
         onDraftChange: (next) => (state.chatMessage = next),
         attachments: state.chatAttachments,
         onAttachmentsChange: (next) => (state.chatAttachments = next),
-        onSend: () => state.handleSendChat(),
+        onSend: state.handleChatSend,
         canAbort: Boolean(state.chatRunId),
-        onAbort: () => void state.handleAbortChat(),
-        onQueueRemove: (id) => state.removeQueuedMessage(id),
-        onNewSession: () =>
-          state.handleSendChat("/new", { restoreDraft: true }),
+        onAbort: state.handleChatAbort,
+        onQueueRemove: (id) => state.handleChatDropQueueItem(id),
+        onNewSession: () => state.handleChatNewSession(),
         // Sidebar props for tool output viewing
         sidebarOpen: state.sidebarOpen,
         sidebarContent: state.sidebarContent,

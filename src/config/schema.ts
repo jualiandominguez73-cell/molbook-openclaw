@@ -275,7 +275,6 @@ const FIELD_LABELS: Record<string, string> = {
   "commands.useAccessGroups": "Use Access Groups",
   "ui.seamColor": "Accent Color",
   "ui.assistant.name": "Assistant Name",
-  "ui.assistant.name": "Assistant Name",
   "ui.assistant.avatar": "Assistant Avatar",
   "ui.user.name": "User Name",
   "ui.user.avatar": "User Avatar",

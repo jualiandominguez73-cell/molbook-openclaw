@@ -7,6 +7,7 @@ import type {
   AgentsListResult,
   ChannelsStatusSnapshot,
   ConfigSnapshot,
+  ConfigUiHints,
   CronJob,
   CronRunLogEntry,
   CronStatus,
@@ -46,6 +47,7 @@ export type AppViewState = {
   assistantAvatar: string | null;
   assistantAgentId: string | null;
   sessionKey: string;
+  applySessionKey: string;
   chatLoading: boolean;
   chatSending: boolean;
   chatMessage: string;
@@ -53,8 +55,10 @@ export type AppViewState = {
   chatMessages: unknown[];
   chatToolMessages: unknown[];
   chatStream: string | null;
+  chatStreamStartedAt: number | null;
   chatRunId: string | null;
   chatAvatarUrl: string | null;
+  compactionStatus: import("./app-tool-stream").CompactionStatus | null;
   chatThinkingLevel: string | null;
   chatQueue: ChatQueueItem[];
   nodesLoading: boolean;
@@ -83,11 +87,15 @@ export type AppViewState = {
   updateRunning: boolean;
   configSnapshot: ConfigSnapshot | null;
   configSchema: unknown | null;
+  configSchemaVersion: string | null;
   configSchemaLoading: boolean;
-  configUiHints: Record<string, unknown>;
+  configUiHints: ConfigUiHints;
   configForm: Record<string, unknown> | null;
   configFormOriginal: Record<string, unknown> | null;
   configFormMode: "form" | "raw";
+  configSearchQuery: string;
+  configActiveSection: string | null;
+  configActiveSubsection: string | null;
   channelsLoading: boolean;
   channelsSnapshot: ChannelsStatusSnapshot | null;
   channelsError: string | null;
@@ -141,6 +149,10 @@ export type AppViewState = {
   logsError: string | null;
   logsFile: string | null;
   logsEntries: LogEntry[];
+  logsCursor: number | null;
+  logsLastFetchAt: number | null;
+  logsLimit: number;
+  logsMaxBytes: number;
   logsFilterText: string;
   logsLevelFilters: Record<LogLevel, boolean>;
   logsAutoFollow: boolean;
@@ -198,9 +210,22 @@ export type AppViewState = {
   handleChatAbort: () => Promise<void>;
   handleChatSelectQueueItem: (id: string) => void;
   handleChatDropQueueItem: (id: string) => void;
+  handleChatNewSession: () => void;
   handleChatClearQueue: () => void;
   handleLogsFilterChange: (next: string) => void;
   handleLogsLevelFilterToggle: (level: LogLevel) => void;
   handleLogsAutoFollowToggle: (next: boolean) => void;
   handleCallDebugMethod: (method: string, params: string) => Promise<void>;
+  resetToolStream: () => void;
+  resetChatScroll: () => void;
+  handleChatScroll: (e: Event) => void;
+  sidebarOpen: boolean;
+  sidebarContent: string | null;
+  sidebarError: string | null;
+  splitRatio: number;
+  handleOpenSidebar: (content: string) => void;
+  handleCloseSidebar: () => void;
+  handleSplitRatioChange: (ratio: number) => void;
+  exportLogs: (lines: string[], label: string) => void;
+  handleLogsScroll: (e: Event) => void;
 };
