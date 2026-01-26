@@ -317,6 +317,15 @@ export const registerTelegramHandlers = ({
         caption: undefined,
         caption_entities: undefined,
         entities: undefined,
+        // Clear media fields to prevent TTS "inbound" mode from treating callback as voice message
+        voice: undefined,
+        audio: undefined,
+        video: undefined,
+        video_note: undefined,
+        photo: undefined,
+        document: undefined,
+        sticker: undefined,
+        animation: undefined,
       };
       const getFile = typeof ctx.getFile === "function" ? ctx.getFile.bind(ctx) : async () => ({});
       await processMessage({ message: syntheticMessage, me: ctx.me, getFile }, [], storeAllowFrom, {
