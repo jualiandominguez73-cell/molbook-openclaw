@@ -151,6 +151,7 @@ _Items move here when done._
 - [x] Agentic workflow UX improvements
 - [x] Sessions view responsive filtering/sorting
 - [x] Agent status Slack command
+- [x] Decision store unit tests (PR #16)
 
 ---
 
