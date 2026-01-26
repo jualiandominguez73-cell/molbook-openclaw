@@ -66,6 +66,22 @@ export type OverseerProps = {
   // Simulator state
   simulatorState: SimulatorState;
   simulatorProps: Omit<SimulatorProps, "state" | "overseerStatus" | "connected">;
+  // Goal management state
+  goalActionPending?: boolean;
+  goalActionError?: string | null;
+  createGoalOpen?: boolean;
+  createGoalForm?: {
+    title: string;
+    problemStatement: string;
+    successCriteria: string[];
+    constraints: string[];
+    priority: "low" | "normal" | "high" | "urgent";
+    generatePlan: boolean;
+  };
+  // Activity feed enhancements
+  activityFilterStatus?: string | null;
+  activityLimit?: number;
+  // Event handlers
   onRefresh: () => void;
   onTick: () => void;
   onSelectGoal: (goalId: string | null) => void;
@@ -77,6 +93,28 @@ export type OverseerProps = {
   onDragChange: (kind: "overseer" | "system", next: GraphDragState | null) => void;
   onDrawerClose: () => void;
   onLoadCronRuns: (jobId: string) => void;
+  // Goal management handlers
+  onPauseGoal?: (goalId: string) => void;
+  onResumeGoal?: (goalId: string) => void;
+  onOpenCreateGoal?: () => void;
+  onCloseCreateGoal?: () => void;
+  onCreateGoal?: (params: {
+    title: string;
+    problemStatement: string;
+    successCriteria: string[];
+    constraints: string[];
+    priority: "low" | "normal" | "high" | "urgent";
+    generatePlan: boolean;
+  }) => void;
+  onUpdateCreateGoalForm?: (updates: Partial<OverseerProps["createGoalForm"]>) => void;
+  // Work node management handlers
+  onMarkWorkDone?: (goalId: string, workNodeId: string, summary?: string) => void;
+  onBlockWork?: (goalId: string, workNodeId: string, reason: string) => void;
+  onRetryAssignment?: (goalId: string, workNodeId: string) => void;
+  // Activity feed handlers
+  onActivityFilterChange?: (status: string | null) => void;
+  onActivityLimitChange?: (limit: number) => void;
+  onActivityEventClick?: (event: ActivityEvent) => void;
 };
 
 export function setupOverseerKeyboardShortcuts(props: {
@@ -134,8 +172,11 @@ export function renderOverseer(props: OverseerProps) {
       ${props.error
         ? html`<div class="overseer-notice overseer-notice--error">${props.error}</div>`
         : nothing}
+      ${props.goalActionError
+        ? html`<div class="overseer-notice overseer-notice--error">${props.goalActionError}</div>`
+        : nothing}
       ${stalledAssignments.length > 0
-        ? renderStalledPanel(stalledAssignments)
+        ? renderStalledPanel(stalledAssignments, props)
         : nothing}
       <div class="overseer-main-grid" style="display: grid; grid-template-columns: 1fr 380px; gap: 20px;">
         <div class="overseer-main-content">
@@ -170,15 +211,21 @@ export function renderOverseer(props: OverseerProps) {
               })
             : nothing}
         </div>
-        ${renderActivityFeed(activityEvents)}
+        ${renderActivityFeed(activityEvents, props)}
       </div>
       ${props.drawerOpen ? renderDrawer(props) : nothing}
       ${renderSimulator(simulatorFullProps)}
+      ${props.createGoalOpen ? renderCreateGoalModal(props) : nothing}
     </div>
   `;
 }
 
 function renderHeader(props: OverseerProps, goalsCount: number, stalledCount: number) {
+  const goal = props.goal?.goal;
+  const canPause = goal && goal.status === "active" && props.onPauseGoal;
+  const canResume = goal && goal.status === "paused" && props.onResumeGoal;
+  const actionPending = props.goalActionPending ?? false;
+
   return html`
     <div class="overseer-header">
       <div class="overseer-header__info">
@@ -197,12 +244,51 @@ function renderHeader(props: OverseerProps, goalsCount: number, stalledCount: nu
             ${stalledCount} stalled
           </span>
         </div>
+        ${props.onOpenCreateGoal
+          ? html`
+              <button
+                class="btn btn--primary"
+                ?disabled=${props.loading || actionPending}
+                @click=${props.onOpenCreateGoal}
+                title="Create a new goal"
+              >
+                ${icon("plus", { size: 16 })}
+                <span>New Goal</span>
+              </button>
+            `
+          : nothing}
+        ${canPause
+          ? html`
+              <button
+                class="btn btn--secondary"
+                ?disabled=${props.loading || actionPending}
+                @click=${() => props.onPauseGoal!(goal!.goalId)}
+                title="Pause the selected goal"
+              >
+                ${icon("pause", { size: 16 })}
+                <span>Pause</span>
+              </button>
+            `
+          : nothing}
+        ${canResume
+          ? html`
+              <button
+                class="btn btn--accent"
+                ?disabled=${props.loading || actionPending}
+                @click=${() => props.onResumeGoal!(goal!.goalId)}
+                title="Resume the selected goal"
+              >
+                ${icon("play", { size: 16 })}
+                <span>Resume</span>
+              </button>
+            `
+          : nothing}
         <button class="btn btn--secondary" ?disabled=${props.loading} @click=${props.onRefresh}>
           ${icon("refresh-cw", { size: 16 })}
           <span>${props.loading ? "Loading..." : "Refresh"}</span>
         </button>
         <button class="btn btn--secondary" ?disabled=${props.loading} @click=${props.onTick}>
-          ${icon("play", { size: 16 })}
+          ${icon("zap", { size: 16 })}
           <span>Tick</span>
         </button>
       </div>
@@ -453,6 +539,8 @@ function renderOverseerDetails(props: OverseerProps, layout: GraphLayout) {
   }
   const goal = props.goal.goal;
   const selected = props.selectedOverseerNodeId;
+  const actionPending = props.goalActionPending ?? false;
+
   if (!selected || selected.startsWith("goal:")) {
     return html`
       <div class="graph-details__title">Goal</div>
@@ -479,6 +567,9 @@ function renderOverseerDetails(props: OverseerProps, layout: GraphLayout) {
     (entry) => entry.workNodeId === node.id,
   );
   const latestCrystal = crystallizations[crystallizations.length - 1];
+  const canMarkDone = node.status !== "done" && props.onMarkWorkDone;
+  const canBlock = node.status !== "blocked" && props.onBlockWork;
+  const canRetry = assignment?.status === "stalled" && props.onRetryAssignment;
 
   return html`
     <div class="graph-details__title">${node.name}</div>
@@ -489,6 +580,59 @@ function renderOverseerDetails(props: OverseerProps, layout: GraphLayout) {
     ${node.definitionOfDone ? detailRow("Definition", node.definitionOfDone) : nothing}
     ${node.acceptanceCriteria?.length
       ? detailRow("Acceptance", formatList(node.acceptanceCriteria))
+      : nothing}
+    ${canMarkDone || canBlock || canRetry
+      ? html`
+          <div class="graph-details__actions">
+            ${canMarkDone
+              ? html`
+                  <button
+                    class="btn btn--sm btn--accent"
+                    ?disabled=${actionPending}
+                    @click=${() => {
+                      const summary = prompt("Optional: Add a summary of the completed work");
+                      props.onMarkWorkDone!(goal.goalId, node.id, summary ?? undefined);
+                    }}
+                    title="Mark this work as done"
+                  >
+                    ${icon("check", { size: 12 })}
+                    <span>Mark Done</span>
+                  </button>
+                `
+              : nothing}
+            ${canBlock
+              ? html`
+                  <button
+                    class="btn btn--sm btn--secondary"
+                    ?disabled=${actionPending}
+                    @click=${() => {
+                      const reason = prompt("Enter a reason for blocking this work:");
+                      if (reason) {
+                        props.onBlockWork!(goal.goalId, node.id, reason);
+                      }
+                    }}
+                    title="Mark this work as blocked"
+                  >
+                    ${icon("x-circle", { size: 12 })}
+                    <span>Block</span>
+                  </button>
+                `
+              : nothing}
+            ${canRetry
+              ? html`
+                  <button
+                    class="btn btn--sm btn--accent"
+                    ?disabled=${actionPending}
+                    @click=${() => props.onRetryAssignment!(goal.goalId, node.id)}
+                    title="Retry this assignment"
+                  >
+                    ${icon("refresh-cw", { size: 12 })}
+                    <span>Retry</span>
+                  </button>
+                `
+              : nothing}
+          </div>
+        `
       : nothing}
     ${assignment
       ? html`
@@ -1101,7 +1245,12 @@ function renderStatsCards(
   `;
 }
 
-function renderStalledPanel(stalledAssignments: OverseerStatusResult["stalledAssignments"]) {
+function renderStalledPanel(
+  stalledAssignments: OverseerStatusResult["stalledAssignments"],
+  props: OverseerProps,
+) {
+  const actionPending = props.goalActionPending ?? false;
+
   return html`
     <div class="stalled-panel">
       <div class="stalled-panel__header">
@@ -1124,9 +1273,42 @@ function renderStalledPanel(stalledAssignments: OverseerStatusResult["stalledAss
                   ${assignment.backoffUntil ? ` • Backoff until ${formatAgo(assignment.backoffUntil)}` : ""}
                 </div>
               </div>
-              <button class="btn btn--sm" title="Retry assignment">
-                ${icon("refresh-cw", { size: 12 })}
-              </button>
+              <div class="stalled-item__actions">
+                ${props.onRetryAssignment
+                  ? html`
+                      <button
+                        class="btn btn--sm btn--accent"
+                        title="Retry assignment"
+                        ?disabled=${actionPending}
+                        @click=${() => props.onRetryAssignment!(assignment.goalId, assignment.workNodeId)}
+                      >
+                        ${icon("refresh-cw", { size: 12 })}
+                        <span>Retry</span>
+                      </button>
+                    `
+                  : html`
+                      <button class="btn btn--sm" title="Retry assignment" disabled>
+                        ${icon("refresh-cw", { size: 12 })}
+                      </button>
+                    `}
+                ${props.onBlockWork
+                  ? html`
+                      <button
+                        class="btn btn--sm btn--secondary"
+                        title="Mark as blocked"
+                        ?disabled=${actionPending}
+                        @click=${() => {
+                          const reason = prompt("Enter a reason for blocking this work:");
+                          if (reason) {
+                            props.onBlockWork!(assignment.goalId, assignment.workNodeId, reason);
+                          }
+                        }}
+                      >
+                        ${icon("x-circle", { size: 12 })}
+                      </button>
+                    `
+                  : nothing}
+              </div>
             </div>
           `,
         )}
@@ -1135,7 +1317,147 @@ function renderStalledPanel(stalledAssignments: OverseerStatusResult["stalledAss
   `;
 }
 
-function renderActivityFeed(events: ActivityEvent[]) {
+function renderCreateGoalModal(props: OverseerProps) {
+  const form = props.createGoalForm ?? {
+    title: "",
+    problemStatement: "",
+    successCriteria: [],
+    constraints: [],
+    priority: "normal" as const,
+    generatePlan: true,
+  };
+  const actionPending = props.goalActionPending ?? false;
+  const canSubmit = form.title.trim() && form.problemStatement.trim() && !actionPending;
+
+  return html`
+    <div class="overseer-modal-backdrop" @click=${props.onCloseCreateGoal}></div>
+    <div class="overseer-modal" role="dialog" aria-labelledby="create-goal-title">
+      <div class="overseer-modal__header">
+        <h2 id="create-goal-title" class="overseer-modal__title">Create New Goal</h2>
+        <button
+          class="btn btn--icon btn--sm"
+          @click=${props.onCloseCreateGoal}
+          title="Close"
+          aria-label="Close"
+        >
+          ${icon("x", { size: 14 })}
+        </button>
+      </div>
+      <div class="overseer-modal__body">
+        <div class="field">
+          <label class="field__label">Title *</label>
+          <input
+            class="field__input"
+            type="text"
+            placeholder="Brief title for the goal"
+            .value=${form.title}
+            ?disabled=${actionPending}
+            @input=${(e: Event) =>
+              props.onUpdateCreateGoalForm?.({ title: (e.target as HTMLInputElement).value })}
+          />
+        </div>
+        <div class="field">
+          <label class="field__label">Problem Statement *</label>
+          <textarea
+            class="field__input"
+            rows="3"
+            placeholder="Describe the problem to solve"
+            .value=${form.problemStatement}
+            ?disabled=${actionPending}
+            @input=${(e: Event) =>
+              props.onUpdateCreateGoalForm?.({
+                problemStatement: (e.target as HTMLTextAreaElement).value,
+              })}
+          ></textarea>
+        </div>
+        <div class="field">
+          <label class="field__label">Success Criteria (one per line)</label>
+          <textarea
+            class="field__input"
+            rows="2"
+            placeholder="How will we know this is done?"
+            .value=${form.successCriteria.join("\n")}
+            ?disabled=${actionPending}
+            @input=${(e: Event) =>
+              props.onUpdateCreateGoalForm?.({
+                successCriteria: (e.target as HTMLTextAreaElement).value
+                  .split("\n")
+                  .filter((line) => line.trim()),
+              })}
+          ></textarea>
+        </div>
+        <div class="field">
+          <label class="field__label">Constraints (one per line)</label>
+          <textarea
+            class="field__input"
+            rows="2"
+            placeholder="Limitations or requirements"
+            .value=${form.constraints.join("\n")}
+            ?disabled=${actionPending}
+            @input=${(e: Event) =>
+              props.onUpdateCreateGoalForm?.({
+                constraints: (e.target as HTMLTextAreaElement).value
+                  .split("\n")
+                  .filter((line) => line.trim()),
+              })}
+          ></textarea>
+        </div>
+        <div class="overseer-modal__row">
+          <div class="field" style="flex: 1;">
+            <label class="field__label">Priority</label>
+            <select
+              class="field__input"
+              .value=${form.priority}
+              ?disabled=${actionPending}
+              @change=${(e: Event) =>
+                props.onUpdateCreateGoalForm?.({
+                  priority: (e.target as HTMLSelectElement).value as typeof form.priority,
+                })}
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+          <label class="toggle-field" style="flex: 1; align-self: flex-end;">
+            <input
+              type="checkbox"
+              ?checked=${form.generatePlan}
+              ?disabled=${actionPending}
+              @change=${(e: Event) =>
+                props.onUpdateCreateGoalForm?.({
+                  generatePlan: (e.target as HTMLInputElement).checked,
+                })}
+            />
+            <span>Generate plan automatically</span>
+          </label>
+        </div>
+        ${props.goalActionError
+          ? html`<div class="overseer-modal__error">${props.goalActionError}</div>`
+          : nothing}
+      </div>
+      <div class="overseer-modal__footer">
+        <button
+          class="btn btn--secondary"
+          ?disabled=${actionPending}
+          @click=${props.onCloseCreateGoal}
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn--primary"
+          ?disabled=${!canSubmit}
+          @click=${() => props.onCreateGoal?.(form)}
+        >
+          ${actionPending ? "Creating..." : "Create Goal"}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityFeed(events: ActivityEvent[], props: OverseerProps) {
   const statusIcons: Record<ActivityEvent["status"], IconName> = {
     success: "check-circle",
     warning: "alert-triangle",
@@ -1143,6 +1465,14 @@ function renderActivityFeed(events: ActivityEvent[]) {
     info: "info",
     progress: "clock",
   };
+
+  const filterStatus = props.activityFilterStatus ?? null;
+  const limit = props.activityLimit ?? 50;
+  const filteredEvents = filterStatus
+    ? events.filter((e) => e.status === filterStatus)
+    : events;
+  const displayedEvents = filteredEvents.slice(0, limit);
+  const hasClickHandler = Boolean(props.onActivityEventClick);
 
   return html`
     <div class="activity-feed">
@@ -1161,20 +1491,61 @@ function renderActivityFeed(events: ActivityEvent[]) {
           <span>Live</span>
         </div>
       </div>
+      ${props.onActivityFilterChange
+        ? html`
+            <div class="activity-feed__filters">
+              <button
+                class="activity-feed__filter ${!filterStatus ? "activity-feed__filter--active" : ""}"
+                @click=${() => props.onActivityFilterChange!(null)}
+              >
+                All
+              </button>
+              <button
+                class="activity-feed__filter activity-feed__filter--success ${filterStatus === "success" ? "activity-feed__filter--active" : ""}"
+                @click=${() => props.onActivityFilterChange!("success")}
+              >
+                ${icon("check-circle", { size: 12 })}
+              </button>
+              <button
+                class="activity-feed__filter activity-feed__filter--warning ${filterStatus === "warning" ? "activity-feed__filter--active" : ""}"
+                @click=${() => props.onActivityFilterChange!("warning")}
+              >
+                ${icon("alert-triangle", { size: 12 })}
+              </button>
+              <button
+                class="activity-feed__filter activity-feed__filter--error ${filterStatus === "error" ? "activity-feed__filter--active" : ""}"
+                @click=${() => props.onActivityFilterChange!("error")}
+              >
+                ${icon("alert-circle", { size: 12 })}
+              </button>
+              <button
+                class="activity-feed__filter activity-feed__filter--info ${filterStatus === "info" ? "activity-feed__filter--active" : ""}"
+                @click=${() => props.onActivityFilterChange!("info")}
+              >
+                ${icon("info", { size: 12 })}
+              </button>
+            </div>
+          `
+        : nothing}
       <div class="activity-feed__body">
         <div class="activity-feed__items">
-          ${events.length === 0
+          ${displayedEvents.length === 0
             ? html`
                 <div class="activity-feed__empty">
                   <div class="activity-feed__empty-icon">${icon("activity", { size: 32 })}</div>
-                  <div class="activity-feed__empty-text">No activity yet</div>
+                  <div class="activity-feed__empty-text">
+                    ${filterStatus ? "No matching events" : "No activity yet"}
+                  </div>
                 </div>
               `
-            : events.map(
+            : displayedEvents.map(
                 (event, index) => html`
                   <div
-                    class="activity-feed__item"
+                    class="activity-feed__item ${hasClickHandler ? "activity-feed__item--clickable" : ""}"
                     style="animation-delay: ${index * 50}ms;"
+                    @click=${() => props.onActivityEventClick?.(event)}
+                    role=${hasClickHandler ? "button" : nothing}
+                    tabindex=${hasClickHandler ? "0" : nothing}
                   >
                     <div class="activity-feed__item-icon activity-feed__item-icon--${event.status}">
                       ${icon(statusIcons[event.status], { size: 14 })}
@@ -1195,6 +1566,23 @@ function renderActivityFeed(events: ActivityEvent[]) {
                   </div>
                 `,
               )}
+          ${filteredEvents.length > limit
+            ? html`
+                <div class="activity-feed__more">
+                  ${filteredEvents.length - limit} more events
+                  ${props.onActivityLimitChange
+                    ? html`
+                        <button
+                          class="btn btn--sm btn--secondary"
+                          @click=${() => props.onActivityLimitChange!(limit + 50)}
+                        >
+                          Show more
+                        </button>
+                      `
+                    : nothing}
+                </div>
+              `
+            : nothing}
         </div>
       </div>
     </div>

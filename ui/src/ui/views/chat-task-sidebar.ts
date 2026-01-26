@@ -13,9 +13,14 @@ export type ChatTaskSidebarProps = {
   tasks: ChatTask[];
   activityLog: ChatActivityLog[];
   expandedIds: Set<string>;
+  abortPending?: boolean;
+  canAbort?: boolean;
   onClose: () => void;
   onToggleExpanded: (taskId: string) => void;
   onOpenToolOutput?: (content: string) => void;
+  onAbortTask?: (taskId: string) => void;
+  onAbortAll?: () => void;
+  onRetryTask?: (taskId: string) => void;
 };
 
 /** Setup keyboard shortcuts for the task sidebar */
@@ -88,6 +93,9 @@ function renderTask(
   const statusIcon = getStatusIcon(task.status);
   const statusClass = getStatusClass(task.status);
   const isAnimated = task.status === "in-progress" || task.status === "user-feedback";
+  const canAbortTask = task.status === "in-progress" && props.onAbortTask && props.canAbort;
+  const canRetryTask = task.status === "error" && props.onRetryTask;
+  const abortPending = props.abortPending ?? false;
 
   return html`
     <div class="task-item ${statusClass}" style="--task-depth: ${depth}">
@@ -109,6 +117,39 @@ function renderTask(
               </button>
             `
           : nothing}
+        <div class="task-item__actions">
+          ${canAbortTask
+            ? html`
+                <button
+                  class="task-item__action task-item__action--abort"
+                  type="button"
+                  title="Abort this task"
+                  ?disabled=${abortPending}
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    props.onAbortTask!(task.id);
+                  }}
+                >
+                  ${icon("x", { size: 12 })}
+                </button>
+              `
+            : nothing}
+          ${canRetryTask
+            ? html`
+                <button
+                  class="task-item__action task-item__action--retry"
+                  type="button"
+                  title="Retry this task"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    props.onRetryTask!(task.id);
+                  }}
+                >
+                  ${icon("refresh-cw", { size: 12 })}
+                </button>
+              `
+            : nothing}
+        </div>
         <span class="task-item__time">${formatAgo(task.startedAt)}</span>
       </div>
 
@@ -211,6 +252,9 @@ export function renderChatTaskSidebar(props: ChatTaskSidebarProps) {
 
   const hasTasks = props.tasks.length > 0;
   const hasActivity = props.activityLog.length > 0;
+  const hasInProgress = props.tasks.some((t) => t.status === "in-progress");
+  const canAbortAll = hasInProgress && props.onAbortAll && props.canAbort;
+  const abortPending = props.abortPending ?? false;
 
   return html`
     <div
@@ -223,14 +267,30 @@ export function renderChatTaskSidebar(props: ChatTaskSidebarProps) {
           <h2 class="task-sidebar__title">Task Breakdown</h2>
           ${renderStats(props.tasks)}
         </div>
-        <button
-          class="task-sidebar__close"
-          type="button"
-          @click=${props.onClose}
-          aria-label="Close task sidebar"
-        >
-          ${icon("x", { size: 18 })}
-        </button>
+        <div class="task-sidebar__header-actions">
+          ${canAbortAll
+            ? html`
+                <button
+                  class="task-sidebar__abort-all"
+                  type="button"
+                  title="Abort all running tasks"
+                  ?disabled=${abortPending}
+                  @click=${props.onAbortAll}
+                >
+                  ${icon("stop", { size: 14 })}
+                  <span>${abortPending ? "Aborting..." : "Stop All"}</span>
+                </button>
+              `
+            : nothing}
+          <button
+            class="task-sidebar__close"
+            type="button"
+            @click=${props.onClose}
+            aria-label="Close task sidebar"
+          >
+            ${icon("x", { size: 18 })}
+          </button>
+        </div>
       </header>
 
       <div class="task-sidebar__body">
