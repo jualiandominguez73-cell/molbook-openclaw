@@ -434,6 +434,15 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/zoho-cliq:
+    devDependencies:
+      clawdbot:
+        specifier: workspace:*
+        version: link:../..
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
   ui:
     dependencies:
       '@noble/ed25519':

@@ -17,7 +17,7 @@ import {
   writeCache,
 } from "./web-shared.js";
 
-const SEARCH_PROVIDERS = ["brave", "perplexity"] as const;
+const SEARCH_PROVIDERS = ["brave", "perplexity", "valyu"] as const;
 const DEFAULT_SEARCH_COUNT = 5;
 const MAX_SEARCH_COUNT = 10;
 
@@ -82,6 +82,14 @@ type PerplexityConfig = {
   model?: string;
 };
 
+type ValyuConfig = {
+  apiKey?: string;
+  baseUrl?: string;
+  maxResults?: number;
+  searchType?: "all" | "web" | "proprietary";
+  deepSearch?: boolean;
+};
+
 type PerplexityApiKeySource = "config" | "perplexity_env" | "openrouter_env" | "none";
 
 type PerplexitySearchResponse = {
@@ -130,6 +138,15 @@ function missingSearchKeyPayload(provider: (typeof SEARCH_PROVIDERS)[number]) {
   };
 }
 
+function missingValyuKeyPayload() {
+  return {
+    error: "missing_valyu_api_key",
+    message:
+      "web_search (valyu) needs an API key. Set VALYU_API_KEY in the Gateway environment, or configure tools.web.search.valyu.apiKey.",
+    docs: "https://docs.clawd.bot/tools/web",
+  };
+}
+
 function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDERS)[number] {
   const raw =
     search && "provider" in search && typeof search.provider === "string"
@@ -137,6 +154,7 @@ function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDE
       : "";
   if (raw === "perplexity") return "perplexity";
   if (raw === "brave") return "brave";
+  if (raw === "valyu") return "valyu";
   return "brave";
 }
 
@@ -213,6 +231,19 @@ function resolvePerplexityModel(perplexity?: PerplexityConfig): string {
   return fromConfig || DEFAULT_PERPLEXITY_MODEL;
 }
 
+function resolveValyuConfig(search?: WebSearchConfig): ValyuConfig {
+  if (!search || typeof search !== "object") return {};
+  const valyu = "valyu" in search ? search.valyu : undefined;
+  if (!valyu || typeof valyu !== "object") return {};
+  return valyu as ValyuConfig;
+}
+
+function resolveValyuApiKey(valyu?: ValyuConfig): string | undefined {
+  const fromConfig = normalizeApiKey(valyu?.apiKey);
+  const fromEnv = normalizeApiKey(process.env.VALYU_API_KEY);
+  return fromConfig || fromEnv || undefined;
+}
+
 function resolveSearchCount(value: unknown, fallback: number): number {
   const parsed = typeof value === "number" && Number.isFinite(value) ? value : fallback;
   const clamped = Math.max(1, Math.min(MAX_SEARCH_COUNT, Math.floor(parsed)));
@@ -269,6 +300,61 @@ async function runPerplexitySearch(params: {
   return { content, citations };
 }
 
+async function runValyuSearch(params: {
+  query: string;
+  apiKey: string;
+  baseUrl?: string;
+  maxResults?: number;
+  searchType?: string;
+  deepSearch?: boolean;
+  timeoutSeconds: number;
+}): Promise<Record<string, unknown>> {
+  const baseUrl = params.baseUrl?.replace(/\/$/, "") || "https://api.valyu.ai/v1";
+  const endpoint = `${baseUrl}/search`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.apiKey}`,
+    },
+    body: JSON.stringify({
+      query: params.query,
+      max_num_results: params.maxResults,
+      search_type: params.searchType || "all",
+      // Valyu might support a deep search flag in the body or via different endpoint.
+      // Based on research, it's often a search_type or specialized async API.
+      // We'll pass it in if supported.
+      deep_search: params.deepSearch,
+    }),
+    signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+  });
+
+  if (!res.ok) {
+    const detail = await readResponseText(res);
+    throw new Error(`Valyu API error (${res.status}): ${detail || res.statusText}`);
+  }
+
+  const data = (await res.json()) as any;
+  // Map Valyu results to common format
+  const results = Array.isArray(data.results) ? data.results : [];
+  const mapped = results.map((entry: any) => ({
+    title: entry.title || entry.name || "",
+    url: entry.url || entry.link || "",
+    description: entry.snippet || entry.description || entry.text || "",
+    published: entry.published_at || entry.date || undefined,
+    siteName: entry.source || resolveSiteName(entry.url || ""),
+  }));
+
+  return {
+    query: params.query,
+    provider: "valyu",
+    count: mapped.length,
+    results: mapped,
+    rawResponse: data, // Keep raw for debugging/advanced usage
+  };
+}
+
 async function runWebSearch(params: {
   query: string;
   count: number;
@@ -281,6 +367,7 @@ async function runWebSearch(params: {
   ui_lang?: string;
   perplexityBaseUrl?: string;
   perplexityModel?: string;
+  valyu?: ValyuConfig;
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}`,
@@ -306,6 +393,24 @@ async function runWebSearch(params: {
       tookMs: Date.now() - start,
       content,
       citations,
+    };
+    writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+    return payload;
+  }
+
+  if (params.provider === "valyu") {
+    const result = await runValyuSearch({
+      query: params.query,
+      apiKey: params.apiKey,
+      baseUrl: params.valyu?.baseUrl,
+      maxResults: params.count,
+      searchType: params.valyu?.searchType,
+      deepSearch: params.valyu?.deepSearch,
+      timeoutSeconds: params.timeoutSeconds,
+    });
+    const payload = {
+      ...result,
+      tookMs: Date.now() - start,
     };
     writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
     return payload;
@@ -372,11 +477,14 @@ export function createWebSearchTool(options?: {
 
   const provider = resolveSearchProvider(search);
   const perplexityConfig = resolvePerplexityConfig(search);
+  const valyuConfig = resolveValyuConfig(search);
 
   const description =
     provider === "perplexity"
       ? "Search the web using Perplexity Sonar (direct or via OpenRouter). Returns AI-synthesized answers with citations from real-time web search."
-      : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
+      : provider === "valyu"
+        ? "Search the web using Valyu API. Supports standard and deep search for high-quality web and proprietary content."
+        : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
 
   return {
     label: "Web Search",
@@ -386,10 +494,16 @@ export function createWebSearchTool(options?: {
     execute: async (_toolCallId, args) => {
       const perplexityAuth =
         provider === "perplexity" ? resolvePerplexityApiKey(perplexityConfig) : undefined;
+      const valyuApiKey = provider === "valyu" ? resolveValyuApiKey(valyuConfig) : undefined;
       const apiKey =
-        provider === "perplexity" ? perplexityAuth?.apiKey : resolveSearchApiKey(search);
+        provider === "perplexity"
+          ? perplexityAuth?.apiKey
+          : provider === "valyu"
+            ? valyuApiKey
+            : resolveSearchApiKey(search);
 
       if (!apiKey) {
+        if (provider === "valyu") return jsonResult(missingValyuKeyPayload());
         return jsonResult(missingSearchKeyPayload(provider));
       }
       const params = args as Record<string, unknown>;
@@ -415,6 +529,7 @@ export function createWebSearchTool(options?: {
           perplexityAuth?.apiKey,
         ),
         perplexityModel: resolvePerplexityModel(perplexityConfig),
+        valyu: valyuConfig,
       });
       return jsonResult(result);
     },

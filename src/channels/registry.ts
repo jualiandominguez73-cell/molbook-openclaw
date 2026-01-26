@@ -3,6 +3,7 @@ import type { ChannelId } from "./plugins/types.js";
 import { requireActivePluginRegistry } from "../plugins/runtime.js";
 
 import { CHAT_CHANNEL_ORDER, type ChatChannelId } from "./order.js";
+export { CHAT_CHANNEL_ORDER, type ChatChannelId };
 
 export const CHANNEL_IDS = [...CHAT_CHANNEL_ORDER] as const;
 

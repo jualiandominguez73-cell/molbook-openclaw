@@ -14,7 +14,7 @@ import {
   RetryConfigSchema,
   requireOpenAllowFrom,
 } from "./zod-schema.core.js";
-import { ToolPolicySchema } from "./zod-schema.agent-runtime.js";
+import { ToolPolicySchema } from "./zod-schema.leaf.js";
 import { ChannelHeartbeatVisibilitySchema } from "./zod-schema.channels.js";
 import {
   normalizeTelegramCommandDescription,

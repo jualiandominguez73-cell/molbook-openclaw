@@ -172,12 +172,12 @@ export function createAnthropicPayloadLogger(params: {
           payload,
           payloadDigest: digest(payload),
         });
-        options?.onPayload?.(payload);
+        (options as any)?.onPayload?.(payload);
       };
       return streamFn(model, context, {
-        ...options,
+        ...(options as any),
         onPayload: nextOnPayload,
-      });
+      } as any);
     };
     return wrapped;
   };

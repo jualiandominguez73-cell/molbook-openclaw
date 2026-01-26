@@ -7,6 +7,9 @@ import {
   IdentitySchema,
   ToolsMediaSchema,
 } from "./zod-schema.core.js";
+import { ToolPolicySchema, ValyuConfigSchema } from "./zod-schema.leaf.js";
+
+export { ToolPolicySchema };
 
 export const HeartbeatSchema = z
   .object({
@@ -146,18 +149,10 @@ export const SandboxPruneSchema = z
   .strict()
   .optional();
 
-export const ToolPolicySchema = z
-  .object({
-    allow: z.array(z.string()).optional(),
-    deny: z.array(z.string()).optional(),
-  })
-  .strict()
-  .optional();
-
 export const ToolsWebSearchSchema = z
   .object({
     enabled: z.boolean().optional(),
-    provider: z.union([z.literal("brave"), z.literal("perplexity")]).optional(),
+    provider: z.union([z.literal("brave"), z.literal("perplexity"), z.literal("valyu")]).optional(),
     apiKey: z.string().optional(),
     maxResults: z.number().int().positive().optional(),
     timeoutSeconds: z.number().int().positive().optional(),
@@ -170,6 +165,7 @@ export const ToolsWebSearchSchema = z
       })
       .strict()
       .optional(),
+    valyu: ValyuConfigSchema,
   })
   .strict()
   .optional();

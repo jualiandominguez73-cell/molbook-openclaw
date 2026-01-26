@@ -100,7 +100,7 @@ export {
   normalizeAllowFrom,
   requireOpenAllowFrom,
 } from "../config/zod-schema.core.js";
-export { ToolPolicySchema } from "../config/zod-schema.agent-runtime.js";
+export { ToolPolicySchema } from "../config/zod-schema.leaf.js";
 export type { RuntimeEnv } from "../runtime.js";
 export type { WizardPrompter } from "../wizard/prompts.js";
 export { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";

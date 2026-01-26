@@ -1,7 +1,7 @@
-import {
-  DEFAULT_ACCOUNT_ID,
-  normalizeAccountId,
-} from "../../routing/session-key.js";
+// Zoho Cliq Channel Plugin - Core Stub
+// Full implementation is in extensions/zoho-cliq
+
+import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../../routing/session-key.js";
 import type { ChannelMeta } from "./types.js";
 import type { ChannelPlugin } from "./types.js";
 
@@ -11,7 +11,7 @@ const meta: ChannelMeta = {
   selectionLabel: "Zoho Cliq (OAuth)",
   docsPath: "/channels/zoho-cliq",
   docsLabel: "zoho-cliq",
-  blurb: "supported (OAuth API).",
+  blurb: "Zoho Cliq team messaging via OAuth API.",
 };
 
 export type ResolvedZohoCliqAccount = {
@@ -24,13 +24,33 @@ export type ResolvedZohoCliqAccount = {
   refreshToken: string;
   dc: string;
   allowFrom?: Array<string | number>;
+  config: {
+    enabled?: boolean;
+    name?: string;
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    dc?: string;
+    allowFrom?: Array<string | number>;
+    dmPolicy?: "open" | "pairing" | "allowlist";
+    groupPolicy?: "open" | "allowlist";
+    groupAllowFrom?: Array<string | number>;
+  };
 };
+
+function parseDataCenter(raw?: string): string {
+  const upper = (raw ?? "US").toUpperCase();
+  if (["US", "EU", "IN", "AU", "JP", "CA", "SA"].includes(upper)) {
+    return upper;
+  }
+  return "US";
+}
 
 export const zohoCliqPlugin: ChannelPlugin<ResolvedZohoCliqAccount> = {
   id: "zoho-cliq",
   meta,
   capabilities: {
-    chatTypes: ["direct", "group"],
+    chatTypes: ["direct", "group", "channel"],
     media: true,
   },
   config: {
@@ -41,59 +61,40 @@ export const zohoCliqPlugin: ChannelPlugin<ResolvedZohoCliqAccount> = {
     },
     resolveAccount: (cfg, accountId) => {
       const resolvedAccountId = normalizeAccountId(accountId);
-      const accounts = (cfg as any).channels?.["zoho-cliq"]?.accounts;
-      if (!accounts) {
-        return {
-          accountId: resolvedAccountId,
-          name: undefined,
-          enabled: false,
-          configured: false,
-          clientId: "",
-          clientSecret: "",
-          refreshToken: "",
-          dc: "",
-        };
-      }
-      const account = accounts[resolvedAccountId];
-      if (!account) {
-        return {
-          accountId: resolvedAccountId,
-          name: undefined,
-          enabled: false,
-          configured: false,
-          clientId: "",
-          clientSecret: "",
-          refreshToken: "",
-          dc: "",
-        };
-      }
+      const channelCfg = (cfg as any).channels?.["zoho-cliq"];
+      const accounts = channelCfg?.accounts;
+      const accountCfg =
+        accounts?.[resolvedAccountId] ??
+        (resolvedAccountId === DEFAULT_ACCOUNT_ID ? channelCfg : undefined) ??
+        {};
+
+      const clientId = accountCfg.clientId ?? process.env.ZOHO_CLIQ_CLIENT_ID ?? "";
+      const clientSecret = accountCfg.clientSecret ?? process.env.ZOHO_CLIQ_CLIENT_SECRET ?? "";
+      const refreshToken = accountCfg.refreshToken ?? process.env.ZOHO_CLIQ_REFRESH_TOKEN ?? "";
+      const dc = parseDataCenter(accountCfg.dc ?? process.env.ZOHO_CLIQ_DC);
+
       return {
         accountId: resolvedAccountId,
-        name: account.name,
-        enabled: account.enabled ?? true,
-        configured: !!(
-          account.clientId &&
-          account.clientSecret &&
-          account.refreshToken
-        ),
-        clientId: account.clientId,
-        clientSecret: account.clientSecret,
-        refreshToken: account.refreshToken,
-        dc: account.dc,
-        allowFrom: account.allowFrom,
+        name: accountCfg.name,
+        enabled: accountCfg.enabled ?? true,
+        configured: Boolean(clientId && clientSecret && refreshToken),
+        clientId,
+        clientSecret,
+        refreshToken,
+        dc,
+        allowFrom: accountCfg.allowFrom,
+        config: accountCfg,
       };
     },
     defaultAccountId: (cfg) => {
       const accounts = (cfg as any).channels?.["zoho-cliq"]?.accounts;
       if (!accounts) return DEFAULT_ACCOUNT_ID;
-      const enabled = Object.entries(accounts).filter(
-        ([_, a]) => (a as any).enabled ?? true,
-      );
+      const enabled = Object.entries(accounts).filter(([_, a]) => (a as any).enabled ?? true);
       if (enabled.length === 1) return enabled[0][0];
       if (Object.hasOwn(accounts, DEFAULT_ACCOUNT_ID)) {
         return DEFAULT_ACCOUNT_ID;
       }
-      return Object.keys(accounts)[0];
+      return Object.keys(accounts)[0] ?? DEFAULT_ACCOUNT_ID;
     },
     setAccountEnabled: ({ cfg, accountId, enabled }) => {
       const resolvedAccountId = accountId ?? DEFAULT_ACCOUNT_ID;
@@ -125,6 +126,7 @@ export const zohoCliqPlugin: ChannelPlugin<ResolvedZohoCliqAccount> = {
       name: account.name,
       enabled: account.enabled,
       configured: account.configured,
+      dc: account.dc,
     }),
     resolveAllowFrom: ({ cfg, accountId }) => {
       const resolvedAccountId = accountId ?? DEFAULT_ACCOUNT_ID;
