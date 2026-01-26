@@ -22,7 +22,7 @@ Google Maps Grounding Lite provides AI-grounded location data via MCP. Use `mcpo
 ```bash
 mcporter config add grounding-lite \
   --url https://mapstools.googleapis.com/mcp \
-  --header "X-Goog-Api-Key: $GOOGLE_MAPS_API_KEY"
+  --header "X-Goog-Api-Key=$GOOGLE_MAPS_API_KEY"
 ```
 
 ### API Key Security
@@ -66,7 +66,7 @@ Response includes: place IDs, names, addresses, coordinates, Google Maps links, 
 Get current weather:
 
 ```bash
-mcporter call grounding-lite.lookup_weather location='{"address":"Tokyo, Japan"}' units_system=METRIC
+mcporter call grounding-lite.lookup_weather location='{"address":"San Francisco, CA"}' units_system=IMPERIAL
 ```
 
 By coordinates:
@@ -86,7 +86,7 @@ Forecast for a specific date/hour:
 
 ```bash
 mcporter call grounding-lite.lookup_weather \
-  location='{"address":"Paris, France"}' \
+  location='{"address":"New York, NY"}' \
   date='{"year":2026,"month":1,"day":28}' \
   hour=14
 ```
@@ -123,7 +123,7 @@ Call directly without configuring first:
 
 ```bash
 mcporter call "https://mapstools.googleapis.com/mcp.search_places" \
-  --header "X-Goog-Api-Key: $GOOGLE_MAPS_API_KEY" \
+  --header "X-Goog-Api-Key=$GOOGLE_MAPS_API_KEY" \
   text_query="restaurants near me"
 ```
 
@@ -133,22 +133,9 @@ mcporter call "https://mapstools.googleapis.com/mcp.search_places" \
 mcporter list grounding-lite --schema
 ```
 
-## vs goplaces / local-places
-
-| Feature | Grounding Lite | goplaces | local-places |
-|---------|---------------|----------|--------------|
-| Setup | mcporter + API key | Homebrew + API key | Python + API key |
-| AI Summaries | Built-in | None | None |
-| Weather | Yes | No | No |
-| Routes | Yes (basic) | No | No |
-| Place Details | Limited | Full | Full |
-| Photos/Reviews | No | Yes | Yes |
-
-Use Grounding Lite for quick AI-grounded queries. Use goplaces or local-places for detailed place info.
-
 ## Notes
 
 - Free during preview; pricing TBD after GA
-- Some features may have EEA restrictions
+- Weather lookup has regional restrictions (US locations work; some international locations may not)
 - Attribution required per Google Maps Platform ToS
 - Responses contain Google Maps links - include in user-facing output
