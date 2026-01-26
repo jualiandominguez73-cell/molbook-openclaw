@@ -59,20 +59,20 @@ export function createAgentStatusController(params: {
   callbacks: StatusUpdateCallbacks;
 }): StatusUpdateController | undefined {
   const { cfg, agentId, callbacks } = params;
-  log.info(`createAgentStatusController called for agentId=${agentId}`);
+  log.debug(`createAgentStatusController called for agentId=${agentId}`);
 
   const config = resolveStatusUpdateConfigFromConfig(cfg, agentId);
 
   if (!config.enabled) {
-    log.info(`Status updates disabled (enabled=${config.enabled})`);
+    log.debug(`Status updates disabled (enabled=${config.enabled})`);
     return undefined;
   }
 
-  log.info(
+  log.debug(
     `Creating status update controller with mode=${config.mode}, supportsEdit=${callbacks.supportsEdit?.()}`,
   );
   const controller = createStatusUpdateController(config, callbacks);
-  log.info(`Status update controller created successfully`);
+  log.debug(`Status update controller created successfully`);
   return controller;
 }
 
@@ -121,7 +121,7 @@ export type StatusUpdateRunContext = {
 export function createStatusUpdateRunContext(
   controller?: StatusUpdateController,
 ): StatusUpdateRunContext {
-  log.info(`createStatusUpdateRunContext: controller=${controller ? "present" : "undefined"}`);
+  log.debug(`createStatusUpdateRunContext: controller=${controller ? "present" : "undefined"}`);
 
   const ctx = {
     controller,
@@ -130,13 +130,13 @@ export function createStatusUpdateRunContext(
   };
 
   if (controller) {
-    log.info(`Status update context created with controller, starting...`);
+    log.debug(`Status update context created with controller, starting...`);
     // Start the controller asynchronously
     controller.start().catch((err) => {
       log.debug(`Failed to start status controller: ${String(err)}`);
     });
   } else {
-    log.info(`Status update context created WITHOUT controller (status updates disabled)`);
+    log.debug(`Status update context created WITHOUT controller (status updates disabled)`);
   }
 
   return ctx;
@@ -160,7 +160,7 @@ export async function handleAgentEventForStatus(
   );
 
   if (phase && phase !== ctx.currentPhase) {
-    log.info(`Status phase change: ${ctx.currentPhase} -> ${phase}`);
+    log.debug(`Status phase change: ${ctx.currentPhase} -> ${phase}`);
     ctx.currentPhase = phase;
     await ctx.controller.setPhase(phase);
   }
@@ -178,7 +178,7 @@ export async function completeStatusUpdate(
     return finalText;
   }
 
-  log.info(`completeStatusUpdate: finalizing status update`);
+  log.debug(`completeStatusUpdate: finalizing status update`);
   const result = await ctx.controller.complete(finalText);
   log.debug(`completeStatusUpdate: result=${result?.substring(0, 50)}...`);
   return result;

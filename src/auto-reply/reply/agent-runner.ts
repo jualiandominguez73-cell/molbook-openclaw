@@ -318,7 +318,7 @@ export async function runReplyAgent(params: {
   // Create status update controller for this agent run
   const agentId = resolveAgentIdFromSessionKey(sessionKey);
 
-  log.info(`Setting up status updates for agentId=${agentId}, channel=${replyToChannel}`);
+  log.debug(`Setting up status updates for agentId=${agentId}, channel=${replyToChannel}`);
 
   // Create callbacks using onBlockReply if available
   // NOTE: Edit mode requires channel-specific edit APIs which aren't available
@@ -357,7 +357,7 @@ export async function runReplyAgent(params: {
   });
 
   const statusUpdateContext = createStatusUpdateRunContext(statusController);
-  log.info(
+  log.debug(
     `Status update context created, controller=${statusController ? "present" : "undefined"}`,
   );
 
@@ -588,7 +588,7 @@ export async function runReplyAgent(params: {
     if (statusUpdateContext && replyPayloads.length > 0) {
       const lastPayload = replyPayloads[replyPayloads.length - 1];
       if (lastPayload?.text) {
-        log.info(`[agent-runner] Completing status update with final text (fast-path)`);
+        log.debug(`[agent-runner] Completing status update with final text (fast-path)`);
         const markedText = await completeStatusUpdate(statusUpdateContext, lastPayload.text);
         if (markedText) {
           // Just update the text. The delivery layer handles replacement.
@@ -612,7 +612,7 @@ export async function runReplyAgent(params: {
       removeEventListener();
     }
     if (statusUpdateContext) {
-      log.info(`Cleaning up status update context`);
+      log.debug(`Cleaning up status update context`);
       await cleanupStatusUpdate(statusUpdateContext);
     }
     // ===== END STATUS UPDATES =====
