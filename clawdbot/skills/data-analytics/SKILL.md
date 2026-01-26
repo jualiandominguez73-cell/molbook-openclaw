@@ -10,9 +10,17 @@ Professional data analytics capabilities for Simon's workflow.
 
 ## Prerequisites
 
-- Python 3.10+ with pip
-- SQLite3
-- Install dependencies: `pip install -r {baseDir}/requirements.txt`
+- Python 3.10+ (available)
+- SQLite3 (available)
+- Virtual environment with dependencies at `{baseDir}/.venv/`
+
+**Using the scripts:**
+```bash
+# Use the venv Python directly
+{baseDir}/.venv/bin/python {baseDir}/analyze.py <command>
+{baseDir}/.venv/bin/python {baseDir}/excel.py <command>
+{baseDir}/.venv/bin/python {baseDir}/visualize.py <command>
+```
 
 ## Capabilities
 

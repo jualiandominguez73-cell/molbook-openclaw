@@ -70,8 +70,21 @@ Add items under "## Pending" using this format:
     4. Update TOOLS.md with GOG auth troubleshooting steps
     5. Test heartbeat checks after re-auth
 
-- **Status:** RESOLVED (2026-01-26 08:46 PST)
-- **Resolution:** Re-authenticated via `gog auth add clawdbot@puenteworks.com --services gmail,calendar,drive,tasks,contacts,sheets,docs --manual` in Cursor terminal. OAuth flow completed successfully. GOG is now working.
+- **Status:** RESOLVED (2026-01-26 14:38 PST) - PERMANENTLY FIXED
+- **Resolution History:**
+  - **08:46 PST:** Re-authenticated - appeared to work but failed again
+  - **14:05 PST:** REOPENED - heartbeat still failing
+  - **14:38 PST:** ROOT CAUSE FOUND AND FIXED
+- **Actual Root Cause:** Password mismatch across config locations
+  - `~/.clawdbot/credentials/liam.env` had `GOG_KEYRING_PASSWORD=FXCfzyDH/SbRpemXl54gV47coLO3uJBV`
+  - But keyring was re-encrypted with password `clawdbot` during re-auth attempts
+  - Gateway loaded the OLD password from liam.env, which didn't match the keyring
+- **Permanent Fix:** Updated `liam.env` to use `GOG_KEYRING_PASSWORD=clawdbot`
+- **Investigation Failure:** Claude (Cursor) failed to check `liam.env` during initial investigation, violating:
+  - APEX compliance (incomplete investigation)
+  - Bug comorbidity analysis (didn't check ALL credential locations)
+- **Lesson Learned:** For any credential/auth issue, check ALL config sources: `~/.config/`, `~/.clawdbot/credentials/`, `~/.profile`, environment variables
+- **Cursor Rule Added:** `.cursor/rules/credential-investigation.mdc` to prevent this mistake
 
 ### [2026-01-26-100] Critical Communication Protocol — Neurodivergent-Friendly Interaction
 - **Proposed by:** Simon (urgent, critical priority)
@@ -188,7 +201,7 @@ Add items under "## Pending" using this format:
 - **Description:** The model fallback logic doesn't recognize `TypeError: fetch failed` as a failover-worthy error. When ZAI API fails with network errors, it crashes instead of trying the Ollama fallback. The `coerceToFailoverError` function only handles: rate limit, auth, billing, timeout, format errors — but NOT generic network failures.
 - **Impact:** Medium - Gateway crashes instead of gracefully falling back
 - **Suggested fix:** Add network error patterns (`fetch failed`, `ECONNREFUSED`, `ENOTFOUND`) to the failover classification
-- **Status:** pending - needs code change in Clawdbot core
+- **Status:** PAUSED (2026-01-26) - needs more research into Clawdbot core architecture before implementation
 
 ### [2026-01-26-021] Image Generation Capability for Self-Portrait [RESOLVED]
 - **Proposed by:** Simon (via Telegram, urgent)
@@ -221,7 +234,8 @@ Add items under "## Pending" using this format:
 - **Description:** Build a native calendar solution for Clawdbot, inspired by nettu-scheduler's architecture but optimized for Simon's workflow. **CORE REQUIREMENT: Two-way sync with Google Calendar (clawdbot@puenteworks.com)**. Will support: accounts, users, calendars, events (single + recurring), reminders, Slack integration, PARA project linking, and Google Calendar bidirectional sync. Tech stack: TypeScript, Hono.js, SQLite with Drizzle ORM, googleapis library. Features: CRUD API, recurrence rules, metadata queries, reminder system via cron, Slack commands (/cal add, /cal list, /cal upcoming, /cal sync), natural language parsing, Google Calendar import/export/sync.
 - **Impact:** High - Unblocks calendar alerts and meeting prep, replaces broken Google Calendar API access, enables tighter integration with PARA and Slack, provides reliable two-way sync
 - **Solution:** 5-phase implementation: (1) Foundation - DB + core CRUD (3-5 days), (2) Recurrence & querying (2-3 days), (3) Reminders with Slack delivery (2-3 days), (4) Google Calendar two-way sync (5-7 days) - CORE REQUIREMENT, (5) Clawdbot integration - Slack commands, heartbeat, PARA (2-3 days). Full plan at /home/liam/clawd/plans/calendar-solution-plan.md. Phase 4 includes: Google Calendar API client, schema mapping, import/export, bidirectional sync, conflict resolution, auto-sync cron job.
-- **Status:** pending - waiting for approval; requires Google Calendar API to be enabled first
+- **Status:** CANCELLED (2026-01-26)
+- **Resolution:** Decided to use Google Calendar directly via GOG CLI instead of building native calendar. GOG authentication fixed and working.
 
 ### [2026-01-25-015] Data Analytics Capabilities Enhancement
 - **Proposed by:** Simon (via email)
@@ -231,7 +245,12 @@ Add items under "## Pending" using this format:
 - **Description:** Simon is a professional data analyst and wants Liam to assist with data analytics work. Need to research and implement capabilities that support Simon's data analytics workflows: data import/export, analysis, visualization, reporting. Simon's expertise includes Excel (Pivot Tables, VLOOKUP, XLOOKUP, Power Query), SQL, Python, Power BI, Tableau, and data from Workday, SAP SuccessFactors, Salesforce CRM, etc.
 - **Impact:** High - Leverages Simon's professional skills, enables AI-assisted analytics
 - **Solution:** Research and build data analytics skills: SQL querying, data processing (Python/pandas), visualization generation, automated reporting, Excel file processing
-- **Status:** pending - needs research and planning
+- **Status:** RESOLVED (2026-01-26)
+- **Resolution:** Comprehensive skill created at `/home/liam/clawdbot/skills/data-analytics/`:
+  - `analyze.py` - Data profiling, groupby, pivot tables, filtering
+  - `excel.py` - Excel read/write, sheet listing, merge (VLOOKUP equivalent)
+  - `visualize.py` - Bar, line, scatter, heatmap, histogram, pie, box charts
+  - Virtual environment with pandas, openpyxl, matplotlib, plotly, sqlalchemy, numpy, scipy
 
 ### [2026-01-25-018] Edison Learning Operations Job Opportunity Tracking
 - **Proposed by:** Simon (via email)
@@ -241,7 +260,7 @@ Add items under "## Pending" using this format:
 - **Description:** Simon interviewed for "EDISON Learning Operations Senior Specialist" position on Friday, Jan 23, 2026. He forwarded the job posting PDF via email to me. Given his background in Learning Management Systems (Capital Group: Talent Development Associate, 8,000+ associates trained; Southern California Edison: LMS admin, SAP SuccessFactors; PIMCO: LMS coordinator, Cornerstone CSOD), this role aligns with his expertise. Need to track this opportunity, research EDISON company, prepare for follow-up, and document interview learnings.
 - **Impact:** Medium - Career advancement opportunity aligned with Simon's LMS expertise
 - **Solution:** Track application status, research EDISON company details (size, products, clients, tech stack), prepare potential interview questions, monitor email for follow-up, document interview outcomes and learnings
-- **Status:** pending - active job opportunity, awaiting follow-up
+- **Status:** PAUSED (2026-01-26) - per Simon's request
 
 ### [2026-01-25-016] PuenteWorks Documentation Import
 - **Proposed by:** Simon (via email)
@@ -271,7 +290,8 @@ Add items under "## Pending" using this format:
 - **Description:** Cron job "Blogwatcher-Check" (ID: 5b0b7dd4-8ba6-4d9f-98c9-f1ad50aaf188) is blocked because blogwatcher CLI is not installed. Go (required to install) is also not on the system. Verified at 22:00 PST when cron job ran. Need to install Go and blogwatcher CLI, then configure it for RSS/Atom feed monitoring. Currently alerts Simon of interesting content from monitored blogs.
 - **Impact:** Low-Medium - Proactive content monitoring, but not critical
 - **Solution:** Install Go, install blogwatcher (`go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@latest`), configure feeds for Simon's interests
-- **Status:** pending
+- **Status:** RESOLVED (2026-01-26)
+- **Resolution:** Go 1.23.5 already installed, blogwatcher v0.0.2 installed via `go install`. Feeds configured in clawdbot.json.
 
 ### [2026-01-25-003] Instagram Intelligence Deployment
 - **Proposed by:** Liam
