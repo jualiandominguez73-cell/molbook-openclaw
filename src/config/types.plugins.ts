@@ -4,7 +4,7 @@ export type PluginEntryConfig = {
 };
 
 export type PluginSlotsConfig = {
-  /** 
+  /**
    * Select which plugin(s) own the memory slot.
    * - Single string: "memory-lancedb" - one plugin active
    * - Array: ["memory-core", "memory-lancedb"] - multiple plugins active (stackable)
