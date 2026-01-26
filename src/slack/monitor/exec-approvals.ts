@@ -72,7 +72,9 @@ function formatApprovalBlocks(request: ExecApprovalRequest) {
   const commandText = request.request.command;
   const commandPreview =
     commandText.length > 2000 ? `${commandText.slice(0, 2000)}...` : commandText;
+  const expiresAtUnix = Math.floor(request.expiresAtMs / 1000);
   const expiresIn = Math.max(0, Math.round((request.expiresAtMs - Date.now()) / 1000));
+  const fallbackTime = new Date(request.expiresAtMs).toISOString();
 
   const contextParts: string[] = [];
   if (request.request.cwd) contextParts.push(`*CWD:* ${request.request.cwd}`);
@@ -116,7 +118,12 @@ function formatApprovalBlocks(request: ExecApprovalRequest) {
 
   blocks.push({
     type: "context",
-    elements: [{ type: "mrkdwn", text: `Expires in ${expiresIn}s | ID: \`${request.id}\`` }],
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `Expires <!date^${expiresAtUnix}^{time}|${fallbackTime}> (${expiresIn}s) | ID: \`${request.id}\``,
+      },
+    ],
   });
 
   blocks.push({
