@@ -131,10 +131,7 @@ describe("handleSlackAction", () => {
   it("requires canvases to be enabled", async () => {
     const cfg = { channels: { slack: { botToken: "tok" } } } as ClawdbotConfig;
     await expect(
-      handleSlackAction(
-        { action: "createCanvas", title: "Test", content: "hello" },
-        cfg,
-      ),
+      handleSlackAction({ action: "createCanvas", title: "Test", content: "hello" }, cfg),
     ).rejects.toThrow(/Slack canvases are disabled/);
   });
 
@@ -142,10 +139,7 @@ describe("handleSlackAction", () => {
     const cfg = {
       channels: { slack: { botToken: "tok", actions: { canvases: true } } },
     } as ClawdbotConfig;
-    await handleSlackAction(
-      { action: "createCanvas", title: "Test", content: "hello" },
-      cfg,
-    );
+    await handleSlackAction({ action: "createCanvas", title: "Test", content: "hello" }, cfg);
     expect(createSlackCanvas).toHaveBeenCalledWith(
       { title: "Test", content: "hello", channelId: undefined },
       undefined,
@@ -156,10 +150,7 @@ describe("handleSlackAction", () => {
     const cfg = {
       channels: { slack: { botToken: "tok", actions: { canvases: true } } },
     } as ClawdbotConfig;
-    await handleSlackAction(
-      { action: "updateCanvas", canvasId: "C123", content: "update" },
-      cfg,
-    );
+    await handleSlackAction({ action: "updateCanvas", canvasId: "C123", content: "update" }, cfg);
     expect(updateSlackCanvas).toHaveBeenCalledWith(
       { canvasId: "C123", channelId: undefined, content: "update", updateMode: undefined },
       undefined,

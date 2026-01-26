@@ -371,7 +371,8 @@ export async function prepareSlackMessage(params: {
   }
   const canvasContext = canvasBlocks.length > 0 ? canvasBlocks.join("\n\n") : "";
 
-  const baseBody = (message.text ?? "").trim() || media?.placeholder || (canvasContext ? "[Slack canvas]" : "");
+  const baseBody =
+    (message.text ?? "").trim() || media?.placeholder || (canvasContext ? "[Slack canvas]" : "");
   if (!baseBody) return null;
   const rawBody = baseBody;
   const rawBodyWithCanvas = canvasContext ? `${rawBody}\n\n${canvasContext}` : rawBody;

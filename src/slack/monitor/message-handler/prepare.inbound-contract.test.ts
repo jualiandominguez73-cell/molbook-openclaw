@@ -151,11 +151,12 @@ describe("slack prepareSlackMessage inbound contract", () => {
   });
 
   it("appends canvas content to the inbound body", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ title: "Canvas", text: "hello canvas" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ title: "Canvas", text: "hello canvas" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
 

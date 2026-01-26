@@ -173,7 +173,10 @@ function collectJsonText(
   }
 }
 
-function extractTextFromJson(payload: unknown, maxChars: number): { text: string; truncated: boolean } {
+function extractTextFromJson(
+  payload: unknown,
+  maxChars: number,
+): { text: string; truncated: boolean } {
   const results: string[] = [];
   const seen = new Set<string>();
   collectJsonText(payload, { maxChars, results, seen, depth: 0 });
@@ -197,10 +200,22 @@ export async function fetchSlackCanvasContent(params: {
     return { ok: false, error: "no_file_id" };
   }
 
-  let fileInfo: { file?: SlackFile & { title?: string; name?: string; url_private?: string; url_private_download?: string } };
+  let fileInfo: {
+    file?: SlackFile & {
+      title?: string;
+      name?: string;
+      url_private?: string;
+      url_private_download?: string;
+    };
+  };
   try {
     fileInfo = (await client.files.info({ file: fileId })) as {
-      file?: SlackFile & { title?: string; name?: string; url_private?: string; url_private_download?: string };
+      file?: SlackFile & {
+        title?: string;
+        name?: string;
+        url_private?: string;
+        url_private_download?: string;
+      };
     };
   } catch (err) {
     const label = buildErrorLabel(err);
@@ -242,7 +257,11 @@ export async function fetchSlackCanvasContent(params: {
   let extracted: { text: string; truncated: boolean };
   let rawFormat: SlackCanvasContent["rawFormat"] = "unknown";
 
-  if (contentType.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("[")) {
+  if (
+    contentType.includes("application/json") ||
+    text.trim().startsWith("{") ||
+    text.trim().startsWith("[")
+  ) {
     rawFormat = "json";
     try {
       const payload = JSON.parse(text);

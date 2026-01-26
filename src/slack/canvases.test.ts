@@ -56,11 +56,12 @@ describe("extractCanvasRefsFromEvent", () => {
 
 describe("fetchSlackCanvasContent", () => {
   it("downloads and parses JSON canvas content", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ text: "hello canvas" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ text: "hello canvas" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -127,11 +128,12 @@ describe("fetchSlackCanvasContent", () => {
   });
 
   it("truncates large payloads", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ text: "1234567890" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ text: "1234567890" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
