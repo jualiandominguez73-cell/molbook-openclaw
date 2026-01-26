@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter, Readable, Writable } from "node:stream";
 
-import type { CliBackendConfig } from "../../config/types.js";
+import type { CliBackendConfig, StreamingFormat } from "../../config/types.js";
 import {
   runCliWithStreaming,
   mapClaudeStreamEvent,
@@ -93,6 +93,71 @@ describe("runCliWithStreaming", () => {
     expect(events).toHaveLength(3);
     expect(events[0]).toEqual({ type: "text", text: "Hello " });
     expect(events[1]).toEqual({ type: "text", text: "world!" });
+  });
+
+  it("emits cumulative text with delta when using streamingFormat config", async () => {
+    const proc = createMockProcess();
+    spawnMock.mockReturnValue(proc);
+
+    const backendWithFormat: CliBackendConfig = {
+      ...defaultBackend,
+      streamingFormat: {
+        text: {
+          eventTypes: ["assistant"],
+          contentPath: "message.content",
+          matchType: "text",
+          textField: "text",
+        },
+      },
+    };
+
+    const events: CliStreamEvent[] = [];
+    const promise = runCliWithStreaming({
+      command: "claude",
+      args: ["-p"],
+      cwd: "/tmp",
+      env: {},
+      timeoutMs: 5000,
+      backend: backendWithFormat,
+      onEvent: (e) => events.push(e),
+    });
+
+    await nextTick();
+
+    // Claude CLI format: assistant events with nested content
+    proc.stdout.push(
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello "}]}}\n',
+    );
+    proc.stdout.push(
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"world!"}]}}\n',
+    );
+    proc.stdout.push(null);
+
+    await nextTick();
+    proc.emit("close", 0, null);
+
+    const result = await promise;
+
+    expect(result.text).toBe("Hello world!");
+
+    // Find text events (onEvent receives extracted events)
+    const textEvents = events.filter((e) => e.type === "text");
+    expect(textEvents).toHaveLength(2);
+
+    // First text event: cumulative = "Hello" (trimmed), delta = "Hello"
+    // parseReplyDirectives trims trailing whitespace
+    expect(textEvents[0]).toEqual({
+      type: "text",
+      text: "Hello",
+      delta: "Hello",
+    });
+
+    // Second text event: cumulative = "Hello world!", delta = " world!" (space preserved in delta)
+    expect(textEvents[1]).toEqual({
+      type: "text",
+      text: "Hello world!",
+      delta: " world!",
+    });
   });
 
   it("filters events by type when streamingEventTypes is specified", async () => {
@@ -286,6 +351,80 @@ describe("runCliWithStreaming", () => {
     const result = await promise;
     expect(result.sessionId).toBe("thread-abc");
   });
+
+  it("extracts tool_use and tool_result with streamingFormat config", async () => {
+    const proc = createMockProcess();
+    spawnMock.mockReturnValue(proc);
+
+    const backendWithFormat: CliBackendConfig = {
+      ...defaultBackend,
+      streamingFormat: {
+        toolUse: {
+          eventTypes: ["assistant"],
+          contentPath: "message.content",
+          matchType: "tool_use",
+          idField: "id",
+          nameField: "name",
+          inputField: "input",
+        },
+        toolResult: {
+          eventTypes: ["user"],
+          contentPath: "message.content",
+          matchType: "tool_result",
+          idField: "tool_use_id",
+          outputField: "content",
+          isErrorField: "is_error",
+        },
+      },
+    };
+
+    const events: CliStreamEvent[] = [];
+    const promise = runCliWithStreaming({
+      command: "claude",
+      args: ["-p"],
+      cwd: "/tmp",
+      env: {},
+      timeoutMs: 5000,
+      backend: backendWithFormat,
+      onEvent: (e) => events.push(e),
+    });
+
+    await nextTick();
+
+    // Tool use event
+    proc.stdout.push(
+      '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"bash","input":{"cmd":"ls"}}]}}\n',
+    );
+    // Tool result event
+    proc.stdout.push(
+      '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","content":"file.txt","is_error":false}]}}\n',
+    );
+    proc.stdout.push(null);
+
+    await nextTick();
+    proc.emit("close", 0, null);
+
+    await promise;
+
+    const toolUseEvents = events.filter((e) => e.type === "tool_use");
+    const toolResultEvents = events.filter((e) => e.type === "tool_result");
+
+    expect(toolUseEvents).toHaveLength(1);
+    expect(toolUseEvents[0]).toMatchObject({
+      type: "tool_use",
+      id: "tool-1",
+      name: "bash",
+      input: { cmd: "ls" },
+    });
+
+    expect(toolResultEvents).toHaveLength(1);
+    expect(toolResultEvents[0]).toMatchObject({
+      type: "tool_result",
+      tool_use_id: "tool-1",
+      content: "file.txt",
+      is_error: false,
+    });
+  });
 });
 
 describe("mapClaudeStreamEvent", () => {
@@ -331,14 +470,25 @@ describe("mapClaudeStreamEvent", () => {
     });
   });
 
-  it("maps text event to assistant delta", () => {
+  it("maps text event to assistant with cumulative text and delta", () => {
+    const event: CliStreamEvent = { type: "text", text: "Hello world!", delta: "world!" };
+
+    const result = mapClaudeStreamEvent(event);
+
+    expect(result).toEqual({
+      stream: "assistant",
+      data: { text: "Hello world!", delta: "world!" },
+    });
+  });
+
+  it("maps text event without explicit delta (delta defaults to text)", () => {
     const event: CliStreamEvent = { type: "text", text: "Hello" };
 
     const result = mapClaudeStreamEvent(event);
 
     expect(result).toEqual({
       stream: "assistant",
-      data: { text: "Hello", delta: true },
+      data: { text: "Hello", delta: "Hello" },
     });
   });
 
@@ -400,7 +550,7 @@ describe("mapCodexStreamEvent", () => {
     });
   });
 
-  it("maps item.completed message to assistant text", () => {
+  it("maps item.completed message to assistant text with delta", () => {
     const event: CliStreamEvent = {
       type: "item.completed",
       item: {
@@ -413,7 +563,7 @@ describe("mapCodexStreamEvent", () => {
 
     expect(result).toEqual({
       stream: "assistant",
-      data: { text: "Task completed" },
+      data: { text: "Task completed", delta: "Task completed" },
     });
   });
 
@@ -424,13 +574,53 @@ describe("mapCodexStreamEvent", () => {
 });
 
 describe("mapCliStreamEvent", () => {
-  it("uses Claude mapper for claude-cli backend", () => {
-    const event: CliStreamEvent = { type: "text", text: "Hello" };
+  it("maps text event with cumulative text and delta", () => {
+    const event: CliStreamEvent = { type: "text", text: "Hello world!", delta: "world!" };
     const result = mapCliStreamEvent(event, "claude-cli");
 
     expect(result).toEqual({
       stream: "assistant",
-      data: { text: "Hello", delta: true },
+      data: { text: "Hello world!", delta: "world!" },
+    });
+  });
+
+  it("maps tool_use event directly", () => {
+    const event: CliStreamEvent = {
+      type: "tool_use",
+      id: "tool-1",
+      name: "bash",
+      input: { command: "ls" },
+    };
+    const result = mapCliStreamEvent(event, "claude-cli");
+
+    expect(result).toEqual({
+      stream: "tool",
+      data: {
+        phase: "start",
+        name: "bash",
+        id: "tool-1",
+        input: { command: "ls" },
+      },
+    });
+  });
+
+  it("maps tool_result event directly", () => {
+    const event: CliStreamEvent = {
+      type: "tool_result",
+      tool_use_id: "tool-1",
+      content: "output",
+      is_error: true,
+    };
+    const result = mapCliStreamEvent(event, "claude-cli");
+
+    expect(result).toEqual({
+      stream: "tool",
+      data: {
+        phase: "end",
+        id: "tool-1",
+        output: "output",
+        isError: true,
+      },
     });
   });
 
@@ -443,7 +633,7 @@ describe("mapCliStreamEvent", () => {
 
     expect(result).toEqual({
       stream: "assistant",
-      data: { text: "Done" },
+      data: { text: "Done", delta: "Done" },
     });
   });
 
@@ -459,5 +649,166 @@ describe("mapCliStreamEvent", () => {
       stream: "tool",
       data: { phase: "start", name: "test", id: "1", input: undefined },
     });
+  });
+
+  it("accepts optional format parameter", () => {
+    const format: StreamingFormat = {
+      text: { eventTypes: ["text"], textField: "text" },
+    };
+    const event: CliStreamEvent = { type: "text", text: "Hello", delta: "Hello" };
+    const result = mapCliStreamEvent(event, "claude-cli", format);
+
+    expect(result).toEqual({
+      stream: "assistant",
+      data: { text: "Hello", delta: "Hello" },
+    });
+  });
+
+  it("passes through mediaUrls when present", () => {
+    const event: CliStreamEvent = {
+      type: "text",
+      text: "Here is an image",
+      delta: "image",
+      mediaUrls: ["https://example.com/img.png"],
+    };
+    const result = mapCliStreamEvent(event, "claude-cli");
+
+    expect(result).toEqual({
+      stream: "assistant",
+      data: {
+        text: "Here is an image",
+        delta: "image",
+        mediaUrls: ["https://example.com/img.png"],
+      },
+    });
+  });
+
+  it("omits mediaUrls when empty array", () => {
+    const event: CliStreamEvent = {
+      type: "text",
+      text: "Hello",
+      delta: "Hello",
+      mediaUrls: [],
+    };
+    const result = mapCliStreamEvent(event, "claude-cli");
+
+    expect(result).toEqual({
+      stream: "assistant",
+      data: { text: "Hello", delta: "Hello" },
+    });
+  });
+});
+
+describe("runCliWithStreaming - directive parsing", () => {
+  const defaultBackend: CliBackendConfig = {
+    command: "claude",
+    sessionIdFields: ["session_id"],
+  };
+
+  beforeEach(() => {
+    spawnMock.mockReset();
+  });
+
+  it("parses reply directives and extracts mediaUrls from text", async () => {
+    const proc = createMockProcess();
+    spawnMock.mockReturnValue(proc);
+
+    const backendWithFormat: CliBackendConfig = {
+      ...defaultBackend,
+      streamingFormat: {
+        text: {
+          eventTypes: ["assistant"],
+          contentPath: "message.content",
+          matchType: "text",
+          textField: "text",
+        },
+      },
+    };
+
+    const events: CliStreamEvent[] = [];
+    const promise = runCliWithStreaming({
+      command: "claude",
+      args: ["-p"],
+      cwd: "/tmp",
+      env: {},
+      timeoutMs: 5000,
+      backend: backendWithFormat,
+      onEvent: (e) => events.push(e),
+    });
+
+    await nextTick();
+
+    // Text with MEDIA token should have media extracted and text cleaned
+    proc.stdout.push(
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"Here is the image\\nMEDIA: https://example.com/img.png"}]}}\n',
+    );
+    proc.stdout.push(null);
+
+    await nextTick();
+    proc.emit("close", 0, null);
+
+    await promise;
+
+    const textEvents = events.filter((e) => e.type === "text");
+    expect(textEvents).toHaveLength(1);
+    expect(textEvents[0]?.text).toBe("Here is the image");
+    expect(textEvents[0]?.mediaUrls).toEqual(["https://example.com/img.png"]);
+  });
+
+  it("computes delta correctly after directive parsing", async () => {
+    const proc = createMockProcess();
+    spawnMock.mockReturnValue(proc);
+
+    const backendWithFormat: CliBackendConfig = {
+      ...defaultBackend,
+      streamingFormat: {
+        text: {
+          eventTypes: ["assistant"],
+          contentPath: "message.content",
+          matchType: "text",
+          textField: "text",
+        },
+      },
+    };
+
+    const events: CliStreamEvent[] = [];
+    const promise = runCliWithStreaming({
+      command: "claude",
+      args: ["-p"],
+      cwd: "/tmp",
+      env: {},
+      timeoutMs: 5000,
+      backend: backendWithFormat,
+      onEvent: (e) => events.push(e),
+    });
+
+    await nextTick();
+
+    // First chunk
+    proc.stdout.push(
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"Hello "}]}}\n',
+    );
+    // Second chunk
+    proc.stdout.push(
+      '{"type":"assistant","message":{"content":[{"type":"text","text":"world!"}]}}\n',
+    );
+    proc.stdout.push(null);
+
+    await nextTick();
+    proc.emit("close", 0, null);
+
+    await promise;
+
+    const textEvents = events.filter((e) => e.type === "text");
+    expect(textEvents).toHaveLength(2);
+
+    // First event: text="Hello" (trimmed), delta="Hello"
+    // parseReplyDirectives trims trailing whitespace
+    expect(textEvents[0]?.text).toBe("Hello");
+    expect(textEvents[0]?.delta).toBe("Hello");
+
+    // Second event: text="Hello world!", delta=" world!" (space preserved in delta)
+    expect(textEvents[1]?.text).toBe("Hello world!");
+    expect(textEvents[1]?.delta).toBe(" world!");
   });
 });

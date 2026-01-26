@@ -239,6 +239,49 @@ export const HumanDelaySchema = z
   })
   .strict();
 
+export const StreamingFormatTextSchema = z
+  .object({
+    eventTypes: z.array(z.string()).optional(),
+    contentPath: z.string().optional(),
+    matchType: z.string().optional(),
+    textField: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
+export const StreamingFormatToolUseSchema = z
+  .object({
+    eventTypes: z.array(z.string()).optional(),
+    contentPath: z.string().optional(),
+    matchType: z.string().optional(),
+    idField: z.string().optional(),
+    nameField: z.string().optional(),
+    inputField: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
+export const StreamingFormatToolResultSchema = z
+  .object({
+    eventTypes: z.array(z.string()).optional(),
+    contentPath: z.string().optional(),
+    matchType: z.string().optional(),
+    idField: z.string().optional(),
+    outputField: z.string().optional(),
+    isErrorField: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
+export const StreamingFormatSchema = z
+  .object({
+    text: StreamingFormatTextSchema,
+    toolUse: StreamingFormatToolUseSchema,
+    toolResult: StreamingFormatToolResultSchema,
+  })
+  .strict()
+  .optional();
+
 export const CliBackendSchema = z
   .object({
     command: z.string(),
@@ -277,6 +320,7 @@ export const CliBackendSchema = z
       .optional(),
     streaming: z.boolean().optional(),
     streamingEventTypes: z.array(z.string()).optional(),
+    streamingFormat: StreamingFormatSchema,
   })
   .strict();
 

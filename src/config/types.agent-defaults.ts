@@ -12,6 +12,57 @@ import type {
 } from "./types.sandbox.js";
 import type { MemorySearchConfig } from "./types.tools.js";
 
+// Streaming format types for CLI backend configuration
+export type StreamingFormatText = {
+  /** Top-level event types containing text (e.g., ["assistant"], ["item.completed"]). */
+  eventTypes?: string[];
+  /** Path to content array/object (e.g., "message.content", "item"). */
+  contentPath?: string;
+  /** Type value to match in content blocks (e.g., "text"). */
+  matchType?: string;
+  /** Field containing text (e.g., "text"). */
+  textField?: string;
+};
+
+export type StreamingFormatToolUse = {
+  /** Top-level event types containing tool use (e.g., ["assistant"], ["item.created"]). */
+  eventTypes?: string[];
+  /** Path to content array/object (e.g., "message.content", "item"). */
+  contentPath?: string;
+  /** Type value to match (e.g., "tool_use", "function_call"). */
+  matchType?: string;
+  /** Field containing tool ID. */
+  idField?: string;
+  /** Field containing tool name. */
+  nameField?: string;
+  /** Field containing tool input/arguments. */
+  inputField?: string;
+};
+
+export type StreamingFormatToolResult = {
+  /** Top-level event types containing tool results (e.g., ["user"], ["item.completed"]). */
+  eventTypes?: string[];
+  /** Path to content array/object (e.g., "message.content", "item"). */
+  contentPath?: string;
+  /** Type value to match (e.g., "tool_result", "function_call_output"). */
+  matchType?: string;
+  /** Field containing tool use ID reference. */
+  idField?: string;
+  /** Field containing result output. */
+  outputField?: string;
+  /** Field indicating if result is an error. */
+  isErrorField?: string;
+};
+
+export type StreamingFormat = {
+  /** Format for extracting text content from events. */
+  text?: StreamingFormatText;
+  /** Format for extracting tool use from events. */
+  toolUse?: StreamingFormatToolUse;
+  /** Format for extracting tool results from events. */
+  toolResult?: StreamingFormatToolResult;
+};
+
 export type AgentModelEntryConfig = {
   alias?: string;
   /** Provider-specific API parameters (e.g., GLM-4.7 thinking mode). */
@@ -101,6 +152,8 @@ export type CliBackendConfig = {
   streaming?: boolean;
   /** Event types to emit when streaming. If omitted, all events are emitted. */
   streamingEventTypes?: string[];
+  /** Configurable format for parsing streaming events (text, tool_use, tool_result). */
+  streamingFormat?: StreamingFormat;
 };
 
 export type AgentDefaultsConfig = {

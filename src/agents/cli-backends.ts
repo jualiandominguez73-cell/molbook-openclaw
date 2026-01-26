@@ -58,6 +58,30 @@ const DEFAULT_CLAUDE_BACKEND: CliBackendConfig = {
   },
   streaming: true,
   streamingEventTypes: ["tool_use", "tool_result", "text", "result"],
+  streamingFormat: {
+    text: {
+      eventTypes: ["assistant"],
+      contentPath: "message.content",
+      matchType: "text",
+      textField: "text",
+    },
+    toolUse: {
+      eventTypes: ["assistant"],
+      contentPath: "message.content",
+      matchType: "tool_use",
+      idField: "id",
+      nameField: "name",
+      inputField: "input",
+    },
+    toolResult: {
+      eventTypes: ["user"],
+      contentPath: "message.content",
+      matchType: "tool_result",
+      idField: "tool_use_id",
+      outputField: "content",
+      isErrorField: "is_error",
+    },
+  },
 };
 
 const DEFAULT_CODEX_BACKEND: CliBackendConfig = {
@@ -89,6 +113,29 @@ const DEFAULT_CODEX_BACKEND: CliBackendConfig = {
   },
   streaming: true,
   streamingEventTypes: ["item", "turn.completed"],
+  streamingFormat: {
+    text: {
+      eventTypes: ["item.completed"],
+      contentPath: "item",
+      matchType: "message",
+      textField: "text",
+    },
+    toolUse: {
+      eventTypes: ["item.created", "item.started"],
+      contentPath: "item",
+      matchType: "function_call",
+      idField: "id",
+      nameField: "name",
+      inputField: "arguments",
+    },
+    toolResult: {
+      eventTypes: ["item.completed"],
+      contentPath: "item",
+      matchType: "function_call_output",
+      idField: "call_id",
+      outputField: "output",
+    },
+  },
 };
 
 function normalizeBackendKey(key: string): string {
@@ -119,6 +166,16 @@ function mergeBackendConfig(base: CliBackendConfig, override?: CliBackendConfig)
     resumeArgs: override.resumeArgs ?? base.resumeArgs,
     streaming: override.streaming ?? base.streaming,
     streamingEventTypes: override.streamingEventTypes ?? base.streamingEventTypes,
+    streamingFormat: override.streamingFormat
+      ? {
+          text: { ...base.streamingFormat?.text, ...override.streamingFormat.text },
+          toolUse: { ...base.streamingFormat?.toolUse, ...override.streamingFormat.toolUse },
+          toolResult: {
+            ...base.streamingFormat?.toolResult,
+            ...override.streamingFormat.toolResult,
+          },
+        }
+      : base.streamingFormat,
   };
 }
 
