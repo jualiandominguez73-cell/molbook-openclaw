@@ -60,3 +60,10 @@ apps/ios/*.dSYM.zip
 apps/ios/*.mobileprovision
 .env
 .env
+
+# MeshGuard (separate project - keep out of clawd repo)
+meshguard-*
+meshguard/
+
+# npm lockfile (we use pnpm)
+package-lock.json

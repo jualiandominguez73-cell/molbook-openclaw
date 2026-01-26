@@ -27,7 +27,19 @@ if [ "$UPSTREAM_COUNT" -gt 0 ]; then
     }
 fi
 
-# 2. Commit any local changes
+# 2. Rebuild dist if upstream changed (plugin SDK exports, etc.)
+if [ "$UPSTREAM_CHANGES" -eq 1 ]; then
+    echo "Rebuilding dist..."
+    npm run build 2>&1 | tail -3
+    BUILD_EXIT=$?
+    if [ "$BUILD_EXIT" -ne 0 ]; then
+        echo "⚠️ Build failed (exit $BUILD_EXIT), installing deps and retrying..."
+        npm install --legacy-peer-deps 2>&1 | tail -3
+        npm run build 2>&1 | tail -3
+    fi
+fi
+
+# 3. Commit any local changes (including rebuilt dist)
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "Committing local changes..."
     LOCAL_CHANGES=1
@@ -35,13 +47,13 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     git commit -m "Auto-sync: $(date '+%Y-%m-%d %H:%M')"
 fi
 
-# 3. Push everything
+# 4. Push everything
 if [ "$UPSTREAM_CHANGES" -eq 1 ] || [ "$LOCAL_CHANGES" -eq 1 ]; then
     echo "Pushing to origin..."
     git push origin main
 fi
 
-# 4. Build status message
+# 5. Build status message
 STATUS=""
 if [ "$UPSTREAM_CHANGES" -eq 1 ]; then
     STATUS="🔄 Synced $UPSTREAM_COUNT commits from upstream"
@@ -53,7 +65,7 @@ fi
 
 echo "$STATUS"
 
-# 5. Notify via Telegram (if clawdbot available and gateway running)
+# 6. Notify via Telegram (if clawdbot available and gateway running)
 CLAWDBOT="/Users/steve/Library/pnpm/clawdbot"
 if [ -x "$CLAWDBOT" ] && lsof -i :18789 >/dev/null 2>&1; then
     "$CLAWDBOT" agent --agent main --message "$STATUS" --deliver --reply-channel telegram --reply-account steve --reply-to 1191367022 2>&1 || true
