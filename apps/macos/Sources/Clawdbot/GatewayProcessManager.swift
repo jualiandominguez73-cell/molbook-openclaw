@@ -129,9 +129,8 @@ final class GatewayProcessManager {
         self.lastFailureReason = nil
         self.status = .stopped
         self.logger.info("gateway stop requested")
-        if CommandResolver.connectionModeIsRemote() {
-            return
-        }
+        // Always disable the launchd job, even in remote mode. Otherwise the job
+        // keeps restarting the gateway daemon every 10 seconds (KeepAlive throttle).
         let bundlePath = Bundle.main.bundleURL.path
         Task {
             _ = await GatewayLaunchAgentManager.set(
