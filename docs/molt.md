@@ -412,7 +412,8 @@ The nightly update failed and automatic rollback also failed.
 
   // Notifications
   "notify": {
-    "channel": "slack",
+    "channel": "slack",           // Channel plugin to use
+    "target": "U08117AJG2U",      // User ID to notify (use platform ID, not username)
     "onSuccess": true,
     "onNoChange": false,
     "onRollback": true,
@@ -477,16 +478,140 @@ clawdbot molt rollback <commit>     # to specific commit
 
 ## Scheduling
 
-```bash
-# Via Clawdbot cron (recommended)
-clawdbot cron add \
-  --name "Nightly molt" \
-  --cron "0 2 * * *" \
-  --tz "UTC" \
-  --session isolated \
-  --message "Run: clawdbot molt run"
+Molt uses two Clawdbot cron jobs:
 
-# Via system cron (alternative)
+1. **Nightly update** (2am UTC) — runs the update script
+2. **Morning report** (6am UTC) — checks results and notifies you
+
+### Cron Job Prompts
+
+These systemEvent prompts tell the agent what to do when the cron fires.
+
+**Nightly Molt Update:**
+
+```
+🦞 MOLT UPDATE: Run the self-healing update cycle.
+
+## Execute the update
+Run: ~/.clawdbot/molt/molt.sh
+
+Capture both stdout and stderr.
+
+## Interpret the result
+
+**If the script exits 0 (success):**
+- Parse the MOLT SUMMARY block at the end
+- Note the commit count
+- Reply with: "Molt complete: <N> commits (from <old> to <new>)"
+
+**If the script exits non-zero:**
+The script handles its own rollback, but capture the output for debugging.
+1. Check if ~/.clawdbot/molt/RECOVERY.md was created (critical failure)
+2. If RECOVERY.md exists:
+   - Read ~/.clawdbot/molt/config.json for notify.channel and notify.target
+   - Send alert: message(action="send", channel="<channel>", target="<target>", message="🚨 Molt update failed critically. Manual intervention needed. See ~/.clawdbot/molt/RECOVERY.md")
+3. If no RECOVERY.md (normal rollback), the morning report will handle notification
+4. Reply with: "Molt failed — rolled back. See crash-log.txt"
+
+## Notes
+- The script writes changelog to your workspace: update-changelog.md
+- History is appended to: ~/.clawdbot/molt/history.jsonl
+- Crash logs go to: ~/.clawdbot/molt/crash-log.txt
+- Do not retry automatically — the morning report handles user notification
+```
+
+**Morning Molt Report:**
+
+```
+☀️ MOLT MORNING REPORT
+
+Check last night's update status and notify the user if there's news.
+
+## Step 1: Check for critical issues first
+If ~/.clawdbot/molt/RECOVERY.md exists:
+- CRITICAL: Read it immediately
+- Send alert (see notification section below)
+- Do NOT reply HEARTBEAT_OK — this requires attention
+
+## Step 2: Read update history
+Run: tail -1 ~/.clawdbot/molt/history.jsonl
+
+Parse the JSON to extract: timestamp, commits, status
+
+## Step 3: Freshness check
+Compare the timestamp to now. If older than 30 hours, the data is stale.
+- If stale: reply HEARTBEAT_OK (nothing recent to report)
+
+## Step 4: Decision tree
+
+**If status = "success" AND commits > 0:**
+1. Read the changelog from your workspace: update-changelog.md
+2. Summarize key changes in 2-4 bullet points (user-facing features, fixes, integrations)
+3. Send notification (see below)
+
+**If status = "success" AND commits = 0:**
+- Reply: HEARTBEAT_OK
+
+**If status = "rollback":**
+1. Read ~/.clawdbot/molt/crash-log.txt (last 50 lines)
+2. Identify the failure reason briefly
+3. Send alert notification (see below)
+
+## Sending notifications
+
+Read ~/.clawdbot/molt/config.json for notification settings:
+- notify.channel: which channel to use ("slack", "telegram", etc.)
+- notify.target: username/handle to send to
+
+Use the message tool:
+  message(action="send", channel="<notify.channel>", target="<notify.target>", message="...")
+
+If config doesn't specify channel/target, check workspace USER.md as fallback.
+
+If message delivery fails or no target configured:
+- Output the notification text as your reply
+- This ensures the message appears in session logs
+
+## Message templates
+
+**Success:** "☀️ Clawdbot updated overnight (<N> commits)\n\n<bullet summary>"
+
+**Rollback:** "⚠️ Clawdbot update failed overnight and rolled back.\n\nReason: <brief>\n\nPrevious version running. See ~/.clawdbot/molt/crash-log.txt"
+
+**Critical:** "🚨 MOLT RECOVERY NEEDED: <RECOVERY.md contents>"
+
+## Important
+- Plain text replies from cron may not reach the user — prefer the message tool
+- Keep summaries concise
+- For rollbacks, focus on: what broke, is it safe, what to do next
+```
+
+### Setting Up the Cron Jobs
+
+```bash
+# Add nightly update (2am UTC)
+clawdbot cron add \
+  --name "Nightly molt update" \
+  --cron "0 2 * * *" \
+  --session main \
+  --wake now \
+  --payload '{"kind":"systemEvent","text":"<nightly prompt above>"}'
+
+# Add morning report (6am UTC)
+clawdbot cron add \
+  --name "Morning molt report" \
+  --cron "0 6 * * *" \
+  --session main \
+  --wake now \
+  --payload '{"kind":"systemEvent","text":"<morning prompt above>"}'
+```
+
+### Alternative: System Cron
+
+If you prefer system cron over Clawdbot cron:
+
+```bash
+# Via system cron
 0 2 * * * /home/corey/.local/bin/clawdbot molt run >> ~/.clawdbot/molt/cron.log 2>&1
 ```
 
@@ -537,6 +662,58 @@ If those break, yes, we have a problem. But they're stable, simple commands unli
 ### "Blue/green deployments"
 
 **Intentionally skipped:** Too complex for single-instance self-hosted. If rollback fails 5% of the time, the AI can handle that 5%.
+
+## Troubleshooting
+
+### Notifications not arriving
+
+**Symptom:** Cron job runs (status "ok") but you don't receive Slack/Telegram messages.
+
+**Common causes:**
+
+1. **Missing `notify.target` in config.json**
+   - The message tool requires a target
+   - Add `"target": "YOUR_USER_ID"` to the notify section
+
+2. **Using username instead of user ID**
+   - Username lookup requires extra OAuth scopes (e.g., `users:read` for Slack)
+   - **Recommendation:** Use platform user IDs directly
+   - Slack: Find your ID in profile settings (e.g., `U08117AJG2U`)
+   - Telegram: Your numeric user ID
+   - Discord: Enable Developer Mode, right-click → Copy ID
+
+3. **Missing channel permissions**
+   - Slack: Bot needs `chat:write` scope
+   - Telegram: Bot must be able to message the user
+   - Discord: Bot needs DM permissions
+
+4. **Plain text reply fallback**
+   - If message tool fails, the agent falls back to a plain reply
+   - Plain replies from cron jobs may not be visible (they go to session logs)
+   - Fix: Ensure channel/target are properly configured
+
+### Update ran but changelog is stale
+
+**Symptom:** Morning report says HEARTBEAT_OK but you know there were updates.
+
+**Cause:** The molt script ran outside the cron job (manually or via a different trigger), so the timestamps don't line up.
+
+**Fix:** The morning report checks if history.jsonl was updated within 30 hours. If you ran molt manually, the cron job's "last run" won't match.
+
+### Rollback keeps happening
+
+**Symptom:** Updates consistently fail and roll back.
+
+**Debug steps:**
+1. Check `~/.clawdbot/molt/crash-log.txt` for the actual error
+2. Check `~/.clawdbot/molt/pnpm-install.log` if install failed
+3. Check `~/.clawdbot/molt/pnpm-build.log` if build failed
+4. Try running `~/.clawdbot/molt/molt.sh --dry-run` to see what would happen
+
+**Common issues:**
+- Disk full → `pnpm store prune`
+- Network issues → Retry later
+- Dependency conflict → May need manual intervention
 
 ## Success Criteria
 
