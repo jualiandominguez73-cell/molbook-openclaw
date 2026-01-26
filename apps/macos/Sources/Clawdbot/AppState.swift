@@ -419,9 +419,17 @@ final class AppState {
         let user = (trimmedUser?.isEmpty ?? true) ? nil : trimmedUser
         let port = parsed.port
         let assembled = if let user {
-            port == 22 ? "\(user)@\(host)" : "\(user)@\(host):\(port)"
+            if port == 22 {
+                "\(user)@\(host)"
+            } else {
+                "\(user)@\(host):\(port)"
+            }
         } else {
-            port == 22 ? host : "\(host):\(port)"
+            if port == 22 {
+                host
+            } else {
+                "\(host):\(port)"
+            }
         }
         if assembled != self.remoteTarget {
             self.remoteTarget = assembled
