@@ -97,6 +97,10 @@ export type CliBackendConfig = {
     cacheWrite?: string[];
     total?: string[];
   };
+  /** Enable streaming output mode (NDJSON line-by-line parsing with real-time events). */
+  streaming?: boolean;
+  /** Event types to emit when streaming. If omitted, all events are emitted. */
+  streamingEventTypes?: string[];
 };
 
 export type AgentDefaultsConfig = {

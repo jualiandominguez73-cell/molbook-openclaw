@@ -275,6 +275,8 @@ export const CliBackendSchema = z
         total: z.array(z.string()).optional(),
       })
       .optional(),
+    streaming: z.boolean().optional(),
+    streamingEventTypes: z.array(z.string()).optional(),
   })
   .strict();
 

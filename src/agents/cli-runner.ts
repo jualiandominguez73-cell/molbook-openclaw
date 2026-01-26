@@ -2,6 +2,7 @@ import type { ImageContent } from "@mariozechner/pi-ai";
 import { resolveHeartbeatPrompt } from "../auto-reply/heartbeat.js";
 import type { ThinkLevel } from "../auto-reply/thinking.js";
 import type { ClawdbotConfig } from "../config/config.js";
+import { emitAgentEvent } from "../infra/agent-events.js";
 import { isTruthyEnvValue } from "../infra/env.js";
 import { shouldLogVerbose } from "../globals.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
@@ -26,6 +27,7 @@ import {
   resolveSystemPromptUsage,
   writeCliImages,
 } from "./cli-runner/helpers.js";
+import { mapCliStreamEvent, runCliWithStreaming } from "./cli-runner/streaming.js";
 import { FailoverError, resolveFailoverStatus } from "./failover-error.js";
 import { classifyFailoverReason, isFailoverErrorMessage } from "./pi-embedded-helpers.js";
 import type { EmbeddedPiRunResult } from "./pi-embedded-runner.js";
@@ -218,6 +220,66 @@ export async function runCliAgent(params: {
         await cleanupResumeProcesses(backend, cliSessionIdToSend);
       }
 
+      // Use streaming execution when enabled
+      const useStreaming = backend.streaming ?? false;
+      log.info(
+        `cli runner: useStreaming=${useStreaming} streamingEventTypes=${JSON.stringify(backend.streamingEventTypes)}`,
+      );
+      if (useStreaming) {
+        try {
+          const streamResult = await runCliWithStreaming({
+            command: backend.command,
+            args,
+            cwd: workspaceDir,
+            env,
+            input: stdinPayload,
+            timeoutMs: params.timeoutMs,
+            eventTypes: backend.streamingEventTypes,
+            backend,
+            onEvent: (event) => {
+              log.info(`cli runner: onEvent received type="${event.type}"`);
+              const mapped = mapCliStreamEvent(event, backendResolved.id);
+              if (mapped) {
+                log.info(
+                  `cli runner: emitting agentEvent stream="${mapped.stream}" runId="${params.runId}"`,
+                );
+                emitAgentEvent({
+                  runId: params.runId,
+                  stream: mapped.stream,
+                  data: mapped.data,
+                });
+                log.info(`cli runner: emitAgentEvent completed`);
+              } else {
+                log.info(`cli runner: mapped is null, not emitting agentEvent`);
+              }
+            },
+          });
+
+          if (logOutputText || shouldLogVerbose()) {
+            log.info(
+              `cli streaming: text=${streamResult.text.length} chars, events=${streamResult.events.length}`,
+            );
+          }
+
+          return {
+            text: streamResult.text,
+            sessionId: streamResult.sessionId,
+            usage: streamResult.usage,
+          };
+        } catch (streamErr) {
+          const errMsg = streamErr instanceof Error ? streamErr.message : String(streamErr);
+          const reason = classifyFailoverReason(errMsg) ?? "unknown";
+          const status = resolveFailoverStatus(reason);
+          throw new FailoverError(errMsg, {
+            reason,
+            provider: params.provider,
+            model: modelId,
+            status,
+          });
+        }
+      }
+
+      // Non-streaming path: collect all output then parse
       const result = await runCommandWithTimeout([backend.command, ...args], {
         timeoutMs: params.timeoutMs,
         cwd: workspaceDir,

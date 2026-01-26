@@ -27,16 +27,17 @@ const CLAUDE_MODEL_ALIASES: Record<string, string> = {
 
 const DEFAULT_CLAUDE_BACKEND: CliBackendConfig = {
   command: "claude",
-  args: ["-p", "--output-format", "json", "--dangerously-skip-permissions"],
+  args: ["-p", "--output-format", "stream-json", "--dangerously-skip-permissions", "--verbose"],
   resumeArgs: [
     "-p",
     "--output-format",
-    "json",
+    "stream-json",
     "--dangerously-skip-permissions",
+    "--verbose",
     "--resume",
     "{sessionId}",
   ],
-  output: "json",
+  output: "jsonl",
   input: "arg",
   modelArg: "--model",
   modelAliases: CLAUDE_MODEL_ALIASES,
@@ -55,6 +56,8 @@ const DEFAULT_CLAUDE_BACKEND: CliBackendConfig = {
     cacheWrite: ["cache_creation_input_tokens", "cache_write_input_tokens", "cacheWrite"],
     total: ["total_tokens", "total"],
   },
+  streaming: true,
+  streamingEventTypes: ["tool_use", "tool_result", "text", "result"],
 };
 
 const DEFAULT_CODEX_BACKEND: CliBackendConfig = {
@@ -84,6 +87,8 @@ const DEFAULT_CODEX_BACKEND: CliBackendConfig = {
     output: ["completion_tokens", "output_tokens"],
     total: ["total_tokens"],
   },
+  streaming: true,
+  streamingEventTypes: ["item", "turn.completed"],
 };
 
 function normalizeBackendKey(key: string): string {
@@ -112,6 +117,8 @@ function mergeBackendConfig(base: CliBackendConfig, override?: CliBackendConfig)
     sessionIdFields: override.sessionIdFields ?? base.sessionIdFields,
     sessionArgs: override.sessionArgs ?? base.sessionArgs,
     resumeArgs: override.resumeArgs ?? base.resumeArgs,
+    streaming: override.streaming ?? base.streaming,
+    streamingEventTypes: override.streamingEventTypes ?? base.streamingEventTypes,
   };
 }
 
