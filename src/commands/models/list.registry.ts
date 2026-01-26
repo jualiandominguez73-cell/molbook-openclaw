@@ -78,8 +78,19 @@ export function toModelRow(params: {
     cfg && authStore
       ? hasAuthForProvider(model.provider, cfg, authStore)
       : (availableKeys?.has(modelKey(model.provider, model.id)) ?? false);
-  const aliasTags = aliases.length > 0 ? [`alias:${aliases.join(",")}`] : [];
+
   const mergedTags = new Set(tags);
+
+  const cost = (model as any).cost;
+  if (cost && (cost.input > 0 || cost.output > 0)) {
+    mergedTags.add(`cost:${cost.input}/${cost.output}`);
+  }
+
+  if ((model as any).confidentialCompute) {
+    mergedTags.add("TEE");
+  }
+
+  const aliasTags = aliases.length > 0 ? [`alias:${aliases.join(",")}`] : [];
   if (aliasTags.length > 0) {
     for (const tag of mergedTags) {
       if (tag === "alias" || tag.startsWith("alias:")) mergedTags.delete(tag);
@@ -94,12 +105,6 @@ export function toModelRow(params: {
     contextWindow: model.contextWindow ?? null,
     local,
     available,
-    cost: (model as any).cost
-      ? {
-          input: (model as any).cost.input,
-          output: (model as any).cost.output,
-        }
-      : undefined,
     tags: Array.from(mergedTags),
     missing: false,
   };
