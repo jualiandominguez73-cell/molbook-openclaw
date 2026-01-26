@@ -48,9 +48,9 @@ clawdbot onboard --auth-choice fireworks-api-key
 
 This will:
 1. Prompt for your API key (or use existing `FIREWORKS_API_KEY`)
-2. Discover available Fireworks models via API
+2. Configure the Fireworks provider with available models
 3. Let you pick your default model
-4. Configure the provider automatically
+4. Set up the provider automatically
 
 **Option C: Non-interactive**
 
@@ -68,7 +68,7 @@ clawdbot chat --model fireworks/accounts/fireworks/models/deepseek-v3p2 "Hello, 
 
 ## Model Selection
 
-After setup, Clawdbot discovers models from the Fireworks API. Pick based on your needs:
+Clawdbot includes a curated catalog of popular Fireworks models. Pick based on your needs:
 
 - **Default**: `deepseek-v3p2` (DeepSeek V3.2) — strong reasoning, balanced performance.
 - **Best reasoning**: `deepseek-r1-0528` or `qwen3-235b-a22b-thinking-2507`
@@ -92,8 +92,9 @@ clawdbot models list | grep fireworks
 
 | Use Case | Recommended Model | Why |
 |----------|-------------------|-----|
-| **General chat** | `deepseek-v3p2` | Strong all-around, reasoning support |
+| **General chat** | `deepseek-v3p2` | Strong all-around performance |
 | **Complex reasoning** | `deepseek-r1-0528` | Best for step-by-step reasoning |
+| **Agentic tasks** | `gpt-oss-120b` | Designed for reasoning and agentic use |
 | **Coding** | `qwen3-coder-480b-a35b-instruct` | Code-optimized, 262k context |
 | **Vision tasks** | `qwen3-vl-235b-a22b-instruct` | Best multimodal capabilities |
 | **Fast + cheap** | `qwen3-8b` | Lightweight, low latency |
@@ -109,16 +110,16 @@ clawdbot models list | grep fireworks
 | `deepseek-v3-0324` | DeepSeek V3 03-24 | 163k | General |
 | `deepseek-v3p1` | DeepSeek V3.1 | 163k | General |
 | `deepseek-v3p1-terminus` | DeepSeek V3.1 Terminus | 163k | General |
-| `deepseek-v3p2` | DeepSeek V3.2 | 163k | Reasoning |
-| `glm-4p6` | GLM-4.6 | 202k | General |
+| `deepseek-v3p2` | DeepSeek V3.2 | 163k | General |
+| `glm-4p6` | GLM-4.6 | 202k | Reasoning |
 | `glm-4p7` | GLM-4.7 | 202k | Reasoning |
-| `gpt-oss-120b` | OpenAI gpt-oss-120b | 131k | General |
-| `gpt-oss-20b` | OpenAI gpt-oss-20b | 131k | General |
+| `gpt-oss-120b` | OpenAI gpt-oss-120b | 131k | Reasoning |
+| `gpt-oss-20b` | OpenAI gpt-oss-20b | 131k | Reasoning |
 | `kimi-k2-instruct-0905` | Kimi K2 Instruct 0905 | 262k | Long context |
 | `kimi-k2-thinking` | Kimi K2 Thinking | 256k | Reasoning |
 | `llama-v3p3-70b-instruct` | Llama 3.3 70B Instruct | 131k | General |
-| `minimax-m2` | MiniMax-M2 | 196k | General |
-| `minimax-m2p1` | MiniMax-M2.1 | 204k | General |
+| `minimax-m2` | MiniMax-M2 | 196k | Reasoning |
+| `minimax-m2p1` | MiniMax-M2.1 | 204k | Reasoning |
 | `qwen3-235b-a22b` | Qwen3 235B A22B | 131k | General |
 | `qwen3-235b-a22b-instruct-2507` | Qwen3 235B A22B Instruct 2507 | 262k | General |
 | `qwen3-235b-a22b-thinking-2507` | Qwen3 235B A22B Thinking 2507 | 262k | Reasoning |
@@ -134,14 +135,9 @@ clawdbot models list | grep fireworks
 | `qwen3-vl-235b-a22b-thinking` | Qwen3 VL 235B A22B Thinking | 262k | Vision, reasoning |
 | `qwen3-vl-30b-a3b-thinking` | Qwen3 VL 30B A3B Thinking | 262k | Vision, reasoning |
 
-## Model Discovery
+## Model Catalog
 
-Clawdbot automatically discovers models from the Fireworks API when `FIREWORKS_API_KEY` is set. The discovery:
-
-- Fetches all serverless models (`supports_serverless=true`)
-- Filters out deprecated models
-- Filters out non-LLM models (image generation)
-- Falls back to a static catalog if the API is unreachable
+Clawdbot includes a curated catalog of popular Fireworks serverless LLM models.
 
 ## Model IDs
 
@@ -203,15 +199,11 @@ Ensure the key is valid and has not expired.
 
 ### Model not available
 
-The Fireworks model catalog updates dynamically. Run `clawdbot models list` to see currently available models. Some models may be temporarily offline or deprecated.
+Run `clawdbot models list` to see currently available models in the catalog. If a model you need is missing, you can add it manually to your config file.
 
 ### Connection issues
 
 Fireworks API is at `https://api.fireworks.ai`. Ensure your network allows HTTPS connections.
-
-### Model discovery fails
-
-If model discovery fails, Clawdbot falls back to a static catalog of popular models. Check your API key and network connection.
 
 ## Config file example
 
@@ -230,7 +222,7 @@ If model discovery fails, Clawdbot falls back to a static catalog of popular mod
           {
             id: "accounts/fireworks/models/deepseek-v3p2",
             name: "DeepSeek V3.2",
-            reasoning: true,
+            reasoning: false,
             input: ["text"],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: 163840,
