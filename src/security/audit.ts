@@ -211,8 +211,14 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
   const trustedProxies = Array.isArray(cfg.gateway?.trustedProxies)
     ? cfg.gateway.trustedProxies
     : [];
+  const hasToken = typeof auth.token === "string" && auth.token.trim().length > 0;
+  const hasPassword = typeof auth.password === "string" && auth.password.trim().length > 0;
+  const hasSharedSecret =
+    (auth.mode === "token" && hasToken) || (auth.mode === "password" && hasPassword);
+  const hasTailscaleAuth = auth.allowTailscale === true && tailscaleMode === "serve";
+  const hasGatewayAuth = hasSharedSecret || hasTailscaleAuth;
 
-  if (bind !== "loopback" && auth.mode === "none") {
+  if (bind !== "loopback" && !hasSharedSecret) {
     findings.push({
       checkId: "gateway.bind_no_auth",
       severity: "critical",
@@ -236,13 +242,13 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
     });
   }
 
-  if (bind === "loopback" && controlUiEnabled && auth.mode === "none") {
+  if (bind === "loopback" && controlUiEnabled && !hasGatewayAuth) {
     findings.push({
       checkId: "gateway.loopback_no_auth",
       severity: "critical",
-      title: "Gateway auth disabled on loopback",
+      title: "Gateway auth missing on loopback",
       detail:
-        "gateway.bind is loopback and gateway.auth is disabled. " +
+        "gateway.bind is loopback but no gateway auth secret is configured. " +
         "If the Control UI is exposed through a reverse proxy, unauthenticated access is possible.",
       remediation: "Set gateway.auth (token recommended) or keep the Control UI local-only.",
     });
@@ -268,11 +274,22 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
   if (cfg.gateway?.controlUi?.allowInsecureAuth === true) {
     findings.push({
       checkId: "gateway.control_ui.insecure_auth",
-      severity: "warn",
+      severity: "critical",
       title: "Control UI allows insecure HTTP auth",
       detail:
         "gateway.controlUi.allowInsecureAuth=true allows token-only auth over HTTP and skips device identity.",
       remediation: "Disable it or switch to HTTPS (Tailscale Serve) or localhost.",
+    });
+  }
+
+  if (cfg.gateway?.controlUi?.dangerouslyDisableDeviceAuth === true) {
+    findings.push({
+      checkId: "gateway.control_ui.device_auth_disabled",
+      severity: "critical",
+      title: "DANGEROUS: Control UI device auth disabled",
+      detail:
+        "gateway.controlUi.dangerouslyDisableDeviceAuth=true disables device identity checks for the Control UI.",
+      remediation: "Disable it unless you are in a short-lived break-glass scenario.",
     });
   }
 
