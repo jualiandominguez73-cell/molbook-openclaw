@@ -75,6 +75,12 @@ clawdbot.json
 .clawdbot/
 *.backup.*
 
+# Credentials and sensitive directories (NEVER commit)
+.aws
+.azure
+.docker
+.bash_history
+
 # Cursor IDE (server-side)
 .cursor-server/
 .cursor/ide_state.json

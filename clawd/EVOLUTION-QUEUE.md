@@ -112,6 +112,61 @@ Add items under "## Pending" using this format:
 
 - **Status:** RESOLVED (2026-01-26) - Implemented in SOUL.md by Claude (Cursor). NOTE: Liam incorrectly edited SOUL.md directly before this was approved - this is a protected file violation. Guardrails strengthened.
 
+### [2026-01-26-101] CRITICAL Security Vulnerability — 197 ClawdBots Exposed on Shodan
+- **Proposed by:** Simon (critical security finding)
+- **Date:** 2026-01-26
+- **Category:** security | tools
+- **Target file:** `~/.clawdbot/clawdbot.json`, gateway configuration, docker setup, reverse proxy config
+- **Description:**
+  - **Finding:** 197 ClawdBots detected on Shodan — AI agents with exposed Gateway ports sitting on open internet
+  - **Root Cause:** Gateway ports directly accessible without proper access controls
+  - **Impact:** CRITICAL - Exposed AI agents can be exploited, accessed, or manipulated by unauthorized actors
+
+  - **Required Security Architecture (Zero Trust Approach):**
+
+    1. **Stop Exposing Gateway Port Directly**
+       - Place Gateway behind reverse proxy with Mutual TLS (mTLS) or strict OIDC authentication
+       - Options: Cloudflare Tunnel, Nginx with mTLS
+       - Only authorized devices should even see the login screen
+
+    2. **Human-in-the-Loop (HITL) Policy Engine**
+       - Configure agent permission manifest:
+         - **Auto-approve (read-only):** web search, reading files, status checks
+         - **Strictly gate (mutating actions):** terminal execution, file writing, API key access, config changes
+         - Mandatory: Real-time user confirmation prompt before allowing mutating actions
+
+    3. **Contain Blast Radius**
+       - Sandbox runtime environment
+       - Run agent in ephemeral Docker container
+       - Non-root privileges
+       - Read-only mounts for sensitive directories
+       - If agent gets "jailbroken" via prompt injection, damage is trapped in disposable box
+
+  - **Implementation Notes:**
+    - This is a complex security architecture requiring:
+      - Reverse proxy setup (Cloudflare Tunnel or Nginx)
+      - Policy engine for agent permission gating
+      - Docker containerization with proper isolation
+      - mTLS/OIDC authentication configuration
+    - Simon mentioned: "For Dummies" guide in progress; until then, manual implementation needed
+    - Claude Max with tokens could automate this into repeatable architecture
+
+  - **Immediate Actions:**
+    - Investigate current Gateway exposure status
+    - Determine if this Gateway is part of 197 exposed bots
+    - Begin implementation of Zero Trust layer as priority
+
+- **Status:** RESOLVED (2026-01-26)
+  - **Findings:** This gateway is NOT exposed (bound to 127.0.0.1 loopback + token auth)
+  - **Implemented:**
+    - Reader Agent added for prompt injection protection (sandboxed, read-only tools only)
+    - Discord channel configured with secure defaults (pairing for DMs, mention required in guilds)
+    - Reader delegation instructions added to SOUL.md
+  - **Deferred (Docker not available):**
+    - Docker sandboxing for group sessions (requires Docker installation)
+    - Full containerization (optional enhancement)
+  - **Note:** The 197 exposed bots finding applies to OTHER Clawdbot installations, not this one
+
 ### [2026-01-26-022] ZAI API Endpoint Configuration Fix [RESOLVED]
 - **Proposed by:** Bug-comorbidity analysis
 - **Date:** 2026-01-26
