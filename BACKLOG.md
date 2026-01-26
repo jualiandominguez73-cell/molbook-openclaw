@@ -17,12 +17,13 @@ This file tracks work items for autonomous development.
 
 Branch: `landing-page-ux` | Design doc: `docs/plans/2026-01-25-landing-page-design.md`
 
-- [~] Complete landing page structure (PR #6 open)
-- [ ] Polish landing page copy and design
+- [x] Complete landing page structure (PR #13 — `autodev-landing-page`)
+- [x] Polish landing page copy and design (PR #13)
+- [~] Mobile navigation + accessibility improvements (PR from `landing-page-ux`)
 - [ ] Implement interactive demos/previews (live Overseer visualization, chat preview)
-- [ ] Responsive breakpoints (mobile, tablet, desktop)
+- [~] Responsive breakpoints (mobile, tablet, desktop) — mobile hamburger menu + back-to-top added
 - [ ] Wire CTA flows (signup, waitlist, demo request)
-- [ ] SEO optimization
+- [ ] SEO optimization (meta tags, structured data, og tags)
 - [ ] Performance pass (lazy load sections, optimize animations)
 
 ---
@@ -77,7 +78,7 @@ UX audit: `docs/audits/agentic-workflow-ux-audit.md`
 Reference: `dgarson/IMPROVEMENT-IDEAS.md` (198 incomplete items across 14 categories)
 
 ### Command Palette Enhancement
-- [ ] Implement fuzzy search (replace `string.includes()`)
+- [x] Implement fuzzy search (replace `string.includes()`) — d17c99d69
 - [ ] Add command history and recents (persisted to localStorage)
 - [ ] Add favorites system
 - [ ] Add context-aware commands based on current view
