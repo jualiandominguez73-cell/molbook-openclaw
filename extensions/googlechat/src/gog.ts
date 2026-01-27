@@ -189,7 +189,6 @@ export function readGogRefreshTokenSync(params: {
         "auth",
         "tokens",
         "export",
-        "--",
         account,
         "--out",
         outPath,
