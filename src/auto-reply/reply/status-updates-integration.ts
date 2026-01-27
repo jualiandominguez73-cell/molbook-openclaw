@@ -87,6 +87,7 @@ export function mapAgentEventToPhase(event: {
   const phase = typeof data.phase === "string" ? data.phase : "";
 
   if (stream === "lifecycle") {
+    if (phase === "model_call_start") return "sending_query_model_resolved";
     if (phase === "start") return "sending_query";
     if (phase === "end") return "complete";
   }
@@ -162,7 +163,7 @@ export async function handleAgentEventForStatus(
   if (phase && phase !== ctx.currentPhase) {
     log.debug(`Status phase change: ${ctx.currentPhase} -> ${phase}`);
     ctx.currentPhase = phase;
-    await ctx.controller.setPhase(phase);
+    await ctx.controller.setPhase(phase, event.data);
   }
 }
 

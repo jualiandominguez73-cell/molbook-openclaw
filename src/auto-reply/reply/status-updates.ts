@@ -17,6 +17,7 @@ const log = createSubsystemLogger("status-updates");
 
 export type StatusPhase =
   | "sending_query"
+  | "sending_query_model_resolved"
   | "receiving_reasoning"
   | "processing_tools"
   | "generating_response"
@@ -59,6 +60,8 @@ export type StatusUpdateState = {
   lastUpdateAt: number;
   elapsedSeconds: number;
   isComplete: boolean;
+  providerUsed?: string;
+  modelUsed?: string;
 };
 
 const DEFAULT_CONFIG: Required<StatusUpdateConfig> = {
@@ -73,6 +76,7 @@ const DEFAULT_CONFIG: Required<StatusUpdateConfig> = {
 
 const PHASE_MESSAGES: Record<StatusPhase, string> = {
   sending_query: "Sending query to AI model",
+  sending_query_model_resolved: "Sending query to AI model",
   receiving_reasoning: "Processing reasoning data",
   processing_tools: "Executing tools",
   generating_response: "Generating response",
@@ -81,6 +85,7 @@ const PHASE_MESSAGES: Record<StatusPhase, string> = {
 
 const PHASE_EMOJI: Record<StatusPhase, string> = {
   sending_query: "⏳",
+  sending_query_model_resolved: "⏳",
   receiving_reasoning: "🧠",
   processing_tools: "🔧",
   generating_response: "✍️",
@@ -104,15 +109,21 @@ function formatElapsedTime(seconds: number): string {
 }
 
 function formatStatusMessage(
-  phase: StatusPhase,
-  elapsedSeconds: number,
+  state: StatusUpdateState,
   config: Required<StatusUpdateConfig>,
 ): string {
   const parts: string[] = [];
+  const phase = state.phase;
+  const elapsedSeconds = state.elapsedSeconds;
 
   if (config.showPhases) {
     const emoji = PHASE_EMOJI[phase];
-    const message = PHASE_MESSAGES[phase];
+    let message = PHASE_MESSAGES[phase];
+
+    if (phase === "sending_query_model_resolved" && state.providerUsed && state.modelUsed) {
+      message = `Sending request to ${state.providerUsed}/${state.modelUsed}`;
+    }
+
     parts.push(`${emoji} ${message}`);
   }
 
@@ -174,13 +185,15 @@ export class StatusUpdateController {
     }
   }
 
-  async setPhase(phase: StatusPhase): Promise<void> {
+  async setPhase(phase: StatusPhase, data?: { provider?: string; model?: string }): Promise<void> {
     if (!this.isEnabled() || this.stopped || this.state.isComplete) return;
 
     if (phase === this.state.phase) return;
 
     log.debug(`Status phase: ${this.state.phase} -> ${phase}`);
     this.state.phase = phase;
+    if (data?.provider) this.state.providerUsed = data.provider;
+    if (data?.model) this.state.modelUsed = data.model;
 
     if (phase === "complete") {
       this.state.isComplete = true;
@@ -189,29 +202,6 @@ export class StatusUpdateController {
     }
 
     await this.sendUpdate();
-  }
-
-  async complete(finalText?: string): Promise<string | undefined> {
-    if (this.stopped) return undefined;
-
-    this.state.isComplete = true;
-    this.stopUpdateTimer();
-    this.stopped = true;
-
-    if (!this.isEnabled()) return finalText;
-
-    // The final message is returned, relying on message deletion/cleanup.
-
-    // Clean up status message if it exists and we're not editing
-    if (this.state.statusMessageId && this.callbacks.deleteStatus) {
-      try {
-        await this.callbacks.deleteStatus(this.state.statusMessageId);
-      } catch (err) {
-        log.debug(`Failed to delete status message: ${String(err)}`);
-      }
-    }
-
-    return finalText;
   }
 
   async cleanup(): Promise<void> {
@@ -235,7 +225,7 @@ export class StatusUpdateController {
     this.state.elapsedSeconds = Math.floor((now - this.state.startedAt) / 1000);
     this.state.lastUpdateAt = now;
 
-    const text = formatStatusMessage(this.state.phase, this.state.elapsedSeconds, this.config);
+    const text = formatStatusMessage(this.state, this.config);
 
     try {
       if (this.config.mode === "edit" && this.supportsEdit() && this.state.statusMessageId) {

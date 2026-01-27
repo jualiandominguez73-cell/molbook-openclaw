@@ -300,6 +300,11 @@ export async function runEmbeddedPiAgent(
           const prompt =
             provider === "anthropic" ? scrubAnthropicRefusalMagic(params.prompt) : params.prompt;
 
+          params.onAgentEvent?.({
+            stream: "lifecycle",
+            data: { phase: "model_call_start", provider, model: modelId },
+          });
+
           const attempt = await runEmbeddedAttempt({
             sessionId: params.sessionId,
             sessionKey: params.sessionKey,
