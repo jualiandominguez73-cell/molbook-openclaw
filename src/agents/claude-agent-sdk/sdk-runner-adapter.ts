@@ -7,13 +7,77 @@
  */
 
 import type { ClawdbotConfig } from "../../config/config.js";
-import { logDebug, logInfo } from "../../logger.js";
+import { logDebug, logInfo, logWarn } from "../../logger.js";
+import { resolveApiKeyForProfile } from "../auth-profiles/oauth.js";
 import { ensureAuthProfileStore } from "../auth-profiles/store.js";
 import type { AnyAgentTool } from "../tools/common.js";
 import type { EmbeddedPiRunResult } from "../pi-embedded-runner/types.js";
-import { enrichProvidersWithAuthProfiles, resolveDefaultSdkProvider } from "./sdk-runner.config.js";
+import {
+  enrichProvidersWithAuthProfiles,
+  resolveDefaultSdkProvider,
+  type SdkProviderEntry,
+} from "./sdk-runner.config.js";
 import { runSdkAgent } from "./sdk-runner.js";
 import type { SdkConversationTurn, SdkRunnerResult } from "./sdk-runner.types.js";
+
+// ---------------------------------------------------------------------------
+// Async OAuth token resolution
+// ---------------------------------------------------------------------------
+
+/** Mapping of SDK provider keys to auth profile ids for async OAuth. */
+const PROVIDER_AUTH_PROFILES: Record<string, string> = {
+  zai: "zai:default",
+  anthropic: "anthropic:default",
+};
+
+/**
+ * Try to resolve an API key via async OAuth when sync enrichment didn't
+ * produce a key. This handles OAuth token refresh flows that require
+ * async operations (e.g., browser-based OAuth).
+ */
+async function tryAsyncOAuthResolution(
+  entry: SdkProviderEntry,
+  params: { config?: ClawdbotConfig; agentDir?: string },
+): Promise<SdkProviderEntry> {
+  // Only attempt if we still don't have an auth token.
+  if (entry.config.env?.ANTHROPIC_AUTH_TOKEN) return entry;
+
+  const profileId = PROVIDER_AUTH_PROFILES[entry.key];
+  if (!profileId) return entry;
+
+  let store;
+  try {
+    store = ensureAuthProfileStore(params.agentDir);
+  } catch {
+    return entry;
+  }
+
+  try {
+    const resolved = await resolveApiKeyForProfile({
+      cfg: params.config,
+      store,
+      profileId,
+      agentDir: params.agentDir,
+    });
+    if (resolved?.apiKey) {
+      logDebug(`[sdk-runner-adapter] Resolved API key via async OAuth for ${entry.key}`);
+      return {
+        ...entry,
+        config: {
+          ...entry.config,
+          env: {
+            ...entry.config.env,
+            ANTHROPIC_AUTH_TOKEN: resolved.apiKey,
+          },
+        },
+      };
+    }
+  } catch (err) {
+    logWarn(`[sdk-runner-adapter] Async OAuth resolution failed for ${entry.key}: ${String(err)}`);
+  }
+
+  return entry;
+}
 
 // ---------------------------------------------------------------------------
 // SDK result → Pi result adapter
@@ -97,6 +161,14 @@ export async function runSdkAgentAdapted(
       store: authStore,
     });
     providerEntry = enriched[0] ?? providerEntry;
+  }
+
+  // Fall back to async OAuth resolution if sync enrichment didn't produce a key.
+  if (providerEntry && !providerEntry.config.env?.ANTHROPIC_AUTH_TOKEN) {
+    providerEntry = await tryAsyncOAuthResolution(providerEntry, {
+      config: params.config,
+      agentDir: params.agentDir,
+    });
   }
 
   logInfo(

@@ -11,6 +11,7 @@ import {
   applyGoogleGeminiModelDefault,
   GOOGLE_GEMINI_DEFAULT_MODEL,
 } from "./google-gemini-model-default.js";
+import { applyZaiSdkConfig } from "./onboard-auth.config-core.js";
 import {
   applyAuthProfileConfig,
   applyKimiCodeConfig,
@@ -428,6 +429,53 @@ export async function applyAuthChoiceApiProviders(
       nextConfig = applied.config;
       agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
     }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  if (authChoice === "zai-sdk") {
+    // z.AI via Claude Code SDK runtime: reuse the z.AI API key flow,
+    // then apply SDK-specific config (runtime: "sdk", codingTask providers).
+    let hasCredential = false;
+
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "zai") {
+      await setZaiApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+
+    const envKey = resolveEnvApiKey("zai");
+    if (!hasCredential && envKey) {
+      const useExisting = await params.prompter.confirm({
+        message: `Use existing ZAI_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setZaiApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "Enter Z.AI API key",
+        validate: validateApiKeyInput,
+      });
+      await setZaiApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+
+    // Store auth profile for z.AI.
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "zai:default",
+      provider: "zai",
+      mode: "api_key",
+    });
+
+    // Apply SDK runtime config (sets runtime: "sdk", enables codingTask, configures z.AI provider).
+    nextConfig = applyZaiSdkConfig(nextConfig);
+
+    await params.prompter.note(
+      "Agent runtime set to Claude Code SDK with z.AI backend.\nThe SDK will use your z.AI API key via auth profiles.",
+      "SDK Runtime configured",
+    );
+
     return { config: nextConfig, agentModelOverride };
   }
 

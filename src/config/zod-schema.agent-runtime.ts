@@ -436,6 +436,18 @@ export const ToolsSchema = z
         disallowedTools: z.array(z.string()).optional(),
         settingSources: z.array(z.enum(["user", "project", "local"])).optional(),
         additionalDirectories: z.array(z.string()).optional(),
+        providers: z
+          .record(
+            z.string(),
+            z
+              .object({
+                env: z.record(z.string(), z.string()).optional(),
+                model: z.string().optional(),
+                maxTurns: z.number().int().positive().optional(),
+              })
+              .strict(),
+          )
+          .optional(),
       })
       .strict()
       .optional(),

@@ -3,8 +3,10 @@ import fs from "node:fs";
 import { resolveAgentModelFallbacksOverride } from "../../agents/agent-scope.js";
 import { runCliAgent } from "../../agents/cli-runner.js";
 import { getCliSessionId } from "../../agents/cli-session.js";
+import { createSdkAgentRuntime } from "../../agents/claude-agent-sdk/sdk-agent-runtime.js";
 import { isSdkRunnerEnabled } from "../../agents/claude-agent-sdk/sdk-runner.config.js";
-import { runSdkAgentAdapted } from "../../agents/claude-agent-sdk/sdk-runner-adapter.js";
+import { loadSessionHistoryForSdk } from "../../agents/claude-agent-sdk/sdk-session-history.js";
+import { createClawdbotCodingTools } from "../../agents/pi-tools.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
@@ -226,53 +228,66 @@ export async function runAgentTurnWithFallback(params: {
               stream: "lifecycle",
               data: { phase: "start", startedAt, runtime: "sdk" },
             });
-            return runSdkAgentAdapted({
-              sessionId: params.followupRun.run.sessionId,
-              sessionKey: params.sessionKey,
-              sessionFile: params.followupRun.run.sessionFile,
-              workspaceDir: params.followupRun.run.workspaceDir,
-              agentDir: params.followupRun.run.agentDir,
+            // Bridge Clawdbot tools into the SDK via MCP and load conversation history.
+            const sdkTools = createClawdbotCodingTools({
               config: params.followupRun.run.config,
-              prompt: params.commandBody,
-              extraSystemPrompt: params.followupRun.run.extraSystemPrompt,
-              ownerNumbers: params.followupRun.run.ownerNumbers,
-              timeoutMs: params.followupRun.run.timeoutMs,
-              runId,
+              workspaceDir: params.followupRun.run.workspaceDir,
+              sessionKey: params.sessionKey,
+              agentDir: params.followupRun.run.agentDir,
               abortSignal: params.opts?.abortSignal,
-              // SDK uses Claude Code built-in tools; Clawdbot tools via MCP bridge
-              // will be added in a follow-up integration.
-              tools: [],
-              onPartialReply: allowPartialStream
-                ? async (payload) => {
-                    const textForTyping = await handlePartialForTyping(payload as ReplyPayload);
-                    if (!params.opts?.onPartialReply || textForTyping === undefined) return;
-                    await params.opts.onPartialReply({ text: textForTyping });
+            });
+            const conversationHistory = loadSessionHistoryForSdk({
+              sessionFile: params.followupRun.run.sessionFile,
+            });
+            const sdkRuntime = createSdkAgentRuntime({
+              tools: sdkTools,
+              conversationHistory,
+            });
+            return sdkRuntime
+              .run({
+                sessionId: params.followupRun.run.sessionId,
+                sessionKey: params.sessionKey,
+                sessionFile: params.followupRun.run.sessionFile,
+                workspaceDir: params.followupRun.run.workspaceDir,
+                agentDir: params.followupRun.run.agentDir,
+                config: params.followupRun.run.config,
+                prompt: params.commandBody,
+                extraSystemPrompt: params.followupRun.run.extraSystemPrompt,
+                ownerNumbers: params.followupRun.run.ownerNumbers,
+                timeoutMs: params.followupRun.run.timeoutMs,
+                runId,
+                abortSignal: params.opts?.abortSignal,
+                onPartialReply: allowPartialStream
+                  ? async (payload) => {
+                      const textForTyping = await handlePartialForTyping(payload as ReplyPayload);
+                      if (!params.opts?.onPartialReply || textForTyping === undefined) return;
+                      await params.opts.onPartialReply({ text: textForTyping });
+                    }
+                  : undefined,
+                onAssistantMessageStart: async () => {
+                  await params.typingSignals.signalMessageStart();
+                },
+                onToolResult: onToolResult
+                  ? (payload) => {
+                      void (async () => {
+                        const { text, skip } = normalizeStreamingText(payload as ReplyPayload);
+                        if (skip) return;
+                        await params.typingSignals.signalTextDelta(text);
+                        await onToolResult({ text });
+                      })().catch((err) => {
+                        logVerbose(`tool result delivery failed: ${String(err)}`);
+                      });
+                    }
+                  : undefined,
+                onAgentEvent: async (evt) => {
+                  if (evt.stream === "tool") {
+                    const phase = typeof evt.data.phase === "string" ? evt.data.phase : "";
+                    if (phase === "start" || phase === "update") {
+                      await params.typingSignals.signalToolStart();
+                    }
                   }
-                : undefined,
-              onAssistantMessageStart: async () => {
-                await params.typingSignals.signalMessageStart();
-              },
-              onToolResult: onToolResult
-                ? (payload) => {
-                    void (async () => {
-                      const { text, skip } = normalizeStreamingText(payload as ReplyPayload);
-                      if (skip) return;
-                      await params.typingSignals.signalTextDelta(text);
-                      await onToolResult({ text });
-                    })().catch((err) => {
-                      logVerbose(`tool result delivery failed: ${String(err)}`);
-                    });
-                  }
-                : undefined,
-              onAgentEvent: async (evt) => {
-                if (evt.stream === "tool") {
-                  const phase = typeof evt.data.phase === "string" ? evt.data.phase : "";
-                  if (phase === "start" || phase === "update") {
-                    await params.typingSignals.signalToolStart();
-                  }
-                }
-              },
-            })
+                },
+              })
               .then((result) => {
                 emitAgentEvent({
                   runId,
