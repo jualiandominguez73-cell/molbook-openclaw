@@ -83,7 +83,7 @@ Sessions get a software-bound token:
 web4:session:a1b2c3d4
 ```
 
-This is **not** hardware-bound (no TPM/Secure Enclave). Trust interpretation is up to the relying party. For hardware-bound identity, see [Hardbound](https://github.com/dp-web4/hardbound).
+This is **not** hardware-bound (no TPM/Secure Enclave). Trust interpretation is up to the relying party. For hardware-bound identity and enterprise features, see the [Web4 project](https://github.com/dp-web4/web4).
 
 ## Commands
 
@@ -155,7 +155,7 @@ This extension implements a subset of the [Web4 trust infrastructure](https://gi
 | Audit | Hash-linked chain | Distributed ledger |
 | Trust | (Relying party decides) | T3 Trust Tensor |
 
-For enterprise features (hardware binding, team governance, policy enforcement), see [Hardbound](https://github.com/dp-web4/hardbound).
+For enterprise features (hardware binding, team governance, policy enforcement), see the [Web4 project](https://github.com/dp-web4/web4).
 
 ## Contributing
 
@@ -173,7 +173,5 @@ MIT License - see [LICENSE](LICENSE)
 
 ## Links
 
-- [Web4 Specification](https://github.com/dp-web4/web4)
-- [R6 Framework Spec](https://github.com/dp-web4/web4/blob/main/web4-standard/core-spec/r6-framework.md)
-- [Hardbound (Enterprise)](https://github.com/dp-web4/hardbound)
+- [Web4 Project](https://github.com/dp-web4/web4)
 - [Moltbot](https://github.com/moltbot/moltbot)
