@@ -286,8 +286,8 @@ export class SmartSyncForkExecutor {
     const upstreamRemote = "upstream";
 
     // Get the revision lists
-    const forkRevList = await this.git.revparse([`${forkRemote}/${forkBranch}`]);
-    const upstreamRevList = await this.git.revparse([`${upstreamRemote}/${upstreamBranch}`]);
+    const _forkRevList = await this.git.revparse([`${forkRemote}/${forkBranch}`]);
+    const _upstreamRevList = await this.git.revparse([`${upstreamRemote}/${upstreamBranch}`]);
 
     // Count commits ahead and behind
     const aheadCount = await this.git.revparse([
@@ -333,7 +333,7 @@ export class SmartSyncForkExecutor {
           break;
 
         default:
-          throw new Error(`Unknown sync strategy: ${config.strategy}`);
+          throw new Error(`Unknown sync strategy: ${String(config.strategy)}`);
       }
     } catch (err) {
       const error = err as Error;
@@ -523,7 +523,7 @@ export class SmartSyncForkExecutor {
       return null;
     }
 
-    const [, forkOwner, forkRepo] = forkMatch;
+    const [, forkOwner, _forkRepo] = forkMatch;
     const [, upstreamOwner, upstreamRepo] = upstreamMatch;
 
     try {

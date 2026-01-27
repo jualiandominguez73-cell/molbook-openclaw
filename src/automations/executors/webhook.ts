@@ -167,7 +167,7 @@ export class WebhookExecutor {
         this.addMilestone(`Retry attempt ${info.attempt}`);
         this.emitProgress(20 + (info.attempt / retryPolicy.maxAttempts!) * 60);
       },
-      shouldRetry: (err, currentAttempt) => {
+      shouldRetry: (err, _currentAttempt) => {
         // Don't retry on certain errors
         if (err && typeof err === "object" && "name" in err) {
           const errorName = (err as { name: string }).name;

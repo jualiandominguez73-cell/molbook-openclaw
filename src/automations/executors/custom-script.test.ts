@@ -9,7 +9,6 @@ import crypto from "node:crypto";
 import { CustomScriptExecutor } from "./custom-script.js";
 import type { AutomationServiceState } from "../service/state.js";
 import type { Automation, CustomScriptConfig } from "../types.js";
-import { ArtifactStorage } from "../artifacts.js";
 
 // Mock dependencies
 vi.mock("../../process/exec.js", () => ({
@@ -21,7 +20,7 @@ const artifactCalls: Array<{ name: string; type: string; content: string }> = []
 
 vi.mock("../artifacts.js", () => ({
   ArtifactStorage: class {
-    constructor(opts: unknown) {
+    constructor(_opts: unknown) {
       // Store constructor args if needed
     }
     init = vi.fn();
@@ -492,7 +491,7 @@ exit 0
       await fs.chmod(scriptPath, 0o644);
 
       // Mock fs.chmod to fail
-      const originalChmod = fs.chmod;
+      const _originalChmod = fs.chmod;
       vi.spyOn(fs, "chmod").mockRejectedValue(new Error("Permission denied"));
 
       const executor = new CustomScriptExecutor(

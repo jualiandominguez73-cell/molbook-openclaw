@@ -222,7 +222,7 @@ export class CustomScriptExecutor {
         }
       }
     } catch (err) {
-      throw new Error(`Failed to check script permissions: ${err}`);
+      throw new Error(`Failed to check script permissions: ${String(err)}`);
     }
   }
 
