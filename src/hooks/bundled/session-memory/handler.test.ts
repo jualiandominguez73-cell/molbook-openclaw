@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import path from "node:path";
-import os from "node:os";
 
 // Helper to get mocked modules
 const { mockFs, mockLogger } = vi.hoisted(() => {
