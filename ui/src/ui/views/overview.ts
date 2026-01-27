@@ -57,8 +57,8 @@ export function renderOverview(props: OverviewProps) {
               href="https://docs.clawdbrain.bot/web/dashboard"
               target="_blank"
               rel="noreferrer"
-              title="Control UI auth docs (opens in new tab)"
-              >Docs: Control UI auth</a
+              title="Web UI auth docs (opens in new tab)"
+              >Docs: Web UI auth</a
             >
           </div>
         </div>
@@ -75,8 +75,8 @@ export function renderOverview(props: OverviewProps) {
             href="https://docs.clawdbrain.bot/web/dashboard"
             target="_blank"
             rel="noreferrer"
-            title="Control UI auth docs (opens in new tab)"
-            >Docs: Control UI auth</a
+            title="Web UI auth docs (opens in new tab)"
+            >Docs: Web UI auth</a
           >
         </div>
       </div>
@@ -96,7 +96,7 @@ export function renderOverview(props: OverviewProps) {
         open <span class="mono">http://127.0.0.1:18789</span> on the gateway host.
         <div style="margin-top: 6px;">
           If you must stay on HTTP, set
-          <span class="mono">gateway.controlUi.allowInsecureAuth: true</span> (token-only).
+          <span class="mono">gateway.controlUi.allowInsecureAuth: true</span> in the Web UI config (token-only).
         </div>
         <div style="margin-top: 6px;">
           <a

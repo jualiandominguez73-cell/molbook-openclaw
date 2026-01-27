@@ -59,6 +59,8 @@ function createProps(overrides: Partial<SessionsProps> = {}): SessionsProps {
     showHidden: false,
     autoHideCompletedMinutes: 0,
     autoHideErroredMinutes: 0,
+    preset: "custom",
+    showAdvancedFilters: false,
     drawerKey: null,
     drawerExpanded: false,
     drawerPreviewLoading: false,
@@ -85,6 +87,8 @@ function createProps(overrides: Partial<SessionsProps> = {}): SessionsProps {
     onRefresh: () => undefined,
     onPatch: () => undefined,
     onDelete: () => undefined,
+    onPresetChange: () => undefined,
+    onToggleAdvancedFilters: () => undefined,
     ...overrides,
   };
 }
@@ -110,8 +114,77 @@ describe("sessions view", () => {
       container,
     );
 
-    expect(container.textContent).toContain("Active 1");
+    expect(container.textContent).toContain("Active");
+    expect(container.textContent).toContain("1");
     expect(container.textContent).toContain("Two");
     expect(container.textContent).not.toContain("One");
+  });
+
+  it("shows override source label when session has explicit thinking level", () => {
+    const container = document.createElement("div");
+    const now = Date.now();
+    const result = createSessions(now);
+    result.sessions[0].thinkingLevel = "high";
+
+    render(
+      renderSessions(
+        createProps({
+          result,
+          viewMode: "list",
+        }),
+      ),
+      container,
+    );
+
+    // Tooltip should show (override)
+    expect(container.innerHTML).toContain("Thinking (override)");
+    // Effective line should show (override)
+    expect(container.innerHTML).toContain("(override)");
+  });
+
+  it("shows config source label when gateway defaults are configured", () => {
+    const container = document.createElement("div");
+    const now = Date.now();
+    const result = createSessions(now);
+    result.defaults.thinkingDefault = "low";
+
+    render(
+      renderSessions(
+        createProps({
+          result,
+          viewMode: "table",
+          drawerKey: "session-one",
+        }),
+      ),
+      container,
+    );
+
+    // Inherit option should show config default
+    expect(container.textContent).toContain("⚙ Use config default (low)");
+    // Effective line should show (config)
+    expect(container.textContent).toContain("(config)");
+  });
+
+  it("shows fallback source label when gateway defaults are not configured", () => {
+    const container = document.createElement("div");
+    const now = Date.now();
+    const result = createSessions(now);
+    result.defaults.thinkingDefault = null;
+
+    render(
+      renderSessions(
+        createProps({
+          result,
+          viewMode: "table",
+          drawerKey: "session-one",
+        }),
+      ),
+      container,
+    );
+
+    // Inherit option should show inherited default
+    expect(container.textContent).toContain("↓ Inherit default (off)");
+    // Effective line should show (fallback)
+    expect(container.textContent).toContain("(fallback)");
   });
 });

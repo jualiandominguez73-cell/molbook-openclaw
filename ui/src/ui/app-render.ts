@@ -500,7 +500,7 @@ export function renderApp(state: AppViewState) {
               },
               onStatusFilterChange: (status) => {
                 state.sessionsStatusFilter = status;
-                state.sessionsPreset = detectSessionPreset(state.sessionsStatusFilter, state.sessionsLaneFilter);
+                state.sessionsPreset = detectSessionPreset(state.sessionsStatusFilter, state.sessionsLaneFilter, false);
                 state.persistSessionsPreset(state.sessionsPreset);
               },
               onAgentLabelFilterChange: (label) => {
@@ -517,7 +517,7 @@ export function renderApp(state: AppViewState) {
 	              },
 	              onLaneFilterChange: (lane) => {
 	                state.sessionsLaneFilter = lane;
-	                state.sessionsPreset = detectSessionPreset(state.sessionsStatusFilter, state.sessionsLaneFilter);
+	                state.sessionsPreset = detectSessionPreset(state.sessionsStatusFilter, state.sessionsLaneFilter, false);
 	                state.persistSessionsPreset(state.sessionsPreset);
 	              },
 		              onViewModeChange: (mode) => {

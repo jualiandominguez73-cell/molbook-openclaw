@@ -34,6 +34,7 @@ const icons = {
   minus: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
   trash: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
   edit: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+  panelIcon: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
 };
 
 export function renderNode(params: {
@@ -156,6 +157,44 @@ export function renderNode(params: {
         });
       }
     }
+  }
+
+  // Fallback for complex unions: render as JSON textarea
+  if (schema.anyOf || schema.oneOf) {
+    const resolvedValue = value ?? schema.default;
+    const jsonStr = resolvedValue !== undefined ? jsonValue(resolvedValue) : "";
+    return html`
+      <div
+        class="cfg-field ${severity ? `cfg-field--invalid cfg-field--${severity}` : ""}"
+        data-config-path=${key}
+      >
+        ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
+        ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
+        <div class="cfg-field__help">Complex type — edit as JSON</div>
+        ${severity
+          ? html`<div class="cfg-field__validation">${validationMessage}</div>`
+          : nothing}
+        <textarea
+          class="cfg-textarea cfg-textarea--sm"
+          rows="3"
+          placeholder="JSON value"
+          .value=${jsonStr}
+          ?disabled=${disabled}
+          @change=${(e: Event) => {
+            const raw = (e.target as HTMLTextAreaElement).value.trim();
+            if (!raw) {
+              onPatch(path, undefined);
+              return;
+            }
+            try {
+              onPatch(path, JSON.parse(raw));
+            } catch {
+              // Invalid JSON - don't update
+            }
+          }}
+        ></textarea>
+      </div>
+    `;
   }
 
   // Enum - use segmented for small, dropdown for large
@@ -544,11 +583,12 @@ function renderObject(params: {
   }
 
   // Flat object rendering (for wizard context) - only for shallow nesting (path.length <= 3)
-  // Uses <details open> so users can collapse nested config objects to reduce clutter
+  // Uses <details> (collapsed by default) so users can expand nested config objects on demand
   if (flattenObjects && path.length <= 3) {
     return html`
-      <details class="cfg-object-flat" open data-config-path=${pathKey(path)}>
+      <details class="cfg-object-flat" data-config-path=${pathKey(path)}>
         <summary class="cfg-object-flat__header">
+          <span class="cfg-object__icon">${icons.panelIcon}</span>
           <span class="cfg-object-flat__title">${label}</span>
           <span class="cfg-object-flat__chevron">${icons.chevronDown}</span>
         </summary>
@@ -586,8 +626,9 @@ function renderObject(params: {
 
   // Deep nested objects still get collapsible treatment
   return html`
-    <details class="cfg-object" open data-config-path=${pathKey(path)}>
+    <details class="cfg-object" data-config-path=${pathKey(path)}>
       <summary class="cfg-object__header">
+        <span class="cfg-object__icon">${icons.panelIcon}</span>
         <span class="cfg-object__title">${label}</span>
         <span class="cfg-object__chevron">${icons.chevronDown}</span>
       </summary>
@@ -685,7 +726,16 @@ function renderArray(params: {
           ${arr.map((item, idx) => html`
             <div class="cfg-array__item">
               <div class="cfg-array__item-header">
-                <span class="cfg-array__item-index">#${idx + 1}</span>
+                <span class="cfg-array__item-index">${(() => {
+                  if (item && typeof item === "object") {
+                    const obj = item as Record<string, unknown>;
+                    const name = obj.name ?? obj.id ?? obj.label ?? obj.key;
+                    if (name && typeof name === "string") {
+                      return `#${idx + 1} — ${name}`;
+                    }
+                  }
+                  return `#${idx + 1}`;
+                })()}</span>
                 <button
                   type="button"
                   class="cfg-array__item-remove"
