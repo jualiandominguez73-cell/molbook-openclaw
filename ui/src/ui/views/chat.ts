@@ -323,28 +323,6 @@ export function renderChat(props: ChatProps) {
         : nothing}
 
       <div class="chat-compose">
-<<<<<<< HEAD
-        <label class="field chat-compose__field">
-          <span>Message</span>
-          <textarea
-            .value=${props.draft}
-            ?disabled=${!props.connected}
-            @keydown=${(e: KeyboardEvent) => {
-              if (e.key !== "Enter") return;
-              if (e.isComposing || e.keyCode === 229) return;
-              if (e.shiftKey) return; // Allow Shift+Enter for line breaks
-              if (!props.connected) return;
-              e.preventDefault();
-              if (canCompose) props.onSend();
-            }}
-            @input=${(e: Event) =>
-              props.onDraftChange((e.target as HTMLTextAreaElement).value)}
-            placeholder=${composePlaceholder}
-          ></textarea>
-        </label>
-        <div class="chat-compose__actions">
-          <ui-button
-            variant="secondary"
         ${renderAttachmentPreview(props)}
         <div class="chat-compose__row">
           <label class="field chat-compose__field">
