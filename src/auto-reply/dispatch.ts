@@ -11,6 +11,7 @@ import {
   type ReplyDispatcherOptions,
   type ReplyDispatcherWithTypingOptions,
 } from "./reply/reply-dispatcher.js";
+import { createInternalHookEvent, triggerInternalHook } from "../hooks/internal-hooks.js";
 
 export type DispatchInboundResult = DispatchFromConfigResult;
 
@@ -22,6 +23,27 @@ export async function dispatchInboundMessage(params: {
   replyResolver?: typeof import("./reply.js").getReplyFromConfig;
 }): Promise<DispatchInboundResult> {
   const finalized = finalizeInboundContext(params.ctx);
+  
+  // Trigger message:received hook for user messages
+  // This enables hooks to track activity, update state, etc.
+  const sessionKey = finalized.SessionKey ?? "";
+  const senderId = finalized.SenderId ?? finalized.From ?? "";
+  const channel = finalized.OriginatingChannel ?? finalized.Channel ?? "";
+  const messageBody = finalized.Body ?? finalized.RawBody ?? "";
+  
+  const hookEvent = createInternalHookEvent("message", "received", sessionKey, {
+    senderId,
+    channel,
+    messageBody: typeof messageBody === "string" ? messageBody.slice(0, 500) : "",
+    timestamp: Date.now(),
+    cfg: params.cfg,
+  });
+  
+  // Fire hook asynchronously - don't block message processing
+  void triggerInternalHook(hookEvent).catch((err) => {
+    console.error("[message:received hook]", err instanceof Error ? err.message : String(err));
+  });
+  
   return await dispatchReplyFromConfig({
     ctx: finalized,
     cfg: params.cfg,

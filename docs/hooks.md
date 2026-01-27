@@ -241,6 +241,19 @@ These hooks are not event-stream listeners; they let plugins synchronously adjus
 
 - **`tool_result_persist`**: transform tool results before they are written to the session transcript. Must be synchronous; return the updated tool result payload or `undefined` to keep it as-is. See [Agent Loop](/concepts/agent-loop).
 
+### Message Events
+
+Triggered when messages are processed:
+
+- **`message:received`**: When a user message is received (fires before processing)
+
+Context includes:
+- `senderId`: The sender's ID
+- `channel`: The channel the message came from
+- `messageBody`: The message content (truncated to 500 chars)
+- `timestamp`: When the message was received
+- `cfg`: The current config
+
 ### Future Events
 
 Planned event types:
@@ -249,7 +262,6 @@ Planned event types:
 - **`session:end`**: When a session ends
 - **`agent:error`**: When an agent encounters an error
 - **`message:sent`**: When a message is sent
-- **`message:received`**: When a message is received
 
 ## Creating Custom Hooks
 
