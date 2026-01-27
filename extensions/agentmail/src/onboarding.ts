@@ -81,7 +81,7 @@ export const agentmailOnboardingAdapter: ChannelOnboardingAdapter = {
       statusLines: [
         `AgentMail: ${configured ? `configured (${inboxId})` : "needs token"}`,
       ],
-      selectionHint: configured ? "configured" : "requires AgentMail account",
+      selectionHint: configured ? "configured" : "not configured",
       quickstartScore: configured ? 1 : 5,
     };
   },
