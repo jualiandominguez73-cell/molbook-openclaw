@@ -23,7 +23,8 @@ export type AuthChoiceGroupId =
   | "synthetic"
   | "venice"
   | "qwen"
-  | "xai";
+  | "xai"
+  | "ovhcloud";
 
 export type AuthChoiceGroup = {
   value: AuthChoiceGroupId;
@@ -134,6 +135,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     hint: "Account ID + Gateway ID + API key",
     choices: ["cloudflare-ai-gateway-api-key"],
   },
+  {
+    value: "ovhcloud",
+    label: "OVHcloud AI Endpoints",
+    hint: "API key",
+    choices: ["ovhcloud-api-key"],
+  },
 ];
 
 export function buildAuthChoiceOptions(params: {
@@ -180,6 +187,11 @@ export function buildAuthChoiceOptions(params: {
     value: "venice-api-key",
     label: "Venice AI API key",
     hint: "Privacy-focused inference (uncensored models)",
+  });
+  options.push({
+    value: "ovhcloud-api-key",
+    label: "OVHcloud AI Endpoints API key",
+    hint: "European-based with sovereignty and data privacy",
   });
   options.push({
     value: "github-copilot",

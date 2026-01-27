@@ -17,6 +17,7 @@ import {
   SYNTHETIC_MODEL_CATALOG,
 } from "./synthetic-models.js";
 import { discoverVeniceModels, VENICE_BASE_URL } from "./venice-models.js";
+import { discoverOvhcloudModels, OVHCLOUD_BASE_URL } from "./ovhcloud-models.js";
 
 type ModelsConfig = NonNullable<OpenClawConfig["models"]>;
 export type ProviderConfig = NonNullable<ModelsConfig["providers"]>[string];
@@ -403,6 +404,15 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
   };
 }
 
+async function buildOvhcloudProvider(): Promise<ProviderConfig> {
+  const models = await discoverOvhcloudModels();
+  return {
+    baseUrl: OVHCLOUD_BASE_URL,
+    api: "openai-completions",
+    models,
+  };
+}
+
 export async function resolveImplicitProviders(params: {
   agentDir: string;
 }): Promise<ModelsConfig["providers"]> {
@@ -496,6 +506,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
   if (ollamaKey) {
     providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
+  }
+
+  const ovhcloudKey =
+    resolveEnvApiKeyVarName("ovhcloud") ??
+    resolveApiKeyFromProfiles({ provider: "ovhcloud", store: authStore });
+  if (ovhcloudKey) {
+    providers.ovhcloud = { ...(await buildOvhcloudProvider()), apiKey: ovhcloudKey };
   }
 
   return providers;
