@@ -82,6 +82,9 @@ function isOllamaProvider(model: Model<Api> | undefined | null): boolean {
   return m?.provider === "ollama";
 }
 
+/** Max consecutive turns where the same tool set is called before we stop converting. */
+const MAX_REPEAT_TURNS = 3;
+
 export type OllamaToolCallFixer = {
   wrapStreamFn: (streamFn: StreamFn) => StreamFn;
 };
@@ -90,11 +93,16 @@ export type OllamaToolCallFixer = {
  * Creates a streamFn wrapper that detects tool-call JSON emitted as plain
  * text by Ollama models and re-emits them as proper toolcall_* events.
  *
- * Consumes the inner stream fully, inspects the final result, and if the
- * text content matches a known tool schema, replays with fixed events.
+ * Includes loop prevention: if the model calls the same tool(s) for
+ * {@link MAX_REPEAT_TURNS} consecutive turns, conversion is skipped so
+ * the raw text passes through instead of feeding an infinite tool loop.
  */
 export function createOllamaToolCallFixer(): OllamaToolCallFixer {
   const wrapStreamFn = (inner: StreamFn): StreamFn => {
+    // Cross-turn state for loop detection.
+    let lastToolKey = "";
+    let repeatCount = 0;
+
     const wrapped: StreamFn = (model, context, options) => {
       if (!isOllamaProvider(model as Model<Api>)) {
         return inner(model, context, options);
@@ -128,6 +136,35 @@ export function createOllamaToolCallFixer(): OllamaToolCallFixer {
         const outerStream = new StreamClass() as AssistantMessageEventStream;
 
         if (!extracted || extracted.length === 0) {
+          // Model produced plain text — reset loop counter.
+          lastToolKey = "";
+          repeatCount = 0;
+          for (const event of buffered) {
+            outerStream.push(event);
+          }
+          return outerStream;
+        }
+
+        // Loop detection: build a stable key from sorted tool names.
+        const toolKey = extracted
+          .map((tc) => tc.name)
+          .sort()
+          .join(",");
+
+        if (toolKey === lastToolKey) {
+          repeatCount++;
+        } else {
+          lastToolKey = toolKey;
+          repeatCount = 1;
+        }
+
+        if (repeatCount > MAX_REPEAT_TURNS) {
+          log.warn("loop detected, skipping tool-call conversion", {
+            toolKey,
+            repeatCount,
+            threshold: MAX_REPEAT_TURNS,
+          });
+          // Pass through original text so the user sees raw model output.
           for (const event of buffered) {
             outerStream.push(event);
           }
@@ -138,6 +175,7 @@ export function createOllamaToolCallFixer(): OllamaToolCallFixer {
           provider: (model as { provider?: string }).provider,
           model: (model as { id?: string }).id,
           toolCalls: extracted.map((tc) => tc.name),
+          repeatCount,
         });
 
         const fixedToolCalls: ToolCall[] = extracted.map((tc) => ({
