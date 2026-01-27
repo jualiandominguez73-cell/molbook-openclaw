@@ -4,6 +4,7 @@ import path from "node:path";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import { Type } from "@sinclair/typebox";
 
+import { loadConfig } from "../config/config.js";
 import {
   type ExecAsk,
   type ExecHost,
@@ -19,6 +20,16 @@ import {
   resolveExecApprovals,
   resolveExecApprovalsFromFile,
 } from "../infra/exec-approvals.js";
+import { getExecEventContext } from "../infra/exec-events-context.js";
+import {
+  createThrottledExecOutputBuffer,
+  emitExecEvent,
+  matchExecCommandAgainstWhitelist,
+  resolveExecEventsConfig,
+  toExecEventRuntimeConfig,
+  type ExecEventContext,
+  type ExecEventSessionState,
+} from "../infra/exec-events.js";
 import { requestHeartbeatNow } from "../infra/heartbeat-wake.js";
 import { buildNodeShellCommand } from "../infra/node-shell.js";
 import {
@@ -251,6 +262,21 @@ function normalizeNotifyOutput(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function normalizeExecEventContext(
+  context: ExecEventContext | undefined,
+): ExecEventContext | undefined {
+  if (!context) return undefined;
+  const runId = context.runId?.trim();
+  const toolCallId = context.toolCallId?.trim();
+  const sessionKey = context.sessionKey?.trim();
+  if (!runId && !toolCallId && !sessionKey) return undefined;
+  return {
+    ...(runId ? { runId } : {}),
+    ...(toolCallId ? { toolCallId } : {}),
+    ...(sessionKey ? { sessionKey } : {}),
+  } satisfies ExecEventContext;
+}
+
 function normalizePathPrepend(entries?: string[]) {
   if (!Array.isArray(entries)) return [];
   const seen = new Set<string>();
@@ -361,6 +387,16 @@ async function runExecProcess(opts: {
   let child: ChildProcessWithoutNullStreams | null = null;
   let pty: PtyHandle | null = null;
   let stdin: SessionStdin | undefined;
+  const execEventsConfig = resolveExecEventsConfig(loadConfig());
+  const execEventsMatch =
+    execEventsConfig.emitEvents === true
+      ? matchExecCommandAgainstWhitelist(opts.command, execEventsConfig)
+      : { matched: false };
+  const execEventsEnabled = execEventsConfig.emitEvents === true && execEventsMatch.matched;
+  const execEventContext = normalizeExecEventContext(getExecEventContext());
+  const execEventsRuntimeConfig = execEventsEnabled
+    ? toExecEventRuntimeConfig(execEventsConfig)
+    : undefined;
 
   if (opts.sandbox) {
     const { child: spawned } = await spawnWithFallback({
@@ -517,8 +553,87 @@ async function runExecProcess(opts: {
     exitSignal: undefined as NodeJS.Signals | number | null | undefined,
     truncated: false,
     backgrounded: false,
+    execEvents: {
+      enabled: execEventsEnabled,
+      commandName: execEventsMatch.commandName,
+      context: execEventContext,
+      config: execEventsRuntimeConfig,
+      startedEmitted: false,
+      completedEmitted: false,
+    } satisfies ExecEventSessionState,
   } satisfies ProcessSession;
   addSession(session);
+
+  const execEventsState = session.execEvents;
+  if (execEventsState?.enabled && execEventsState.config) {
+    execEventsState.outputBuffer = createThrottledExecOutputBuffer({
+      throttleMs: execEventsState.config.outputThrottleMs,
+      maxChunkBytes: execEventsState.config.outputMaxChunkBytes,
+      maxBufferBytes: execEventsState.config.outputBufferMaxBytes,
+      onFlush: (chunks) => {
+        if (!execEventsState.enabled) return;
+        for (const chunk of chunks) {
+          emitExecEvent("exec.output", {
+            sessionId,
+            pid: session.pid,
+            command: session.command,
+            commandName: execEventsState.commandName,
+            context: execEventsState.context,
+            stream: chunk.stream,
+            output: chunk.output,
+            ...(chunk.truncated ? { truncated: true } : {}),
+          });
+        }
+      },
+    });
+  }
+
+  const emitExecStarted = () => {
+    if (!execEventsState?.enabled || execEventsState.startedEmitted) return;
+    execEventsState.startedEmitted = true;
+    emitExecEvent("exec.started", {
+      sessionId,
+      pid: session.pid,
+      command: session.command,
+      commandName: execEventsState.commandName,
+      context: execEventsState.context,
+      startedAt,
+      cwd: session.cwd,
+    });
+  };
+
+  const finalizeExecEvents = (params: {
+    status: "completed" | "failed";
+    exitCode: number | null;
+    exitSignal: NodeJS.Signals | number | null;
+    timedOut?: boolean;
+    reason?: string;
+  }) => {
+    if (!execEventsState?.enabled || execEventsState.completedEmitted) return;
+    execEventsState.completedEmitted = true;
+    execEventsState.outputBuffer?.flushAll();
+    execEventsState.outputBuffer?.dispose();
+    const completedAt = Date.now();
+    emitExecEvent("exec.completed", {
+      sessionId,
+      pid: session.pid,
+      command: session.command,
+      commandName: execEventsState.commandName,
+      context: execEventsState.context,
+      startedAt,
+      completedAt,
+      durationMs: completedAt - startedAt,
+      status: params.status,
+      exitCode: params.exitCode,
+      exitSignal: params.exitSignal,
+      ...(params.timedOut ? { timedOut: true } : {}),
+      ...(params.reason ? { reason: params.reason } : {}),
+    });
+  };
+
+  emitExecStarted();
+
+  const execOutputBuffer = execEventsState?.outputBuffer;
 
   let settled = false;
   let timeoutTimer: NodeJS.Timeout | null = null;
@@ -539,6 +654,13 @@ async function runExecProcess(opts: {
     maybeNotifyOnExit(session, "failed");
     const aggregated = session.aggregated.trim();
     const reason = `Command timed out after ${opts.timeoutSec} seconds`;
+    finalizeExecEvents({
+      status: "failed",
+      exitCode: null,
+      exitSignal: "SIGKILL",
+      timedOut: true,
+      reason,
+    });
     settle({
       status: "failed",
       exitCode: null,
@@ -587,6 +709,9 @@ async function runExecProcess(opts: {
     const str = sanitizeBinaryOutput(data.toString());
     for (const chunk of chunkString(str)) {
       appendOutput(session, "stdout", chunk);
+      if (execOutputBuffer) {
+        execOutputBuffer.append("stdout", chunk);
+      }
       emitUpdate();
     }
   };
@@ -595,6 +720,9 @@ async function runExecProcess(opts: {
     const str = sanitizeBinaryOutput(data.toString());
     for (const chunk of chunkString(str)) {
       appendOutput(session, "stderr", chunk);
+      if (execOutputBuffer) {
+        execOutputBuffer.append("stderr", chunk);
+      }
       emitUpdate();
     }
   };
@@ -625,23 +753,32 @@ async function runExecProcess(opts: {
       const wasSignal = exitSignal != null;
       const isSuccess = code === 0 && !wasSignal && !timedOut;
       const status: "completed" | "failed" = isSuccess ? "completed" : "failed";
-      markExited(session, code, exitSignal, status);
-      maybeNotifyOnExit(session, status);
-      if (!session.child && session.stdin) {
-        session.stdin.destroyed = true;
-      }
-
-      if (settled) return;
-      const aggregated = session.aggregated.trim();
-      if (!isSuccess) {
-        const reason = timedOut
+      const failureReason = !isSuccess
+        ? timedOut
           ? `Command timed out after ${opts.timeoutSec} seconds`
           : wasSignal && exitSignal
             ? `Command aborted by signal ${exitSignal}`
             : code === null
               ? "Command aborted before exit code was captured"
-              : `Command exited with code ${code}`;
-        const message = aggregated ? `${aggregated}\n\n${reason}` : reason;
+              : `Command exited with code ${code}`
+        : undefined;
+      markExited(session, code, exitSignal, status);
+      maybeNotifyOnExit(session, status);
+      if (!session.child && session.stdin) {
+        session.stdin.destroyed = true;
+      }
+      finalizeExecEvents({
+        status,
+        exitCode: code ?? null,
+        exitSignal: exitSignal ?? null,
+        ...(timedOut ? { timedOut: true } : {}),
+        ...(failureReason ? { reason: failureReason } : {}),
+      });
+
+      if (settled) return;
+      const aggregated = session.aggregated.trim();
+      if (!isSuccess) {
+        const message = aggregated ? `${aggregated}\n\n${failureReason}` : failureReason;
         settle({
           status: "failed",
           exitCode: code ?? null,
@@ -649,7 +786,7 @@ async function runExecProcess(opts: {
           durationMs,
           aggregated,
           timedOut,
-          reason: message,
+          reason: message ?? undefined,
         });
         return;
       }
@@ -679,8 +816,16 @@ async function runExecProcess(opts: {
         if (timeoutFinalizeTimer) clearTimeout(timeoutFinalizeTimer);
         markExited(session, null, null, "failed");
         maybeNotifyOnExit(session, "failed");
+        const reason = String(err);
+        finalizeExecEvents({
+          status: "failed",
+          exitCode: null,
+          exitSignal: null,
+          ...(timedOut ? { timedOut: true } : {}),
+          reason,
+        });
         const aggregated = session.aggregated.trim();
-        const message = aggregated ? `${aggregated}\n\n${String(err)}` : String(err);
+        const message = aggregated ? `${aggregated}\n\n${reason}` : reason;
         settle({
           status: "failed",
           exitCode: null,

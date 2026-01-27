@@ -116,6 +116,13 @@ const WRAPPER_COMMANDS = new Set([
 
 const WRAPPER_SUBCOMMANDS = new Set(["exec", "run", "run-script", "dlx", "x"]);
 
+type ExecEventsConfigInput = {
+  emitEvents?: boolean;
+  commandWhitelist?: string[];
+  outputThrottleMs?: number;
+  outputMaxChunkBytes?: number;
+};
+
 type WhitelistMatchResult = {
   matched: boolean;
   commandName?: string;
@@ -129,6 +136,21 @@ export type ExecEventsConfigResolved = {
   outputThrottleMs: number;
   outputMaxChunkBytes: number;
   outputBufferMaxBytes: number;
+};
+
+export type ExecEventRuntimeConfig = Pick<
+  ExecEventsConfigResolved,
+  "outputThrottleMs" | "outputMaxChunkBytes" | "outputBufferMaxBytes"
+>;
+
+export type ExecEventSessionState = {
+  enabled: boolean;
+  commandName?: string;
+  context?: ExecEventContext;
+  config?: ExecEventRuntimeConfig;
+  startedEmitted: boolean;
+  completedEmitted: boolean;
+  outputBuffer?: ExecOutputBuffer;
 };
 
 function normalizeCommandName(value: string): string {
@@ -158,7 +180,8 @@ function resolvePositiveInt(value: unknown, fallback: number, min?: number): num
 }
 
 export function resolveExecEventsConfig(cfg?: MoltbotConfig): ExecEventsConfigResolved {
-  const execCfg = cfg?.hooks?.exec;
+  const hooks = cfg?.hooks as { exec?: ExecEventsConfigInput } | undefined;
+  const execCfg = hooks?.exec;
   const commandWhitelist = normalizeCommandWhitelist(execCfg?.commandWhitelist);
   const commandWhitelistSet = new Set(commandWhitelist);
   const outputThrottleMs = resolvePositiveInt(execCfg?.outputThrottleMs, DEFAULT_OUTPUT_THROTTLE_MS);
@@ -181,6 +204,14 @@ export function resolveExecEventsConfig(cfg?: MoltbotConfig): ExecEventsConfigRe
     outputMaxChunkBytes,
     outputBufferMaxBytes,
   } satisfies ExecEventsConfigResolved;
+}
+
+export function toExecEventRuntimeConfig(cfg: ExecEventsConfigResolved): ExecEventRuntimeConfig {
+  return {
+    outputThrottleMs: cfg.outputThrottleMs,
+    outputMaxChunkBytes: cfg.outputMaxChunkBytes,
+    outputBufferMaxBytes: cfg.outputBufferMaxBytes,
+  };
 }
 
 function includesWhitelistToken(command: string, tokens: string[]): boolean {
@@ -381,19 +412,34 @@ function sliceByMaxBytes(text: string, maxBytes: number): string {
   return text.slice(0, low);
 }
 
+function trimSuffixByMaxBytes(text: string, maxBytes: number): string {
+  if (!text) return "";
+  if (maxBytes <= 0) return text.slice(-1);
+  if (byteLength(text) <= maxBytes) return text;
+
+  let low = 0;
+  let high = text.length;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    const suffix = text.slice(mid);
+    const bytes = byteLength(suffix);
+    if (bytes > maxBytes) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  const trimmed = text.slice(low);
+  return trimmed || text.slice(-1);
+}
+
 function capBuffer(state: OutputStreamState, maxBufferBytes: number): void {
   const totalBytes = byteLength(state.buffer);
   if (totalBytes <= maxBufferBytes) return;
 
   state.truncated = true;
-  // Drop oldest data until we're within the cap.
-  let remaining = state.buffer;
-  while (remaining && byteLength(remaining) > maxBufferBytes) {
-    const overflowBytes = byteLength(remaining) - maxBufferBytes;
-    const dropChars = Math.min(remaining.length, Math.max(1, Math.floor(overflowBytes / 2)));
-    remaining = remaining.slice(dropChars);
-  }
-  state.buffer = remaining;
+  state.buffer = trimSuffixByMaxBytes(state.buffer, maxBufferBytes);
 }
 
 export function createThrottledExecOutputBuffer(options: OutputBufferOptions): ExecOutputBuffer {
@@ -405,6 +451,7 @@ export function createThrottledExecOutputBuffer(options: OutputBufferOptions): E
   const stderr: OutputStreamState = { buffer: "", truncated: false };
   let timer: NodeJS.Timeout | null = null;
   let disposed = false;
+  let flushingAll = false;
 
   const getState = (stream: OutputStream) => (stream === "stdout" ? stdout : stderr);
 
@@ -440,25 +487,24 @@ export function createThrottledExecOutputBuffer(options: OutputBufferOptions): E
     if (chunks.length > 0) {
       options.onFlush(chunks);
     }
-    if (!disposed && throttleMs > 0 && (stdout.buffer || stderr.buffer)) {
+    if (!disposed && !flushingAll && throttleMs > 0 && (stdout.buffer || stderr.buffer)) {
       schedule();
     }
   };
 
   const flushAll = () => {
     if (disposed) return;
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    while (stdout.buffer || stderr.buffer) {
-      flush();
-      if (throttleMs > 0 && (stdout.buffer || stderr.buffer)) {
-        // Prevent tight loops in extremely large output bursts by yielding back to the event loop.
-        // The next scheduled flush will continue draining.
-        schedule();
-        return;
+    flushingAll = true;
+    try {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
       }
+      while (!disposed && (stdout.buffer || stderr.buffer)) {
+        flush();
+      }
+    } finally {
+      flushingAll = false;
     }
   };
 

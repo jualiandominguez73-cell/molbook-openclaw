@@ -1,4 +1,5 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import type { ExecEventSessionState } from "../infra/exec-events.js";
 import { createSessionSlug as createSessionSlugId } from "./session-slug.js";
 
 const DEFAULT_JOB_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -47,6 +48,7 @@ export interface ProcessSession {
   exited: boolean;
   truncated: boolean;
   backgrounded: boolean;
+  execEvents?: ExecEventSessionState;
 }
 
 export interface FinishedSession {
