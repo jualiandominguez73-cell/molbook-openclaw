@@ -316,7 +316,7 @@ importers:
     devDependencies:
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
 
   extensions/imessage: {}
 
@@ -324,7 +324,7 @@ importers:
     devDependencies:
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
 
   extensions/llm-task: {}
 
@@ -350,11 +350,19 @@ importers:
     devDependencies:
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
 
   extensions/mattermost: {}
 
+<<<<<<< HEAD
   extensions/memory-core: {}
+=======
+  extensions/memory-core:
+    dependencies:
+      moltbot:
+        specifier: '>=2026.1.26'
+        version: link:../..
+>>>>>>> upstream/main
 
   extensions/memory-lancedb:
     dependencies:
@@ -379,6 +387,12 @@ importers:
       '@microsoft/agents-hosting-extensions-teams':
         specifier: ^1.2.2
         version: 1.2.2
+<<<<<<< HEAD
+=======
+      moltbot:
+        specifier: workspace:*
+        version: link:../..
+>>>>>>> upstream/main
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -395,7 +409,7 @@ importers:
     dependencies:
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
       nostr-tools:
         specifier: ^2.20.0
         version: 2.20.0(typescript@5.9.3)
@@ -437,7 +451,7 @@ importers:
     devDependencies:
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
 
   extensions/voice-call:
     dependencies:
@@ -457,7 +471,7 @@ importers:
     dependencies:
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
       undici:
         specifier: 7.19.0
         version: 7.19.0
@@ -469,7 +483,7 @@ importers:
         version: 0.34.47
       moltbot:
         specifier: workspace:*
-        version: link:../../packages/clawdbot
+        version: link:../..
 
   packages/clawdbot:
     dependencies:
