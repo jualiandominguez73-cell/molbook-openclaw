@@ -26,6 +26,19 @@ export type RingCentralRuntimeEnv = {
   error?: (message: string) => void;
 };
 
+// Track recently sent message IDs to avoid processing bot's own replies
+const recentlySentMessageIds = new Set<string>();
+const MESSAGE_ID_TTL = 60000; // 60 seconds
+
+function trackSentMessageId(messageId: string): void {
+  recentlySentMessageIds.add(messageId);
+  setTimeout(() => recentlySentMessageIds.delete(messageId), MESSAGE_ID_TTL);
+}
+
+function isOwnSentMessage(messageId: string): boolean {
+  return recentlySentMessageIds.has(messageId);
+}
+
 export type RingCentralMonitorOptions = {
   account: ResolvedRingCentralAccount;
   config: ClawdbotConfig;
@@ -124,8 +137,14 @@ async function processWebSocketEvent(params: {
   const eventBody = event.body;
   if (!eventBody) return;
 
+  // Check event type - can be from eventType field or inferred from event path
   const eventType = eventBody.eventType;
-  if (eventType !== "PostAdded") return;
+  const eventPath = event.event ?? "";
+  const isPostEvent = eventPath.includes("/glip/posts") || eventPath.includes("/team-messaging") || eventType === "PostAdded";
+  
+  if (!isPostEvent) {
+    return;
+  }
 
   statusSink?.({ lastInboundAt: Date.now() });
 
@@ -162,16 +181,34 @@ async function processMessageWithPipeline(params: {
   const rawBody = messageText || (hasMedia ? "<media:attachment>" : "");
   if (!rawBody) return;
 
+  // Skip bot's own messages to avoid infinite loop
+  // Check 1: Skip if this is a message we recently sent
+  const messageId = eventBody.id ?? "";
+  if (messageId && isOwnSentMessage(messageId)) {
+    logVerbose(core, runtime, `skip own sent message: ${messageId}`);
+    return;
+  }
+  
+  // Check 2: Skip typing/thinking indicators (pattern-based)
+  if (rawBody.includes("thinking...") || rawBody.includes("typing...")) {
+    logVerbose(core, runtime, "skip typing indicator message");
+    return;
+  }
+  
   // In JWT mode (selfOnly), only accept messages from the JWT user themselves
   // This is because the bot uses the JWT user's identity, so we're essentially
   // having a conversation with ourselves (the AI assistant)
   const selfOnly = account.config.selfOnly !== false; // default true
+  runtime.log?.(`[${account.accountId}] Processing message: senderId=${senderId}, ownerId=${ownerId}, selfOnly=${selfOnly}, chatId=${chatId}, text=${rawBody.slice(0, 50)}`);
+  
   if (selfOnly && ownerId) {
     if (senderId !== ownerId) {
       logVerbose(core, runtime, `ignore message from non-owner: ${senderId} (selfOnly mode)`);
       return;
     }
   }
+  
+  runtime.log?.(`[${account.accountId}] Message passed selfOnly check`);
 
   // Fetch chat info to determine type
   let chatType = "Group";
@@ -184,7 +221,9 @@ async function processMessageWithPipeline(params: {
     // If we can't fetch chat info, assume it's a group
   }
 
-  const isGroup = chatType !== "Direct" && chatType !== "PersonalChat";
+  // Personal, PersonalChat, Direct are all DM types
+  const isGroup = chatType !== "Direct" && chatType !== "PersonalChat" && chatType !== "Personal";
+  runtime.log?.(`[${account.accountId}] Chat type: ${chatType}, isGroup: ${isGroup}`);
 
   const defaultGroupPolicy = config.channels?.defaults?.groupPolicy;
   const groupPolicy = account.config.groupPolicy ?? defaultGroupPolicy ?? "allowlist";
@@ -287,7 +326,10 @@ async function processMessageWithPipeline(params: {
       return;
     }
 
-    if (dmPolicy !== "open") {
+    // In selfOnly mode, always allow the owner
+    const isOwner = selfOnly && ownerId && senderId === ownerId;
+    
+    if (dmPolicy !== "open" && !isOwner) {
       const allowed = senderAllowedForCommands;
       if (!allowed) {
         if (dmPolicy === "pairing") {
@@ -425,9 +467,11 @@ async function processMessageWithPipeline(params: {
     const result = await sendRingCentralMessage({
       account,
       chatId,
-      text: `_${botName} is typing..._`,
+      text: `⏳ _${botName} is thinking..._`,
     });
     typingPostId = result?.postId;
+    // Track sent message to avoid processing it as incoming
+    if (typingPostId) trackSentMessageId(typingPostId);
   } catch (err) {
     runtime.error?.(`Failed sending typing message: ${String(err)}`);
   }
@@ -542,12 +586,13 @@ async function deliverRingCentralReply(params: {
         if (!upload.attachmentId) {
           throw new Error("missing attachment id");
         }
-        await sendRingCentralMessage({
+        const sendResult = await sendRingCentralMessage({
           account,
           chatId,
           text: caption,
           attachments: [{ id: upload.attachmentId }],
         });
+        if (sendResult?.postId) trackSentMessageId(sendResult.postId);
         statusSink?.({ lastOutboundAt: Date.now() });
       } catch (err) {
         runtime.error?.(`RingCentral attachment send failed: ${String(err)}`);
@@ -572,18 +617,20 @@ async function deliverRingCentralReply(params: {
       const chunk = chunks[i];
       try {
         if (i === 0 && typingPostId) {
-          await updateRingCentralMessage({
+          const updateResult = await updateRingCentralMessage({
             account,
             chatId,
             postId: typingPostId,
             text: chunk,
           });
+          if (updateResult?.postId) trackSentMessageId(updateResult.postId);
         } else {
-          await sendRingCentralMessage({
+          const sendResult = await sendRingCentralMessage({
             account,
             chatId,
             text: chunk,
           });
+          if (sendResult?.postId) trackSentMessageId(sendResult.postId);
         }
         statusSink?.({ lastOutboundAt: Date.now() });
       } catch (err) {
@@ -622,6 +669,7 @@ export async function startRingCentralMonitor(
 
   // Handle notifications
   subscription.on(subscription.events.notification, (event: unknown) => {
+    runtime.log?.(`[${account.accountId}] WebSocket notification received: ${JSON.stringify(event).slice(0, 500)}`);
     const evt = event as RingCentralWebhookEvent;
     processWebSocketEvent({
       event: evt,
