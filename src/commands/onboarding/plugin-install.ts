@@ -8,6 +8,7 @@ import { recordPluginInstall } from "../../plugins/installs.js";
 import { enablePluginInConfig } from "../../plugins/enable.js";
 import { loadClawdbotPlugins } from "../../plugins/loader.js";
 import { installPluginFromNpmSpec } from "../../plugins/install.js";
+import { runCommandWithTimeout } from "../../process/exec.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import type { WizardPrompter } from "../../wizard/prompts.js";
 
@@ -17,6 +18,101 @@ type InstallResult = {
   cfg: ClawdbotConfig;
   installed: boolean;
 };
+
+type EnsureLocalDepsResult = {
+  ok: boolean;
+  error?: string;
+};
+
+/**
+ * Detect which package manager to use for a plugin directory.
+ * Prefers pnpm if pnpm-lock.yaml exists, then npm if package-lock.json exists,
+ * otherwise defaults to pnpm (as the clawdbot monorepo uses pnpm).
+ */
+function detectPackageManager(pluginDir: string): "pnpm" | "npm" {
+  if (fs.existsSync(path.join(pluginDir, "pnpm-lock.yaml"))) return "pnpm";
+  if (fs.existsSync(path.join(pluginDir, "pnpm-workspace.yaml"))) return "pnpm";
+  if (fs.existsSync(path.join(pluginDir, "package-lock.json"))) return "npm";
+  // Check parent directories for pnpm workspace (monorepo setup)
+  let cursor = path.dirname(pluginDir);
+  for (let i = 0; i < 5; i++) {
+    if (fs.existsSync(path.join(cursor, "pnpm-workspace.yaml"))) return "pnpm";
+    const parent = path.dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+  return "pnpm";
+}
+
+/**
+ * Ensure dependencies are installed for a local plugin.
+ * This is necessary because local plugins in development may not have
+ * node_modules populated, especially when using pnpm workspaces.
+ */
+async function ensureLocalPluginDependencies(params: {
+  pluginDir: string;
+  runtime: RuntimeEnv;
+  timeoutMs?: number;
+}): Promise<EnsureLocalDepsResult> {
+  const { pluginDir, runtime, timeoutMs = 120_000 } = params;
+
+  // Check if package.json exists
+  const packageJsonPath = path.join(pluginDir, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    return { ok: true }; // No package.json, nothing to install
+  }
+
+  // Check if dependencies are needed
+  let packageJson: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  try {
+    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+  } catch {
+    return { ok: true }; // Can't parse, skip dep check
+  }
+
+  const hasDeps =
+    Object.keys(packageJson.dependencies ?? {}).length > 0 ||
+    Object.keys(packageJson.devDependencies ?? {}).length > 0;
+
+  if (!hasDeps) {
+    return { ok: true }; // No dependencies to install
+  }
+
+  // Check if node_modules exists and has content
+  const nodeModulesPath = path.join(pluginDir, "node_modules");
+  const hasNodeModules =
+    fs.existsSync(nodeModulesPath) && fs.readdirSync(nodeModulesPath).length > 0;
+
+  if (hasNodeModules) {
+    return { ok: true }; // Dependencies already installed
+  }
+
+  // Install dependencies
+  const pm = detectPackageManager(pluginDir);
+  runtime.log?.(`Installing dependencies for local plugin (${pm})...`);
+
+  const installCmd = pm === "pnpm" ? ["pnpm", "install"] : ["npm", "install", "--omit=dev"];
+
+  try {
+    const result = await runCommandWithTimeout(installCmd, {
+      timeoutMs,
+      cwd: pluginDir,
+    });
+
+    if (result.code !== 0) {
+      const errorMsg = result.stderr.trim() || result.stdout.trim() || "unknown error";
+      return { ok: false, error: `${pm} install failed: ${errorMsg}` };
+    }
+
+    runtime.log?.(`Dependencies installed successfully.`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: `${pm} install failed: ${String(err)}` };
+  }
+}
 
 function hasGitWorkspace(workspaceDir?: string): boolean {
   const candidates = new Set<string>();
@@ -141,6 +237,17 @@ export async function ensureOnboardingPluginInstalled(params: {
   }
 
   if (choice === "local" && localPath) {
+    // Ensure dependencies are installed before loading the plugin
+    const depsResult = await ensureLocalPluginDependencies({
+      pluginDir: localPath,
+      runtime,
+    });
+
+    if (!depsResult.ok) {
+      await prompter.note(`Failed to install dependencies: ${depsResult.error}`, "Plugin setup");
+      return { cfg: next, installed: false };
+    }
+
     next = addPluginLoadPath(next, localPath);
     next = enablePluginInConfig(next, entry.id).config;
     return { cfg: next, installed: true };
@@ -177,6 +284,17 @@ export async function ensureOnboardingPluginInstalled(params: {
       initialValue: true,
     });
     if (fallback) {
+      // Ensure dependencies are installed before loading the plugin
+      const depsResult = await ensureLocalPluginDependencies({
+        pluginDir: localPath,
+        runtime,
+      });
+
+      if (!depsResult.ok) {
+        await prompter.note(`Failed to install dependencies: ${depsResult.error}`, "Plugin setup");
+        return { cfg: next, installed: false };
+      }
+
       next = addPluginLoadPath(next, localPath);
       next = enablePluginInConfig(next, entry.id).config;
       return { cfg: next, installed: true };
