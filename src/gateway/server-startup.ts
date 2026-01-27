@@ -15,6 +15,7 @@ import {
   triggerInternalHook,
 } from "../hooks/internal-hooks.js";
 import { loadInternalHooks } from "../hooks/loader.js";
+import { startAgentHookBridge } from "../infra/agent-hook-bridge.js";
 import type { loadMoltbotPlugins } from "../plugins/loader.js";
 import { type PluginServicesHandle, startPluginServices } from "../plugins/services.js";
 import { startBrowserControlServerIfEnabled } from "./server-browser.js";
@@ -109,6 +110,17 @@ export async function startGatewaySidecars(params: {
     }
   } catch (err) {
     params.logHooks.error(`failed to load hooks: ${String(err)}`);
+  }
+
+  // Start the agent hook bridge to expose tool lifecycle events to hooks.
+  // This enables workspace hooks to react to tool:start, tool:update, tool:result events.
+  if (params.cfg.hooks?.internal?.enabled) {
+    try {
+      startAgentHookBridge();
+      params.logHooks.info("agent hook bridge started");
+    } catch (err) {
+      params.logHooks.error(`agent hook bridge failed to start: ${String(err)}`);
+    }
   }
 
   // Launch configured channels so gateway replies via the surface the message came from.
