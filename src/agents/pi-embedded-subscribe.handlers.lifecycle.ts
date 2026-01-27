@@ -16,10 +16,18 @@ export function handleAgentStart(ctx: EmbeddedPiSubscribeContext) {
       startedAt: Date.now(),
     },
   });
-  void ctx.params.onAgentEvent?.({
-    stream: "lifecycle",
-    data: { phase: "start" },
-  });
+  try {
+    void Promise.resolve(
+      ctx.params.onAgentEvent?.({
+        stream: "lifecycle",
+        data: { phase: "start" },
+      }),
+    ).catch((err) => {
+      ctx.log.debug(`onAgentEvent callback error (lifecycle/start): ${String(err)}`);
+    });
+  } catch (err) {
+    ctx.log.debug(`onAgentEvent callback error (lifecycle/start): ${String(err)}`);
+  }
 }
 
 export function handleAutoCompactionStart(ctx: EmbeddedPiSubscribeContext) {
@@ -31,10 +39,18 @@ export function handleAutoCompactionStart(ctx: EmbeddedPiSubscribeContext) {
     stream: "compaction",
     data: { phase: "start" },
   });
-  void ctx.params.onAgentEvent?.({
-    stream: "compaction",
-    data: { phase: "start" },
-  });
+  try {
+    void Promise.resolve(
+      ctx.params.onAgentEvent?.({
+        stream: "compaction",
+        data: { phase: "start" },
+      }),
+    ).catch((err) => {
+      ctx.log.debug(`onAgentEvent callback error (compaction/start): ${String(err)}`);
+    });
+  } catch (err) {
+    ctx.log.debug(`onAgentEvent callback error (compaction/start): ${String(err)}`);
+  }
 }
 
 export function handleAutoCompactionEnd(
@@ -55,10 +71,18 @@ export function handleAutoCompactionEnd(
     stream: "compaction",
     data: { phase: "end", willRetry },
   });
-  void ctx.params.onAgentEvent?.({
-    stream: "compaction",
-    data: { phase: "end", willRetry },
-  });
+  try {
+    void Promise.resolve(
+      ctx.params.onAgentEvent?.({
+        stream: "compaction",
+        data: { phase: "end", willRetry },
+      }),
+    ).catch((err) => {
+      ctx.log.debug(`onAgentEvent callback error (compaction/end): ${String(err)}`);
+    });
+  } catch (err) {
+    ctx.log.debug(`onAgentEvent callback error (compaction/end): ${String(err)}`);
+  }
 }
 
 export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
@@ -71,10 +95,18 @@ export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
       endedAt: Date.now(),
     },
   });
-  void ctx.params.onAgentEvent?.({
-    stream: "lifecycle",
-    data: { phase: "end" },
-  });
+  try {
+    void Promise.resolve(
+      ctx.params.onAgentEvent?.({
+        stream: "lifecycle",
+        data: { phase: "end" },
+      }),
+    ).catch((err) => {
+      ctx.log.debug(`onAgentEvent callback error (lifecycle/end): ${String(err)}`);
+    });
+  } catch (err) {
+    ctx.log.debug(`onAgentEvent callback error (lifecycle/end): ${String(err)}`);
+  }
 
   // Emit turn completion for continuation system (fire-and-forget)
   // Parse any structured Overseer update from agent response

@@ -23,6 +23,7 @@ export type AuthChoice =
   | "google-antigravity"
   | "google-gemini-cli"
   | "zai-api-key"
+  | "zai-sdk"
   | "minimax-cloud"
   | "minimax"
   | "minimax-api"

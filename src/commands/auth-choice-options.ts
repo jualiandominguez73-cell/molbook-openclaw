@@ -104,8 +104,8 @@ const AUTH_CHOICE_GROUP_DEFS: {
   {
     value: "zai",
     label: "Z.AI (GLM 4.7)",
-    hint: "API key",
-    choices: ["zai-api-key"],
+    hint: "API key + Claude Code SDK",
+    choices: ["zai-api-key", "zai-sdk"],
   },
   {
     value: "opencode-zen",
@@ -164,6 +164,11 @@ export function buildAuthChoiceOptions(params: {
     hint: "Uses the bundled Gemini CLI auth plugin",
   });
   options.push({ value: "zai-api-key", label: "Z.AI (GLM 4.7) API key" });
+  options.push({
+    value: "zai-sdk",
+    label: "Z.AI (GLM 4.7) via Claude Code SDK",
+    hint: "Uses Claude Agent SDK runtime with z.AI backend",
+  });
   options.push({ value: "qwen-portal", label: "Qwen OAuth" });
   options.push({
     value: "copilot-proxy",
