@@ -43,6 +43,7 @@ See [Venice AI](/providers/venice).
 - [MiniMax](/providers/minimax)
 - [Venius (Venice AI)](/providers/venice)
 - [Amazon Bedrock](/bedrock)
+- [Docker Model Runner](/providers/docker)
 
 For the full provider catalog (xAI, Groq, Mistral, etc.) and advanced configuration,
 see [Model providers](/concepts/model-providers).
