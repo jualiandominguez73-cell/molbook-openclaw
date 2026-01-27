@@ -41,18 +41,15 @@ service:
 ingress:
   enabled: true
   className: nginx
+  domain: "my-clawdbot.example.com"
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/websocket-services: "clawdbot"
-  hosts:
-    - host: my-clawdbot.example.com
-      paths:
-        - path: /
-          pathType: Prefix
   tls:
-    - secretName: clawdbot-tls
-      hosts:
-        - my-clawdbot.example.com
+    enabled: true
+    secretName: clawdbot-tls
+    certManager:
+      enabled: true
+      issuer: letsencrypt-prod

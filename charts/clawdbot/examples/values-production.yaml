@@ -65,20 +65,17 @@ resources:
 ingress:
   enabled: true
   className: nginx
+  domain: "assistant.example.com"
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/websocket-services: "clawdbot"
-  hosts:
-    - host: assistant.example.com
-      paths:
-        - path: /
-          pathType: Prefix
   tls:
-    - secretName: clawdbot-tls
-      hosts:
-        - assistant.example.com
+    enabled: true
+    secretName: clawdbot-tls
+    certManager:
+      enabled: true
+      issuer: letsencrypt-prod
 
 affinity:
   nodeAffinity:
