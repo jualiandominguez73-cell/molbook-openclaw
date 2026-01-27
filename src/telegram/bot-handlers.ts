@@ -8,6 +8,7 @@ import { loadConfig } from "../config/config.js";
 import { writeConfigFile } from "../config/io.js";
 import { danger, logVerbose, warn } from "../globals.js";
 import { resolveMedia } from "./bot/delivery.js";
+import { withTelegramApiErrorLogging } from "./api-logging.js";
 import { resolveTelegramForumThreadId } from "./bot/helpers.js";
 import type { TelegramMessage } from "./bot/types.js";
 import { firstDefined, isSenderAllowed, normalizeAllowFromWithStore } from "./bot-access.js";
@@ -111,11 +112,19 @@ export const registerTelegramHandlers = ({
       const captionMsg = entry.messages.find((m) => m.msg.caption || m.msg.text);
       const primaryEntry = captionMsg ?? entry.messages[0];
 
-      const allMedia: Array<{ path: string; contentType?: string }> = [];
+      const allMedia: Array<{
+        path: string;
+        contentType?: string;
+        stickerMetadata?: { emoji?: string; setName?: string; fileId?: string };
+      }> = [];
       for (const { ctx } of entry.messages) {
         const media = await resolveMedia(ctx, mediaMaxBytes, opts.token, opts.proxyFetch);
         if (media) {
-          allMedia.push({ path: media.path, contentType: media.contentType });
+          allMedia.push({
+            path: media.path,
+            contentType: media.contentType,
+            stickerMetadata: media.stickerMetadata,
+          });
         }
       }
 
@@ -180,7 +189,11 @@ export const registerTelegramHandlers = ({
     if (!callback) return;
     if (shouldSkipUpdate(ctx)) return;
     // Answer immediately to prevent Telegram from retrying while we process
-    await bot.api.answerCallbackQuery(callback.id).catch(() => {});
+    await withTelegramApiErrorLogging({
+      operation: "answerCallbackQuery",
+      runtime,
+      fn: () => bot.api.answerCallbackQuery(callback.id),
+    }).catch(() => {});
     try {
       const data = (callback.data ?? "").trim();
       const callbackMessage = callback.message;
@@ -577,17 +590,37 @@ export const registerTelegramHandlers = ({
         const errMsg = String(mediaErr);
         if (errMsg.includes("exceeds") && errMsg.includes("MB limit")) {
           const limitMb = Math.round(mediaMaxBytes / (1024 * 1024));
-          await bot.api
-            .sendMessage(chatId, `⚠️ File too large. Maximum size is ${limitMb}MB.`, {
-              reply_to_message_id: msg.message_id,
-            })
-            .catch(() => {});
+          await withTelegramApiErrorLogging({
+            operation: "sendMessage",
+            runtime,
+            fn: () =>
+              bot.api.sendMessage(chatId, `⚠️ File too large. Maximum size is ${limitMb}MB.`, {
+                reply_to_message_id: msg.message_id,
+              }),
+          }).catch(() => {});
           logger.warn({ chatId, error: errMsg }, "media exceeds size limit");
           return;
         }
         throw mediaErr;
       }
-      const allMedia = media ? [{ path: media.path, contentType: media.contentType }] : [];
+
+      // Skip sticker-only messages where the sticker was skipped (animated/video)
+      // These have no media and no text content to process.
+      const hasText = Boolean((msg.text ?? msg.caption ?? "").trim());
+      if (msg.sticker && !media && !hasText) {
+        logVerbose("telegram: skipping sticker-only message (unsupported sticker type)");
+        return;
+      }
+
+      const allMedia = media
+        ? [
+            {
+              path: media.path,
+              contentType: media.contentType,
+              stickerMetadata: media.stickerMetadata,
+            },
+          ]
+        : [];
       const senderId = msg.from?.id ? String(msg.from.id) : "";
       const conversationKey =
         resolvedThreadId != null ? `${chatId}:topic:${resolvedThreadId}` : String(chatId);
