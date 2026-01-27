@@ -218,14 +218,14 @@ describe("legacy config detection", () => {
     expect(res.config?.gateway?.auth?.mode).toBe("token");
     expect((res.config?.gateway as { token?: string })?.token).toBeUndefined();
   });
-  it("keeps gateway.bind tailnet", async () => {
+  it("does not migrate gateway.bind tailnet", async () => {
     vi.resetModules();
     const { migrateLegacyConfig } = await import("./config.js");
     const res = migrateLegacyConfig({
       gateway: { bind: "tailnet" as const },
     });
-    expect(res.changes).not.toContain("Migrated gateway.bind from 'tailnet' to 'auto'.");
-    expect(res.config?.gateway?.bind).toBe("tailnet");
+    expect(res.changes).toHaveLength(0);
+    expect(res.config).toBeNull();
   });
   it('rejects telegram.dmPolicy="open" without allowFrom "*"', async () => {
     vi.resetModules();
