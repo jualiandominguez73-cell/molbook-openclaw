@@ -44,7 +44,8 @@ MeshGuard solves: **"Who authorized this agent, what can it do, and who's respon
 - **Path:** ~/Git/meshguard
 - **Tech:** Bun + Hono, TypeScript
 - **What:** Core gateway server — policy engine, audit logger, identity management, proxy middleware, alerting, signup, billing
-- **Src modules:** `src/identity/`, `src/policy/`, `src/audit/`, `src/alerts/`, `src/email/`, `src/gateway/`, `src/cli/`
+- **Src modules:** `src/identity/`, `src/policy/`, `src/audit/`, `src/alerts/`, `src/email/`, `src/gateway/`, `src/cli/`, `src/trust/`
+- **Trust module (`src/trust/`):** types.ts (interfaces), db.ts (SQLite CRUD), score.ts (scoring engine), delegation.ts (delegation chains), anomaly.ts (detection engine), api.ts (REST handlers)
 - **Routes:** /health, /admin, /signup, /billing, /azure (marketplace), /proxy/* (governed proxy)
 - **Dashboard:** `dashboard/` (React admin UI)
 - **Docs in repo:** ALERTING.md, QUICKSTART.md, GETTING_STARTED.md, MULTI_TENANCY_SCOPE.md, azure-marketplace-listing.md
@@ -199,13 +200,21 @@ MeshGuard solves: **"Who authorized this agent, what can it do, and who's respon
 - Professional email (PurelyMail)
 - GitHub org (meshguard/) with 9 repos
 
+### ✅ Shipped (Jan 27, 2026) — Trust System
+- **Agent Identity & Trust Scoring** (`src/trust/score.ts`) — 5-component weighted behavioral trust scores (history, anomaly, delegation, tenure, voucher), tier mapping (unverified → verified → trusted → privileged), batch recompute, dormant decay
+- **Trust Schema & Database** (`src/trust/types.ts`, `src/trust/db.ts`) — Full TypeScript interfaces + SQLite CRUD for relationships, trust scores, skills, anomalies (4 tables, 13 indexes)
+- **Delegation Chain Engine** (`src/trust/delegation.ts`) — Scoped permission delegation between agents, chain validation (max depth 5), circular detection via BFS, expiry pruning, signed receipts
+- **Anomaly Detection Engine** (`src/trust/anomaly.ts`) — 9 anomaly types (scope violation, rate spike, privilege escalation, data exfiltration, unusual hours, chain abuse, policy violation, resource abuse, unauthorized communication), 4 severity levels, 5 auto-actions, context-aware severity, leniency matrix by trust tier
+- **Trust REST API** (`src/trust/api.ts`) — 13 framework-agnostic endpoint handlers: agents CRUD, trust scores, score history, relationships, audit log/stats, anomalies, anomaly summary, combined dashboard view
+- **Dashboard Trust Tab** (in progress) — Trust tab added to dashboard.meshguard.app with score visualization, delegation graph, anomaly feed, risk overview
+- **Status Monitoring** (in progress) — Trust API endpoints added to status.meshguard.app Gatus config
+
 ### 🚧 In Progress (Q1 2026)
 - Webhook alert integrations (Slack, PagerDuty)
 - SSO / OAuth login (Google, GitHub)
 - Policy templates marketplace
 - SDK for Go and Rust
 - Granular RBAC
-- Agent-to-agent delegation chains
 - CLI policy validation & dry-run mode
 - **New integrations shipped (Jan 26):** Claude Code, Amazon Bedrock, Google Vertex AI, OpenAI Agents SDK — all with docs, learn guides, examples, and sidebar links
 
@@ -222,10 +231,13 @@ MeshGuard solves: **"Who authorized this agent, what can it do, and who's respon
 - On-premise / self-hosted edition
 - HIPAA & ISO 27001 compliance
 - AI-powered policy suggestions
-- Agent behavior anomaly detection
+- ~~Agent behavior anomaly detection~~ ✅ SHIPPED
 - GraphQL API
 - Multi-cloud agent discovery
 - Community marketplace for policies
+- Runtime middleware (real-time agent action interception via trust system)
+- Policy engine integration (declarative rules + trust enforcement)
+- Web dashboard for trust visualization
 
 ---
 
@@ -269,4 +281,4 @@ MeshGuard solves: **"Who authorized this agent, what can it do, and who's respon
 
 ---
 
-*Last updated: January 26, 2026*
+*Last updated: January 27, 2026*
