@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 
 import { CURRENT_SESSION_VERSION } from "@mariozechner/pi-coding-agent";
-import type { NormalizedUsage } from "../agents/usage.js";
+import { isCliProvider } from "../agents/model-selection.js";
+import { deriveCliContextTokens, type NormalizedUsage } from "../agents/usage.js";
 import { resolveSessionTranscriptPath } from "../config/sessions.js";
 import { stripEnvelope } from "./chat-sanitize.js";
 import type { SessionPreviewItem } from "./session-utils.types.js";
@@ -141,13 +142,21 @@ function appendMessageToTranscriptImpl(
   if (params.role === "assistant") {
     messageBody.stopReason = params.stopReason ?? "cli_backend";
     const u = params.usage;
-    messageBody.usage = {
+    // For CLI providers, use CLI-specific calculation (cacheRead + cacheWrite + input)
+    // representing the full context for this turn
+    const isCli = isCliProvider(params.provider ?? "", undefined);
+    const derivedTotal = isCli
+      ? (deriveCliContextTokens(u) ?? 0)
+      : (u?.input ?? 0) + (u?.cacheRead ?? 0) + (u?.cacheWrite ?? 0);
+    const usageToWrite = {
       input: u?.input ?? 0,
       output: u?.output ?? 0,
       cacheRead: u?.cacheRead,
       cacheWrite: u?.cacheWrite,
-      totalTokens: u?.total ?? (u?.input ?? 0) + (u?.output ?? 0),
+      totalTokens:
+        u?.total ?? (derivedTotal > 0 ? derivedTotal : (u?.input ?? 0) + (u?.output ?? 0)),
     };
+    messageBody.usage = usageToWrite;
     if (params.provider) messageBody.provider = params.provider;
     if (params.model) messageBody.model = params.model;
   }

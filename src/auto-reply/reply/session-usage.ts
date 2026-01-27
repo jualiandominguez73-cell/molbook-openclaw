@@ -1,5 +1,10 @@
 import { setCliSessionId } from "../../agents/cli-session.js";
-import { hasNonzeroUsage, type NormalizedUsage } from "../../agents/usage.js";
+import { isCliProvider } from "../../agents/model-selection.js";
+import {
+  deriveCliContextTokens,
+  hasNonzeroUsage,
+  type NormalizedUsage,
+} from "../../agents/usage.js";
 import {
   type SessionSystemPromptReport,
   type SessionEntry,
@@ -19,10 +24,13 @@ export async function persistSessionUsageUpdate(params: {
   logLabel?: string;
 }): Promise<void> {
   const { storePath, sessionKey } = params;
-  if (!storePath || !sessionKey) return;
+  if (!storePath || !sessionKey) {
+    return;
+  }
 
   const label = params.logLabel ? `${params.logLabel} ` : "";
-  if (hasNonzeroUsage(params.usage)) {
+  const hasUsage = hasNonzeroUsage(params.usage);
+  if (hasUsage) {
     try {
       await updateSessionStoreEntry({
         storePath,
@@ -30,12 +38,18 @@ export async function persistSessionUsageUpdate(params: {
         update: async (entry) => {
           const input = params.usage?.input ?? 0;
           const output = params.usage?.output ?? 0;
-          const promptTokens =
-            input + (params.usage?.cacheRead ?? 0) + (params.usage?.cacheWrite ?? 0);
+          const cacheRead = params.usage?.cacheRead ?? 0;
+          const cacheWrite = params.usage?.cacheWrite ?? 0;
+          // For CLI providers, use the full context for this turn (cacheRead + cacheWrite + input)
+          const isCli = isCliProvider(params.providerUsed ?? "", undefined);
+          const promptTokens = isCli
+            ? (deriveCliContextTokens(params.usage) ?? input)
+            : input + cacheRead + cacheWrite;
+          const newTotalTokens = promptTokens > 0 ? promptTokens : (params.usage?.total ?? input);
           const patch: Partial<SessionEntry> = {
             inputTokens: input,
             outputTokens: output,
-            totalTokens: promptTokens > 0 ? promptTokens : (params.usage?.total ?? input),
+            totalTokens: newTotalTokens,
             modelProvider: params.providerUsed ?? entry.modelProvider,
             model: params.modelUsed ?? entry.model,
             contextTokens: params.contextTokensUsed ?? entry.contextTokens,

@@ -211,6 +211,11 @@ export async function runAgentTurnWithFallback(params: {
                 // CLI backends bypass SessionManager, so persist response to transcript
                 // directly to ensure it's available on TUI reload.
                 // Record even empty responses to maintain message turn consistency.
+                const usageForTranscript = result.meta.agentMeta?.usage;
+                logVerbose(
+                  `[agent-runner-execution] CLI transcript persist: usage=${JSON.stringify(usageForTranscript)} ` +
+                    `provider=${provider} model=${model}`,
+                );
                 const assistantPersistResult = appendAssistantMessageToTranscript({
                   message: cliText || "",
                   sessionId: params.followupRun.run.sessionId,
@@ -219,7 +224,7 @@ export async function runAgentTurnWithFallback(params: {
                   createIfMissing: true,
                   provider,
                   model,
-                  usage: result.meta.agentMeta?.usage,
+                  usage: usageForTranscript,
                 });
                 if (!assistantPersistResult.ok) {
                   logVerbose(

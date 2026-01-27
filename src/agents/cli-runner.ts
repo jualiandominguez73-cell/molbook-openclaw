@@ -261,6 +261,13 @@ export async function runCliAgent(params: {
             );
           }
 
+          log.info(
+            `[cli-runner] streaming result usage: input=${streamResult.usage?.input} ` +
+              `output=${streamResult.usage?.output} cacheRead=${streamResult.usage?.cacheRead} ` +
+              `cacheWrite=${streamResult.usage?.cacheWrite} total=${streamResult.usage?.total} ` +
+              `sessionId=${streamResult.sessionId}`,
+          );
+
           return {
             text: streamResult.text,
             sessionId: streamResult.sessionId,
@@ -326,6 +333,12 @@ export async function runCliAgent(params: {
 
     const text = output.text?.trim();
     const payloads = text ? [{ text }] : undefined;
+
+    log.info(
+      `[cli-runner] FINAL agentMeta.usage: input=${output.usage?.input} ` +
+        `output=${output.usage?.output} cacheRead=${output.usage?.cacheRead} ` +
+        `cacheWrite=${output.usage?.cacheWrite} total=${output.usage?.total}`,
+    );
 
     return {
       payloads,
