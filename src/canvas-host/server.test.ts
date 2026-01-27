@@ -255,8 +255,8 @@ describe("canvas host", () => {
       expect(html).not.toContain("statusEl.innerHTML");
 
       // Verify the status element construction is present
-      expect(html).toContain('bridgeSpan.className');
-      expect(html).toContain('bridgeSpan.textContent');
+      expect(html).toContain("bridgeSpan.className");
+      expect(html).toContain("bridgeSpan.textContent");
     } finally {
       await server.close();
       await fs.rm(dir, { recursive: true, force: true });
