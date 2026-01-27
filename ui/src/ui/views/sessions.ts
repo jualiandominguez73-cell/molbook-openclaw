@@ -27,18 +27,18 @@ export type SessionViewMode = "list" | "table";
 // Session filter presets for quick access
 export type SessionPreset = "all" | "active" | "errored" | "cron" | "custom";
 
-const SESSION_PRESETS: Record<SessionPreset, { statusFilter: SessionStatusFilter; laneFilter: SessionLaneFilter; showCompleted: boolean }> = {
-  all: { statusFilter: "all", laneFilter: "all", showCompleted: true },
-  active: { statusFilter: "active", laneFilter: "all", showCompleted: false },
-  errored: { statusFilter: "all", laneFilter: "all", showCompleted: true },
-  cron: { statusFilter: "all", laneFilter: "cron", showCompleted: false },
-  custom: { statusFilter: "all", laneFilter: "all", showCompleted: true },
+const SESSION_PRESETS: Record<SessionPreset, { statusFilter: SessionStatusFilter; laneFilter: SessionLaneFilter; showCompleted: boolean; erroredOnly: boolean }> = {
+  all: { statusFilter: "all", laneFilter: "all", showCompleted: true, erroredOnly: false },
+  active: { statusFilter: "active", laneFilter: "all", showCompleted: false, erroredOnly: false },
+  errored: { statusFilter: "all", laneFilter: "all", showCompleted: true, erroredOnly: true },
+  cron: { statusFilter: "all", laneFilter: "cron", showCompleted: false, erroredOnly: false },
+  custom: { statusFilter: "all", laneFilter: "all", showCompleted: true, erroredOnly: false },
 };
 
-export function detectSessionPreset(statusFilter: SessionStatusFilter, laneFilter: SessionLaneFilter): SessionPreset {
+export function detectSessionPreset(statusFilter: SessionStatusFilter, laneFilter: SessionLaneFilter, erroredOnly: boolean): SessionPreset {
   for (const [preset, filters] of Object.entries(SESSION_PRESETS)) {
     if (preset === "custom") continue;
-    if (statusFilter === filters.statusFilter && laneFilter === filters.laneFilter) {
+    if (statusFilter === filters.statusFilter && laneFilter === filters.laneFilter && erroredOnly === filters.erroredOnly) {
       return preset as SessionPreset;
     }
   }
@@ -221,35 +221,80 @@ function resolveThinkLevelDisplay(value: string, isBinary: boolean): string {
   return "on";
 }
 
+type ResolvedDefault = { value: string; isConfigured: boolean };
+type EffectiveSource = "override" | "configured" | "inherited";
+
+function inheritOptionLabel(rd: ResolvedDefault): string {
+  if (rd.isConfigured) {
+    return `⚙ Use config default (${rd.value})`;
+  }
+  return `↓ Inherit default (${rd.value})`;
+}
+
+function sourceLabel(source: EffectiveSource): string {
+  switch (source) {
+    case "override":
+      return "override";
+    case "configured":
+      return "config";
+    case "inherited":
+      return "fallback";
+  }
+}
+
+function resolveVerboseLevelOptions(rd: ResolvedDefault): { value: string; label: string }[] {
+  return [
+    { value: "", label: inheritOptionLabel(rd) },
+    { value: "off", label: "off (explicit)" },
+    { value: "on", label: "on" },
+    { value: "full", label: "full" },
+  ];
+}
+
 function resolveSessionDefaults(
   defaults: SessionsListResult["defaults"] | null,
 ): {
   modelProvider: string | null;
   model: string | null;
   contextTokens: number | null;
-  thinkingDefault: string;
-  verboseDefault: string;
-  reasoningDefault: string;
-  elevatedDefault: string;
+  thinkingDefault: ResolvedDefault;
+  verboseDefault: ResolvedDefault;
+  reasoningDefault: ResolvedDefault;
+  elevatedDefault: ResolvedDefault;
 } {
   return {
     modelProvider: defaults?.modelProvider ?? null,
     model: defaults?.model ?? null,
     contextTokens: defaults?.contextTokens ?? null,
-    thinkingDefault: defaults?.thinkingDefault ?? "off",
-    verboseDefault: defaults?.verboseDefault ?? "off",
-    reasoningDefault: defaults?.reasoningDefault ?? "off",
-    elevatedDefault: defaults?.elevatedDefault ?? "off",
+    thinkingDefault: {
+      value: defaults?.thinkingDefault ?? "off",
+      isConfigured: defaults?.thinkingDefault != null,
+    },
+    verboseDefault: {
+      value: defaults?.verboseDefault ?? "off",
+      isConfigured: defaults?.verboseDefault != null,
+    },
+    reasoningDefault: {
+      value: defaults?.reasoningDefault ?? "off",
+      isConfigured: defaults?.reasoningDefault != null,
+    },
+    elevatedDefault: {
+      value: defaults?.elevatedDefault ?? "off",
+      isConfigured: defaults?.elevatedDefault != null,
+    },
   };
 }
 
 function resolveEffectiveStringSetting(params: {
   override?: string | null;
-  defaultValue: string;
-}): { effective: string; source: "override" | "default" } {
+  resolvedDefault: ResolvedDefault;
+}): { effective: string; source: EffectiveSource } {
   const override = typeof params.override === "string" ? params.override.trim() : "";
   if (override) return { effective: override, source: "override" };
-  return { effective: params.defaultValue, source: "default" };
+  return {
+    effective: params.resolvedDefault.value,
+    source: params.resolvedDefault.isConfigured ? "configured" : "inherited",
+  };
 }
 
 function resolveThinkLevelPatchValue(value: string, isBinary: boolean): string | null {
@@ -371,6 +416,18 @@ function countSessionStatuses(
     else completed += 1;
   }
   return { total, active, idle, completed };
+}
+
+function countErroredSessions(rows: GatewaySessionRow[]): number {
+  let errored = 0;
+  for (const row of rows) {
+    if (row.abortedLastRun) errored += 1;
+  }
+  return errored;
+}
+
+function filterSessionsByError(rows: GatewaySessionRow[]): GatewaySessionRow[] {
+  return rows.filter((row) => row.abortedLastRun === true);
 }
 
 function filterSessionsBaseIgnoringStatus(
@@ -562,6 +619,7 @@ export function renderSessions(props: SessionsProps) {
   const laneCounts = countSessionTypes(baseRowsIgnoringStatusWithTags);
   const laneFilteredRowsIgnoringStatus = filterSessionsLane(baseRowsIgnoringStatusWithTags, props);
   const statusCounts = countSessionStatuses(laneFilteredRowsIgnoringStatus, props.activeTasks);
+  const errorCount = countErroredSessions(laneFilteredRowsIgnoringStatus);
   const statusFilteredRows =
     props.statusFilter === "all"
       ? laneFilteredRowsIgnoringStatus
@@ -569,13 +627,16 @@ export function renderSessions(props: SessionsProps) {
           (row) =>
             deriveSessionStatus(row, props.activeTasks?.get(row.key)) === props.statusFilter,
         );
-  const rows = sortSessions(statusFilteredRows, props.sort, props.sortDir, props.activeTasks);
+  const erroredFilteredRows = SESSION_PRESETS[props.preset].erroredOnly
+    ? filterSessionsByError(statusFilteredRows)
+    : statusFilteredRows;
+  const rows = sortSessions(erroredFilteredRows, props.sort, props.sortDir, props.activeTasks);
   const drawerSession = props.drawerKey
     ? allRows.find((row) => row.key === props.drawerKey) ?? null
     : null;
   const fetchedCount = allRows.length;
   const totalCount = displayRows.length;
-  const filteredCount = statusFilteredRows.length;
+  const filteredCount = erroredFilteredRows.length;
   const tagCountsSource = baseRowsIgnoringStatus;
   const tagCounts = (() => {
     const map = new Map<string, { label: string; count: number }>();
@@ -812,6 +873,7 @@ export function renderSessions(props: SessionsProps) {
                   >
                     ${icon("alert-triangle", { size: 14 })}
                     <span>Errored</span>
+                    <span class="sessions-preset-btn__count">${errorCount}</span>
                   </button>
                   <button
                     class="sessions-preset-btn ${props.preset === "cron" ? "sessions-preset-btn--active" : ""}"
@@ -841,18 +903,20 @@ export function renderSessions(props: SessionsProps) {
 
 	              <details class="sessions-filters-pane__details" open>
 	                <summary class="sessions-filters-pane__details-summary">
-	                  ${icon("inbox", { size: 14 })}
+	                  ${icon("sliders", { size: 14 })}
 	                  <span>Display</span>
 	                </summary>
 	                <div class="sessions-filters-pane__details-body">
 	                  <div class="field--modern">
-	                    <label class="field__label">Auto-hide completed after (minutes)</label>
+	                    <label class="field__label">Auto-hide completed (min)</label>
 	                    <input
 	                      class="field__input"
 	                      type="number"
 	                      min="0"
+	                      max="10080"
 	                      step="5"
 	                      inputmode="numeric"
+	                      placeholder="Never"
 	                      .value=${String(props.autoHideCompletedMinutes)}
 	                      @input=${(e: Event) => {
 	                        const completedMinutes = Math.max(
@@ -868,16 +932,17 @@ export function renderSessions(props: SessionsProps) {
 	                        });
 	                      }}
 	                    />
-	                    <div class="muted" style="font-size: 11px;">0 = never</div>
 	                  </div>
 	                  <div class="field--modern">
-	                    <label class="field__label">Auto-hide errored after (minutes)</label>
+	                    <label class="field__label">Auto-hide errored (min)</label>
 	                    <input
 	                      class="field__input"
 	                      type="number"
 	                      min="0"
+	                      max="10080"
 	                      step="5"
 	                      inputmode="numeric"
+	                      placeholder="Never"
 	                      .value=${String(props.autoHideErroredMinutes)}
 	                      @input=${(e: Event) => {
 	                        const erroredMinutes = Math.max(
@@ -893,7 +958,6 @@ export function renderSessions(props: SessionsProps) {
 	                        });
 	                      }}
 	                    />
-	                    <div class="muted" style="font-size: 11px;">0 = never</div>
 	                  </div>
 	                  <label class="table-filters__toggle ${props.showHidden ? "table-filters__toggle--active" : ""}">
 	                    <input
@@ -909,7 +973,7 @@ export function renderSessions(props: SessionsProps) {
 	              </details>
 
 	              <div class="sessions-filters-pane__section">
-	                <div class="sessions-filters-pane__section-title">Slices</div>
+	                <div class="sessions-filters-pane__section-title">Filters</div>
 	                <div class="sessions-slices">
                   <div class="sessions-slices__group">
                     <div class="sessions-slices__label">Status</div>
@@ -1015,8 +1079,8 @@ export function renderSessions(props: SessionsProps) {
 
 	              <details class="sessions-filters-pane__details">
 	                <summary class="sessions-filters-pane__details-summary">
-	                  ${icon("filter", { size: 14 })}
-	                  <span>More filters</span>
+	                  ${icon("sliders", { size: 14 })}
+	                  <span>Advanced filters</span>
                 </summary>
                 <div class="sessions-filters-pane__details-body">
                   <div class="field--modern">
@@ -1145,94 +1209,6 @@ export function renderSessions(props: SessionsProps) {
                   </div>
                 `
                 : nothing}
-
-              <!-- Server-side Fetch Options -->
-              <details class="sessions-fetch-options">
-                <summary class="sessions-fetch-options__summary">
-                  ${icon("server", { size: 12 })}
-                  <span>Fetch options</span>
-                  <span class="muted sessions-fetch-options__hint">(Refresh to apply)</span>
-                  ${(props.activeMinutes || props.limit || props.includeGlobal || props.includeUnknown)
-                    ? html`
-                      <span class="sessions-fetch-options__chips">
-                        ${props.activeMinutes ? html`<span class="badge badge--muted">active ${props.activeMinutes}m</span>` : nothing}
-                        ${props.limit ? html`<span class="badge badge--muted">limit ${props.limit}</span>` : nothing}
-                        ${props.includeGlobal ? html`<span class="badge badge--muted">global</span>` : nothing}
-                        ${props.includeUnknown ? html`<span class="badge badge--muted">unknown</span>` : nothing}
-                      </span>
-                    `
-                    : nothing}
-                  <span class="sessions-fetch-options__chev">${icon("chevron-down", { size: 14 })}</span>
-                </summary>
-                <div class="table-filters--modern table-filters--secondary">
-                  <div class="field--modern" style="min-width: 100px;">
-                    <label class="field__label">Active within</label>
-                    <div class="field__input-wrapper">
-                      <span class="field__icon">${icon("clock", { size: 14 })}</span>
-                      <input
-                        class="field__input"
-                        type="text"
-                        placeholder="Minutes"
-                        .value=${props.activeMinutes}
-                        @input=${(e: Event) =>
-                          props.onFiltersChange({
-                            activeMinutes: (e.target as HTMLInputElement).value,
-                            limit: props.limit,
-                            includeGlobal: props.includeGlobal,
-                            includeUnknown: props.includeUnknown,
-                          })}
-                      />
-                    </div>
-                  </div>
-                  <div class="field--modern" style="min-width: 80px;">
-                    <label class="field__label">Limit</label>
-                    <input
-                      class="field__input"
-                      type="text"
-                      placeholder="100"
-                      .value=${props.limit}
-                      @input=${(e: Event) =>
-                        props.onFiltersChange({
-                          activeMinutes: props.activeMinutes,
-                          limit: (e.target as HTMLInputElement).value,
-                          includeGlobal: props.includeGlobal,
-                          includeUnknown: props.includeUnknown,
-                        })}
-                    />
-                  </div>
-                  <label class="table-filters__toggle ${props.includeGlobal ? "table-filters__toggle--active" : ""}">
-                    <input
-                      type="checkbox"
-                      .checked=${props.includeGlobal}
-                      @change=${(e: Event) =>
-                        props.onFiltersChange({
-                          activeMinutes: props.activeMinutes,
-                          limit: props.limit,
-                          includeGlobal: (e.target as HTMLInputElement).checked,
-                          includeUnknown: props.includeUnknown,
-                        })}
-                    />
-                    <span>Global</span>
-                  </label>
-                  <label class="table-filters__toggle ${props.includeUnknown ? "table-filters__toggle--active" : ""}">
-                    <input
-                      type="checkbox"
-                      .checked=${props.includeUnknown}
-                      @change=${(e: Event) =>
-                        props.onFiltersChange({
-                          activeMinutes: props.activeMinutes,
-                          limit: props.limit,
-                          includeGlobal: props.includeGlobal,
-                          includeUnknown: (e.target as HTMLInputElement).checked,
-                        })}
-                    />
-                    <span>Unknown</span>
-                  </label>
-                  ${props.result
-                    ? html`<div class="muted" style="font-size: 11px;">Store: ${props.result.path}</div>`
-                    : nothing}
-                </div>
-              </details>
             </div>
           </aside>
 
@@ -1305,6 +1281,84 @@ export function renderSessions(props: SessionsProps) {
                       })}
                     </button>
                   </div>
+
+                  <details class="sessions-fetch-options sessions-fetch-options--toolbar">
+                    <summary class="sessions-fetch-options__summary">
+                      ${icon("server", { size: 14 })}
+                      <span>Fetch</span>
+                      ${(props.activeMinutes || props.limit || props.includeGlobal || props.includeUnknown)
+                        ? html`<span class="badge badge--muted sessions-fetch-options__badge">${[props.activeMinutes, props.limit, props.includeGlobal && "global", props.includeUnknown && "unknown"].filter(Boolean).length}</span>`
+                        : nothing}
+                    </summary>
+                    <div class="table-filters--modern table-filters--dropdown sessions-fetch-options__dropdown">
+                      <div class="field--modern">
+                        <label class="field__label">Active within (minutes)</label>
+                        <input
+                          class="field__input"
+                          type="number"
+                          placeholder="All"
+                          .value=${props.activeMinutes}
+                          @input=${(e: Event) =>
+                            props.onFiltersChange({
+                              activeMinutes: (e.target as HTMLInputElement).value,
+                              limit: props.limit,
+                              includeGlobal: props.includeGlobal,
+                              includeUnknown: props.includeUnknown,
+                            })}
+                        />
+                      </div>
+                      <div class="field--modern">
+                        <label class="field__label">Limit</label>
+                        <input
+                          class="field__input"
+                          type="number"
+                          placeholder="100"
+                          .value=${props.limit}
+                          @input=${(e: Event) =>
+                            props.onFiltersChange({
+                              activeMinutes: props.activeMinutes,
+                              limit: (e.target as HTMLInputElement).value,
+                              includeGlobal: props.includeGlobal,
+                              includeUnknown: props.includeUnknown,
+                            })}
+                        />
+                      </div>
+                      <div class="sessions-fetch-options__toggles">
+                        <label class="table-filters__toggle ${props.includeGlobal ? "table-filters__toggle--active" : ""}">
+                          <input
+                            type="checkbox"
+                            .checked=${props.includeGlobal}
+                            @change=${(e: Event) =>
+                              props.onFiltersChange({
+                                activeMinutes: props.activeMinutes,
+                                limit: props.limit,
+                                includeGlobal: (e.target as HTMLInputElement).checked,
+                                includeUnknown: props.includeUnknown,
+                              })}
+                          />
+                          <span>Global</span>
+                        </label>
+                        <label class="table-filters__toggle ${props.includeUnknown ? "table-filters__toggle--active" : ""}">
+                          <input
+                            type="checkbox"
+                            .checked=${props.includeUnknown}
+                            @change=${(e: Event) =>
+                              props.onFiltersChange({
+                                activeMinutes: props.activeMinutes,
+                                limit: props.limit,
+                                includeGlobal: props.includeGlobal,
+                                includeUnknown: (e.target as HTMLInputElement).checked,
+                              })}
+                          />
+                          <span>Unknown</span>
+                        </label>
+                      </div>
+                      ${props.result
+                        ? html`<div class="muted sessions-fetch-options__store">Store: ${props.result.path}</div>`
+                        : nothing}
+                      <div class="muted sessions-fetch-options__hint">Press refresh to apply changes</div>
+                    </div>
+                  </details>
                 </div>
               </div>
 
@@ -1477,17 +1531,17 @@ function renderListItem(
   const isBinaryThinking = isBinaryThinkingProvider(row.modelProvider);
   const thinkingResolved = resolveEffectiveStringSetting({
     override: rawThinking,
-    defaultValue: resolvedDefaults.thinkingDefault,
+    resolvedDefault: resolvedDefaults.thinkingDefault,
   });
   const thinking = resolveThinkLevelDisplay(thinkingResolved.effective, isBinaryThinking);
   const thinkingOverride = resolveThinkLevelDisplay(rawThinking, isBinaryThinking);
   const verboseResolved = resolveEffectiveStringSetting({
     override: row.verboseLevel ?? "",
-    defaultValue: resolvedDefaults.verboseDefault,
+    resolvedDefault: resolvedDefaults.verboseDefault,
   });
   const reasoningResolved = resolveEffectiveStringSetting({
     override: row.reasoningLevel ?? "",
-    defaultValue: resolvedDefaults.reasoningDefault,
+    resolvedDefault: resolvedDefaults.reasoningDefault,
   });
   const displayName = row.displayName ?? row.key;
   const canLink = row.kind !== "global";
@@ -1640,9 +1694,7 @@ function renderListItem(
         <div class="sessions-list-item__stats">
           <span
             class="badge badge--muted"
-            title=${thinkingResolved.source === "override"
-              ? `Thinking (override): ${thinking}`
-              : `Thinking (default): ${thinking}`}
+            title=${`Thinking (${sourceLabel(thinkingResolved.source)}): ${thinking}`}
           >
             ${icon("brain", { size: 12 })} ${thinking}
           </span>
@@ -1670,7 +1722,7 @@ function renderListItem(
                   }}
                 >
                   ${thinkLevels.map((level) =>
-                    html`<option value=${level}>${level || "inherit"}</option>`,
+                    html`<option value=${level}>${level || inheritOptionLabel(resolvedDefaults.thinkingDefault)}</option>`,
                   )}
                 </select>
               </div>
@@ -1685,7 +1737,7 @@ function renderListItem(
                     onPatch(row.key, { verboseLevel: value || null });
                   }}
                 >
-                  ${VERBOSE_LEVELS.map(
+                  ${resolveVerboseLevelOptions(resolvedDefaults.verboseDefault).map(
                     (level) => html`<option value=${level.value}>${level.label}</option>`,
                   )}
                 </select>
@@ -1702,12 +1754,12 @@ function renderListItem(
                   }}
                 >
                   ${REASONING_LEVELS.map((level) =>
-                    html`<option value=${level}>${level || "inherit"}</option>`,
+                    html`<option value=${level}>${level || inheritOptionLabel(resolvedDefaults.reasoningDefault)}</option>`,
                   )}
                 </select>
               </div>
               <div class="muted" style="font-size: 11px;">
-                Effective: thinking ${thinking} (${thinkingResolved.source}), verbose ${verboseResolved.effective} (${verboseResolved.source}), reasoning ${reasoningResolved.effective} (${reasoningResolved.source})
+                Effective: thinking ${thinking} (${sourceLabel(thinkingResolved.source)}), verbose ${verboseResolved.effective} (${sourceLabel(verboseResolved.source)}), reasoning ${reasoningResolved.effective} (${sourceLabel(reasoningResolved.source)})
               </div>
             </div>
           </details>
@@ -1801,18 +1853,18 @@ function renderSessionsDrawer(params: {
   const isBinaryThinking = isBinaryThinkingProvider(session.modelProvider);
   const thinkingResolved = resolveEffectiveStringSetting({
     override: rawThinking,
-    defaultValue: resolvedDefaults.thinkingDefault,
+    resolvedDefault: resolvedDefaults.thinkingDefault,
   });
   const thinkingEffective = resolveThinkLevelDisplay(thinkingResolved.effective, isBinaryThinking);
   const thinkingOverride = resolveThinkLevelDisplay(rawThinking, isBinaryThinking);
   const thinkLevels = resolveThinkLevelOptions(session.modelProvider);
   const verboseResolved = resolveEffectiveStringSetting({
     override: session.verboseLevel ?? "",
-    defaultValue: resolvedDefaults.verboseDefault,
+    resolvedDefault: resolvedDefaults.verboseDefault,
   });
   const reasoningResolved = resolveEffectiveStringSetting({
     override: session.reasoningLevel ?? "",
-    defaultValue: resolvedDefaults.reasoningDefault,
+    resolvedDefault: resolvedDefaults.reasoningDefault,
   });
   const verbose = session.verboseLevel ?? "";
   const reasoning = session.reasoningLevel ?? "";
@@ -2065,7 +2117,7 @@ function renderSessionsDrawer(params: {
             </summary>
             <div class="sessions-drawer__details-body">
               <div class="muted" style="font-size: 11px;">
-                Effective: thinking ${thinkingEffective} (${thinkingResolved.source}), verbose ${verboseResolved.effective} (${verboseResolved.source}), reasoning ${reasoningResolved.effective} (${reasoningResolved.source})
+                Effective: thinking ${thinkingEffective} (${sourceLabel(thinkingResolved.source)}), verbose ${verboseResolved.effective} (${sourceLabel(verboseResolved.source)}), reasoning ${reasoningResolved.effective} (${sourceLabel(reasoningResolved.source)})
               </div>
               <div class="sessions-drawer__ai-row">
                 <span class="muted">Thinking</span>
@@ -2081,7 +2133,7 @@ function renderSessionsDrawer(params: {
                   }}
                 >
                   ${thinkLevels.map((level) =>
-                    html`<option value=${level}>${level || "inherit"}</option>`,
+                    html`<option value=${level}>${level || inheritOptionLabel(resolvedDefaults.thinkingDefault)}</option>`,
                   )}
                 </select>
               </div>
@@ -2096,7 +2148,7 @@ function renderSessionsDrawer(params: {
                     props.onPatch(session.key, { verboseLevel: value || null });
                   }}
                 >
-                  ${VERBOSE_LEVELS.map(
+                  ${resolveVerboseLevelOptions(resolvedDefaults.verboseDefault).map(
                     (level) => html`<option value=${level.value}>${level.label}</option>`,
                   )}
                 </select>
@@ -2113,7 +2165,7 @@ function renderSessionsDrawer(params: {
                   }}
                 >
                   ${REASONING_LEVELS.map((level) =>
-                    html`<option value=${level}>${level || "inherit"}</option>`,
+                    html`<option value=${level}>${level || inheritOptionLabel(resolvedDefaults.reasoningDefault)}</option>`,
                   )}
                 </select>
               </div>
@@ -2174,18 +2226,18 @@ function renderRow(
   const isBinaryThinking = isBinaryThinkingProvider(row.modelProvider);
   const thinkingResolved = resolveEffectiveStringSetting({
     override: rawThinking,
-    defaultValue: defaults.thinkingDefault,
+    resolvedDefault: defaults.thinkingDefault,
   });
   const thinking = resolveThinkLevelDisplay(thinkingResolved.effective, isBinaryThinking);
   const thinkingOverride = resolveThinkLevelDisplay(rawThinking, isBinaryThinking);
   const thinkLevels = resolveThinkLevelOptions(row.modelProvider);
   const verboseResolved = resolveEffectiveStringSetting({
     override: row.verboseLevel ?? "",
-    defaultValue: defaults.verboseDefault,
+    resolvedDefault: defaults.verboseDefault,
   });
   const reasoningResolved = resolveEffectiveStringSetting({
     override: row.reasoningLevel ?? "",
-    defaultValue: defaults.reasoningDefault,
+    resolvedDefault: defaults.reasoningDefault,
   });
   const verbose = row.verboseLevel ?? "";
   const reasoning = row.reasoningLevel ?? "";
@@ -2387,7 +2439,7 @@ function renderRow(
                     }}
                   >
                     ${thinkLevels.map((level) =>
-                      html`<option value=${level}>${level || "inherit"}</option>`,
+                      html`<option value=${level}>${level || inheritOptionLabel(defaults.thinkingDefault)}</option>`,
                     )}
                   </select>
                 </div>
@@ -2402,7 +2454,7 @@ function renderRow(
                       onPatch(row.key, { verboseLevel: value || null });
                     }}
                   >
-                    ${VERBOSE_LEVELS.map(
+                    ${resolveVerboseLevelOptions(defaults.verboseDefault).map(
                       (level) => html`<option value=${level.value}>${level.label}</option>`,
                     )}
                   </select>
@@ -2419,12 +2471,12 @@ function renderRow(
                     }}
                   >
                     ${REASONING_LEVELS.map((level) =>
-                      html`<option value=${level}>${level || "inherit"}</option>`,
+                      html`<option value=${level}>${level || inheritOptionLabel(defaults.reasoningDefault)}</option>`,
                     )}
                   </select>
                 </div>
                 <div class="muted" style="font-size: 11px;">
-                  Effective: thinking ${thinking} (${thinkingResolved.source}), verbose ${verboseResolved.effective} (${verboseResolved.source}), reasoning ${reasoningResolved.effective} (${reasoningResolved.source})
+                  Effective: thinking ${thinking} (${sourceLabel(thinkingResolved.source)}), verbose ${verboseResolved.effective} (${sourceLabel(verboseResolved.source)}), reasoning ${reasoningResolved.effective} (${sourceLabel(reasoningResolved.source)})
                 </div>
               </div>
             </details>

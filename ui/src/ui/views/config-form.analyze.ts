@@ -70,7 +70,10 @@ function normalizeSchemaNode(
     normalized.properties = normalizedProps;
 
     if (schema.additionalProperties === true) {
-      unsupported.add(pathLabel);
+      // Only mark as unsupported if there are no known properties to render
+      if (Object.keys(properties).length === 0) {
+        unsupported.add(pathLabel);
+      }
     } else if (schema.additionalProperties === false) {
       normalized.additionalProperties = false;
     } else if (
@@ -114,11 +117,63 @@ function normalizeSchemaNode(
   };
 }
 
+function mergeAllOf(
+  schema: JsonSchema,
+  path: Array<string | number>,
+): ConfigSchemaAnalysis | null {
+  const entries = schema.allOf;
+  if (!entries || entries.length === 0) return null;
+
+  // Simple case: single entry in allOf
+  if (entries.length === 1 && entries[0]) {
+    return normalizeSchemaNode({ ...schema, ...entries[0], allOf: undefined }, path);
+  }
+
+  // Try to merge object schemas
+  const mergedProps: Record<string, JsonSchema> = {};
+  let mergedType: string | undefined;
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+
+    const entryType = schemaType(entry);
+    if (entryType === "object" || entry.properties) {
+      mergedType = "object";
+      if (entry.properties) {
+        for (const [key, prop] of Object.entries(entry.properties)) {
+          mergedProps[key] = prop;
+        }
+      }
+    } else if (entryType) {
+      // Non-object type in allOf - can't merge incompatible types
+      if (mergedType && mergedType !== entryType) return null;
+      mergedType = entryType;
+    }
+  }
+
+  if (mergedType === "object" && Object.keys(mergedProps).length > 0) {
+    const merged: JsonSchema = {
+      ...schema,
+      type: "object",
+      properties: mergedProps,
+      allOf: undefined,
+    };
+    return normalizeSchemaNode(merged, path);
+  }
+
+  return null;
+}
+
 function normalizeUnion(
   schema: JsonSchema,
   path: Array<string | number>,
 ): ConfigSchemaAnalysis | null {
-  if (schema.allOf) return null;
+  if (schema.allOf) {
+    // Try to merge allOf into a single object schema
+    const merged = mergeAllOf(schema, path);
+    if (merged) return merged;
+    return null;
+  }
   const union = schema.anyOf ?? schema.oneOf;
   if (!union) return null;
 

@@ -2547,6 +2547,92 @@
   border-radius: 0;
 }
 
+/* Toolbar variant of fetch options */
+.sessions-fetch-options--toolbar {
+  position: relative;
+}
+
+.sessions-fetch-options--toolbar .sessions-fetch-options__summary {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+}
+
+:root[data-theme="light"] .sessions-fetch-options--toolbar .sessions-fetch-options__summary {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.sessions-fetch-options--toolbar .sessions-fetch-options__summary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="light"] .sessions-fetch-options--toolbar .sessions-fetch-options__summary:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.sessions-fetch-options__badge {
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.sessions-fetch-options__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  min-width: 260px;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sessions-fetch-options__dropdown {
+    animation: dropdown-fade-in 150ms ease-out;
+  }
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sessions-fetch-options__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sessions-fetch-options__store {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.sessions-fetch-options__hint {
+  margin-top: 8px;
+  font-size: 10px;
+  text-align: center;
+}
+
 .sessions-dashboard {
   margin-top: 12px;
 }
@@ -3662,6 +3748,82 @@
   .sessions-drawer {
     width: 100%;
     border-left: none;
+  }
+}
+
+/* Responsive improvements for sessions view */
+@media (max-width: 980px) {
+  .sessions-results-pane__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .sessions-results-pane__toolbar-left {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .sessions-results-pane__toolbar-right {
+    flex-basis: 100%;
+    order: 1;
+    justify-content: flex-start;
+  }
+
+  .sessions-toolbar__group {
+    flex-shrink: 0;
+  }
+
+  .sessions-view-toggle__btn span {
+    display: none;
+  }
+
+  .sessions-sort select {
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sessions-presets {
+    flex-wrap: wrap;
+  }
+
+  .sessions-preset-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .sessions-preset-btn__count {
+    margin-left: auto;
+  }
+
+  .sessions-slices__chips {
+    flex-wrap: wrap;
+  }
+
+  .sessions-slices__chip {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  .chip-row {
+    gap: 6px;
+  }
+
+  .chip {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .sessions-fetch-options--toolbar .sessions-fetch-options__summary span {
+    display: none;
+  }
+
+  .sessions-fetch-options--toolbar .sessions-fetch-options__summary {
+    padding: 6px 8px;
+  }
+
+  .sessions-toolbar__group--view {
+    display: none;
   }
 }
 

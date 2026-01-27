@@ -216,9 +216,10 @@ const FIELD_LABELS: Record<string, string> = {
   "tools.web.fetch.cacheTtlMinutes": "Web Fetch Cache TTL (min)",
   "tools.web.fetch.maxRedirects": "Web Fetch Max Redirects",
   "tools.web.fetch.userAgent": "Web Fetch User-Agent",
-  "gateway.controlUi.basePath": "Control UI Base Path",
-  "gateway.controlUi.allowInsecureAuth": "Allow Insecure Control UI Auth",
-  "gateway.controlUi.dangerouslyDisableDeviceAuth": "Dangerously Disable Control UI Device Auth",
+  "gateway.controlUi": "Web UI",
+  "gateway.controlUi.basePath": "Web UI Base Path",
+  "gateway.controlUi.allowInsecureAuth": "Allow Insecure Web UI Auth",
+  "gateway.controlUi.dangerouslyDisableDeviceAuth": "Dangerously Disable Web UI Device Auth",
   "gateway.http.endpoints.chatCompletions.enabled": "OpenAI Chat Completions Endpoint",
   "gateway.reload.mode": "Config Reload Mode",
   "gateway.reload.debounceMs": "Config Reload Debounce (ms)",
@@ -226,8 +227,17 @@ const FIELD_LABELS: Record<string, string> = {
   "gateway.nodes.browser.node": "Gateway Node Browser Pin",
   "gateway.nodes.allowCommands": "Gateway Node Allowlist (Extra Commands)",
   "gateway.nodes.denyCommands": "Gateway Node Denylist",
+  nodeHost: "Node Host",
+  "nodeHost.browserProxy": "Browser Proxy",
   "nodeHost.browserProxy.enabled": "Node Browser Proxy Enabled",
   "nodeHost.browserProxy.allowProfiles": "Node Browser Proxy Allowed Profiles",
+  "skills.allowBundled": "Allowed Bundled Skills",
+  "skills.load": "Skill Loading",
+  "skills.load.extraDirs": "Extra Skill Directories",
+  "skills.install": "Skill Installation",
+  "skills.install.preferBrew": "Prefer Homebrew",
+  "skills.install.nodeManager": "Node Package Manager",
+  "skills.entries": "Skill Entries",
   "skills.load.watch": "Watch Skills",
   "skills.load.watchDebounceMs": "Skills Watch Debounce (ms)",
   "agents.defaults.workspace": "Workspace",
@@ -399,11 +409,11 @@ const FIELD_HELP: Record<string, string> = {
     "Required by default for gateway access (unless using Tailscale Serve identity); required for non-loopback binds.",
   "gateway.auth.password": "Required for Tailscale funnel.",
   "gateway.controlUi.basePath":
-    "Optional URL prefix where the Control UI is served (e.g. /clawdbrain).",
+    "Optional URL prefix where the Web UI is served (e.g. /clawdbrain).",
   "gateway.controlUi.allowInsecureAuth":
-    "Allow Control UI auth over insecure HTTP (token-only; not recommended).",
+    "Allow Web UI auth over insecure HTTP (token-only; not recommended).",
   "gateway.controlUi.dangerouslyDisableDeviceAuth":
-    "DANGEROUS. Disable Control UI device identity checks (token/password only).",
+    "DANGEROUS. Disable Web UI device identity checks (token/password only).",
   "gateway.http.endpoints.chatCompletions.enabled":
     "Enable the OpenAI-compatible `POST /v1/chat/completions` endpoint (default: false).",
   "gateway.reload.mode": 'Hot reload strategy for config changes ("hybrid" recommended).',
@@ -415,9 +425,21 @@ const FIELD_HELP: Record<string, string> = {
     "Extra node.invoke commands to allow beyond the gateway defaults (array of command strings).",
   "gateway.nodes.denyCommands":
     "Commands to block even if present in node claims or default allowlist.",
+  nodeHost:
+    "Node host configuration. Nodes are compute agents that run tools and commands on behalf of the gateway.",
+  "nodeHost.browserProxy": "Proxy local browser control server via the node connection.",
   "nodeHost.browserProxy.enabled": "Expose the local browser control server via node proxy.",
   "nodeHost.browserProxy.allowProfiles":
     "Optional allowlist of browser profile names exposed via the node proxy.",
+  "skills.allowBundled":
+    "Allowlist of bundled skill names. If set, only these built-in skills are loaded.",
+  "skills.load.extraDirs": "Additional directories to scan for skill packages.",
+  "skills.load.watch": "Watch skill directories for changes and auto-reload.",
+  "skills.load.watchDebounceMs": "Delay before reloading after a file change (ms).",
+  "skills.install.preferBrew": "Prefer Homebrew-installed tool binaries over npm-installed ones.",
+  "skills.install.nodeManager": "Package manager to use for installing skill dependencies.",
+  "skills.entries":
+    "Per-skill configuration overrides. Key is the skill name, value contains enabled, apiKey, env, and config.",
   "diagnostics.flags":
     'Enable targeted diagnostics logs by flag (e.g. ["telegram.http"]). Supports wildcards like "telegram.*" or "*".',
   "diagnostics.cacheTrace.enabled":
@@ -701,6 +723,23 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "agents.list[].identity.avatar": "avatars/clawd.png",
 };
 
+const FIELD_ORDER: Record<string, number> = {
+  // Auth section ordering - push Tailscale to the bottom
+  "gateway.auth.mode": 10,
+  "gateway.auth.token": 20,
+  "gateway.auth.password": 30,
+  "gateway.auth.allowTailscale": 90,
+  // Tailscale subsection
+  "gateway.tailscale": 90,
+  "gateway.tailscale.mode": 91,
+  "gateway.tailscale.resetOnExit": 92,
+  // Skills section ordering
+  "skills.allowBundled": 10,
+  "skills.load": 20,
+  "skills.install": 30,
+  "skills.entries": 40,
+};
+
 const SENSITIVE_PATTERNS = [/token/i, /password/i, /secret/i, /api.?key/i];
 
 function isSensitivePath(path: string): boolean {
@@ -769,6 +808,10 @@ function buildBaseHints(): ConfigUiHints {
   for (const [path, placeholder] of Object.entries(FIELD_PLACEHOLDERS)) {
     const current = hints[path];
     hints[path] = current ? { ...current, placeholder } : { placeholder };
+  }
+  for (const [path, order] of Object.entries(FIELD_ORDER)) {
+    const current = hints[path];
+    hints[path] = current ? { ...current, order } : { order };
   }
   return hints;
 }
