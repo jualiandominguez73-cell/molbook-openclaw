@@ -1,0 +1,11 @@
+{
+  "id": "ringcentral",
+  "channels": [
+    "ringcentral"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

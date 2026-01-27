@@ -1,0 +1,42 @@
+{
+  "name": "@clawdbot/ringcentral",
+  "version": "2026.1.25",
+  "type": "module",
+  "description": "Clawdbot RingCentral Team Messaging channel plugin",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "ringcentral",
+      "label": "RingCentral",
+      "selectionLabel": "RingCentral Team Messaging",
+      "detailLabel": "RingCentral",
+      "docsPath": "/channels/ringcentral",
+      "docsLabel": "ringcentral",
+      "blurb": "RingCentral Team Messaging via REST API and WebSocket.",
+      "aliases": [
+        "rc",
+        "ringcentral-tm"
+      ],
+      "order": 56
+    },
+    "install": {
+      "npmSpec": "@clawdbot/ringcentral",
+      "localPath": "extensions/ringcentral",
+      "defaultChoice": "npm"
+    }
+  },
+  "dependencies": {
+    "@ringcentral/sdk": "^5.0.0",
+    "@ringcentral/subscriptions": "^5.0.0",
+    "isomorphic-ws": "^5.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "clawdbot": "workspace:*"
+  },
+  "peerDependencies": {
+    "clawdbot": ">=2026.1.25"
+  }
+}

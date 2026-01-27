@@ -71,3 +71,7 @@ USER.md
 
 # local tooling
 .serena/
+
+# RingCentral credentials (never commit)
+rc-credentials.json
+*-credentials.json
