@@ -112,6 +112,8 @@ export function createMoltbotCodingTools(options?: {
   messageThreadId?: string | number;
   sandbox?: SandboxContext | null;
   sessionKey?: string;
+  /** Agent run id used to correlate exec events. */
+  runId?: string;
   agentDir?: string;
   workspaceDir?: string;
   config?: MoltbotConfig;
