@@ -58,7 +58,10 @@ import {
 import { renderSkills } from "./views/skills";
 import { renderLanding } from "./views/landing";
 import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers";
-import { renderAutomationsListView, renderAutomationForm, renderProgressModal, renderRunHistory } from "./views/automations";
+import { renderAutomationsListView } from "./views/automations";
+import { renderAutomationForm } from "./views/automation-form";
+import { renderProgressModal } from "./views/progress-modal";
+import { renderRunHistory } from "./views/run-history";
 import { loadChannels } from "./controllers/channels";
 import { loadPresence } from "./controllers/presence";
 import {
@@ -78,6 +81,7 @@ import {
   type SkillMessage,
 } from "./controllers/skills";
 import { loadNodes } from "./controllers/nodes";
+import { loadAgents } from "./controllers/agents";
 import { loadChatHistory } from "./controllers/chat";
 import {
   applyConfig,
@@ -213,7 +217,7 @@ export function renderApp(state: AppViewState) {
       onGetStarted: () => state.setTab("chat"),
       onBookDemo: () => {
         // Could open external link or modal
-        window.open("https://docs.clawd.bot", "_blank");
+        window.open("https://docs.clawdbrain.bot", "_blank");
       },
     });
   }
@@ -236,10 +240,10 @@ export function renderApp(state: AppViewState) {
           </button>
           <div class="brand">
             <div class="brand-logo">
-              <img src="https://mintcdn.com/clawdhub/4rYvG-uuZrMK_URE/assets/pixel-lobster.svg?fit=max&auto=format&n=4rYvG-uuZrMK_URE&q=85&s=da2032e9eac3b5d9bfe7eb96ca6a8a26" alt="Moltbot" />
+              <img src="https://mintcdn.com/clawdhub/4rYvG-uuZrMK_URE/assets/pixel-lobster.svg?fit=max&auto=format&n=4rYvG-uuZrMK_URE&q=85&s=da2032e9eac3b5d9bfe7eb96ca6a8a26" alt="Clawdbrain" />
             </div>
             <div class="brand-text">
-              <div class="brand-title">MOLTBOT</div>
+              <div class="brand-title">CLAWDBRAIN</div>
               <div class="brand-sub">Gateway Dashboard</div>
             </div>
           </div>
@@ -287,7 +291,7 @@ export function renderApp(state: AppViewState) {
           <div class="nav-group__items">
             <a
               class="nav-item nav-item--external"
-              href="https://docs.molt.bot"
+              href="https://docs.clawdbrain.bot"
               target="_blank"
               rel="noreferrer"
               title="Docs (opens in new tab)"
@@ -520,7 +524,7 @@ export function renderApp(state: AppViewState) {
 		                state.sessionsViewMode = mode;
 		                try {
 		                  window.localStorage.setItem(
-		                    "clawdbot.control.ui.sessions.viewMode.v1",
+		                    "clawdbrain.control.ui.sessions.viewMode.v1",
 		                    mode,
 		                  );
 		                } catch {
@@ -531,7 +535,7 @@ export function renderApp(state: AppViewState) {
 		                state.sessionsShowHidden = next;
 		                try {
 		                  window.localStorage.setItem(
-		                    "clawdbot.control.ui.sessions.showHidden.v1",
+		                    "clawdbrain.control.ui.sessions.showHidden.v1",
 		                    next ? "true" : "false",
 		                  );
 		                } catch {
@@ -543,11 +547,11 @@ export function renderApp(state: AppViewState) {
 		                state.sessionsAutoHideErroredMinutes = next.erroredMinutes;
 		                try {
 		                  window.localStorage.setItem(
-		                    "clawdbot.control.ui.sessions.autoHide.completedMinutes.v1",
+		                    "clawdbrain.control.ui.sessions.autoHide.completedMinutes.v1",
 		                    String(next.completedMinutes),
 		                  );
 		                  window.localStorage.setItem(
-		                    "clawdbot.control.ui.sessions.autoHide.erroredMinutes.v1",
+		                    "clawdbrain.control.ui.sessions.autoHide.erroredMinutes.v1",
 		                    String(next.erroredMinutes),
 		                  );
 		                } catch {
@@ -811,7 +815,7 @@ export function renderApp(state: AppViewState) {
                 onDeleteRule: () => {},
                 onToggleRuleEnabled: () => {},
                 onSelectRule: () => {},
-                onCloseRuleEditor: () => {},
+                onCloseDraftRule: () => {},
                 onSaveDraftRule: () => {},
                 onAddCondition: () => {},
                 onUpdateCondition: () => {},
@@ -830,17 +834,16 @@ export function renderApp(state: AppViewState) {
                 onUpdateScenario: () => {},
                 onDeleteScenario: () => {},
                 onSelectScenario: () => {},
-                onCloseScenarioEditor: () => {},
+                onCloseDraftScenario: () => {},
                 onSaveDraftScenario: () => {},
                 onStartRun: () => {},
                 onPauseRun: () => {},
                 onResumeRun: () => {},
                 onStopRun: () => {},
-                onResetSimulator: () => {},
+                onResetRun: () => {},
+                onTriggerTick: () => {},
                 onClearActivityLog: () => {},
                 onUpdateSettings: () => {},
-                onSaveState: () => {},
-                onLoadState: () => {},
               },
               onRefresh: () => state.handleOverseerRefresh(),
               onTick: () => state.handleOverseerTick(),
@@ -862,7 +865,7 @@ export function renderApp(state: AppViewState) {
               onOpenCreateGoal: () => state.handleOverseerOpenCreateGoal(),
               onCloseCreateGoal: () => state.handleOverseerCloseCreateGoal(),
               onCreateGoal: (params) => state.handleOverseerCreateGoal(params),
-              onUpdateCreateGoalForm: (updates) => state.handleOverseerUpdateCreateGoalForm(updates),
+              onUpdateCreateGoalForm: (updates) => { if (updates) state.handleOverseerUpdateCreateGoalForm(updates as Record<string, unknown>); },
               onMarkWorkDone: (goalId, workNodeId, summary) =>
                 state.handleOverseerMarkWorkDone(goalId, workNodeId, summary),
               onBlockWork: (goalId, workNodeId, reason) =>
@@ -1254,7 +1257,7 @@ export function renderApp(state: AppViewState) {
               conflicts: state.automationProgressModalConflicts,
               status: state.automationProgressModalStatus,
               sessionId: state.automationProgressModalSessionId,
-              automationId: state.automationProgressModalAutomationId,
+              automationId: state.automationProgressModalAutomationId ?? "",
             },
             onClose: () => {
               state.automationProgressModalOpen = false;
@@ -1272,7 +1275,7 @@ export function renderApp(state: AppViewState) {
                 conflicts: state.automationProgressModalConflicts,
                 status: state.automationProgressModalStatus,
                 sessionId: state.automationProgressModalSessionId,
-                automationId: state.automationProgressModalAutomationId,
+                automationId: state.automationProgressModalAutomationId ?? "",
               };
               jumpToChat(progressState);
             },
@@ -1289,7 +1292,7 @@ export function renderApp(state: AppViewState) {
                 conflicts: state.automationProgressModalConflicts,
                 status: state.automationProgressModalStatus,
                 sessionId: state.automationProgressModalSessionId,
-                automationId: state.automationProgressModalAutomationId,
+                automationId: state.automationProgressModalAutomationId ?? "",
               };
               await cancelAutomation(progressState);
               state.automationProgressModalStatus = progressState.status;
@@ -1400,7 +1403,7 @@ export function renderApp(state: AppViewState) {
               state.automationRunHistoryCurrentPage = page;
             },
             onStatusFilterChange: (status) => {
-              state.automationRunHistoryStatusFilter = status;
+              state.automationRunHistoryStatusFilter = status as typeof state.automationRunHistoryStatusFilter;
             },
             onDateFromChange: (date) => {
               state.automationRunHistoryDateFrom = date;
@@ -1507,7 +1510,7 @@ export function renderApp(state: AppViewState) {
             },
             {
               openKeyboardShortcuts: () => toggleKeyboardShortcutsModal(),
-              openDocumentation: () => window.open("https://docs.clawd.bot", "_blank"),
+              openDocumentation: () => window.open("https://docs.clawdbrain.bot", "_blank"),
               copyGatewayUrl: () => {
                 const url = state.basePath || window.location.origin;
                 navigator.clipboard.writeText(url).then(() => toast.success("Gateway URL copied"));
