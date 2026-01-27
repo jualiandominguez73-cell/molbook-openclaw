@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import type { BrowserActResponse } from "../../browser/client-actions-core.js";
 import { danger } from "../../globals.js";
 import { defaultRuntime } from "../../runtime.js";
 import type { BrowserParentOpts } from "../browser-cli-shared.js";
@@ -27,7 +28,7 @@ export function registerBrowserElementCommands(
             .filter(Boolean)
         : undefined;
       try {
-        const result = await callBrowserAct({
+        const result = await callBrowserAct<BrowserActResponse>({
           parent,
           profile,
           body: {

@@ -1,9 +1,12 @@
 import type { Command } from "commander";
+import type { BrowserDownloadPayload } from "../../browser/client-actions-core.js";
 import { danger } from "../../globals.js";
 import { defaultRuntime } from "../../runtime.js";
 import { callBrowserRequest, type BrowserParentOpts } from "../browser-cli-shared.js";
 import { resolveBrowserActionContext } from "./shared.js";
 import { shortenHomePath } from "../../utils.js";
+
+type BrowserDownloadResponse = { ok: true; targetId: string; download: BrowserDownloadPayload };
 
 export function registerBrowserFilesAndDownloadsCommands(
   browser: Command,
@@ -68,7 +71,7 @@ export function registerBrowserFilesAndDownloadsCommands(
       const { parent, profile } = resolveBrowserActionContext(cmd, parentOpts);
       try {
         const timeoutMs = Number.isFinite(opts.timeoutMs) ? opts.timeoutMs : undefined;
-        const result = await callBrowserRequest(
+        const result = await callBrowserRequest<BrowserDownloadResponse>(
           parent,
           {
             method: "POST",
@@ -108,7 +111,7 @@ export function registerBrowserFilesAndDownloadsCommands(
       const { parent, profile } = resolveBrowserActionContext(cmd, parentOpts);
       try {
         const timeoutMs = Number.isFinite(opts.timeoutMs) ? opts.timeoutMs : undefined;
-        const result = await callBrowserRequest(
+        const result = await callBrowserRequest<BrowserDownloadResponse>(
           parent,
           {
             method: "POST",
