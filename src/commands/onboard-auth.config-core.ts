@@ -417,7 +417,7 @@ export function applyVeniceConfig(cfg: MoltbotConfig): MoltbotConfig {
  * are user-configurable.
  */
 export function applyLitellmProviderConfig(
-  cfg: ClawdbotConfig,
+  cfg: MoltbotConfig,
   params: {
     baseUrl: string;
     modelId: string;
@@ -425,7 +425,7 @@ export function applyLitellmProviderConfig(
     contextWindow?: number;
     maxTokens?: number;
   },
-): ClawdbotConfig {
+): MoltbotConfig {
   const modelRef = `litellm/${params.modelId}`;
   const models = { ...cfg.agents?.defaults?.models };
   models[modelRef] = {
@@ -485,7 +485,7 @@ export function applyLitellmProviderConfig(
  * Use this when LiteLLM is the primary provider choice during onboarding.
  */
 export function applyLitellmConfig(
-  cfg: ClawdbotConfig,
+  cfg: MoltbotConfig,
   params: {
     baseUrl: string;
     modelId: string;
@@ -493,7 +493,7 @@ export function applyLitellmConfig(
     contextWindow?: number;
     maxTokens?: number;
   },
-): ClawdbotConfig {
+): MoltbotConfig {
   const next = applyLitellmProviderConfig(cfg, params);
   const modelRef = `litellm/${params.modelId}`;
   const existingModel = next.agents?.defaults?.model;

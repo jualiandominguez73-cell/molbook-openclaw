@@ -588,7 +588,12 @@ export async function applyAuthChoiceApiProviders(
     let hasCredential = false;
     let apiKey: string | undefined;
 
-    // Check for pre-provided credentials via CLI options
+    // Check for pre-provided API key via CLI options (--litellm-api-key or --token with --token-provider litellm)
+    if (!hasCredential && params.opts?.litellmApiKey) {
+      apiKey = normalizeApiKeyInput(params.opts.litellmApiKey);
+      await setLitellmApiKey(apiKey, params.agentDir);
+      hasCredential = true;
+    }
     if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "litellm") {
       apiKey = normalizeApiKeyInput(params.opts.token);
       await setLitellmApiKey(apiKey, params.agentDir);
@@ -610,7 +615,7 @@ export async function applyAuthChoiceApiProviders(
 
     // Check for existing env key
     const envKey = resolveEnvApiKey("litellm");
-    if (envKey) {
+    if (!hasCredential && envKey) {
       const useExisting = await params.prompter.confirm({
         message: `Use existing LITELLM_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
         initialValue: true,
@@ -631,24 +636,28 @@ export async function applyAuthChoiceApiProviders(
       await setLitellmApiKey(apiKey, params.agentDir);
     }
 
-    // Prompt for base URL
-    const defaultBaseUrl = process.env.LITELLM_BASE_URL ?? "http://localhost:4000";
-    const baseUrl = await params.prompter.text({
-      message: "Enter LiteLLM base URL",
-      initialValue: defaultBaseUrl,
-      placeholder: defaultBaseUrl,
-      validate: (value) => {
-        if (!value?.trim()) return "Base URL is required";
-        try {
-          new URL(value);
-          return undefined;
-        } catch {
-          return "Invalid URL format";
-        }
-      },
-    });
-
-    const normalizedBaseUrl = String(baseUrl).trim();
+    // Check for pre-provided base URL via CLI option (--litellm-base-url)
+    let normalizedBaseUrl: string;
+    if (params.opts?.litellmBaseUrl) {
+      normalizedBaseUrl = params.opts.litellmBaseUrl.trim();
+    } else {
+      const defaultBaseUrl = process.env.LITELLM_BASE_URL ?? "http://localhost:4000";
+      const baseUrl = await params.prompter.text({
+        message: "Enter LiteLLM base URL",
+        initialValue: defaultBaseUrl,
+        placeholder: defaultBaseUrl,
+        validate: (value) => {
+          if (!value?.trim()) return "Base URL is required";
+          try {
+            new URL(value);
+            return undefined;
+          } catch {
+            return "Invalid URL format";
+          }
+        },
+      });
+      normalizedBaseUrl = String(baseUrl).trim();
+    }
 
     // Try to fetch available models from LiteLLM
     type LitellmModelInfo = { id: string; maxInputTokens?: number; maxOutputTokens?: number };
@@ -722,7 +731,18 @@ export async function applyAuthChoiceApiProviders(
     let contextWindow: number | undefined;
     let maxTokens: number | undefined;
 
-    if (availableModels.length > 0) {
+    // Check for pre-provided model via CLI option (--litellm-model)
+    if (params.opts?.litellmModel) {
+      normalizedModelId = params.opts.litellmModel.trim();
+      // Try to get context info from model info map
+      const modelInfo = availableModels.find((m) => m.id === normalizedModelId);
+      if (modelInfo?.maxInputTokens) {
+        contextWindow = modelInfo.maxInputTokens;
+      }
+      if (modelInfo?.maxOutputTokens) {
+        maxTokens = modelInfo.maxOutputTokens;
+      }
+    } else if (availableModels.length > 0) {
       // Let user select from available models
       type SelectOption = { value: string; label: string; hint?: string };
       const modelOptions: SelectOption[] = availableModels.map((m) => ({
@@ -765,8 +785,8 @@ export async function applyAuthChoiceApiProviders(
       normalizedModelId = String(modelId).trim();
     }
 
-    // If context window wasn't auto-detected, prompt for it
-    if (!contextWindow) {
+    // If context window wasn't auto-detected, prompt for it (skip in non-interactive mode)
+    if (!contextWindow && !params.opts?.nonInteractive) {
       const contextInput = await params.prompter.text({
         message: "Enter context window size (tokens)",
         initialValue: "128000",
