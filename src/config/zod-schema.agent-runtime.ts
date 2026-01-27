@@ -421,7 +421,6 @@ export const AgentEntrySchema = z
     workspace: z.string().optional(),
     agentDir: z.string().optional(),
     model: AgentModelSchema.optional(),
-    /** Extra workspace files to inject alongside the default bootstrap files (paths relative to workspace). */
     extraWorkspaceFiles: z.array(z.string()).optional(),
     memorySearch: MemorySearchSchema,
     humanDelay: HumanDelaySchema.optional(),

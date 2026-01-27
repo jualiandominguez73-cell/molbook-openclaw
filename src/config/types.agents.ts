@@ -24,7 +24,6 @@ export type AgentConfig = {
   workspace?: string;
   agentDir?: string;
   model?: AgentModelConfig;
-  /** Extra workspace files to inject alongside the default bootstrap files (paths relative to workspace). */
   extraWorkspaceFiles?: string[];
   memorySearch?: MemorySearchConfig;
   /** Human-like delay between block replies for this agent. */
