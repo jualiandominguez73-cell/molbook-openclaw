@@ -6,7 +6,7 @@ import {
   GroupPolicySchema,
   MarkdownConfigSchema,
   requireOpenAllowFrom,
-} from "clawdbot/plugin-sdk";
+} from "moltbot/plugin-sdk";
 
 const RingCentralGroupConfigSchema = z
   .object({

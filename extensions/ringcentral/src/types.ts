@@ -1,4 +1,4 @@
-import type { DmPolicy, GroupPolicy, MarkdownConfig } from "clawdbot/plugin-sdk";
+import type { DmPolicy, GroupPolicy, MarkdownConfig } from "moltbot/plugin-sdk";
 
 // RingCentral Team Messaging API types
 

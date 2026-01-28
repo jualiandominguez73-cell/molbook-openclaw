@@ -1,7 +1,7 @@
 import { Subscriptions } from "@ringcentral/subscriptions";
 
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
-import { resolveMentionGatingWithBypass } from "clawdbot/plugin-sdk";
+import type { MoltbotConfig } from "moltbot/plugin-sdk";
+import { resolveMentionGatingWithBypass } from "moltbot/plugin-sdk";
 
 import type { ResolvedRingCentralAccount } from "./accounts.js";
 import { getRingCentralSDK } from "./auth.js";
@@ -41,7 +41,7 @@ function isOwnSentMessage(messageId: string): boolean {
 
 export type RingCentralMonitorOptions = {
   account: ResolvedRingCentralAccount;
-  config: ClawdbotConfig;
+  config: MoltbotConfig;
   runtime: RingCentralRuntimeEnv;
   abortSignal: AbortSignal;
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
@@ -114,19 +114,19 @@ function extractMentionInfo(mentions: RingCentralMention[], botExtensionId?: str
 function resolveBotDisplayName(params: {
   accountName?: string;
   agentId: string;
-  config: ClawdbotConfig;
+  config: MoltbotConfig;
 }): string {
   const { accountName, agentId, config } = params;
   if (accountName?.trim()) return accountName.trim();
   const agent = config.agents?.list?.find((a) => a.id === agentId);
   if (agent?.name?.trim()) return agent.name.trim();
-  return "Clawdbot";
+  return "Moltbot";
 }
 
 async function processWebSocketEvent(params: {
   event: RingCentralWebhookEvent;
   account: ResolvedRingCentralAccount;
-  config: ClawdbotConfig;
+  config: MoltbotConfig;
   runtime: RingCentralRuntimeEnv;
   core: RingCentralCoreRuntime;
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
@@ -162,7 +162,7 @@ async function processWebSocketEvent(params: {
 async function processMessageWithPipeline(params: {
   eventBody: RingCentralEventBody;
   account: ResolvedRingCentralAccount;
-  config: ClawdbotConfig;
+  config: MoltbotConfig;
   runtime: RingCentralRuntimeEnv;
   core: RingCentralCoreRuntime;
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
@@ -533,7 +533,7 @@ async function deliverRingCentralReply(params: {
   chatId: string;
   runtime: RingCentralRuntimeEnv;
   core: RingCentralCoreRuntime;
-  config: ClawdbotConfig;
+  config: MoltbotConfig;
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
   typingPostId?: string;
 }): Promise<void> {

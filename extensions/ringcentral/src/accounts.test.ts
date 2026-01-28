@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { MoltbotConfig } from "moltbot/plugin-sdk";
 import {
   listRingCentralAccountIds,
   resolveDefaultRingCentralAccountId,
@@ -9,12 +9,12 @@ import {
 
 describe("listRingCentralAccountIds", () => {
   it("returns default account when no accounts configured", () => {
-    const cfg = { channels: {} } as ClawdbotConfig;
+    const cfg = { channels: {} } as MoltbotConfig;
     expect(listRingCentralAccountIds(cfg)).toEqual(["default"]);
   });
 
   it("returns default account when ringcentral channel not configured", () => {
-    const cfg = { channels: { telegram: { enabled: true } } } as ClawdbotConfig;
+    const cfg = { channels: { telegram: { enabled: true } } } as MoltbotConfig;
     expect(listRingCentralAccountIds(cfg)).toEqual(["default"]);
   });
 
@@ -28,7 +28,7 @@ describe("listRingCentralAccountIds", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
     expect(listRingCentralAccountIds(cfg)).toEqual(["personal", "work"]);
   });
 });
@@ -45,7 +45,7 @@ describe("resolveDefaultRingCentralAccountId", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
     expect(resolveDefaultRingCentralAccountId(cfg)).toBe("work");
   });
 
@@ -59,7 +59,7 @@ describe("resolveDefaultRingCentralAccountId", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
     expect(resolveDefaultRingCentralAccountId(cfg)).toBe("default");
   });
 
@@ -73,7 +73,7 @@ describe("resolveDefaultRingCentralAccountId", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
     expect(resolveDefaultRingCentralAccountId(cfg)).toBe("alpha");
   });
 });
@@ -101,7 +101,7 @@ describe("resolveRingCentralAccount", () => {
           server: "https://platform.devtest.ringcentral.com",
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg });
 
@@ -126,7 +126,7 @@ describe("resolveRingCentralAccount", () => {
           enabled: true,
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg });
 
@@ -144,7 +144,7 @@ describe("resolveRingCentralAccount", () => {
           enabled: true,
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg });
 
@@ -162,7 +162,7 @@ describe("resolveRingCentralAccount", () => {
           jwt: "test-jwt",
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg });
 
@@ -184,7 +184,7 @@ describe("resolveRingCentralAccount", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg, accountId: "work" });
 
@@ -208,7 +208,7 @@ describe("resolveRingCentralAccount", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg, accountId: "work" });
 
@@ -231,7 +231,7 @@ describe("resolveRingCentralAccount", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const account = resolveRingCentralAccount({ cfg, accountId: "work" });
 
@@ -264,7 +264,7 @@ describe("listEnabledRingCentralAccounts", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const accounts = listEnabledRingCentralAccounts(cfg);
 
@@ -282,7 +282,7 @@ describe("listEnabledRingCentralAccounts", () => {
           },
         },
       },
-    } as ClawdbotConfig;
+    } as MoltbotConfig;
 
     const accounts = listEnabledRingCentralAccounts(cfg);
 

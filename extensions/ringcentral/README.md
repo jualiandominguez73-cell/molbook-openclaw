@@ -1,6 +1,6 @@
-# Clawdbot RingCentral Channel
+# Moltbot RingCentral Channel
 
-RingCentral Team Messaging channel plugin for Clawdbot. Enables bidirectional messaging with AI assistants through RingCentral Team Messaging.
+RingCentral Team Messaging channel plugin for Moltbot. Enables bidirectional messaging with AI assistants through RingCentral Team Messaging.
 
 ## Features
 
@@ -18,13 +18,13 @@ RingCentral Team Messaging channel plugin for Clawdbot. Enables bidirectional me
 ## Installation
 
 ```bash
-clawdbot plugin install @clawdbot/ringcentral
+moltbot plugin install @moltbot/ringcentral
 ```
 
 Or install from tarball:
 
 ```bash
-clawdbot plugin install ./clawdbot-ringcentral-2026.1.25.tgz
+moltbot plugin install ./moltbot-ringcentral-2026.1.25.tgz
 ```
 
 ## RingCentral App Setup
@@ -41,7 +41,7 @@ clawdbot plugin install ./clawdbot-ringcentral-2026.1.25.tgz
 
 ## Configuration
 
-Add to `~/.clawdbot/clawdbot.json`:
+Add to `~/.moltbot/moltbot.json`:
 
 ```json
 {
@@ -84,10 +84,10 @@ export RINGCENTRAL_JWT="your-jwt-token"
 
 ## Usage
 
-1. Start the Clawdbot gateway:
+1. Start the Moltbot gateway:
 
 ```bash
-clawdbot gateway run
+moltbot gateway run
 ```
 
 2. Open RingCentral app and go to your "Personal" chat (conversation with yourself)
@@ -162,7 +162,7 @@ Add **WebSocket Subscriptions** permission in your app settings. Permission chan
 
 1. Check that `selfOnly` mode matches your use case
 2. Verify you're sending messages in a "Personal" chat (conversation with yourself)
-3. Check gateway logs: `tail -f /tmp/clawdbot/clawdbot-*.log | grep ringcentral`
+3. Check gateway logs: `tail -f /tmp/moltbot/moltbot-*.log | grep ringcentral`
 
 ### Rate limit errors
 

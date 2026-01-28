@@ -13,8 +13,8 @@ import {
   setAccountEnabledInConfigSection,
   type ChannelDock,
   type ChannelPlugin,
-  type ClawdbotConfig,
-} from "clawdbot/plugin-sdk";
+  type MoltbotConfig,
+} from "moltbot/plugin-sdk";
 
 import {
   listRingCentralAccountIds,
@@ -58,7 +58,7 @@ export const ringcentralDock: ChannelDock = {
   outbound: { textChunkLimit: 4000 },
   config: {
     resolveAllowFrom: ({ cfg, accountId }) =>
-      (resolveRingCentralAccount({ cfg: cfg as ClawdbotConfig, accountId }).config.dm?.allowFrom ??
+      (resolveRingCentralAccount({ cfg: cfg as MoltbotConfig, accountId }).config.dm?.allowFrom ??
         []
       ).map((entry) => String(entry)),
     formatAllowFrom: ({ allowFrom }) =>
@@ -69,7 +69,7 @@ export const ringcentralDock: ChannelDock = {
   },
   groups: {
     resolveRequireMention: ({ cfg, accountId }) => {
-      const account = resolveRingCentralAccount({ cfg: cfg as ClawdbotConfig, accountId });
+      const account = resolveRingCentralAccount({ cfg: cfg as MoltbotConfig, accountId });
       return account.config.requireMention ?? true;
     },
   },
@@ -97,7 +97,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     idLabel: "ringcentralUserId",
     normalizeAllowEntry: (entry) => formatAllowFromEntry(entry),
     notifyApproval: async ({ cfg, id }) => {
-      const account = resolveRingCentralAccount({ cfg: cfg as ClawdbotConfig });
+      const account = resolveRingCentralAccount({ cfg: cfg as MoltbotConfig });
       if (account.credentialSource === "none") return;
       const target = normalizeRingCentralTarget(id) ?? id;
       // For DM approval, we need to find/create a direct chat
@@ -127,13 +127,13 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
   reload: { configPrefixes: ["channels.ringcentral"] },
   configSchema: buildChannelConfigSchema(RingCentralConfigSchema),
   config: {
-    listAccountIds: (cfg) => listRingCentralAccountIds(cfg as ClawdbotConfig),
+    listAccountIds: (cfg) => listRingCentralAccountIds(cfg as MoltbotConfig),
     resolveAccount: (cfg, accountId) =>
-      resolveRingCentralAccount({ cfg: cfg as ClawdbotConfig, accountId }),
-    defaultAccountId: (cfg) => resolveDefaultRingCentralAccountId(cfg as ClawdbotConfig),
+      resolveRingCentralAccount({ cfg: cfg as MoltbotConfig, accountId }),
+    defaultAccountId: (cfg) => resolveDefaultRingCentralAccountId(cfg as MoltbotConfig),
     setAccountEnabled: ({ cfg, accountId, enabled }) =>
       setAccountEnabledInConfigSection({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         sectionKey: "ringcentral",
         accountId,
         enabled,
@@ -141,7 +141,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
       }),
     deleteAccount: ({ cfg, accountId }) =>
       deleteAccountFromConfigSection({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         sectionKey: "ringcentral",
         accountId,
         clearBaseFields: [
@@ -163,7 +163,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     }),
     resolveAllowFrom: ({ cfg, accountId }) =>
       (resolveRingCentralAccount({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         accountId,
       }).config.dm?.allowFrom ?? []
       ).map((entry) => String(entry)),
@@ -177,7 +177,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     resolveDmPolicy: ({ cfg, accountId, account }) => {
       const resolvedAccountId = accountId ?? account.accountId ?? DEFAULT_ACCOUNT_ID;
       const useAccountPath = Boolean(
-        (cfg as ClawdbotConfig).channels?.ringcentral?.accounts?.[resolvedAccountId],
+        (cfg as MoltbotConfig).channels?.ringcentral?.accounts?.[resolvedAccountId],
       );
       const allowFromPath = useAccountPath
         ? `channels.ringcentral.accounts.${resolvedAccountId}.dm.`
@@ -209,7 +209,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
   },
   groups: {
     resolveRequireMention: ({ cfg, accountId }) => {
-      const account = resolveRingCentralAccount({ cfg: cfg as ClawdbotConfig, accountId });
+      const account = resolveRingCentralAccount({ cfg: cfg as MoltbotConfig, accountId });
       return account.config.requireMention ?? true;
     },
   },
@@ -231,7 +231,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     self: async () => null,
     listPeers: async ({ cfg, accountId, query, limit }) => {
       const account = resolveRingCentralAccount({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         accountId,
       });
       const q = query?.trim().toLowerCase() || "";
@@ -251,7 +251,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     },
     listGroups: async ({ cfg, accountId, query, limit }) => {
       const account = resolveRingCentralAccount({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         accountId,
       });
       const groups = account.config.groups ?? {};
@@ -290,7 +290,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     resolveAccountId: ({ accountId }) => normalizeAccountId(accountId),
     applyAccountName: ({ cfg, accountId, name }) =>
       applyAccountNameToChannelSection({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         channelKey: "ringcentral",
         accountId,
         name,
@@ -306,7 +306,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     },
     applyAccountConfig: ({ cfg, accountId, input }) => {
       const namedConfig = applyAccountNameToChannelSection({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         channelKey: "ringcentral",
         accountId,
         name: input.name,
@@ -314,7 +314,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
       const next =
         accountId !== DEFAULT_ACCOUNT_ID
           ? migrateBaseNameToDefaultAccount({
-              cfg: namedConfig as ClawdbotConfig,
+              cfg: namedConfig as MoltbotConfig,
               channelKey: "ringcentral",
             })
           : namedConfig;
@@ -341,7 +341,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
               ...configPatch,
             },
           },
-        } as ClawdbotConfig;
+        } as MoltbotConfig;
       }
       return {
         ...next,
@@ -360,7 +360,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
             },
           },
         },
-      } as ClawdbotConfig;
+      } as MoltbotConfig;
     },
   },
   outbound: {
@@ -407,7 +407,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
     },
     sendText: async ({ cfg, to, text, accountId }) => {
       const account = resolveRingCentralAccount({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         accountId,
       });
       const result = await sendRingCentralMessage({
@@ -426,12 +426,12 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
         throw new Error("RingCentral mediaUrl is required.");
       }
       const account = resolveRingCentralAccount({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         accountId,
       });
       const runtime = getRingCentralRuntime();
       const maxBytes = resolveChannelMediaMaxBytes({
-        cfg: cfg as ClawdbotConfig,
+        cfg: cfg as MoltbotConfig,
         resolveChannelLimitMb: ({ cfg: c, accountId: aid }) =>
           (c.channels?.ringcentral as { accounts?: Record<string, { mediaMaxMb?: number }>; mediaMaxMb?: number } | undefined)
             ?.accounts?.[aid]?.mediaMaxMb ??
@@ -529,7 +529,7 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedRingCentralAccount> = {
       });
       const unregister = await startRingCentralMonitor({
         account,
-        config: ctx.cfg as ClawdbotConfig,
+        config: ctx.cfg as MoltbotConfig,
         runtime: ctx.runtime,
         abortSignal: ctx.abortSignal,
         statusSink: (patch) => ctx.setStatus({ accountId: account.accountId, ...patch }),

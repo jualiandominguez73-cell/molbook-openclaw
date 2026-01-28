@@ -1,5 +1,5 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
-import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "clawdbot/plugin-sdk";
+import type { MoltbotConfig } from "moltbot/plugin-sdk";
+import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "moltbot/plugin-sdk";
 
 import type { RingCentralAccountConfig, RingCentralConfig } from "./types.js";
 
@@ -24,19 +24,19 @@ const ENV_SERVER = "RINGCENTRAL_SERVER";
 
 const DEFAULT_SERVER = "https://platform.ringcentral.com";
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: MoltbotConfig): string[] {
   const accounts = (cfg.channels?.ringcentral as RingCentralConfig | undefined)?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listRingCentralAccountIds(cfg: ClawdbotConfig): string[] {
+export function listRingCentralAccountIds(cfg: MoltbotConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultRingCentralAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultRingCentralAccountId(cfg: MoltbotConfig): string {
   const channel = cfg.channels?.ringcentral as RingCentralConfig | undefined;
   if (channel?.defaultAccount?.trim()) return channel.defaultAccount.trim();
   const ids = listRingCentralAccountIds(cfg);
@@ -45,7 +45,7 @@ export function resolveDefaultRingCentralAccountId(cfg: ClawdbotConfig): string 
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: MoltbotConfig,
   accountId: string,
 ): RingCentralAccountConfig | undefined {
   const accounts = (cfg.channels?.ringcentral as RingCentralConfig | undefined)?.accounts;
@@ -54,7 +54,7 @@ function resolveAccountConfig(
 }
 
 function mergeRingCentralAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: MoltbotConfig,
   accountId: string,
 ): RingCentralAccountConfig {
   const raw = (cfg.channels?.ringcentral ?? {}) as RingCentralConfig;
@@ -131,7 +131,7 @@ function resolveCredentialsFromConfig(params: {
 }
 
 export function resolveRingCentralAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: MoltbotConfig;
   accountId?: string | null;
 }): ResolvedRingCentralAccount {
   const accountId = normalizeAccountId(params.accountId);
@@ -155,7 +155,7 @@ export function resolveRingCentralAccount(params: {
   };
 }
 
-export function listEnabledRingCentralAccounts(cfg: ClawdbotConfig): ResolvedRingCentralAccount[] {
+export function listEnabledRingCentralAccounts(cfg: MoltbotConfig): ResolvedRingCentralAccount[] {
   return listRingCentralAccountIds(cfg)
     .map((accountId) => resolveRingCentralAccount({ cfg, accountId }))
     .filter((account) => account.enabled);

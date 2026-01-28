@@ -1,9 +1,9 @@
 {
-  "name": "@clawdbot/ringcentral",
+  "name": "@moltbot/ringcentral",
   "version": "2026.1.25",
   "type": "module",
-  "description": "Clawdbot RingCentral Team Messaging channel plugin",
-  "clawdbot": {
+  "description": "Moltbot RingCentral Team Messaging channel plugin",
+  "moltbot": {
     "extensions": [
       "./index.ts"
     ],
@@ -22,7 +22,7 @@
       "order": 56
     },
     "install": {
-      "npmSpec": "@clawdbot/ringcentral",
+      "npmSpec": "@moltbot/ringcentral",
       "localPath": "extensions/ringcentral",
       "defaultChoice": "npm"
     }
@@ -34,9 +34,9 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "clawdbot": "workspace:*"
+    "moltbot": "workspace:*"
   },
   "peerDependencies": {
-    "clawdbot": ">=2026.1.25"
+    "moltbot": ">=2026.1.25"
   }
 }
