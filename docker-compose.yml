@@ -5,9 +5,14 @@ services:
       HOME: /home/node
       TERM: xterm-256color
       CLAWDBOT_GATEWAY_TOKEN: ${CLAWDBOT_GATEWAY_TOKEN}
+      CLAWDBOT_GATEWAY_PASSWORD: ${CLAWDBOT_GATEWAY_PASSWORD}
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE}
+      HTTP_PROXY: ${CLAWDBOT_PROXY_URL}
+      HTTPS_PROXY: ${CLAWDBOT_PROXY_URL}
+      ALL_PROXY: ${CLAWDBOT_PROXY_URL}
+      NO_PROXY: ${CLAWDBOT_NO_PROXY}
     volumes:
       - ${CLAWDBOT_CONFIG_DIR}:/home/node/.clawdbot
       - ${CLAWDBOT_WORKSPACE_DIR}:/home/node/clawd
@@ -24,7 +29,9 @@ services:
         "--bind",
         "${CLAWDBOT_GATEWAY_BIND:-lan}",
         "--port",
-        "${CLAWDBOT_GATEWAY_PORT:-18789}"
+        "${CLAWDBOT_GATEWAY_PORT:-18789}",
+        "--auth",
+        "password"
       ]
 
   clawdbot-cli:
@@ -35,7 +42,12 @@ services:
       BROWSER: echo
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY}
+      CLAWDBOT_GATEWAY_PASSWORD: ${CLAWDBOT_GATEWAY_PASSWORD}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE}
+      HTTP_PROXY: ${CLAWDBOT_PROXY_URL}
+      HTTPS_PROXY: ${CLAWDBOT_PROXY_URL}
+      ALL_PROXY: ${CLAWDBOT_PROXY_URL}
+      NO_PROXY: ${CLAWDBOT_NO_PROXY}
     volumes:
       - ${CLAWDBOT_CONFIG_DIR}:/home/node/.clawdbot
       - ${CLAWDBOT_WORKSPACE_DIR}:/home/node/clawd

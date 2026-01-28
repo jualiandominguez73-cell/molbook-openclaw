@@ -32,6 +32,25 @@ import type { EmbeddedPiRunResult } from "./pi-embedded-runner.js";
 
 const log = createSubsystemLogger("agent/claude-cli");
 
+async function logProxyIpLocation(tag: string, env: NodeJS.ProcessEnv): Promise<void> {
+  try {
+    const result = await runCommandWithTimeout(["curl", "-s", "https://ipapi.co/json/"], {
+      timeoutMs: 5000,
+      env,
+    });
+    const payload = (result.stdout || result.stderr).trim();
+    if (result.code === 0 && payload) {
+      log.info(`codex ${tag} proxy ip: ${payload}`);
+      return;
+    }
+    if (payload) {
+      log.warn(`codex ${tag} proxy ip check failed: ${payload}`);
+    }
+  } catch (err) {
+    log.warn(`codex ${tag} proxy ip check failed: ${String(err)}`);
+  }
+}
+
 export async function runCliAgent(params: {
   sessionId: string;
   sessionKey?: string;
@@ -211,6 +230,10 @@ export async function runCliAgent(params: {
         }
         return next;
       })();
+      const shouldCheckProxy = backendResolved.id === "codex-cli";
+      if (shouldCheckProxy) {
+        await logProxyIpLocation("before", env);
+      }
 
       // Cleanup suspended processes that have accumulated (regardless of sessionId)
       await cleanupSuspendedCliProcesses(backend);
@@ -218,12 +241,19 @@ export async function runCliAgent(params: {
         await cleanupResumeProcesses(backend, cliSessionIdToSend);
       }
 
-      const result = await runCommandWithTimeout([backend.command, ...args], {
-        timeoutMs: params.timeoutMs,
-        cwd: workspaceDir,
-        env,
-        input: stdinPayload,
-      });
+      let result: Awaited<ReturnType<typeof runCommandWithTimeout>>;
+      try {
+        result = await runCommandWithTimeout([backend.command, ...args], {
+          timeoutMs: params.timeoutMs,
+          cwd: workspaceDir,
+          env,
+          input: stdinPayload,
+        });
+      } finally {
+        if (shouldCheckProxy) {
+          await logProxyIpLocation("after", env);
+        }
+      }
 
       const stdout = result.stdout.trim();
       const stderr = result.stderr.trim();

@@ -1,3 +1,4 @@
+import { ProxyAgent, setGlobalDispatcher } from "undici";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { parseBooleanValue } from "../utils/boolean.js";
 
@@ -33,10 +34,42 @@ export function normalizeZaiEnv(): void {
   }
 }
 
+function normalizeProxyEnvValue(raw: string): string {
+  const value = raw.trim();
+  if (!value) return value;
+  if (/^[a-z]+:\/\//i.test(value)) return value;
+  return `http://${value}`;
+}
+
+function normalizeProxyEnv(): string | undefined {
+  const keys = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"];
+  for (const key of keys) {
+    const raw = process.env[key];
+    if (!raw?.trim()) continue;
+    const normalized = normalizeProxyEnvValue(raw);
+    if (normalized !== raw) process.env[key] = normalized;
+    return normalized;
+  }
+  return undefined;
+}
+
+function applyGlobalProxyFromEnv(): void {
+  if (process.env.VITEST || process.env.NODE_ENV === "test") return;
+  const proxyUrl = normalizeProxyEnv();
+  if (!proxyUrl) return;
+  try {
+    setGlobalDispatcher(new ProxyAgent(proxyUrl));
+    log.info(`env: proxy enabled via ${proxyUrl}`);
+  } catch (err) {
+    log.warn(`env: proxy setup failed: ${String(err)}`);
+  }
+}
+
 export function isTruthyEnvValue(value?: string): boolean {
   return parseBooleanValue(value) === true;
 }
 
 export function normalizeEnv(): void {
   normalizeZaiEnv();
+  applyGlobalProxyFromEnv();
 }

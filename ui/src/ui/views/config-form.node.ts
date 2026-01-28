@@ -135,6 +135,34 @@ export function renderNode(params: {
         });
       }
     }
+
+    const objectVariant = nonNull.find((variant) => {
+      const variantType = schemaType(variant);
+      return (
+        variantType === "object" ||
+        (!variantType && (variant.properties || variant.additionalProperties))
+      );
+    });
+    const arrayVariant = nonNull.find((variant) => {
+      const variantType = schemaType(variant);
+      return variantType === "array" || (!variantType && variant.items);
+    });
+    if (objectVariant || arrayVariant) {
+      const valueType = Array.isArray(value)
+        ? "array"
+        : value && typeof value === "object"
+          ? "object"
+          : undefined;
+      const preferred =
+        valueType === "array"
+          ? arrayVariant
+          : valueType === "object"
+            ? objectVariant
+            : objectVariant ?? arrayVariant;
+      if (preferred) {
+        return renderNode({ ...params, schema: preferred });
+      }
+    }
   }
 
   // Enum - use segmented for small, dropdown for large

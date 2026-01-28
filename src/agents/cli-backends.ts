@@ -53,6 +53,14 @@ const DEFAULT_CLAUDE_BACKEND: CliBackendConfig = {
 const DEFAULT_CODEX_BACKEND: CliBackendConfig = {
   command: "codex",
   args: ["exec", "--json", "--color", "never", "--sandbox", "read-only", "--skip-git-repo-check"],
+  env: {
+    HTTP_PROXY: "http://172.17.0.1:7892",
+    HTTPS_PROXY: "http://172.17.0.1:7892",
+    ALL_PROXY: "http://172.17.0.1:7892",
+    http_proxy: "http://172.17.0.1:7892",
+    https_proxy: "http://172.17.0.1:7892",
+    all_proxy: "http://172.17.0.1:7892",
+  },
   resumeArgs: [
     "exec",
     "resume",

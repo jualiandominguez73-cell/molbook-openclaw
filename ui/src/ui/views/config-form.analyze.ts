@@ -192,5 +192,26 @@ function normalizeUnion(
     };
   }
 
+  if (
+    remaining.length > 0 &&
+    literals.length === 0 &&
+    remaining.every((entry) => {
+      const type = schemaType(entry);
+      return (
+        type === "object" ||
+        type === "array" ||
+        (!type && (entry.properties || entry.additionalProperties || entry.items))
+      );
+    })
+  ) {
+    return {
+      schema: {
+        ...schema,
+        nullable,
+      },
+      unsupportedPaths: [],
+    };
+  }
+
   return null;
 }
