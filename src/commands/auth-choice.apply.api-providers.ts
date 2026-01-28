@@ -1,17 +1,11 @@
-import {
-  ensureAuthProfileStore,
-  resolveAuthProfileOrder,
-} from "../agents/auth-profiles.js";
+import { ensureAuthProfileStore, resolveAuthProfileOrder } from "../agents/auth-profiles.js";
 import { resolveEnvApiKey } from "../agents/model-auth.js";
 import {
   formatApiKeyPreview,
   normalizeApiKeyInput,
   validateApiKeyInput,
 } from "./auth-choice.api-key.js";
-import type {
-  ApplyAuthChoiceParams,
-  ApplyAuthChoiceResult,
-} from "./auth-choice.apply.js";
+import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { applyDefaultModelChoice } from "./auth-choice.default-model.js";
 import {
   applyGoogleGeminiModelDefault,
@@ -103,12 +97,8 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "openrouter",
     });
-    const existingProfileId = profileOrder.find((profileId) =>
-      Boolean(store.profiles[profileId]),
-    );
-    const existingCred = existingProfileId
-      ? store.profiles[existingProfileId]
-      : undefined;
+    const existingProfileId = profileOrder.find((profileId) => Boolean(store.profiles[profileId]));
+    const existingCred = existingProfileId ? store.profiles[existingProfileId] : undefined;
     let profileId = "openrouter:default";
     let mode: "api_key" | "oauth" | "token" = "api_key";
     let hasCredential = false;
@@ -124,15 +114,8 @@ export async function applyAuthChoiceApiProviders(
       hasCredential = true;
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "openrouter"
-    ) {
-      await setOpenrouterApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "openrouter") {
+      await setOpenrouterApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -155,10 +138,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter OpenRouter API key",
         validate: validateApiKeyInput,
       });
-      await setOpenrouterApiKey(
-        normalizeApiKeyInput(String(key)),
-        params.agentDir,
-      );
+      await setOpenrouterApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
       hasCredential = true;
     }
 
@@ -194,10 +174,7 @@ export async function applyAuthChoiceApiProviders(
       params.opts?.token &&
       params.opts?.tokenProvider === "vercel-ai-gateway"
     ) {
-      await setVercelAiGatewayApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+      await setVercelAiGatewayApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -210,9 +187,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "vercel-ai-gateway",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "vercel-ai-gateway:default";
 
     if (existingProfileId) {
@@ -242,10 +217,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter Vercel AI Gateway API key",
         validate: validateApiKeyInput,
       });
-      await setVercelAiGatewayApiKey(
-        normalizeApiKeyInput(String(key)),
-        params.agentDir,
-      );
+      await setVercelAiGatewayApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
     }
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId,
@@ -278,9 +250,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "moonshot",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "moonshot:default";
     let hasCredential = false;
 
@@ -296,15 +266,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "moonshot"
-    ) {
-      await setMoonshotApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "moonshot") {
+      await setMoonshotApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -327,10 +290,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter Moonshot API key",
         validate: validateApiKeyInput,
       });
-      await setMoonshotApiKey(
-        normalizeApiKeyInput(String(key)),
-        params.agentDir,
-      );
+      await setMoonshotApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
       hasCredential = true;
     }
 
@@ -366,9 +326,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "kimi-code",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "kimi-code:default";
     let hasCredential = false;
 
@@ -384,15 +342,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "kimi-code"
-    ) {
-      await setKimiCodeApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "kimi-code") {
+      await setKimiCodeApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -423,10 +374,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter Kimi Code API key",
         validate: validateApiKeyInput,
       });
-      await setKimiCodeApiKey(
-        normalizeApiKeyInput(String(key)),
-        params.agentDir,
-      );
+      await setKimiCodeApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
       hasCredential = true;
     }
 
@@ -463,9 +411,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "google",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "google:default";
     let hasCredential = false;
 
@@ -481,15 +427,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "google"
-    ) {
-      await setGeminiApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "google") {
+      await setGeminiApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -549,9 +488,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "zai",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "zai:default";
     let hasCredential = false;
 
@@ -567,15 +504,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "zai"
-    ) {
-      await setZaiApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "zai") {
+      await setZaiApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -625,9 +555,7 @@ export async function applyAuthChoiceApiProviders(
                 ...config.agents?.defaults?.models,
                 [ZAI_DEFAULT_MODEL_REF]: {
                   ...config.agents?.defaults?.models?.[ZAI_DEFAULT_MODEL_REF],
-                  alias:
-                    config.agents?.defaults?.models?.[ZAI_DEFAULT_MODEL_REF]
-                      ?.alias ?? "GLM",
+                  alias: config.agents?.defaults?.models?.[ZAI_DEFAULT_MODEL_REF]?.alias ?? "GLM",
                 },
               },
             },
@@ -652,9 +580,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "synthetic",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "synthetic:default";
     let hasCredential = false;
 
@@ -670,15 +596,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "synthetic"
-    ) {
-      await setSyntheticApiKey(
-        String(params.opts.token).trim(),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "synthetic") {
+      await setSyntheticApiKey(String(params.opts.token).trim(), params.agentDir);
       hasCredential = true;
     }
 
@@ -724,9 +643,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "venice",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "venice:default";
     let hasCredential = false;
 
@@ -742,15 +659,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "venice"
-    ) {
-      await setVeniceApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "venice") {
+      await setVeniceApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -819,9 +729,7 @@ export async function applyAuthChoiceApiProviders(
       store,
       provider: "opencode",
     });
-    const existingProfileId = profileOrder.find((pid) =>
-      Boolean(store.profiles[pid]),
-    );
+    const existingProfileId = profileOrder.find((pid) => Boolean(store.profiles[pid]));
     let profileId = "opencode:default";
     let hasCredential = false;
 
@@ -837,15 +745,8 @@ export async function applyAuthChoiceApiProviders(
       }
     }
 
-    if (
-      !hasCredential &&
-      params.opts?.token &&
-      params.opts?.tokenProvider === "opencode"
-    ) {
-      await setOpencodeZenApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "opencode") {
+      await setOpencodeZenApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -877,10 +778,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter OpenCode Zen API key",
         validate: validateApiKeyInput,
       });
-      await setOpencodeZenApiKey(
-        normalizeApiKeyInput(String(key)),
-        params.agentDir,
-      );
+      await setOpencodeZenApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
       hasCredential = true;
     }
 

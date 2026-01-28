@@ -1,9 +1,6 @@
 import { isRemoteEnvironment } from "./oauth-env.js";
 declare const process: any;
-import type {
-  ApplyAuthChoiceParams,
-  ApplyAuthChoiceResult,
-} from "./auth-choice.apply.js";
+import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { loginChutes } from "./chutes-oauth.js";
 import { createVpsAwareOAuthHandlers } from "./oauth-flow.js";
 import {
@@ -20,10 +17,8 @@ export async function applyAuthChoiceOAuth(
     let nextConfig = params.config;
     const isRemote = isRemoteEnvironment();
     const redirectUri =
-      process.env.CHUTES_OAUTH_REDIRECT_URI?.trim() ||
-      "http://127.0.0.1:1456/oauth-callback";
-    const scopes =
-      process.env.CHUTES_OAUTH_SCOPES?.trim() || "openid profile chutes:invoke";
+      process.env.CHUTES_OAUTH_REDIRECT_URI?.trim() || "http://127.0.0.1:1456/oauth-callback";
+    const scopes = process.env.CHUTES_OAUTH_SCOPES?.trim() || "openid profile chutes:invoke";
     const clientId =
       process.env.CHUTES_CLIENT_ID?.trim() ||
       String(
@@ -38,9 +33,7 @@ export async function applyAuthChoiceOAuth(
     const store = ensureAuthProfileStore(params.agentDir, {
       allowKeychainPrompt: false,
     });
-    const existingProfileId = Object.keys(store.profiles).find((id) =>
-      id.startsWith("chutes:"),
-    );
+    const existingProfileId = Object.keys(store.profiles).find((id) => id.startsWith("chutes:"));
 
     if (existingProfileId) {
       const existing = store.profiles[existingProfileId];

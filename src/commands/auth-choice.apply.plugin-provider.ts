@@ -11,14 +11,8 @@ import type { MoltbotConfig } from "../config/config.js";
 import { enablePluginInConfig } from "../plugins/enable.js";
 import { resolvePluginProviders } from "../plugins/providers.js";
 import type { ProviderAuthMethod, ProviderPlugin } from "../plugins/types.js";
-import type {
-  ApplyAuthChoiceParams,
-  ApplyAuthChoiceResult,
-} from "./auth-choice.apply.js";
-import {
-  applyAuthProfileConfig,
-  ensureAuthProfileStore,
-} from "./onboard-auth.js";
+import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
+import { applyAuthProfileConfig, ensureAuthProfileStore } from "./onboard-auth.js";
 import { openUrl } from "./onboard-helpers.js";
 import { createVpsAwareOAuthHandlers } from "./oauth-flow.js";
 import { isRemoteEnvironment } from "./oauth-env.js";
@@ -37,23 +31,16 @@ function resolveProviderMatch(
 ): ProviderPlugin | null {
   const normalized = normalizeProviderId(rawProvider);
   return (
-    providers.find(
-      (provider) => normalizeProviderId(provider.id) === normalized,
-    ) ??
+    providers.find((provider) => normalizeProviderId(provider.id) === normalized) ??
     providers.find(
       (provider) =>
-        provider.aliases?.some(
-          (alias) => normalizeProviderId(alias) === normalized,
-        ) ?? false,
+        provider.aliases?.some((alias) => normalizeProviderId(alias) === normalized) ?? false,
     ) ??
     null
   );
 }
 
-function pickAuthMethod(
-  provider: ProviderPlugin,
-  rawMethod?: string,
-): ProviderAuthMethod | null {
+function pickAuthMethod(provider: ProviderPlugin, rawMethod?: string): ProviderAuthMethod | null {
   const raw = rawMethod?.trim();
   if (!raw) return null;
   const normalized = raw.toLowerCase();
@@ -98,12 +85,9 @@ function applyDefaultModel(cfg: MoltbotConfig, model: string): MoltbotConfig {
         ...cfg.agents?.defaults,
         models,
         model: {
-          ...(existingModel &&
-          typeof existingModel === "object" &&
-          "fallbacks" in existingModel
+          ...(existingModel && typeof existingModel === "object" && "fallbacks" in existingModel
             ? {
-                fallbacks: (existingModel as { fallbacks?: string[] })
-                  .fallbacks,
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
               }
             : undefined),
           primary: model,
@@ -134,12 +118,9 @@ export async function applyAuthChoicePluginProvider(
   const defaultAgentId = resolveDefaultAgentId(nextConfig);
   const agentDir =
     params.agentDir ??
-    (agentId === defaultAgentId
-      ? resolveMoltbotAgentDir()
-      : resolveAgentDir(nextConfig, agentId));
+    (agentId === defaultAgentId ? resolveMoltbotAgentDir() : resolveAgentDir(nextConfig, agentId));
   const workspaceDir =
-    resolveAgentWorkspaceDir(nextConfig, agentId) ??
-    resolveDefaultAgentWorkspaceDir();
+    resolveAgentWorkspaceDir(nextConfig, agentId) ?? resolveDefaultAgentWorkspaceDir();
 
   const providers = resolvePluginProviders({
     config: nextConfig,
@@ -156,10 +137,7 @@ export async function applyAuthChoicePluginProvider(
 
   const method = pickAuthMethod(provider, options.methodId) ?? provider.auth[0];
   if (!method) {
-    await params.prompter.note(
-      `${options.label} auth method missing.`,
-      options.label,
-    );
+    await params.prompter.note(`${options.label} auth method missing.`, options.label);
     return { config: nextConfig };
   }
 
@@ -167,9 +145,7 @@ export async function applyAuthChoicePluginProvider(
     allowKeychainPrompt: false,
   });
   const existingProfiles = Object.entries(store.profiles).filter(
-    ([, p]) =>
-      normalizeProviderId((p as any).provider) ===
-      normalizeProviderId(options.providerId),
+    ([, p]) => normalizeProviderId((p as any).provider) === normalizeProviderId(options.providerId),
   );
 
   if (existingProfiles.length > 0) {
@@ -188,16 +164,11 @@ export async function applyAuthChoicePluginProvider(
         profileId,
         provider: profile.provider,
         mode: (profile.type === "token" ? "token" : profile.type) as any,
-        ...("email" in profile && profile.email
-          ? { email: profile.email as string }
-          : {}),
+        ...("email" in profile && profile.email ? { email: profile.email as string } : {}),
       });
 
       if (params.setDefaultModel && provider.models?.models?.[0]?.id) {
-        nextConfig = applyDefaultModel(
-          nextConfig,
-          provider.models.models[0].id,
-        );
+        nextConfig = applyDefaultModel(nextConfig, provider.models.models[0].id);
       } else if (params.agentId && provider.models?.models?.[0]?.id) {
         agentModelOverride = provider.models.models[0].id;
       }
@@ -236,8 +207,7 @@ export async function applyAuthChoicePluginProvider(
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: profile.profileId,
       provider: profile.credential.provider,
-      mode:
-        profile.credential.type === "token" ? "token" : profile.credential.type,
+      mode: profile.credential.type === "token" ? "token" : profile.credential.type,
       ...("email" in profile.credential && profile.credential.email
         ? { email: profile.credential.email }
         : {}),
@@ -247,10 +217,7 @@ export async function applyAuthChoicePluginProvider(
   if (result.defaultModel) {
     if (params.setDefaultModel) {
       nextConfig = applyDefaultModel(nextConfig, result.defaultModel);
-      await params.prompter.note(
-        `Default model set to ${result.defaultModel}`,
-        "Model configured",
-      );
+      await params.prompter.note(`Default model set to ${result.defaultModel}`, "Model configured");
     } else if (params.agentId) {
       agentModelOverride = result.defaultModel;
       await params.prompter.note(

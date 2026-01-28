@@ -5,14 +5,8 @@ import {
   normalizeApiKeyInput,
   validateApiKeyInput,
 } from "./auth-choice.api-key.js";
-import type {
-  ApplyAuthChoiceParams,
-  ApplyAuthChoiceResult,
-} from "./auth-choice.apply.js";
-import {
-  buildTokenProfileId,
-  validateAnthropicSetupToken,
-} from "./auth-token.js";
+import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
+import { buildTokenProfileId, validateAnthropicSetupToken } from "./auth-token.js";
 import {
   applyAuthProfileConfig,
   ensureAuthProfileStore,
@@ -29,10 +23,9 @@ export async function applyAuthChoiceAnthropic(
   ) {
     let nextConfig = params.config;
     await params.prompter.note(
-      [
-        "Run `claude setup-token` in your terminal.",
-        "Then paste the generated token below.",
-      ].join("\n"),
+      ["Run `claude setup-token` in your terminal.", "Then paste the generated token below."].join(
+        "\n",
+      ),
       "Anthropic setup-token",
     );
 
@@ -71,10 +64,7 @@ export async function applyAuthChoiceAnthropic(
   }
 
   if (params.authChoice === "apiKey") {
-    if (
-      params.opts?.tokenProvider &&
-      params.opts.tokenProvider !== "anthropic"
-    ) {
+    if (params.opts?.tokenProvider && params.opts.tokenProvider !== "anthropic") {
       return null;
     }
 
@@ -83,10 +73,7 @@ export async function applyAuthChoiceAnthropic(
     const envKey = process.env.ANTHROPIC_API_KEY?.trim();
 
     if (params.opts?.token) {
-      await setAnthropicApiKey(
-        normalizeApiKeyInput(params.opts.token),
-        params.agentDir,
-      );
+      await setAnthropicApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -122,10 +109,7 @@ export async function applyAuthChoiceAnthropic(
         message: "Enter Anthropic API key",
         validate: validateApiKeyInput,
       });
-      await setAnthropicApiKey(
-        normalizeApiKeyInput(String(key)),
-        params.agentDir,
-      );
+      await setAnthropicApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
     }
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: "anthropic:default",

@@ -1,10 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 declare const process: any;
-import {
-  resolveAgentWorkspaceDir,
-  resolveDefaultAgentId,
-} from "../../agents/agent-scope.js";
+import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/agent-scope.js";
 import type { ChannelPluginCatalogEntry } from "../../channels/plugins/catalog.js";
 import type { MoltbotConfig } from "../../config/config.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
@@ -53,10 +50,7 @@ function resolveLocalPath(
   return null;
 }
 
-function addPluginLoadPath(
-  cfg: MoltbotConfig,
-  pluginPath: string,
-): MoltbotConfig {
+function addPluginLoadPath(cfg: MoltbotConfig, pluginPath: string): MoltbotConfig {
   const existing = cfg.plugins?.load?.paths ?? [];
   const merged = Array.from(new Set([...existing, pluginPath]));
   return {
@@ -91,12 +85,11 @@ async function promptInstallChoice(params: {
         },
       ]
     : [];
-  const options: Array<{ value: InstallChoice; label: string; hint?: string }> =
-    [
-      { value: "npm", label: `Download from npm (${entry.install.npmSpec})` },
-      ...localOptions,
-      { value: "skip", label: "Skip for now" },
-    ];
+  const options: Array<{ value: InstallChoice; label: string; hint?: string }> = [
+    { value: "npm", label: `Download from npm (${entry.install.npmSpec})` },
+    ...localOptions,
+    { value: "skip", label: "Skip for now" },
+  ];
   const initialValue: InstallChoice =
     defaultChoice === "local" && !localPath ? "npm" : defaultChoice;
   return await prompter.select<InstallChoice>({
@@ -205,8 +198,7 @@ export function reloadOnboardingPluginRegistry(params: {
   workspaceDir?: string;
 }): void {
   const workspaceDir =
-    params.workspaceDir ??
-    resolveAgentWorkspaceDir(params.cfg, resolveDefaultAgentId(params.cfg));
+    params.workspaceDir ?? resolveAgentWorkspaceDir(params.cfg, resolveDefaultAgentId(params.cfg));
   const log = createSubsystemLogger("plugins");
   loadMoltbotPlugins({
     config: params.cfg,
