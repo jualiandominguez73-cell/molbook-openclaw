@@ -6,6 +6,7 @@ Docs: https://docs.molt.bot
 Status: beta.
 
 ### Changes
+- TUI: handle `/model status` and `/model list` subcommands instead of treating them as model names. (#3469) Thanks @riskatcher.
 - WhatsApp: normalize literal `\n` escape sequences to actual newlines in outbound messages. (#3082)
 - Rebrand: rename the npm package/CLI to `moltbot`, add a `moltbot` compatibility shim, and move extensions to the `@moltbot/*` scope.
 - Commands: group /help and /commands output with Telegram paging. (#2504) Thanks @hougangdev.
