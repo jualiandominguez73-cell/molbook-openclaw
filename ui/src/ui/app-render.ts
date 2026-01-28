@@ -15,6 +15,7 @@ import { icons } from "./icons";
 import type { UiSettings } from "./storage";
 import type { ThemeMode } from "./theme";
 import type { ThemeTransitionContext } from "./theme-transition";
+import { t } from "./i18n";
 import type {
   ConfigSnapshot,
   CronJob,
@@ -104,7 +105,7 @@ export function renderApp(state: AppViewState) {
   const presenceCount = state.presenceEntries.length;
   const sessionsCount = state.sessionsResult?.count ?? null;
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
-  const chatDisabledReason = state.connected ? null : "Disconnected from gateway.";
+  const chatDisabledReason = state.connected ? null : t("chat.disconnectedReason");
   const isChat = state.tab === "chat";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
@@ -122,8 +123,8 @@ export function renderApp(state: AppViewState) {
                 ...state.settings,
                 navCollapsed: !state.settings.navCollapsed,
               })}
-            title="${state.settings.navCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
-            aria-label="${state.settings.navCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
+            title=${state.settings.navCollapsed ? t("topbar.expandSidebar") : t("topbar.collapseSidebar")}
+            aria-label=${state.settings.navCollapsed ? t("topbar.expandSidebar") : t("topbar.collapseSidebar")}
           >
             <span class="nav-collapse-toggle__icon">${icons.menu}</span>
           </button>
@@ -133,22 +134,37 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="brand-text">
               <div class="brand-title">CLAWDBOT</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-sub">${t("topbar.gatewayDashboard")}</div>
             </div>
           </div>
         </div>
         <div class="topbar-status">
           <div class="pill">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
-            <span>Health</span>
-            <span class="mono">${state.connected ? "OK" : "Offline"}</span>
+            <span>${t("topbar.health")}</span>
+            <span class="mono">${state.connected ? t("topbar.healthOk") : t("topbar.healthOffline")}</span>
           </div>
+          <button
+            class="btn btn--sm"
+            type="button"
+            title=${t("settings.language")}
+            aria-label=${t("settings.language")}
+            @click=${() =>
+              state.applySettings({
+                ...state.settings,
+                locale: state.settings.locale === "zh-CN" ? "en" : "zh-CN",
+              })}
+          >
+            ${state.settings.locale === "zh-CN"
+              ? t("settings.lang.zhShort")
+              : t("settings.lang.enShort")}
+          </button>
           ${renderThemeToggle(state)}
         </div>
       </header>
       <aside class="nav ${state.settings.navCollapsed ? "nav--collapsed" : ""}">
         ${TAB_GROUPS.map((group) => {
-          const isGroupCollapsed = state.settings.navGroupsCollapsed[group.label] ?? false;
+          const isGroupCollapsed = state.settings.navGroupsCollapsed[group.id] ?? false;
           const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`
             <div class="nav-group ${isGroupCollapsed && !hasActiveTab ? "nav-group--collapsed" : ""}">
@@ -156,7 +172,7 @@ export function renderApp(state: AppViewState) {
                 class="nav-label"
                 @click=${() => {
                   const next = { ...state.settings.navGroupsCollapsed };
-                  next[group.label] = !isGroupCollapsed;
+                  next[group.id] = !isGroupCollapsed;
                   state.applySettings({
                     ...state.settings,
                     navGroupsCollapsed: next,
@@ -164,7 +180,7 @@ export function renderApp(state: AppViewState) {
                 }}
                 aria-expanded=${!isGroupCollapsed}
               >
-                <span class="nav-label__text">${group.label}</span>
+                <span class="nav-label__text">${t(group.labelKey)}</span>
                 <span class="nav-label__chevron">${isGroupCollapsed ? "+" : "−"}</span>
               </button>
               <div class="nav-group__items">
@@ -175,7 +191,7 @@ export function renderApp(state: AppViewState) {
         })}
         <div class="nav-group nav-group--links">
           <div class="nav-label nav-label--static">
-            <span class="nav-label__text">Resources</span>
+            <span class="nav-label__text">${t("nav.resources")}</span>
           </div>
           <div class="nav-group__items">
             <a
@@ -183,10 +199,10 @@ export function renderApp(state: AppViewState) {
               href="https://docs.clawd.bot"
               target="_blank"
               rel="noreferrer"
-              title="Docs (opens in new tab)"
+              title=${t("nav.docs")}
             >
               <span class="nav-item__icon" aria-hidden="true">${icons.book}</span>
-              <span class="nav-item__text">Docs</span>
+              <span class="nav-item__text">${t("nav.docs")}</span>
             </a>
           </div>
         </div>
@@ -199,7 +215,13 @@ export function renderApp(state: AppViewState) {
           </div>
           <div class="page-meta">
             ${state.lastError
-              ? html`<div class="pill danger">${state.lastError}</div>`
+              ? html`<button
+                  type="button"
+                  class="pill danger"
+                  @click=${() => state.setTab("overview")}
+                >
+                  ${state.lastError}
+                </button>`
               : nothing}
             ${isChat ? renderChatControls(state) : nothing}
           </div>

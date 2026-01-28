@@ -17,6 +17,7 @@ import { scheduleChatScroll, scheduleLogsScroll } from "./app-scroll";
 import { startLogsPolling, stopLogsPolling, startDebugPolling, stopDebugPolling } from "./app-polling";
 import { refreshChat } from "./app-chat";
 import type { ClawdbotApp } from "./app";
+import { normalizeLocale } from "./i18n";
 
 type SettingsHost = {
   settings: UiSettings;
@@ -63,6 +64,7 @@ export function applySettingsFromUrl(host: SettingsHost) {
   const passwordRaw = params.get("password");
   const sessionRaw = params.get("session");
   const gatewayUrlRaw = params.get("gatewayUrl");
+  const langRaw = params.get("lang");
   let shouldCleanUrl = false;
 
   if (tokenRaw != null) {
@@ -101,6 +103,15 @@ export function applySettingsFromUrl(host: SettingsHost) {
       applySettings(host, { ...host.settings, gatewayUrl });
     }
     params.delete("gatewayUrl");
+    shouldCleanUrl = true;
+  }
+
+  if (langRaw != null) {
+    const next = normalizeLocale(langRaw);
+    if (next && next !== host.settings.locale) {
+      applySettings(host, { ...host.settings, locale: next });
+    }
+    params.delete("lang");
     shouldCleanUrl = true;
   }
 

@@ -1,6 +1,7 @@
 const KEY = "clawdbot.control.settings.v1";
 
 import type { ThemeMode } from "./theme";
+import { resolveInitialLocale, setLocale, type Locale } from "./i18n";
 
 export type UiSettings = {
   gatewayUrl: string;
@@ -8,6 +9,7 @@ export type UiSettings = {
   sessionKey: string;
   lastActiveSessionKey: string;
   theme: ThemeMode;
+  locale: Locale;
   chatFocusMode: boolean;
   chatShowThinking: boolean;
   splitRatio: number; // Sidebar split ratio (0.4 to 0.7, default 0.6)
@@ -27,6 +29,7 @@ export function loadSettings(): UiSettings {
     sessionKey: "main",
     lastActiveSessionKey: "main",
     theme: "system",
+    locale: "en",
     chatFocusMode: false,
     chatShowThinking: true,
     splitRatio: 0.6,
@@ -36,8 +39,39 @@ export function loadSettings(): UiSettings {
 
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return defaults;
-    const parsed = JSON.parse(raw) as Partial<UiSettings>;
+    if (!raw) {
+      const resolvedLocale = resolveInitialLocale(null);
+      setLocale(resolvedLocale);
+      return { ...defaults, locale: resolvedLocale };
+    }
+    const parsed = JSON.parse(raw) as Partial<UiSettings> & { locale?: string };
+    const resolvedLocale = resolveInitialLocale(
+      typeof parsed.locale === "string" ? parsed.locale : null,
+    );
+    setLocale(resolvedLocale);
+    const rawNavGroupsCollapsed =
+      typeof parsed.navGroupsCollapsed === "object" && parsed.navGroupsCollapsed !== null
+        ? (parsed.navGroupsCollapsed as Record<string, boolean>)
+        : defaults.navGroupsCollapsed;
+    const navGroupsCollapsed: Record<string, boolean> = { ...rawNavGroupsCollapsed };
+    if (typeof navGroupsCollapsed.Chat === "boolean" && typeof navGroupsCollapsed.chat !== "boolean") {
+      navGroupsCollapsed.chat = navGroupsCollapsed.Chat;
+    }
+    if (
+      typeof navGroupsCollapsed.Control === "boolean" &&
+      typeof navGroupsCollapsed.control !== "boolean"
+    ) {
+      navGroupsCollapsed.control = navGroupsCollapsed.Control;
+    }
+    if (typeof navGroupsCollapsed.Agent === "boolean" && typeof navGroupsCollapsed.agent !== "boolean") {
+      navGroupsCollapsed.agent = navGroupsCollapsed.Agent;
+    }
+    if (
+      typeof navGroupsCollapsed.Settings === "boolean" &&
+      typeof navGroupsCollapsed.settings !== "boolean"
+    ) {
+      navGroupsCollapsed.settings = navGroupsCollapsed.Settings;
+    }
     return {
       gatewayUrl:
         typeof parsed.gatewayUrl === "string" && parsed.gatewayUrl.trim()
@@ -61,6 +95,7 @@ export function loadSettings(): UiSettings {
         parsed.theme === "system"
           ? parsed.theme
           : defaults.theme,
+      locale: resolvedLocale,
       chatFocusMode:
         typeof parsed.chatFocusMode === "boolean"
           ? parsed.chatFocusMode
@@ -80,16 +115,16 @@ export function loadSettings(): UiSettings {
           ? parsed.navCollapsed
           : defaults.navCollapsed,
       navGroupsCollapsed:
-        typeof parsed.navGroupsCollapsed === "object" &&
-        parsed.navGroupsCollapsed !== null
-          ? parsed.navGroupsCollapsed
-          : defaults.navGroupsCollapsed,
+        navGroupsCollapsed,
     };
   } catch {
-    return defaults;
+    const resolvedLocale = resolveInitialLocale(null);
+    setLocale(resolvedLocale);
+    return { ...defaults, locale: resolvedLocale };
   }
 }
 
 export function saveSettings(next: UiSettings) {
+  setLocale(next.locale);
   localStorage.setItem(KEY, JSON.stringify(next));
 }

@@ -1,5 +1,7 @@
 import type { ConfigUiHints } from "../types";
 
+import { t } from "../i18n";
+
 export type JsonSchema = {
   type?: string | string[];
   title?: string;
@@ -77,6 +79,32 @@ export function humanize(raw: string) {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/\s+/g, " ")
     .replace(/^./, (m) => m.toUpperCase());
+}
+
+export function translateLabel(key: string, schemaTitle?: string): string {
+  const tKey = `config.label.${key}`;
+  const translated = t(tKey);
+  if (translated !== tKey) return translated;
+
+  // Try lowercase
+  const tKeyLower = `config.label.${key.toLowerCase()}`;
+  const translatedLower = t(tKeyLower);
+  if (translatedLower !== tKeyLower) return translatedLower;
+
+  return schemaTitle ?? humanize(key);
+}
+
+export function translateHelp(key: string, schemaDescription?: string): string | undefined {
+  const tKey = `config.help.${key}`;
+  const translated = t(tKey);
+  if (translated !== tKey) return translated;
+
+  // Try lowercase
+  const tKeyLower = `config.help.${key.toLowerCase()}`;
+  const translatedLower = t(tKeyLower);
+  if (translatedLower !== tKeyLower) return translatedLower;
+
+  return schemaDescription;
 }
 
 export function isSensitivePath(path: Array<string | number>): boolean {

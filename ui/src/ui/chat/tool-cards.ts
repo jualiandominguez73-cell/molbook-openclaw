@@ -3,6 +3,7 @@ import { html, nothing } from "lit";
 import { formatToolDetail, resolveToolDisplay } from "../tool-display";
 import { icons } from "../icons";
 import type { ToolCard } from "../types/chat-types";
+import { t } from "../i18n";
 import { TOOL_INLINE_THRESHOLD } from "./constants";
 import {
   formatToolOutputForSidebar,
@@ -69,8 +70,8 @@ export function renderToolCardSidebar(
           return;
         }
         const info = `## ${display.label}\n\n${
-          detail ? `**Command:** \`${detail}\`\n\n` : ""
-        }*No output — tool completed successfully.*`;
+          detail ? `**${t("chat.tool.commandLabel")}** \`${detail}\`\n\n` : ""
+        }*${t("chat.tool.noOutput")}*`;
         onOpenSidebar!(info);
       }
     : undefined;
@@ -100,7 +101,7 @@ export function renderToolCardSidebar(
           <span>${display.label}</span>
         </div>
         ${canClick
-          ? html`<span class="chat-tool-card__action">${hasText ? "View" : ""} ${icons.check}</span>`
+          ? html`<span class="chat-tool-card__action">${hasText ? t("common.view") : ""} ${icons.check}</span>`
           : nothing}
         ${isEmpty && !canClick ? html`<span class="chat-tool-card__status">${icons.check}</span>` : nothing}
       </div>
@@ -108,7 +109,7 @@ export function renderToolCardSidebar(
         ? html`<div class="chat-tool-card__detail">${detail}</div>`
         : nothing}
       ${isEmpty
-        ? html`<div class="chat-tool-card__status-text muted">Completed</div>`
+        ? html`<div class="chat-tool-card__status-text muted">${t("chat.tool.completed")}</div>`
         : nothing}
       ${showCollapsed
         ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`

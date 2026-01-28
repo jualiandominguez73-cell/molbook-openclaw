@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { ChannelsStatusSnapshot } from "../types";
 import type { ChannelsState } from "./channels.types";
 
@@ -65,7 +66,7 @@ export async function logoutWhatsApp(state: ChannelsState) {
   state.whatsappBusy = true;
   try {
     await state.client.request("channels.logout", { channel: "whatsapp" });
-    state.whatsappLoginMessage = "Logged out.";
+    state.whatsappLoginMessage = t("channels.whatsapp.loggedOut");
     state.whatsappLoginQrDataUrl = null;
     state.whatsappLoginConnected = null;
   } catch (err) {

@@ -191,6 +191,13 @@
   transition: border-color var(--duration-fast) ease;
 }
 
+button.pill {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 .pill:hover {
   border-color: var(--border-strong);
 }

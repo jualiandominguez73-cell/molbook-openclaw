@@ -7,6 +7,7 @@
 import { html, nothing, type TemplateResult } from "lit";
 
 import type { NostrProfile as NostrProfileType } from "../types";
+import { t } from "../i18n";
 
 // ============================================================================
 // Types
@@ -147,7 +148,7 @@ export function renderNostrProfileForm(params: {
       <div style="margin-bottom: 12px;">
         <img
           src=${picture}
-          alt="Profile picture preview"
+          alt=${t("channels.nostrProfile.picturePreviewAlt")}
           style="max-width: 80px; max-height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);"
           @error=${(e: Event) => {
             const img = e.target as HTMLImageElement;
@@ -165,8 +166,8 @@ export function renderNostrProfileForm(params: {
   return html`
     <div class="nostr-profile-form" style="padding: 16px; background: var(--bg-secondary); border-radius: 8px; margin-top: 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <div style="font-weight: 600; font-size: 16px;">Edit Profile</div>
-        <div style="font-size: 12px; color: var(--text-muted);">Account: ${accountId}</div>
+        <div style="font-weight: 600; font-size: 16px;">${t("channels.nostr.editProfile")}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">${t("channels.nostrProfile.account", { accountId })}</div>
       </div>
 
       ${state.error
@@ -179,56 +180,56 @@ export function renderNostrProfileForm(params: {
 
       ${renderPicturePreview()}
 
-      ${renderField("name", "Username", {
+      ${renderField("name", t("channels.nostrProfile.username"), {
         placeholder: "satoshi",
         maxLength: 256,
-        help: "Short username (e.g., satoshi)",
+        help: t("channels.nostrProfile.usernameHelp"),
       })}
 
-      ${renderField("displayName", "Display Name", {
+      ${renderField("displayName", t("channels.nostrProfile.displayName"), {
         placeholder: "Satoshi Nakamoto",
         maxLength: 256,
-        help: "Your full display name",
+        help: t("channels.nostrProfile.displayNameHelp"),
       })}
 
-      ${renderField("about", "Bio", {
+      ${renderField("about", t("channels.nostrProfile.bio"), {
         type: "textarea",
-        placeholder: "Tell people about yourself...",
+        placeholder: t("channels.nostrProfile.bioPlaceholder"),
         maxLength: 2000,
-        help: "A brief bio or description",
+        help: t("channels.nostrProfile.bioHelp"),
       })}
 
-      ${renderField("picture", "Avatar URL", {
+      ${renderField("picture", t("channels.nostrProfile.avatarUrl"), {
         type: "url",
         placeholder: "https://example.com/avatar.jpg",
-        help: "HTTPS URL to your profile picture",
+        help: t("channels.nostrProfile.avatarUrlHelp"),
       })}
 
       ${state.showAdvanced
         ? html`
             <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
-              <div style="font-weight: 500; margin-bottom: 12px; color: var(--text-muted);">Advanced</div>
+              <div style="font-weight: 500; margin-bottom: 12px; color: var(--text-muted);">${t("channels.nostrProfile.advanced")}</div>
 
-              ${renderField("banner", "Banner URL", {
+              ${renderField("banner", t("channels.nostrProfile.bannerUrl"), {
                 type: "url",
                 placeholder: "https://example.com/banner.jpg",
-                help: "HTTPS URL to a banner image",
+                help: t("channels.nostrProfile.bannerUrlHelp"),
               })}
 
-              ${renderField("website", "Website", {
+              ${renderField("website", t("channels.nostrProfile.website"), {
                 type: "url",
                 placeholder: "https://example.com",
-                help: "Your personal website",
+                help: t("channels.nostrProfile.websiteHelp"),
               })}
 
-              ${renderField("nip05", "NIP-05 Identifier", {
+              ${renderField("nip05", t("channels.nostrProfile.nip05"), {
                 placeholder: "you@example.com",
-                help: "Verifiable identifier (e.g., you@domain.com)",
+                help: t("channels.nostrProfile.nip05Help"),
               })}
 
-              ${renderField("lud16", "Lightning Address", {
+              ${renderField("lud16", t("channels.nostrProfile.lud16"), {
                 placeholder: "you@getalby.com",
-                help: "Lightning address for tips (LUD-16)",
+                help: t("channels.nostrProfile.lud16Help"),
               })}
             </div>
           `
@@ -240,7 +241,7 @@ export function renderNostrProfileForm(params: {
           @click=${callbacks.onSave}
           ?disabled=${state.saving || !isDirty}
         >
-          ${state.saving ? "Saving..." : "Save & Publish"}
+          ${state.saving ? t("common.loading") : t("channels.nostrProfile.savePublish")}
         </button>
 
         <button
@@ -248,14 +249,14 @@ export function renderNostrProfileForm(params: {
           @click=${callbacks.onImport}
           ?disabled=${state.importing || state.saving}
         >
-          ${state.importing ? "Importing..." : "Import from Relays"}
+          ${state.importing ? t("common.loading") : t("channels.nostrProfile.import")}
         </button>
 
         <button
           class="btn"
           @click=${callbacks.onToggleAdvanced}
         >
-          ${state.showAdvanced ? "Hide Advanced" : "Show Advanced"}
+          ${state.showAdvanced ? t("channels.nostrProfile.hideAdvanced") : t("channels.nostrProfile.showAdvanced")}
         </button>
 
         <button
@@ -263,13 +264,13 @@ export function renderNostrProfileForm(params: {
           @click=${callbacks.onCancel}
           ?disabled=${state.saving}
         >
-          Cancel
+          ${t("common.cancel")}
         </button>
       </div>
 
       ${isDirty
         ? html`<div style="font-size: 12px; color: var(--warning-color); margin-top: 8px;">
-            You have unsaved changes
+            ${t("channels.nostrProfile.unsaved")}
           </div>`
         : nothing}
     </div>

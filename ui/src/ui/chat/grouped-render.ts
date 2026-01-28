@@ -12,6 +12,7 @@ import {
   formatReasoningMarkdown,
 } from "./message-extract";
 import { extractToolCards, renderToolCardSidebar } from "./tool-cards";
+import { t } from "../i18n";
 
 type ImageBlock = {
   url: string;
@@ -80,7 +81,7 @@ export function renderStreamingGroup(
     hour: "numeric",
     minute: "2-digit",
   });
-  const name = assistant?.name ?? "Assistant";
+  const name = assistant?.name ?? t("chat.role.assistant");
 
   return html`
     <div class="chat-group assistant">
@@ -114,13 +115,13 @@ export function renderMessageGroup(
   },
 ) {
   const normalizedRole = normalizeRoleForGrouping(group.role);
-  const assistantName = opts.assistantName ?? "Assistant";
+  const assistantName = opts.assistantName ?? t("chat.role.assistant");
   const who =
     normalizedRole === "user"
-      ? "You"
+      ? t("chat.role.you")
       : normalizedRole === "assistant"
         ? assistantName
-        : normalizedRole;
+        : t(`chat.role.${normalizedRole}`);
   const roleClass =
     normalizedRole === "user"
       ? "user"
@@ -164,7 +165,7 @@ function renderAvatar(
   assistant?: Pick<AssistantIdentity, "name" | "avatar">,
 ) {
   const normalized = normalizeRoleForGrouping(role);
-  const assistantName = assistant?.name?.trim() || "Assistant";
+  const assistantName = assistant?.name?.trim() || t("chat.role.assistant");
   const assistantAvatar = assistant?.avatar?.trim() || "";
   const initial =
     normalized === "user"
@@ -214,7 +215,7 @@ function renderMessageImages(images: ImageBlock[]) {
         (img) => html`
           <img
             src=${img.url}
-            alt=${img.alt ?? "Attached image"}
+            alt=${img.alt ?? t("chat.attachedImage")}
             class="chat-message-image"
             @click=${() => window.open(img.url, "_blank")}
           />

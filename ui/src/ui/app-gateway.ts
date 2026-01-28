@@ -26,6 +26,7 @@ import {
 import type { ClawdbotApp } from "./app";
 import type { ExecApprovalRequest } from "./controllers/exec-approval";
 import { loadAssistantIdentity } from "./controllers/assistant-identity";
+import { t } from "./i18n";
 
 type GatewayHost = {
   settings: UiSettings;
@@ -108,6 +109,24 @@ function applySessionDefaults(host: GatewayHost, defaults?: SessionDefaultsSnaps
   }
 }
 
+function localizeCloseReason(reason: string | undefined | null) {
+  const raw = typeof reason === "string" ? reason.trim() : "";
+  if (!raw) return t("gateway.noReason");
+  const lower = raw.toLowerCase();
+  if (lower.includes("gateway token missing")) return t("gateway.reason.tokenMissing");
+  if (lower.includes("gateway token mismatch")) return t("gateway.reason.tokenMismatch");
+  if (lower.includes("gateway token not configured")) return t("gateway.reason.tokenNotConfigured");
+  if (lower.includes("gateway password missing")) return t("gateway.reason.passwordMissing");
+  if (lower.includes("gateway password mismatch")) return t("gateway.reason.passwordMismatch");
+  if (lower.includes("gateway password not configured")) return t("gateway.reason.passwordNotConfigured");
+  if (lower.includes("tailscale identity missing")) return t("gateway.reason.tailscaleIdentityMissing");
+  if (lower.includes("tailscale proxy headers missing")) return t("gateway.reason.tailscaleProxyHeadersMissing");
+  if (lower.includes("tailscale identity check failed")) return t("gateway.reason.tailscaleIdentityCheckFailed");
+  if (lower.includes("tailscale identity mismatch")) return t("gateway.reason.tailscaleIdentityMismatch");
+  if (lower === "unauthorized") return t("gateway.reason.unauthorized");
+  return raw;
+}
+
 export function connectGateway(host: GatewayHost) {
   host.lastError = null;
   host.hello = null;
@@ -143,12 +162,15 @@ export function connectGateway(host: GatewayHost) {
       host.connected = false;
       // Code 1012 = Service Restart (expected during config saves, don't show as error)
       if (code !== 1012) {
-        host.lastError = `disconnected (${code}): ${reason || "no reason"}`;
+        host.lastError = t("gateway.disconnected", {
+          code,
+          reason: localizeCloseReason(reason),
+        });
       }
     },
     onEvent: (evt) => handleGatewayEvent(host, evt),
     onGap: ({ expected, received }) => {
-      host.lastError = `event gap detected (expected seq ${expected}, got ${received}); refresh recommended`;
+      host.lastError = t("gateway.eventGap", { expected, received });
     },
   });
   host.client.start();

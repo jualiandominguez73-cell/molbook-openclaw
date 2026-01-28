@@ -1,5 +1,6 @@
 import { html, nothing, type TemplateResult } from "lit";
 import type { ConfigUiHints } from "../types";
+import { t } from "../i18n";
 import {
   defaultValue,
   hintForPath,
@@ -7,6 +8,8 @@ import {
   isSensitivePath,
   pathKey,
   schemaType,
+  translateHelp,
+  translateLabel,
   type JsonSchema,
 } from "./config-form.shared";
 
@@ -35,6 +38,28 @@ const icons = {
   edit: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
 };
 
+function optionLabel(hint: unknown, value: unknown): string {
+  const raw = value == null ? "" : String(value);
+  const translated = t(`config.option.${raw}`);
+  const fallback = translated !== `config.option.${raw}` ? translated : raw;
+
+  if (!hint || typeof hint !== "object") return fallback;
+  const record = hint as Record<string, unknown>;
+  const direct = record.optionLabels;
+  const itemTemplate =
+    record.itemTemplate && typeof record.itemTemplate === "object"
+      ? (record.itemTemplate as Record<string, unknown>)
+      : null;
+  const fromTemplate = itemTemplate?.optionLabels;
+  const map = (direct && typeof direct === "object" ? direct : null) ??
+    (fromTemplate && typeof fromTemplate === "object" ? fromTemplate : null);
+  if (!map) return fallback;
+  const mapRecord = map as Record<string, unknown>;
+  const mapped = mapRecord[raw];
+  if (mapped == null) return fallback;
+  return String(mapped);
+}
+
 export function renderNode(params: {
   schema: JsonSchema;
   value: unknown;
@@ -49,14 +74,15 @@ export function renderNode(params: {
   const showLabel = params.showLabel ?? true;
   const type = schemaType(schema);
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const label = hint?.label ?? translateLabel(lastKey, schema.title);
+  const help = hint?.help ?? translateHelp(lastKey, schema.description);
   const key = pathKey(path);
 
   if (unsupported.has(key)) {
     return html`<div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">Unsupported schema node. Use Raw mode.</div>
+      <div class="cfg-field__error">${t("config.field.unsupportedNode")}</div>
     </div>`;
   }
 
@@ -95,7 +121,7 @@ export function renderNode(params: {
                 ?disabled=${disabled}
                 @click=${() => onPatch(path, lit)}
               >
-                ${String(lit)}
+                ${optionLabel(hint, lit)}
               </button>
             `)}
           </div>
@@ -154,7 +180,7 @@ export function renderNode(params: {
                 ?disabled=${disabled}
                 @click=${() => onPatch(path, opt)}
               >
-                ${String(opt)}
+                ${optionLabel(hint, opt)}
               </button>
             `)}
           </div>
@@ -210,7 +236,7 @@ export function renderNode(params: {
   return html`
     <div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">Unsupported type: ${type}. Use Raw mode.</div>
+      <div class="cfg-field__error">${t("config.field.unsupportedType", { type })}</div>
     </div>
   `;
 }
@@ -228,12 +254,17 @@ function renderTextInput(params: {
   const { schema, value, path, hints, disabled, onPatch, inputType } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const label = hint?.label ?? translateLabel(lastKey, schema.title);
+  const help = hint?.help ?? translateHelp(lastKey, schema.description);
   const isSensitive = hint?.sensitive ?? isSensitivePath(path);
   const placeholder =
     hint?.placeholder ??
-    (isSensitive ? "••••" : schema.default !== undefined ? `Default: ${schema.default}` : "");
+    (isSensitive
+      ? "••••"
+      : schema.default !== undefined
+        ? t("config.field.defaultPlaceholder", { value: String(schema.default) })
+        : "");
   const displayValue = value ?? "";
 
   return html`
@@ -265,7 +296,7 @@ function renderTextInput(params: {
           <button
             type="button"
             class="cfg-input__reset"
-            title="Reset to default"
+            title=${t("config.field.resetDefault")}
             ?disabled=${disabled}
             @click=${() => onPatch(path, schema.default)}
           >↺</button>
@@ -287,8 +318,9 @@ function renderNumberInput(params: {
   const { schema, value, path, hints, disabled, onPatch } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const label = hint?.label ?? translateLabel(lastKey, schema.title);
+  const help = hint?.help ?? translateHelp(lastKey, schema.description);
   const displayValue = value ?? schema.default ?? "";
   const numValue = typeof displayValue === "number" ? displayValue : 0;
 
@@ -338,8 +370,9 @@ function renderSelect(params: {
   const { schema, value, path, hints, disabled, options, onPatch } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const label = hint?.label ?? translateLabel(lastKey, schema.title);
+  const help = hint?.help ?? translateHelp(lastKey, schema.description);
   const resolvedValue = value ?? schema.default;
   const currentIndex = options.findIndex(
     (opt) => opt === resolvedValue || String(opt) === String(resolvedValue),
@@ -359,9 +392,9 @@ function renderSelect(params: {
           onPatch(path, val === unset ? undefined : options[Number(val)]);
         }}
       >
-        <option value=${unset}>Select...</option>
+        <option value=${unset}>${t("config.field.selectPlaceholder")}</option>
         ${options.map((opt, idx) => html`
-          <option value=${String(idx)}>${String(opt)}</option>
+          <option value=${String(idx)}>${optionLabel(hint, opt)}</option>
         `)}
       </select>
     </div>
@@ -381,8 +414,9 @@ function renderObject(params: {
   const { schema, value, path, hints, unsupported, disabled, onPatch } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const label = hint?.label ?? translateLabel(lastKey, schema.title);
+  const help = hint?.help ?? translateHelp(lastKey, schema.description);
 
   const fallback = value ?? schema.default;
   const obj = fallback && typeof fallback === "object" && !Array.isArray(fallback)
@@ -480,26 +514,31 @@ function renderArray(params: {
   const { schema, value, path, hints, unsupported, disabled, onPatch } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const label = hint?.label ?? translateLabel(lastKey, schema.title);
+  const help = hint?.help ?? translateHelp(lastKey, schema.description);
 
   const itemsSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
   if (!itemsSchema) {
     return html`
       <div class="cfg-field cfg-field--error">
         <div class="cfg-field__label">${label}</div>
-        <div class="cfg-field__error">Unsupported array schema. Use Raw mode.</div>
+        <div class="cfg-field__error">${t("config.field.unsupportedArray")}</div>
       </div>
     `;
   }
 
   const arr = Array.isArray(value) ? value : Array.isArray(schema.default) ? schema.default : [];
+  const countText =
+    arr.length === 1
+      ? t("config.array.count.one")
+      : t("config.array.count.many", { count: arr.length });
 
   return html`
     <div class="cfg-array">
       <div class="cfg-array__header">
         ${showLabel ? html`<span class="cfg-array__label">${label}</span>` : nothing}
-        <span class="cfg-array__count">${arr.length} item${arr.length !== 1 ? 's' : ''}</span>
+        <span class="cfg-array__count">${countText}</span>
         <button
           type="button"
           class="cfg-array__add"
@@ -510,14 +549,14 @@ function renderArray(params: {
           }}
         >
           <span class="cfg-array__add-icon">${icons.plus}</span>
-          Add
+          ${t("config.array.add")}
         </button>
       </div>
       ${help ? html`<div class="cfg-array__help">${help}</div>` : nothing}
 
       ${arr.length === 0 ? html`
         <div class="cfg-array__empty">
-          No items yet. Click "Add" to create one.
+          ${t("config.array.empty")}
         </div>
       ` : html`
         <div class="cfg-array__items">
@@ -528,7 +567,7 @@ function renderArray(params: {
                 <button
                   type="button"
                   class="cfg-array__item-remove"
-                  title="Remove item"
+                  title=${t("config.array.removeItem")}
                   ?disabled=${disabled}
                   @click=${() => {
                     const next = [...arr];
@@ -576,7 +615,7 @@ function renderMapField(params: {
   return html`
     <div class="cfg-map">
       <div class="cfg-map__header">
-        <span class="cfg-map__label">Custom entries</span>
+        <span class="cfg-map__label">${t("config.map.title")}</span>
         <button
           type="button"
           class="cfg-map__add"
@@ -594,12 +633,12 @@ function renderMapField(params: {
           }}
         >
           <span class="cfg-map__add-icon">${icons.plus}</span>
-          Add Entry
+          ${t("config.map.addEntry")}
         </button>
       </div>
 
       ${entries.length === 0 ? html`
-        <div class="cfg-map__empty">No custom entries.</div>
+        <div class="cfg-map__empty">${t("config.map.empty")}</div>
       ` : html`
         <div class="cfg-map__items">
           ${entries.map(([key, entryValue]) => {
@@ -611,7 +650,7 @@ function renderMapField(params: {
                   <input
                     type="text"
                     class="cfg-input cfg-input--sm"
-                    placeholder="Key"
+                    placeholder=${t("config.map.keyPlaceholder")}
                     .value=${key}
                     ?disabled=${disabled}
                     @change=${(e: Event) => {
@@ -630,7 +669,7 @@ function renderMapField(params: {
                     ? html`
                         <textarea
                           class="cfg-textarea cfg-textarea--sm"
-                          placeholder="JSON value"
+                          placeholder=${t("config.map.jsonPlaceholder")}
                           rows="2"
                           .value=${fallback}
                           ?disabled=${disabled}
@@ -663,7 +702,7 @@ function renderMapField(params: {
                 <button
                   type="button"
                   class="cfg-map__item-remove"
-                  title="Remove entry"
+                  title=${t("config.map.removeEntry")}
                   ?disabled=${disabled}
                   @click=${() => {
                     const next = { ...(value ?? {}) };
