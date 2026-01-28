@@ -1,7 +1,6 @@
 import {
   buildChannelConfigSchema,
   DEFAULT_ACCOUNT_ID,
-  getChatChannelMeta,
   type ChannelPlugin,
   type ResolvedZoomAccount,
   resolveZoomAccount,
@@ -10,7 +9,16 @@ import {
   zoomOnboardingAdapter,
 } from "clawdbot/plugin-sdk";
 
-const meta = getChatChannelMeta("zoom");
+const meta = {
+  id: "zoom",
+  label: "Zoom",
+  selectionLabel: "Zoom Team Chat",
+  docsPath: "/channels/zoom",
+  docsLabel: "zoom",
+  blurb: "Zoom Team Chat via Team Chat Bot API.",
+  order: 45,
+  quickstartAllowFrom: true,
+};
 
 export const zoomPlugin: ChannelPlugin<ResolvedZoomAccount> = {
   id: "zoom",
