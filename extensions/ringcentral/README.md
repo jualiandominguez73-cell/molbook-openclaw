@@ -74,14 +74,13 @@ export RINGCENTRAL_JWT="your-jwt-token"
 | `clientSecret` | string | - | RingCentral app client secret |
 | `jwt` | string | - | JWT token for authentication |
 | `server` | string | `https://platform.ringcentral.com` | RingCentral API server URL |
-| `selfOnly` | boolean | `true` | Only accept messages from the JWT user |
-| `allowOtherChats` | boolean | `false` | In selfOnly mode, allow chats other than Personal |
+| `selfOnly` | boolean | `true` | Only respond to JWT user in Personal chat |
 | `name` | string | - | Bot display name |
 | `textChunkLimit` | number | `4000` | Maximum characters per message chunk |
-| `dmPolicy` | string | `"pairing"` | DM policy (only applies when `selfOnly: false`) |
-| `groupPolicy` | string | `"allowlist"` | Group policy (only applies when `selfOnly: false`) |
+| `dmPolicy` | string | `"pairing"` | DM policy (only when `selfOnly: false`) |
+| `groupPolicy` | string | `"allowlist"` | Group policy (only when `selfOnly: false`) |
 
-> **Note:** When `selfOnly: true` (default), the `dmPolicy`, `allowFrom`, `groupPolicy`, and related settings are ignored. The bot only responds to the JWT user in their Personal chat.
+> **Note:** When `selfOnly: true` (default), the bot only responds to the JWT user in their Personal chat. All other policy settings (`dmPolicy`, `allowFrom`, `groupPolicy`, etc.) are ignored.
 
 ## Usage
 

@@ -226,14 +226,10 @@ async function processMessageWithPipeline(params: {
   const isGroup = chatType !== "Direct" && chatType !== "PersonalChat" && chatType !== "Personal";
   runtime.log?.(`[${account.accountId}] Chat type: ${chatType}, isGroup: ${isGroup}`);
 
-  // In selfOnly mode, by default only allow "Personal" chat (conversation with yourself)
-  // Set allowOtherChats: true to allow DMs and groups
-  if (selfOnly) {
-    const allowOtherChats = account.config.allowOtherChats === true; // default false
-    if (!allowOtherChats && !isPersonalChat) {
-      logVerbose(core, runtime, `ignore non-personal chat in selfOnly mode: chatType=${chatType}`);
-      return;
-    }
+  // In selfOnly mode, only allow "Personal" chat (conversation with yourself)
+  if (selfOnly && !isPersonalChat) {
+    logVerbose(core, runtime, `ignore non-personal chat in selfOnly mode: chatType=${chatType}`);
+    return;
   }
 
   const defaultGroupPolicy = config.channels?.defaults?.groupPolicy;

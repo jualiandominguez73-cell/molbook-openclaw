@@ -44,7 +44,6 @@ const RingCentralAccountSchemaBase = z
     allowBots: z.boolean().optional(),
     botExtensionId: z.string().optional(),
     selfOnly: z.boolean().optional(),
-    allowOtherChats: z.boolean().optional(),
   })
   .strict();
 

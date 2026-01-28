@@ -114,8 +114,7 @@ export type RingCentralAccountConfig = {
   allowBots?: boolean;
   botExtensionId?: string;
   replyToMode?: "off" | "all";
-  selfOnly?: boolean; // JWT mode: only accept messages from the JWT user (default: true)
-  allowOtherChats?: boolean; // In selfOnly mode, allow chats other than Personal (default: false)
+  selfOnly?: boolean; // JWT mode: only accept messages from the JWT user in Personal chat (default: true)
 };
 
 export type RingCentralConfig = RingCentralAccountConfig & {
