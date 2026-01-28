@@ -158,6 +158,14 @@ export async function monitorWpsProvider(opts: MonitorWpsOpts): Promise<MonitorW
 
   app.post(path, async (req: Request, res: Response) => {
     try {
+      // Handle challenge verification request (webhook URL validation)
+      const body = req.body as Record<string, unknown>;
+      if (typeof body.challenge === "string") {
+        log("WPS webhook challenge verification");
+        res.status(200).json({ challenge: body.challenge });
+        return;
+      }
+
       let eventPayload: WpsEventPayload;
 
       // Check if this is an encrypted event
