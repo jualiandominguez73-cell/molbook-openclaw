@@ -5,6 +5,20 @@
 
 set -euo pipefail
 
+# Source environment (for API keys in cron context)
+[ -f ~/.zshenv ] && source ~/.zshenv 2>/dev/null || true
+[ -f ~/.config/clawdbot/env ] && source ~/.config/clawdbot/env 2>/dev/null || true
+
+# Fallback: get from 1Password if not set
+if [ -z "${OPENAI_API_KEY:-}" ]; then
+    OPENAI_API_KEY=$(op read "op://Personal/OpenAI API Key/credential" 2>/dev/null || echo "")
+fi
+
+if [ -z "${OPENAI_API_KEY:-}" ]; then
+    echo "ERROR: OPENAI_API_KEY not found" >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAWD_DIR="$(dirname "$SCRIPT_DIR")"
 STATE_FILE="$CLAWD_DIR/memory/.fact-extraction-state.json"
@@ -73,9 +87,42 @@ CONVERSATION:
 
 Extract durable facts (JSON only):'
 
-# Call model for extraction via moltbot agent
-# Uses the running gateway with configured API keys
-EXTRACTED=$(moltbot agent --message "$EXTRACT_PROMPT" --agent main --timeout 120 2>/dev/null || echo "[]")
+# Call OpenAI for cheap, fast extraction (gpt-4o-mini ~$0.15/1M tokens)
+# Write prompt to temp file to avoid escaping issues
+PROMPT_FILE=$(mktemp)
+echo "$EXTRACT_PROMPT" > "$PROMPT_FILE"
+
+EXTRACTED=$(python3 -c "
+import json, sys, urllib.request
+
+with open('$PROMPT_FILE', 'r') as f:
+    prompt = f.read()
+
+data = json.dumps({
+    'model': 'gpt-4o-mini',
+    'messages': [{'role': 'user', 'content': prompt}],
+    'max_tokens': 1000,
+    'temperature': 0.3
+}).encode()
+
+req = urllib.request.Request(
+    'https://api.openai.com/v1/chat/completions',
+    data=data,
+    headers={
+        'Authorization': 'Bearer $OPENAI_API_KEY',
+        'Content-Type': 'application/json'
+    }
+)
+
+try:
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        result = json.loads(resp.read())
+        print(result['choices'][0]['message']['content'])
+except Exception as e:
+    print('[]')
+" 2>/dev/null || echo "[]")
+
+rm -f "$PROMPT_FILE"
 
 # Parse and validate JSON
 FACTS=$(echo "$EXTRACTED" | python3 -c "
@@ -110,12 +157,19 @@ json.dump(state, open('$STATE_FILE', 'w'))
 fi
 
 # Process each fact
+PPL_DIR="$CLAWD_DIR/skills/ppl-gift"
+
 echo "$FACTS" | python3 -c "
 import sys, json, subprocess, os
 
 facts = json.load(sys.stdin)
+ppl_dir = '$PPL_DIR'
 ppl_script = '$PPL_SCRIPT'
-clawd_dir = '$CLAWD_DIR'
+
+def run_ppl(*args):
+    '''Run ppl.py with uv from the skill directory'''
+    cmd = ['uv', 'run', 'python', ppl_script] + list(args)
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=ppl_dir)
 
 for fact in facts:
     fact_type = fact.get('type', 'general')
@@ -128,19 +182,15 @@ for fact in facts:
     if fact_type == 'person':
         name = fact.get('name', 'Unknown')
         # Search for contact in ppl.gift
-        result = subprocess.run(
-            ['uv', 'run', ppl_script, 'search', name],
-            capture_output=True, text=True, cwd=clawd_dir
-        )
+        result = run_ppl('search', name)
         
         if 'Found 0' in result.stdout or result.returncode != 0:
             # No contact found, add to journal instead
-            subprocess.run([
-                'uv', 'run', ppl_script, 'journal-add',
+            run_ppl('journal-add',
                 '--title', f'📝 {category.upper()}: {name}',
                 '--body', fact_text,
                 '--tags', f'fact-extraction,{category},{name.lower().replace(\" \", \"-\")}'
-            ], cwd=clawd_dir)
+            )
             print(f'  → Journal: {name} - {fact_text[:50]}...')
         else:
             # Extract contact ID and add note
@@ -148,29 +198,26 @@ for fact in facts:
             match = re.search(r'│\s*(\d+)\s*│', result.stdout)
             if match:
                 contact_id = match.group(1)
-                subprocess.run([
-                    'uv', 'run', ppl_script, 'add-note', contact_id,
+                run_ppl('add-note', contact_id,
                     '--title', f'📝 {category.upper()}',
                     '--body', fact_text
-                ], cwd=clawd_dir)
+                )
                 print(f'  → Note on {name}: {fact_text[:50]}...')
             else:
                 # Fallback to journal
-                subprocess.run([
-                    'uv', 'run', ppl_script, 'journal-add',
+                run_ppl('journal-add',
                     '--title', f'📝 {category.upper()}: {name}',
                     '--body', fact_text,
                     '--tags', f'fact-extraction,{category}'
-                ], cwd=clawd_dir)
+                )
                 print(f'  → Journal: {name} - {fact_text[:50]}...')
     else:
         # General fact goes to journal
-        subprocess.run([
-            'uv', 'run', ppl_script, 'journal-add',
+        run_ppl('journal-add',
             '--title', f'💡 {category.upper()}',
             '--body', fact_text,
             '--tags', f'fact-extraction,{category}'
-        ], cwd=clawd_dir)
+        )
         print(f'  → Journal: {fact_text[:50]}...')
 "
 
