@@ -53,7 +53,6 @@ export const telegramOutbound: ChannelOutboundAdapter = {
   },
   sendPayload: async ({ to, payload, accountId, deps, replyToId, threadId }) => {
     const send = deps?.sendTelegram ?? sendMessageTelegram;
-    const sendGroup = deps?.sendMediaGroupTelegram ?? sendMediaGroupTelegram;
     const replyToMessageId = parseReplyToMessageId(replyToId);
     const messageThreadId = parseThreadId(threadId);
     const telegramData = payload.channelData?.telegram as
@@ -86,7 +85,7 @@ export const telegramOutbound: ChannelOutboundAdapter = {
 
     // Use media group (album) for 2-10 images - sends as a single album
     if (mediaUrls.length >= 2 && mediaUrls.length <= 10) {
-      const groupResult = await sendGroup(to, mediaUrls, text, {
+      const groupResult = await sendMediaGroupTelegram(to, mediaUrls, text, {
         messageThreadId,
         replyToMessageId,
         accountId: accountId ?? undefined,
@@ -101,7 +100,6 @@ export const telegramOutbound: ChannelOutboundAdapter = {
       return {
         channel: "telegram",
         messageId: groupResult.messageIds[0] ?? "unknown",
-        messageIds: groupResult.messageIds,
         chatId: groupResult.chatId,
       };
     }
@@ -118,22 +116,5 @@ export const telegramOutbound: ChannelOutboundAdapter = {
       });
     }
     return { channel: "telegram", ...(finalResult ?? { messageId: "unknown", chatId: to }) };
-  },
-  sendMediaGroup: async ({ to, mediaUrls, caption, accountId, deps, replyToId, threadId }) => {
-    const sendGroup = deps?.sendMediaGroupTelegram ?? sendMediaGroupTelegram;
-    const replyToMessageId = parseReplyToMessageId(replyToId);
-    const messageThreadId = parseThreadId(threadId);
-    const result = await sendGroup(to, mediaUrls, caption, {
-      messageThreadId,
-      replyToMessageId,
-      accountId: accountId ?? undefined,
-    });
-    // Return first message ID as the main one
-    return {
-      channel: "telegram",
-      messageId: result.messageIds[0] ?? "unknown",
-      messageIds: result.messageIds,
-      chatId: result.chatId,
-    };
   },
 };
