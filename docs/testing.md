@@ -215,7 +215,7 @@ CLAWDBOT_LIVE_CLI_BACKEND=1 \
 ```
 
 Note: Copilot CLI requires GitHub CLI auth (`gh auth status`). Output is text-only (no JSON).
-`gpt-4.1` is available on GitHub Free tier; other models require a paid subscription.
+`gpt-4.1` is available on the GitHub Free tier; other models require a paid subscription.
 
 ### Recommended live recipes
 
