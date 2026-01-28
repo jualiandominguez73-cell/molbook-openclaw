@@ -79,4 +79,94 @@
 
 ---
 
-*Archive created: 2026-01-27*
+## Archived Entries (Jan 27-28, 2026)
+
+*Batch archived on 2026-01-28 during system health review.*
+
+---
+
+### [2026-01-27-039] Email Sending Capability - GOG is Read-Only [RESOLVED - GHOST BUG]
+- **Proposed by:** Simon (via Telegram)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-28) - GHOST BUG
+- **Resolution:** GOG DOES have `gog gmail send` command. Original verification only checked `gog gmail messages --help`.
+
+### [2026-01-27-037] Kai Supervisor Agent Research [RESOLVED]
+- **Proposed by:** Simon (via Cursor)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-27)
+- **Resolution:** Not deploying Kai. Added "Proactive Review Mode" to SOUL.md instead.
+
+### [2026-01-27-036] Integrate Session Health Check into HEARTBEAT.md [RESOLVED - GHOST BUG]
+- **Proposed by:** Liam (self-audit)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-28) - GHOST BUG
+- **Resolution:** Feature already exists in HEARTBEAT.md lines 36-56.
+
+### [2026-01-27-037] Document find/ls Pattern in APEX_COMPACT.md [RESOLVED - GHOST BUG]
+- **Proposed by:** Liam (self-audit)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-28) - GHOST BUG
+- **Resolution:** Features already exist in APEX_COMPACT.md (Instincts + Anti-Patterns sections).
+
+### [2026-01-27-034] Communication Protocol - Simon Repeating Himself [RESOLVED]
+- **Proposed by:** Liam
+- **Date:** 2026-01-27
+- **Status:** RESOLVED
+- **Resolution:** Added verification requirements and anti-patterns to queue template.
+
+### [2026-01-27-033] Gmail-Poll Cron Failures - Detailed Analysis [RESOLVED]
+- **Proposed by:** Liam
+- **Date:** 2026-01-27
+- **Status:** RESOLVED
+- **Resolution:** Analysis documented. Gmail-Poll disabled, Heartbeat-Check handles email monitoring.
+
+### [2026-01-27-031] Weekly-Employee-Review - Run Daily During Debugging Period [RESOLVED]
+- **Proposed by:** Simon (via Telegram)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-28)
+- **Resolution:** Changed to Daily-Employee-Review, runs 9 AM PST daily.
+
+### [2026-01-27-030] Gmail-Poll Cron Job Failing in Isolated Session [RESOLVED]
+- **Proposed by:** Liam (auto-escalated)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-28)
+- **Resolution:** Disabled Gmail-Poll, rely on Heartbeat-Check instead.
+
+### [2026-01-27-029] Channel Separation and GOG Tool Fix [RESOLVED]
+- **Proposed by:** Simon (via Cursor)
+- **Date:** 2026-01-27
+- **Status:** RESOLVED (2026-01-27)
+- **Resolution:** Created liam-telegram and liam-discord agents with bindings. Fixed GOG tool blockage.
+
+### [2026-01-25-015] Data Analytics Capabilities Enhancement [RESOLVED]
+- **Proposed by:** Simon (via email)
+- **Date:** 2026-01-25
+- **Category:** tools
+- **Status:** RESOLVED (2026-01-26)
+- **Resolution:** Created `data-analytics` skill with analyze.py, excel.py, visualize.py.
+
+### [2026-01-25-017] Clawdbot-Native Calendar with Google Sync [CANCELLED]
+- **Proposed by:** Simon (via email)
+- **Date:** 2026-01-25
+- **Category:** tools
+- **Status:** CANCELLED (2026-01-26)
+- **Resolution:** Using Google Calendar directly via GOG CLI instead.
+
+### [2026-01-25-011] Notion Skill for PARA Database Integration [CANCELLED]
+- **Proposed by:** Liam
+- **Date:** 2026-01-25
+- **Category:** tools
+- **Status:** CANCELLED
+- **Resolution:** Simon doesn't use Notion.
+
+### [2026-01-25-002] Whisper.cpp Installation for Voice Capture [CANCELLED]
+- **Proposed by:** Liam
+- **Date:** 2026-01-25
+- **Category:** tools
+- **Status:** CANCELLED
+- **Resolution:** Kroko.AI (Port 6006) already provides voice wake and capture.
+
+---
+
+*Archive updated: 2026-01-28*

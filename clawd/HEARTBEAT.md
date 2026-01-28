@@ -2,6 +2,38 @@
 
 > If uncertain about capabilities, read `~/clawd/STATUS.md` first - it's the source of truth.
 
+## DEBUG MODE (Until 2026-02-10)
+
+**During the first 2 weeks of development, increased monitoring frequencies apply.**
+
+### Debug Mode Schedule
+
+| Function | Normal | Debug Mode | Schedule |
+|----------|--------|------------|----------|
+| Self-Audit | Daily 8 AM | 2x daily | 8 AM + 6 PM |
+| Self-Evaluation | Weekly Sun | 2x/week | Wed + Sun 3 AM UTC |
+| Queue-Cleanup | Weekly Sun | 2x/week | Wed + Sun 8 PM PST |
+| Model-Health-Check | N/A | Daily | 10 AM PST |
+| Evolution Queue Verification | 1x daily | 2-3x daily | 9 AM, 2 PM, 7 PM |
+| CURSOR-RESOLUTIONS check | During heartbeat | 3x daily | 9 AM, 2 PM, 7 PM |
+
+### Debug Mode Cron Jobs
+
+These jobs have `(revert after 2026-02-10)` in their description:
+- `Evening-Self-Audit` - 6 PM PST daily
+- `Model-Health-Check` - 10 AM PST daily  
+- `self-evaluation` - Wed + Sun 3 AM UTC (normally Sun only)
+- `Queue-Cleanup` - Wed + Sun 8 PM PST (normally Sun only)
+
+### Debug Mode Expiration
+
+**On 2026-02-10:** Revert all debug frequencies to normal:
+1. Disable or delete `Evening-Self-Audit` and `Model-Health-Check`
+2. Change `self-evaluation` back to `0 3 * * 0` (Sunday only)
+3. Change `Queue-Cleanup` back to `0 20 * * 0` (Sunday only)
+4. Evolution Queue verification returns to 1x daily
+5. Update this section to remove debug mode notes
+
 ## CRITICAL: Verify Before Reporting
 
 **NEVER report issues from memory files without verification.**
@@ -170,6 +202,28 @@ grep -n "^### \[" ~/clawd/EVOLUTION-QUEUE.md | grep -v RESOLVED
 ```
 
 **Why this matters:** Issues get fixed but the queue doesn't always get updated. Stale "pending" entries cause you to report false blockers.
+
+## Cursor Resolutions Acknowledgment
+
+**Check `~/clawd/CURSOR-RESOLUTIONS.md` during heartbeats for recent fixes.**
+
+When Cursor (Claude in the IDE) resolves Evolution Queue items, they are logged in CURSOR-RESOLUTIONS.md. This enables bidirectional communication - you know what was fixed without re-reading the entire queue.
+
+**Protocol:**
+1. Read `~/clawd/CURSOR-RESOLUTIONS.md` 
+2. Check "Recent Resolutions" section for new entries
+3. If there are unacknowledged resolutions:
+   - Verify the fixes are working
+   - Add timestamp to "Acknowledgment Log" table
+   - Update your internal understanding of system state
+4. If fixes aren't working, escalate to Simon
+
+**Quick check:**
+```bash
+grep "No acknowledgments yet" ~/clawd/CURSOR-RESOLUTIONS.md
+```
+
+**Why this matters:** Prevents you from citing stale "pending" issues as blockers when they've already been resolved by Cursor.
 
 ## Data Tracking
 

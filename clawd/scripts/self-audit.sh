@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Liam Self-Audit Script v1.0
+# Liam Self-Audit Script v1.1 (enhanced queue integrity checks)
 # Run: daily at 8 AM, after builds, or manually
 # Usage: ./self-audit.sh [--quick|--full|--post-change]
 
@@ -101,6 +101,48 @@ fi
 # === 4. QUEUE INTEGRITY ===
 echo -e "\n--- 4. Queue Integrity ---"
 
+# 4a. Check for resolved items still in Pending section
+RESOLVED_IN_PENDING=$(grep -c "^\- \*\*Status:\*\* RESOLVED" "$CLAWD_DIR/EVOLUTION-QUEUE.md" 2>/dev/null || echo "0")
+if [ "$RESOLVED_IN_PENDING" -gt 0 ] 2>/dev/null; then
+    log_medium "Found $RESOLVED_IN_PENDING resolved item(s) in Pending - need archiving"
+fi
+
+# 4b. Check for [RESOLVED] titles still in main queue
+RESOLVED_TITLES=$(grep -c "^### .*\[RESOLVED" "$CLAWD_DIR/EVOLUTION-QUEUE.md" 2>/dev/null || echo "0")
+if [ "$RESOLVED_TITLES" -gt 0 ] 2>/dev/null; then
+    log_medium "Found $RESOLVED_TITLES [RESOLVED] entry title(s) - need archiving"
+fi
+
+# 4c. Check for cancelled items
+CANCELLED_COUNT=$(grep -c "CANCELLED" "$CLAWD_DIR/EVOLUTION-QUEUE.md" 2>/dev/null || echo "0")
+if [ "$CANCELLED_COUNT" -gt 0 ] 2>/dev/null; then
+    log_low "Found cancelled item(s) - consider archiving"
+fi
+
+# 4d. Stale entry detection (>3 days old pending entries)
+THREE_DAYS_AGO=$(date -d "3 days ago" +%Y-%m-%d 2>/dev/null || date -v-3d +%Y-%m-%d 2>/dev/null || echo "2026-01-25")
+STALE_ENTRIES=0
+while IFS= read -r line; do
+    ENTRY_DATE=$(echo "$line" | grep -oE "\[2026-[0-9]{2}-[0-9]{2}" | tr -d '[' | head -1)
+    if [[ -n "$ENTRY_DATE" ]] && [[ "$ENTRY_DATE" < "$THREE_DAYS_AGO" ]]; then
+        STALE_ENTRIES=$((STALE_ENTRIES + 1))
+    fi
+done < <(grep "^### \[" "$CLAWD_DIR/EVOLUTION-QUEUE.md" 2>/dev/null | grep -v "RESOLVED\|CANCELLED" || true)
+if [ "$STALE_ENTRIES" -gt 0 ]; then
+    log_medium "Found $STALE_ENTRIES stale entry/entries (>3 days old) - review needed"
+fi
+
+# 4e. Check for unacknowledged Cursor resolutions
+if [ -f "$CLAWD_DIR/CURSOR-RESOLUTIONS.md" ]; then
+    UNACKED=$(grep -c "No acknowledgments yet" "$CLAWD_DIR/CURSOR-RESOLUTIONS.md" 2>/dev/null || echo "0")
+    if [ "$UNACKED" -gt 0 ] 2>/dev/null; then
+        log_low "Cursor resolutions not yet acknowledged by Liam"
+    else
+        log_ok "Cursor resolutions acknowledged"
+    fi
+fi
+
+# 4f. Legacy ghost bug checks (specific entries)
 # Ghost bug: Entry 036
 if grep -q "### \[2026-01-27-036\]" "$CLAWD_DIR/EVOLUTION-QUEUE.md" 2>/dev/null; then
     if ! grep -q "036.*RESOLVED" "$CLAWD_DIR/EVOLUTION-QUEUE.md"; then
@@ -117,6 +159,11 @@ if grep -q "### \[2026-01-27-037\]" "$CLAWD_DIR/EVOLUTION-QUEUE.md" 2>/dev/null;
             log_medium "Entry 037 is ghost bug - find/ls already in APEX"
         fi
     fi
+fi
+
+# Queue is clean if no issues found
+if [ "$RESOLVED_IN_PENDING" -eq 0 ] 2>/dev/null && [ "$RESOLVED_TITLES" -eq 0 ] 2>/dev/null && [ "$STALE_ENTRIES" -eq 0 ] 2>/dev/null; then
+    log_ok "Queue integrity: clean"
 fi
 
 # === 5. PERMISSIONS ===
