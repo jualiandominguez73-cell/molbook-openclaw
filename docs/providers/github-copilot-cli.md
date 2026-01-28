@@ -32,18 +32,10 @@ Or via Homebrew:
 brew install github/copilot/copilot
 ```
 
-Or use the `gh copilot` extension:
-
-```bash
-gh extension install github/gh-copilot
-```
-
 Verify installation:
 
 ```bash
 copilot --help
-# or
-gh copilot --help
 ```
 
 ## Quick start

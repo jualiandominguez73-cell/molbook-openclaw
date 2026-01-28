@@ -85,10 +85,11 @@ const DEFAULT_CODEX_BACKEND: CliBackendConfig = {
 
 const DEFAULT_COPILOT_CLI_BACKEND: CliBackendConfig = {
   command: "copilot",
-  args: ["-p"],
-  resumeArgs: ["-p", "--resume", "{sessionId}"],
+  args: ["--allow-all-tools"],
+  resumeArgs: ["--allow-all-tools", "--resume", "{sessionId}"],
   output: "text",
   input: "arg",
+  promptArg: "-p",
   modelArg: "--model",
   modelAliases: COPILOT_CLI_MODEL_ALIASES,
   sessionIdFields: ["session_id", "sessionId"],
