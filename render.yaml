@@ -7,11 +7,11 @@ services:
     envVars:
       - key: PORT
         value: "8080"
-      - key: CLAWDBOT_GATEWAY_TOKEN
+      - key: MOLTBOT_GATEWAY_TOKEN
         sync: false
-      - key: CLAWDBOT_STATE_DIR
-        value: /data/.clawdbot
-      - key: CLAWDBOT_WORKSPACE_DIR
+      - key: MOLTBOT_STATE_DIR
+        value: /data/.moltbot
+      - key: MOLTBOT_WORKSPACE_DIR
         value: /data/workspace
       # LLM Provider API Keys - Set these in Render dashboard as secrets
       # Required: Set at least one API key for the provider you want to use
