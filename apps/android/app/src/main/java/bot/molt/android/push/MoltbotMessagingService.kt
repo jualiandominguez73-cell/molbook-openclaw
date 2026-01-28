@@ -146,12 +146,13 @@ object PushTokenStore {
 
     private fun getSecurePrefs(context: Context): android.content.SharedPreferences {
         return try {
+            val masterKey = androidx.security.crypto.MasterKey.Builder(context)
+                .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                .build()
             androidx.security.crypto.EncryptedSharedPreferences.create(
                 context,
                 PREFS_NAME,
-                androidx.security.crypto.MasterKeys.getOrCreate(
-                    androidx.security.crypto.MasterKeys.AES256_GCM_SPEC
-                ),
+                masterKey,
                 androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )

@@ -1201,9 +1201,9 @@ class NodeRuntime(context: Context) {
 
 private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
-private const val DEFAULT_SEAM_COLOR_ARGB: Long = 0xFF4F7A9A
+internal const val DEFAULT_SEAM_COLOR_ARGB: Long = 0xFF4F7A9A
 
-private const val a2uiReadyCheckJS: String =
+internal const val A2UI_READY_CHECK_JS: String =
   """
   (() => {
     try {
@@ -1214,7 +1214,7 @@ private const val a2uiReadyCheckJS: String =
   })()
   """
 
-private const val a2uiResetJS: String =
+internal const val A2UI_RESET_JS: String =
   """
   (() => {
     try {
@@ -1226,7 +1226,7 @@ private const val a2uiResetJS: String =
   })()
   """
 
-private fun a2uiApplyMessagesJS(messagesJson: String): String {
+internal fun a2uiApplyMessagesJS(messagesJson: String): String {
   return """
     (() => {
       try {
@@ -1249,16 +1249,16 @@ private fun String.toJsonString(): String {
   return "\"$escaped\""
 }
 
-private fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
+internal fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
 
-private fun JsonElement?.asStringOrNull(): String? =
+internal fun JsonElement?.asStringOrNull(): String? =
   when (this) {
     is JsonNull -> null
     is JsonPrimitive -> content
     else -> null
   }
 
-private fun parseHexColorArgb(raw: String?): Long? {
+internal fun parseHexColorArgb(raw: String?): Long? {
   val trimmed = raw?.trim().orEmpty()
   if (trimmed.isEmpty()) return null
   val hex = if (trimmed.startsWith("#")) trimmed.drop(1) else trimmed
