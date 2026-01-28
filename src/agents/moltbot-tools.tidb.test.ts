@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { ClawdbotConfig } from "../config/config.js";
-import { createClawdbotTools } from "./clawdbot-tools.js";
+import type { MoltbotConfig } from "../config/config.js";
+import { createMoltbotTools } from "./moltbot-tools.js";
 
-describe("createClawdbotTools (tidb)", () => {
+describe("createMoltbotTools (tidb)", () => {
   it("omits tidb tool when disabled", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: MoltbotConfig = {
       tools: {
         tidb: {
           enabled: false,
@@ -13,12 +13,12 @@ describe("createClawdbotTools (tidb)", () => {
         },
       },
     };
-    const tools = createClawdbotTools({ config: cfg });
+    const tools = createMoltbotTools({ config: cfg });
     expect(tools.some((tool) => tool.name === "tidb")).toBe(false);
   });
 
   it("adds tidb tool when enabled + configured", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: MoltbotConfig = {
       tools: {
         tidb: {
           enabled: true,
@@ -26,19 +26,19 @@ describe("createClawdbotTools (tidb)", () => {
         },
       },
     };
-    const tools = createClawdbotTools({ config: cfg });
+    const tools = createMoltbotTools({ config: cfg });
     expect(tools.some((tool) => tool.name === "tidb")).toBe(true);
   });
 
   it("adds tidb tool when enabled (even if url is missing)", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: MoltbotConfig = {
       tools: {
         tidb: {
           enabled: true,
         },
       },
     };
-    const tools = createClawdbotTools({ config: cfg });
+    const tools = createMoltbotTools({ config: cfg });
     expect(tools.some((tool) => tool.name === "tidb")).toBe(true);
   });
 });

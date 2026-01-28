@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 
 import { Type } from "@sinclair/typebox";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { MoltbotConfig } from "../../config/config.js";
 import { sanitizeBinaryOutput } from "../shell-utils.js";
 import { optionalStringEnum } from "../schema/typebox.js";
 import type { AnyAgentTool } from "./common.js";
@@ -197,9 +197,9 @@ function parseTsvToRows(stdout: string): {
   return { columns, rows };
 }
 
-type TiDbToolConfig = NonNullable<ClawdbotConfig["tools"]>["tidb"];
+type TiDbToolConfig = NonNullable<MoltbotConfig["tools"]>["tidb"];
 
-function resolveTiDbToolConfig(cfg?: ClawdbotConfig): TiDbToolConfig | undefined {
+function resolveTiDbToolConfig(cfg?: MoltbotConfig): TiDbToolConfig | undefined {
   const tidb = cfg?.tools?.tidb;
   if (!tidb || typeof tidb !== "object") return undefined;
   return tidb as TiDbToolConfig;
@@ -255,7 +255,7 @@ function resolveMaxOutputChars(cfg?: TiDbToolConfig): number {
   return 60_000;
 }
 
-export function createTiDbTool(options: { config?: ClawdbotConfig }): AnyAgentTool | null {
+export function createTiDbTool(options: { config?: MoltbotConfig }): AnyAgentTool | null {
   const cfg = options.config;
   if (!cfg) return null;
 
