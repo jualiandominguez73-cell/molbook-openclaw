@@ -78,6 +78,10 @@ export RINGCENTRAL_JWT="your-jwt-token"
 | `allowOtherChats` | boolean | `false` | In selfOnly mode, allow chats other than Personal |
 | `name` | string | - | Bot display name |
 | `textChunkLimit` | number | `4000` | Maximum characters per message chunk |
+| `dmPolicy` | string | `"pairing"` | DM policy (only applies when `selfOnly: false`) |
+| `groupPolicy` | string | `"allowlist"` | Group policy (only applies when `selfOnly: false`) |
+
+> **Note:** When `selfOnly: true` (default), the `dmPolicy`, `allowFrom`, `groupPolicy`, and related settings are ignored. The bot only responds to the JWT user in their Personal chat.
 
 ## Usage
 

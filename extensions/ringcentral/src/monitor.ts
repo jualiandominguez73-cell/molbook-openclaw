@@ -330,17 +330,15 @@ async function processMessageWithPipeline(params: {
     }
   }
 
-  if (!isGroup) {
+  // DM policy checks - skip entirely in selfOnly mode (owner is always allowed)
+  if (!isGroup && !selfOnly) {
     const dmEnabled = account.config.dm?.enabled !== false;
     if (dmPolicy === "disabled" || !dmEnabled) {
       logVerbose(core, runtime, `Blocked RingCentral DM from ${senderId} (dmPolicy=disabled)`);
       return;
     }
 
-    // In selfOnly mode, always allow the owner
-    const isOwner = selfOnly && ownerId && senderId === ownerId;
-    
-    if (dmPolicy !== "open" && !isOwner) {
+    if (dmPolicy !== "open") {
       const allowed = senderAllowedForCommands;
       if (!allowed) {
         if (dmPolicy === "pairing") {
