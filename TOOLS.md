@@ -28,6 +28,8 @@ launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.steve.cron.<name>.plist
 | daily-verse | 6:05 AM | Bible verse of the day |
 | daily-recap-posterboard | 5:00 PM | Daily recap summary |
 | archive-media | Every 2h at :30 | Archive inbound media to Dropbox Steve_Journal |
+| extract-facts | Every 30 min | Extract durable facts from conversations → ppl.gift |
+| synthesize-memory | Sun 6:00 PM | Weekly synthesis of facts, update summaries |
 
 **Wrapper scripts**: `/Users/steve/clawd/personal-scripts/cron-wrappers/`
 **Launchd plists**: `~/Library/LaunchAgents/com.steve.cron.*.plist`
