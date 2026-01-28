@@ -46,6 +46,20 @@ Eden AI supports: Anthropic, OpenAI, Mistral, Google, and more.
 - `edenai/mistral/mistral-large-latest` - Mistral Large
 - `edenai/mistral/mistral-small-latest` - Mistral Small
 
+## Expert models
+
+Beyond LLMs, Eden AI provides access to specialized **expert models** optimized for specific tasks:
+
+- **Video analysis** - person tracking, object tracking, text detection, explicit content detection
+- **OCR** - document parsing, invoice extraction, ID recognition
+- **Image generation** - text-to-image across multiple providers
+- **Video generation** - text-to-video and image-to-video
+- **Speech-to-text** - transcription and dictation
+- **Text-to-speech** - voice synthesis
+- **Content moderation** - explicit content detection, AI-generated content detection
+
+Integration of these expert models into Clawdbot skills is coming soon.
+
 ## Notes
 
 - Model refs are `edenai/<provider>/<model>` (e.g., `edenai/openai/gpt-4o`).
