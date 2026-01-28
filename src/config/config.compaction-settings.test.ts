@@ -46,6 +46,36 @@ describe("config compaction settings", () => {
     });
   });
 
+  it("accepts handoff compaction mode", async () => {
+    await withTempHome(async (home) => {
+      const configDir = path.join(home, ".clawdbot");
+      await fs.mkdir(configDir, { recursive: true });
+      await fs.writeFile(
+        path.join(configDir, "clawdbot.json"),
+        JSON.stringify(
+          {
+            agents: {
+              defaults: {
+                compaction: {
+                  mode: "handoff",
+                },
+              },
+            },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      vi.resetModules();
+      const { loadConfig } = await import("./config.js");
+      const cfg = loadConfig();
+
+      expect(cfg.agents?.defaults?.compaction?.mode).toBe("handoff");
+    });
+  });
+
   it("defaults compaction mode to safeguard", async () => {
     await withTempHome(async (home) => {
       const configDir = path.join(home, ".clawdbot");

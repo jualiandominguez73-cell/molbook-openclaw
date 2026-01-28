@@ -86,6 +86,43 @@ import { MAX_IMAGE_BYTES } from "../../../media/constants.js";
 import type { EmbeddedRunAttemptParams, EmbeddedRunAttemptResult } from "./types.js";
 import { detectAndLoadPromptImages } from "./images.js";
 
+function extractMessageText(message: AgentMessage): string | null {
+  if (!message || typeof message !== "object") return null;
+  if (message.role === "assistant") {
+    const parts =
+      "content" in message && Array.isArray(message.content)
+        ? message.content
+            .map((block) =>
+              block?.type === "text" && typeof block.text === "string" ? block.text : "",
+            )
+            .filter(Boolean)
+        : [];
+    const joined = parts.join("\n").trim();
+    return joined.length > 0 ? joined : null;
+  }
+  if (message.role === "user" || message.role === "custom") {
+    const content = (message as { content?: unknown }).content;
+    if (typeof content === "string") {
+      const trimmed = content.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    if (Array.isArray(content)) {
+      const parts = content
+        .map((block) =>
+          block?.type === "text" && typeof block.text === "string" ? block.text : "",
+        )
+        .filter(Boolean);
+      const joined = parts.join("\n").trim();
+      return joined.length > 0 ? joined : null;
+    }
+  }
+  if (message.role === "compactionSummary") {
+    const summary = (message as { summary?: unknown }).summary;
+    return typeof summary === "string" ? summary.trim() : null;
+  }
+  return null;
+}
+
 export function injectHistoryImagesIntoMessages(
   messages: AgentMessage[],
   historyImagesByIndex: Map<number, ImageContent[]>,
@@ -711,6 +748,26 @@ export async function runEmbeddedAttempt(
           prompt: effectivePrompt,
           messages: activeSession.messages,
         });
+
+        const extensionRunner = activeSession.extensionRunner;
+        const isHandoffMode = params.config?.agents?.defaults?.compaction?.mode === "handoff";
+        if (isHandoffMode) {
+          if (extensionRunner?.hasHandlers("context")) {
+            try {
+              const preview = await extensionRunner.emitContext(activeSession.messages);
+              const firstRoles = preview.slice(0, 6).map((msg) => msg.role);
+              const firstText = extractMessageText(preview[0])?.slice(0, 160);
+              log.info(
+                `[agent/embedded] context preview: firstRoles=${firstRoles.join(",")} ` +
+                  `firstText=${firstText ? JSON.stringify(firstText) : "(none)"}`,
+              );
+            } catch (err) {
+              log.warn(`[agent/embedded] context preview failed: ${String(err)}`);
+            }
+          } else {
+            log.info("[agent/embedded] context preview: no context handlers registered");
+          }
+        }
 
         // Repair orphaned trailing user messages so new prompts don't violate role ordering.
         const leafEntry = sessionManager.getLeafEntry();

@@ -77,6 +77,8 @@ export type CompactEmbeddedPiSessionParams = {
   messageProvider?: string;
   agentAccountId?: string;
   authProfileId?: string;
+  /** Optional override for compaction keep-recent tokens (manual /compact). */
+  compactionKeepRecentTokensOverride?: number;
   /** Group id for channel-level tool policy resolution. */
   groupId?: string | null;
   /** Group channel label (e.g. #general) for channel-level tool policy resolution. */
@@ -370,6 +372,14 @@ export async function compactEmbeddedPiSessionDirect(
         settingsManager,
         minReserveTokens: resolveCompactionReserveTokensFloor(params.config),
       });
+      const isHandoffMode = params.config?.agents?.defaults?.compaction?.mode === "handoff";
+      if (typeof params.compactionKeepRecentTokensOverride === "number") {
+        settingsManager.applyOverrides({
+          compaction: {
+            keepRecentTokens: Math.max(0, Math.floor(params.compactionKeepRecentTokensOverride)),
+          },
+        });
+      }
       const additionalExtensionPaths = buildEmbeddedExtensionPaths({
         cfg: params.config,
         sessionManager,
@@ -377,6 +387,12 @@ export async function compactEmbeddedPiSessionDirect(
         modelId,
         model,
       });
+      if (isHandoffMode) {
+        log.debug("compaction extensions", {
+          count: additionalExtensionPaths.length,
+          extensions: additionalExtensionPaths,
+        });
+      }
 
       const { builtInTools, customTools } = splitSdkTools({
         tools,
@@ -424,7 +440,10 @@ export async function compactEmbeddedPiSessionDirect(
         if (limited.length > 0) {
           session.agent.replaceMessages(limited);
         }
-        const result = await session.compact(params.customInstructions);
+        const customInstructions = isHandoffMode
+          ? params.customInstructions?.trim()
+          : params.customInstructions;
+        const result = await session.compact(customInstructions || undefined);
         // Estimate tokens after compaction by summing token estimates for remaining messages
         let tokensAfter: number | undefined;
         try {

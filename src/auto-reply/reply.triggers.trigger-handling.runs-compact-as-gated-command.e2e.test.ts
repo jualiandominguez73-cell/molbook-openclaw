@@ -71,6 +71,7 @@ async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
     async (home) => {
       vi.mocked(runEmbeddedPiAgent).mockClear();
       vi.mocked(abortEmbeddedPiRun).mockClear();
+      vi.mocked(compactEmbeddedPiSession).mockClear();
       return await fn(home);
     },
     { prefix: "clawdbot-triggers-" },
@@ -141,6 +142,61 @@ describe("trigger handling", () => {
       expect(text?.startsWith("⚙️ Compacted")).toBe(true);
       expect(compactEmbeddedPiSession).toHaveBeenCalledOnce();
       expect(runEmbeddedPiAgent).not.toHaveBeenCalled();
+      const store = loadSessionStore(storePath);
+      const sessionKey = resolveSessionKey("per-sender", {
+        Body: "/compact focus on decisions",
+        From: "+1003",
+        To: "+2000",
+      });
+      expect(store[sessionKey]?.compactionCount).toBe(1);
+    });
+  });
+
+  it("suppresses /compact reply in handoff mode", async () => {
+    await withTempHome(async (home) => {
+      const storePath = join(tmpdir(), `clawdbot-session-test-${Date.now()}.json`);
+      vi.mocked(compactEmbeddedPiSession).mockResolvedValue({
+        ok: true,
+        compacted: true,
+        result: {
+          summary: "summary",
+          firstKeptEntryId: "x",
+          tokensBefore: 12000,
+        },
+      });
+
+      const res = await getReplyFromConfig(
+        {
+          Body: "/compact focus on decisions",
+          From: "+1003",
+          To: "+2000",
+          CommandAuthorized: true,
+        },
+        {},
+        {
+          agents: {
+            defaults: {
+              model: "anthropic/claude-opus-4-5",
+              workspace: join(home, "clawd"),
+              compaction: { mode: "handoff" },
+            },
+          },
+          channels: {
+            whatsapp: {
+              allowFrom: ["*"],
+            },
+          },
+          session: {
+            store: storePath,
+          },
+        },
+      );
+
+      expect(res).toBeUndefined();
+      expect(compactEmbeddedPiSession).toHaveBeenCalledOnce();
+      expect(runEmbeddedPiAgent).not.toHaveBeenCalled();
+      const call = vi.mocked(compactEmbeddedPiSession).mock.calls[0]?.[0];
+      expect(call?.compactionKeepRecentTokensOverride).toBe(1);
       const store = loadSessionStore(storePath);
       const sessionKey = resolveSessionKey("per-sender", {
         Body: "/compact focus on decisions",

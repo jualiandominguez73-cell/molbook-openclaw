@@ -429,6 +429,9 @@ export const chatHandlers: GatewayRequestHandlers = {
       respond(true, ackPayload, undefined, { runId: clientRunId });
 
       const trimmedMessage = parsedMessage.trim();
+      const isCompactCommand = /^\/compact(?:\s|:|$)/i.test(trimmedMessage);
+      const isHandoffMode = cfg?.agents?.defaults?.compaction?.mode === "handoff";
+      const suppressCompactReplies = isHandoffMode && isCompactCommand;
       const injectThinking = Boolean(
         p.thinking && trimmedMessage && !trimmedMessage.startsWith("/"),
       );
@@ -468,6 +471,7 @@ export const chatHandlers: GatewayRequestHandlers = {
         },
         deliver: async (payload, info) => {
           if (info.kind !== "final") return;
+          if (suppressCompactReplies) return;
           const text = payload.text?.trim() ?? "";
           if (!text) return;
           finalReplyParts.push(text);
@@ -504,31 +508,33 @@ export const chatHandlers: GatewayRequestHandlers = {
               .trim();
             let message: Record<string, unknown> | undefined;
             if (combinedReply) {
-              const { storePath: latestStorePath, entry: latestEntry } = loadSessionEntry(
-                p.sessionKey,
-              );
-              const sessionId = latestEntry?.sessionId ?? entry?.sessionId ?? clientRunId;
-              const appended = appendAssistantTranscriptMessage({
-                message: combinedReply,
-                sessionId,
-                storePath: latestStorePath,
-                sessionFile: latestEntry?.sessionFile,
-                createIfMissing: true,
-              });
-              if (appended.ok) {
-                message = appended.message;
-              } else {
-                context.logGateway.warn(
-                  `webchat transcript append failed: ${appended.error ?? "unknown error"}`,
+              if (!suppressCompactReplies) {
+                const { storePath: latestStorePath, entry: latestEntry } = loadSessionEntry(
+                  p.sessionKey,
                 );
-                const now = Date.now();
-                message = {
-                  role: "assistant",
-                  content: [{ type: "text", text: combinedReply }],
-                  timestamp: now,
-                  stopReason: "injected",
-                  usage: { input: 0, output: 0, totalTokens: 0 },
-                };
+                const sessionId = latestEntry?.sessionId ?? entry?.sessionId ?? clientRunId;
+                const appended = appendAssistantTranscriptMessage({
+                  message: combinedReply,
+                  sessionId,
+                  storePath: latestStorePath,
+                  sessionFile: latestEntry?.sessionFile,
+                  createIfMissing: true,
+                });
+                if (appended.ok) {
+                  message = appended.message;
+                } else {
+                  context.logGateway.warn(
+                    `webchat transcript append failed: ${appended.error ?? "unknown error"}`,
+                  );
+                  const now = Date.now();
+                  message = {
+                    role: "assistant",
+                    content: [{ type: "text", text: combinedReply }],
+                    timestamp: now,
+                    stopReason: "injected",
+                    usage: { input: 0, output: 0, totalTokens: 0 },
+                  };
+                }
               }
             }
             broadcastChatFinal({

@@ -12,6 +12,7 @@ import { computeEffectiveSettings } from "../pi-extensions/context-pruning/setti
 import { makeToolPrunablePredicate } from "../pi-extensions/context-pruning/tools.js";
 import { ensurePiCompactionReserveTokens } from "../pi-settings.js";
 import { isCacheTtlEligibleProvider, readLastCacheTtlTimestamp } from "./cache-ttl.js";
+import { log } from "./logger.js";
 
 function resolvePiExtensionPath(id: string): string {
   const self = fileURLToPath(import.meta.url);
@@ -62,8 +63,10 @@ function buildContextPruningExtension(params: {
   };
 }
 
-function resolveCompactionMode(cfg?: ClawdbotConfig): "default" | "safeguard" {
-  return cfg?.agents?.defaults?.compaction?.mode === "safeguard" ? "safeguard" : "default";
+function resolveCompactionMode(cfg?: ClawdbotConfig): "default" | "safeguard" | "handoff" {
+  const mode = cfg?.agents?.defaults?.compaction?.mode;
+  if (mode === "safeguard" || mode === "handoff") return mode;
+  return "default";
 }
 
 export function buildEmbeddedExtensionPaths(params: {
@@ -74,8 +77,13 @@ export function buildEmbeddedExtensionPaths(params: {
   model: Model<Api> | undefined;
 }): string[] {
   const paths: string[] = [];
-  if (resolveCompactionMode(params.cfg) === "safeguard") {
+  const compactionMode = resolveCompactionMode(params.cfg);
+  log.debug(`compaction mode: ${compactionMode}`);
+  if (compactionMode === "safeguard") {
     paths.push(resolvePiExtensionPath("compaction-safeguard"));
+  } else if (compactionMode === "handoff") {
+    paths.push(resolvePiExtensionPath("compaction-summary-prefix"));
+    paths.push(resolvePiExtensionPath("compaction-handoff"));
   }
   const pruning = buildContextPruningExtension(params);
   if (pruning.additionalExtensionPaths) {

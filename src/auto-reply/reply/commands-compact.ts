@@ -13,6 +13,10 @@ import type { CommandHandler } from "./commands-types.js";
 import { stripMentions, stripStructuralPrefixes } from "./mentions.js";
 import { incrementCompactionCount } from "./session-updates.js";
 
+function isHandoffCompactionMode(cfg: ClawdbotConfig): boolean {
+  return cfg?.agents?.defaults?.compaction?.mode === "handoff";
+}
+
 function extractCompactInstructions(params: {
   rawBody?: string;
   ctx: import("../templating.js").MsgContext;
@@ -63,6 +67,7 @@ export const handleCompactCommand: CommandHandler = async (params) => {
     agentId: params.agentId,
     isGroup: params.isGroup,
   });
+  const handoffMode = isHandoffCompactionMode(params.cfg);
   const result = await compactEmbeddedPiSession({
     sessionId,
     sessionKey: params.sessionKey,
@@ -83,6 +88,7 @@ export const handleCompactCommand: CommandHandler = async (params) => {
       allowed: false,
       defaultLevel: "off",
     },
+    compactionKeepRecentTokensOverride: handoffMode ? 1 : undefined,
     customInstructions,
     ownerNumbers: params.command.ownerList.length > 0 ? params.command.ownerList : undefined,
   });
@@ -105,6 +111,9 @@ export const handleCompactCommand: CommandHandler = async (params) => {
       // Update token counts after compaction
       tokensAfter: result.result?.tokensAfter,
     });
+  }
+  if (handoffMode) {
+    return { shouldContinue: false };
   }
   // Use the post-compaction token count for context summary if available
   const tokensAfterCompaction = result.result?.tokensAfter;
