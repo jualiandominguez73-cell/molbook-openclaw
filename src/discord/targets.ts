@@ -43,8 +43,7 @@ export function parseDiscordTarget(
     const id = ensureTargetId({
       candidate,
       pattern: /^\d+$/,
-      errorMessage:
-        "Discord DMs require a user id (use user:<id> or a <@id> mention)",
+      errorMessage: "Discord DMs require a user id (use user:<id> or a <@id> mention)",
     });
     return buildMessagingTarget("user", id, trimmed);
   }
@@ -82,11 +81,7 @@ export async function resolveDiscordTarget(
 
   // If already a known format, parse directly
   const directParse = parseDiscordTarget(trimmed, options);
-  if (
-    directParse &&
-    directParse.kind !== "channel" &&
-    !isLikelyUsername(trimmed)
-  ) {
+  if (directParse && directParse.kind !== "channel" && !isLikelyUsername(trimmed)) {
     return directParse;
   }
 
