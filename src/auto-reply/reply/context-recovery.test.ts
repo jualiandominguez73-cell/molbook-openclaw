@@ -1,9 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import {
-  checkContextRecoveryNeeded,
-  resolveContextRecoverySettings,
-  type RecoveredMessage,
-} from "./context-recovery.js";
+import { describe, expect, it } from "vitest";
+import { checkContextRecoveryNeeded, resolveContextRecoverySettings } from "./context-recovery.js";
 import type { MoltbotConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
 
