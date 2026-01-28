@@ -147,7 +147,7 @@ fun ChatComposer(
           DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            modifier = Modifier.background(Color(0xFF1E1E2E)), // Darker shade
+            modifier = Modifier.background(Color(0xFF3A3A4A)), // Brighter shade for contrast
           ) {
             // Attachment buttons row: Camera | Photos | Files
             Row(
@@ -187,7 +187,7 @@ fun ChatComposer(
             
             HorizontalDivider(
               modifier = Modifier.padding(vertical = 8.dp),
-              color = Color.White.copy(alpha = 0.1f),
+              color = Color.White.copy(alpha = 0.15f),
             )
             
             // Session selector
@@ -197,8 +197,8 @@ fun ChatComposer(
                 showMenu = false
                 showSessionMenu = true 
               },
-              leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.7f)) },
-              trailingIcon = { Text(currentSessionLabel, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall) },
+              leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.8f)) },
+              trailingIcon = { Text(currentSessionLabel, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall) },
             )
             
             // Thinking level
@@ -211,12 +211,12 @@ fun ChatComposer(
               leadingIcon = { 
                 Text("🧠", style = MaterialTheme.typography.bodyLarge) 
               },
-              trailingIcon = { Text(thinkingLabel(thinkingLevel), color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall) },
+              trailingIcon = { Text(thinkingLabel(thinkingLevel), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall) },
             )
             
             HorizontalDivider(
               modifier = Modifier.padding(vertical = 8.dp),
-              color = Color.White.copy(alpha = 0.1f),
+              color = Color.White.copy(alpha = 0.15f),
             )
             
             // Refresh
@@ -226,7 +226,7 @@ fun ChatComposer(
                 showMenu = false
                 onRefresh() 
               },
-              leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.7f)) },
+              leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.8f)) },
             )
           }
         }
@@ -346,7 +346,7 @@ private fun AttachmentButton(
     onClick = onClick,
     modifier = modifier.height(80.dp),
     shape = RoundedCornerShape(12.dp),
-    color = Color(0xFF2A2A3E),
+    color = Color(0xFF4A4A5A),
   ) {
     Column(
       modifier = Modifier.padding(12.dp),

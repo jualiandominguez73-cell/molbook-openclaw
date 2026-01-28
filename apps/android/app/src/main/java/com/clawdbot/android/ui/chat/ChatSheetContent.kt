@@ -1,7 +1,10 @@
 package com.clawdbot.android.ui.chat
 
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,8 +17,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -52,7 +57,9 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val scope = rememberCoroutineScope()
 
   val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
+  var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
 
+  // Image picker
   val pickImages =
     rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
       if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
@@ -60,7 +67,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         val next =
           uris.take(8).mapNotNull { uri ->
             try {
-              loadImageAttachment(resolver, uri)
+              loadAttachment(resolver, uri)
             } catch (_: Throwable) {
               null
             }
@@ -70,6 +77,54 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         }
       }
     }
+
+  // File picker (any file type)
+  val pickFiles =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+      if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
+      scope.launch(Dispatchers.IO) {
+        val next =
+          uris.take(8).mapNotNull { uri ->
+            try {
+              loadAttachment(resolver, uri)
+            } catch (_: Throwable) {
+              null
+            }
+          }
+        withContext(Dispatchers.Main) {
+          attachments.addAll(next)
+        }
+      }
+    }
+
+  // Camera capture
+  val takePicture =
+    rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+      if (success && cameraImageUri != null) {
+        scope.launch(Dispatchers.IO) {
+          try {
+            val att = loadAttachment(resolver, cameraImageUri!!)
+            withContext(Dispatchers.Main) {
+              attachments.add(att)
+            }
+          } catch (_: Throwable) {
+            // Failed to load camera image
+          }
+        }
+      }
+    }
+
+  fun openCamera() {
+    val contentValues = ContentValues().apply {
+      put(MediaStore.Images.Media.DISPLAY_NAME, "camera_${System.currentTimeMillis()}.jpg")
+      put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+    }
+    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+    if (uri != null) {
+      cameraImageUri = uri
+      takePicture.launch(uri)
+    }
+  }
 
   Column(
     modifier =
@@ -97,9 +152,9 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       attachments = attachments,
       seamColor = seamColor,
       talkEnabled = talkEnabled,
-      onOpenCamera = { /* TODO: Implement camera capture */ },
+      onOpenCamera = { openCamera() },
       onPickImages = { pickImages.launch("image/*") },
-      onPickFiles = { /* TODO: Implement file picker */ },
+      onPickFiles = { pickFiles.launch(arrayOf("*/*")) },
       onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
       onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
       onSelectSession = { key -> viewModel.switchChatSession(key) },
@@ -112,8 +167,12 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       onSend = { text ->
         val outgoing =
           attachments.map { att ->
+            val type = when {
+              att.mimeType.startsWith("image/") -> "image"
+              else -> "file"
+            }
             OutgoingAttachment(
-              type = "image",
+              type = type,
               mimeType = att.mimeType,
               fileName = att.fileName,
               base64 = att.base64,
@@ -133,9 +192,9 @@ data class PendingImageAttachment(
   val base64: String,
 )
 
-private suspend fun loadImageAttachment(resolver: ContentResolver, uri: Uri): PendingImageAttachment {
-  val mimeType = resolver.getType(uri) ?: "image/*"
-  val fileName = (uri.lastPathSegment ?: "image").substringAfterLast('/')
+private suspend fun loadAttachment(resolver: ContentResolver, uri: Uri): PendingImageAttachment {
+  val mimeType = resolver.getType(uri) ?: "application/octet-stream"
+  val fileName = (uri.lastPathSegment ?: "file").substringAfterLast('/')
   val bytes =
     withContext(Dispatchers.IO) {
       resolver.openInputStream(uri)?.use { input ->
