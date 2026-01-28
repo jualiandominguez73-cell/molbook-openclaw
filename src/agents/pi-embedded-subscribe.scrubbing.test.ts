@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { subscribeEmbeddedPiSession } from "./pi-embedded-subscribe.js";
 import type { AgentSession } from "@mariozechner/pi-coding-agent";
+import { SecretScrubber } from "../security/scrubber.js";
 
 describe("Scrubbing Integration", () => {
   it("redacts secrets in block replies", async () => {
@@ -14,7 +15,7 @@ describe("Scrubbing Integration", () => {
       sessionId: "test-session",
     } as unknown as AgentSession & { subscribeImpl: any };
 
-    const secrets = ["super-secret-token-123"];
+    const secrets = new SecretScrubber(["super-secret-token-123"]);
 
     let handler: any;
     vi.mocked(mockSession.subscribeImpl).mockImplementation((h: any) => {
@@ -67,7 +68,7 @@ describe("Scrubbing Integration", () => {
       subscribeImpl: vi.fn(),
     } as unknown as AgentSession & { subscribeImpl: any };
 
-    const secrets = ["db-password-xyz"];
+    const secrets = new SecretScrubber(["db-password-xyz"]);
 
     subscribeEmbeddedPiSession({
       session: mockSession as any,
@@ -103,7 +104,7 @@ describe("Scrubbing Integration", () => {
       subscribeImpl: vi.fn(),
     } as unknown as AgentSession & { subscribeImpl: any };
 
-    const secrets = ["reasoning-secret-123"];
+    const secrets = new SecretScrubber(["reasoning-secret-123"]);
 
     subscribeEmbeddedPiSession({
       session: mockSession as any,

@@ -11,6 +11,7 @@ import type { BlockReplyChunking, ToolResultFormat } from "../../pi-embedded-sub
 import type { SkillSnapshot } from "../../skills.js";
 import type { SessionSystemPromptReport } from "../../../config/sessions/types.js";
 import type { ClientToolDefinition } from "./params.js";
+import type { SecretScrubber } from "../../../security/scrubber.js";
 
 type AuthStorage = ReturnType<typeof discoverAuthStorage>;
 type ModelRegistry = ReturnType<typeof discoverModels>;
@@ -58,7 +59,7 @@ export type EmbeddedRunAttemptParams = {
   thinkLevel: ThinkLevel;
   verboseLevel?: VerboseLevel;
   reasoningLevel?: ReasoningLevel;
-  secrets?: string[];
+  secrets?: SecretScrubber;
   toolResultFormat?: ToolResultFormat;
   execOverrides?: Pick<ExecToolDefaults, "host" | "security" | "ask" | "node">;
   bashElevated?: ExecElevatedDefaults;
