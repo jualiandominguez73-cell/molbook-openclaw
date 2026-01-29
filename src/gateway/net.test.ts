@@ -75,6 +75,12 @@ describe("isIpv4InCidr", () => {
     expect(isIpv4InCidr("10.0.0.1", "invalid")).toBe(false);
     expect(isIpv4InCidr("10.0.0.1", "10.0.0.0")).toBe(false);
   });
+
+  it("returns false for invalid IPv4 input", () => {
+    expect(isIpv4InCidr("999.0.0.1", "10.0.0.0/8")).toBe(false);
+    expect(isIpv4InCidr("10.0.0.1", "999.0.0.0/8")).toBe(false);
+    expect(isIpv4InCidr("10.0.0.256", "10.0.0.0/8")).toBe(false);
+  });
 });
 
 describe("isValidCidr", () => {

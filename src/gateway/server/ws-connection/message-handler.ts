@@ -626,6 +626,7 @@ export function attachGatewayWsMessageHandler(params: {
           return;
         }
 
+        const tokenAuthOk = authMethod === "token" || authMethod === "device-token";
         const skipPairing = allowControlUiBypass && hasSharedAuth;
         if (device && devicePublicKey && !skipPairing) {
           // Auto-approve logic with security checks
@@ -647,7 +648,7 @@ export function attachGatewayWsMessageHandler(params: {
             }
 
             // Check token is valid (if required, which is the default)
-            if (autoApproveConfig.requireToken !== false && !authOk) return false;
+            if (autoApproveConfig.requireToken !== false && !tokenAuthOk) return false;
 
             return true;
           })();

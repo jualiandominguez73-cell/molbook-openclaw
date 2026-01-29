@@ -197,10 +197,11 @@ function ipv4ToNumber(ip: string): number {
  * @returns True if the IP is within the CIDR range
  */
 export function isIpv4InCidr(ip: string, cidr: string): boolean {
+  if (!isValidIPv4(ip)) return false;
+  if (!isValidCidr(cidr)) return false;
   const [range, bitsStr] = cidr.split("/");
   if (!range || !bitsStr) return false;
   const bits = parseInt(bitsStr, 10);
-  if (Number.isNaN(bits) || bits < 0 || bits > 32) return false;
 
   const ipNum = ipv4ToNumber(ip);
   const rangeNum = ipv4ToNumber(range);
