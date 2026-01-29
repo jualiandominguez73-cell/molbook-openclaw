@@ -50,6 +50,7 @@ import {
 import { resolveDiscordChannelInfo, resolveDiscordMessageText } from "./message-utils.js";
 import { resolveDiscordSenderIdentity, resolveDiscordWebhookId } from "./sender-identity.js";
 import { resolveDiscordSystemEvent } from "./system-events.js";
+import { evaluateChimeIn } from "./chime-in-eval.js";
 import { resolveDiscordThreadChannel, resolveDiscordThreadParentInfo } from "./threading.js";
 
 export type {
@@ -493,12 +494,24 @@ export async function preflightDiscordMessage(
           return null;
         }
 
-        // Threshold reached — reset counter and allow through for evaluation
         params.chimeInCounters.set(counterKey, 0);
         logVerbose(
           `discord: chimeIn threshold reached (${chimeInConfig.every}) for channel ${message.channelId}`,
         );
-        // Fall through to continue processing (evaluation happens in processDiscordMessage)
+
+        const shouldChimeIn = await evaluateChimeIn({
+          history: params.guildHistories.get(message.channelId) ?? [],
+          chimeInConfig,
+          cfg: params.cfg,
+          agentId: route.agentId,
+          channelId: message.channelId,
+        });
+
+        if (!shouldChimeIn) {
+          logVerbose(`discord: chimeIn evaluation declined for channel ${message.channelId}`);
+          return null;
+        }
+        logVerbose(`discord: chimeIn evaluation approved for channel ${message.channelId}`);
       } else {
         // Original behavior: no chimeIn, just drop non-mentioned messages
         logVerbose(`discord: drop guild message (mention required, botId=${botId})`);
