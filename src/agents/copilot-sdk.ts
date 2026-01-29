@@ -84,7 +84,7 @@ export async function createCopilotClient(
     cliPath: options?.cliPath ?? "copilot",
     cwd: options?.cwd,
     logLevel: options?.logLevel ?? "warning",
-    autoRestart: options?.autoRestart ?? true,
+    autoRestart: false, // Disable auto-restart to avoid keeping event loop alive
     useStdio: true, // Use stdio transport for better process control
     autoStart: false, // We'll start manually for better error handling
     env: options?.env,
@@ -223,22 +223,68 @@ export async function runCopilotAgent(params: RunCopilotAgentParams): Promise<Co
       durationMs: Date.now() - started,
     };
   } finally {
-    // Clean up in reverse order: unsubscribe, destroy session (if new), stop client
+    // Clean up in order: unsubscribe, abort session, destroy session, stop client
+    // NOTE: Due to a limitation in vscode-jsonrpc (used by @github/copilot-sdk),
+    // the process may not exit cleanly after cleanup. This is acceptable for gateway
+    // usage but means CLI one-off commands will hang. The SDK team should fix this.
     if (unsubscribe) {
       unsubscribe();
     }
 
-    // Only destroy session if we created a new one (not resuming)
-    if (session && !params.sessionId) {
-      await session.destroy().catch(() => {
-        // Ignore cleanup errors
-      });
+    // Abort any in-flight request, then destroy the session
+    if (session) {
+      try {
+        await session.abort();
+      } catch {
+        // Ignore abort errors (may not have active request)
+      }
+
+      // Only destroy session if we created a new one (not resuming)
+      if (!params.sessionId) {
+        try {
+          await session.destroy();
+        } catch {
+          // Ignore destroy errors
+        }
+      }
     }
 
-    // Always stop the client
-    await client.stop().catch(() => {
-      // Ignore cleanup errors
-    });
+    // Access internal SDK handles BEFORE cleanup so we can unref them after
+    const clientAny = client as unknown as {
+      cliProcess?: {
+        unref?: () => void;
+        stdin?: { unref?: () => void };
+        stdout?: { unref?: () => void };
+        stderr?: { unref?: () => void };
+        removeAllListeners?: () => void;
+      };
+      socket?: { unref?: () => void };
+    };
+    const cliProcess = clientAny.cliProcess;
+    const socket = clientAny.socket;
+
+    // Stop the client gracefully first, then force if needed
+    try {
+      await client.stop();
+    } catch {
+      try {
+        await client.forceStop();
+      } catch {
+        // Ignore forceStop errors
+      }
+    }
+
+    // Unref all handles to allow Node to exit (works around SDK cleanup bug)
+    if (cliProcess) {
+      cliProcess.unref?.();
+      cliProcess.stdin?.unref?.();
+      cliProcess.stdout?.unref?.();
+      cliProcess.stderr?.unref?.();
+      cliProcess.removeAllListeners?.();
+    }
+    if (socket) {
+      socket.unref?.();
+    }
   }
 }
 
@@ -248,7 +294,7 @@ export async function runCopilotAgent(params: RunCopilotAgentParams): Promise<Co
 export async function listCopilotSessions(options?: {
   cliPath?: string;
   cwd?: string;
-}): Promise<Array<{ sessionId: string; model?: string; createdAt?: string }>> {
+}): Promise<Array<{ sessionId: string; createdAt?: string }>> {
   const client = await createCopilotClient({
     cliPath: options?.cliPath,
     cwd: options?.cwd,
@@ -259,11 +305,14 @@ export async function listCopilotSessions(options?: {
     const sessions = await client.listSessions();
     return sessions.map((s) => ({
       sessionId: s.sessionId,
-      model: s.model,
-      createdAt: s.createdAt,
+      createdAt: s.startTime?.toISOString(),
     }));
   } finally {
-    await client.stop().catch(() => {});
+    try {
+      await client.stop();
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }
 
@@ -287,6 +336,10 @@ export async function deleteCopilotSession(
     await client.deleteSession(sessionId);
     log.info("deleted copilot session", { sessionId });
   } finally {
-    await client.stop().catch(() => {});
+    try {
+      await client.stop();
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }

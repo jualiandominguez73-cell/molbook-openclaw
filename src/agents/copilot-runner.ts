@@ -127,15 +127,6 @@ export async function runCopilotCliAgent(params: {
       systemPrompt,
       timeoutMs: params.timeoutMs,
       sessionId: params.cliSessionId,
-      onEvent: (event) => {
-        // Forward streaming events if streamParams is provided
-        if (params.streamParams?.onDelta && event.type === "assistant.message_delta") {
-          const data = event.data as { content?: string };
-          if (typeof data.content === "string") {
-            params.streamParams.onDelta(data.content);
-          }
-        }
-      },
     });
 
     const text = result.text?.trim();
