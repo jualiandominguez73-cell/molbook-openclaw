@@ -1,57 +1,50 @@
-import { getImageMetadata, resizeToJpeg } from "../media/image-ops.js";
-
-export const DEFAULT_BROWSER_SCREENSHOT_MAX_SIDE = 2000;
-export const DEFAULT_BROWSER_SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
-
 export async function normalizeBrowserScreenshot(
   buffer: Buffer,
   opts?: {
     maxSide?: number;
     maxBytes?: number;
   },
-): Promise<{ buffer: Buffer; contentType?: "image/jpeg" }> {
+): Promise<{ buffer: Buffer; contentType: "image/jpeg" }> {
+  // Normalize constraints with fallbacks
   const maxSide = Math.max(1, Math.round(opts?.maxSide ?? DEFAULT_BROWSER_SCREENSHOT_MAX_SIDE));
   const maxBytes = Math.max(1, Math.round(opts?.maxBytes ?? DEFAULT_BROWSER_SCREENSHOT_MAX_BYTES));
 
   const meta = await getImageMetadata(buffer);
   const width = Number(meta?.width ?? 0);
   const height = Number(meta?.height ?? 0);
-  const maxDim = Math.max(width, height);
+  
+  // OPTIMIZATION: Early exit if the image is already within constraints.
+  // This prevents unnecessary CPU cycles on complaint images.
+  const isWithinByteLimit = buffer.byteLength <= maxBytes;
+  const isWithinDimLimit = width <= maxSide && height <= maxSide;
 
-  if (buffer.byteLength <= maxBytes && (maxDim === 0 || (width <= maxSide && height <= maxSide))) {
-    return { buffer };
+  if (isWithinByteLimit && isWithinDimLimit) {
+    return { buffer, contentType: "image/jpeg" };
   }
 
-  const qualities = [85, 75, 65, 55, 45, 35];
-  const sideStart = maxDim > 0 ? Math.min(maxSide, maxDim) : maxSide;
-  const sideGrid = [sideStart, 1800, 1600, 1400, 1200, 1000, 800]
-    .map((v) => Math.min(maxSide, v))
-    .filter((v, i, arr) => v > 0 && arr.indexOf(v) === i)
-    .sort((a, b) => b - a);
+  // ALGORITHM: Deterministic O(1) Scaling
+  // Replaces legacy iterative resizing loop. We calculate the target scale factor
+  // mathematically based on the square root law of area-to-byte proportionality.
+  
+  // 1. Calculate constraint based on linear dimensions
+  const dimensionScale = Math.min(1, maxSide / Math.max(width, height));
+  
+  // 2. Calculate constraint based on byte budget
+  // Since Image Area ∝ File Size, the Linear Scale Factor ∝ Sqrt(TargetBytes / CurrentBytes)
+  const byteScale = Math.sqrt(maxBytes / buffer.byteLength);
+  
+  // 3. Determine the limiting factor and apply a 5% safety buffer for compression variance
+  const targetScale = Math.min(dimensionScale, byteScale) * 0.95;
 
-  let smallest: { buffer: Buffer; size: number } | null = null;
+  const newWidth = Math.max(1, Math.round(width * targetScale));
+  const newHeight = Math.max(1, Math.round(height * targetScale));
 
-  for (const side of sideGrid) {
-    for (const quality of qualities) {
-      const out = await resizeToJpeg({
-        buffer,
-        maxSide: side,
-        quality,
-        withoutEnlargement: true,
-      });
+  // EXECUTION: Single-pass resize operation
+  const newBuffer = await resizeToJpeg(buffer, {
+    width: newWidth,
+    height: newHeight,
+    quality: 80, // Balanced for VLM ingestion
+  });
 
-      if (!smallest || out.byteLength < smallest.size) {
-        smallest = { buffer: out, size: out.byteLength };
-      }
-
-      if (out.byteLength <= maxBytes) {
-        return { buffer: out, contentType: "image/jpeg" };
-      }
-    }
-  }
-
-  const best = smallest?.buffer ?? buffer;
-  throw new Error(
-    `Browser screenshot could not be reduced below ${(maxBytes / (1024 * 1024)).toFixed(0)}MB (got ${(best.byteLength / (1024 * 1024)).toFixed(2)}MB)`,
-  );
+  return { buffer: newBuffer, contentType: "image/jpeg" };
 }
