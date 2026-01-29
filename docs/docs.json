@@ -806,6 +806,14 @@
       "destination": "/northflank"
     },
     {
+      "source": "/install/easypanel",
+      "destination": "/easypanel"
+    },
+    {
+      "source": "/install/easypanel/",
+      "destination": "/easypanel"
+    },
+    {
       "source": "/gcp",
       "destination": "/platforms/gcp"
     },
@@ -853,6 +861,7 @@
           "railway",
           "render",
           "northflank",
+          "easypanel",
           "install/bun"
         ]
       },

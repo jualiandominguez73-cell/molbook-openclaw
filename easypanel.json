@@ -1,0 +1,90 @@
+{
+  "$schema": "https://easypanel.io/schema",
+  "name": "moltbot",
+  "description": "AI-powered personal assistant gateway with multi-channel messaging support",
+  "logo": "https://molt.bot/logo.png",
+  "website": "https://molt.bot",
+  "documentation": "https://docs.molt.bot",
+  "repository": "https://github.com/moltbot/moltbot",
+  "services": [
+    {
+      "name": "gateway",
+      "type": "app",
+      "source": {
+        "type": "github",
+        "owner": "moltbot",
+        "repo": "moltbot"
+      },
+      "build": {
+        "type": "dockerfile",
+        "file": "Dockerfile"
+      },
+      "deploy": {
+        "command": "node dist/index.js gateway --bind lan --port 8080"
+      },
+      "env": [
+        {
+          "name": "PORT",
+          "value": "8080"
+        },
+        {
+          "name": "SETUP_PASSWORD",
+          "label": "Setup Password",
+          "description": "Password to access the /setup wizard",
+          "required": true,
+          "secret": true
+        },
+        {
+          "name": "CLAWDBOT_STATE_DIR",
+          "value": "/data/.clawdbot"
+        },
+        {
+          "name": "CLAWDBOT_WORKSPACE_DIR",
+          "value": "/data/workspace"
+        },
+        {
+          "name": "CLAWDBOT_GATEWAY_TOKEN",
+          "label": "Gateway Token",
+          "description": "Optional admin token for gateway API access",
+          "required": false,
+          "secret": true,
+          "generate": true
+        },
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        }
+      ],
+      "domains": [
+        {
+          "host": "$(EASYPANEL_DOMAIN)"
+        }
+      ],
+      "ports": [
+        {
+          "published": 8080,
+          "target": 8080,
+          "protocol": "http"
+        }
+      ],
+      "mounts": [
+        {
+          "name": "data",
+          "mountPath": "/data",
+          "size": "1Gi"
+        }
+      ],
+      "healthCheck": {
+        "type": "http",
+        "path": "/health",
+        "port": 8080,
+        "interval": 30,
+        "timeout": 10
+      },
+      "resources": {
+        "memoryLimit": "512Mi",
+        "cpuLimit": "0.5"
+      }
+    }
+  ]
+}

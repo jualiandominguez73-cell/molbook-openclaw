@@ -1,0 +1,137 @@
+---
+title: Deploy on Easypanel
+---
+
+Deploy Moltbot on Easypanel with a one-click template and finish setup in your browser.
+Easypanel provides a simple way to deploy Docker applications with persistent storage
+and automatic HTTPS.
+
+## Prerequisites
+
+- An [Easypanel](https://easypanel.io) instance (self-hosted or cloud)
+- An API key from your preferred [model provider](/providers)
+
+## Quick deployment
+
+1. Open your Easypanel dashboard
+2. Click **Create Service** and select **App**
+3. Choose **GitHub** as the source
+4. Enter repository: `moltbot/moltbot`
+5. Select the **Dockerfile** build method
+6. Configure environment variables (see below)
+7. Add a volume mounted at `/data`
+8. Deploy
+
+## Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | Yes | Set to `8080` |
+| `SETUP_PASSWORD` | Yes | Password to access the `/setup` wizard |
+| `CLAWDBOT_STATE_DIR` | Recommended | Set to `/data/.clawdbot` |
+| `CLAWDBOT_WORKSPACE_DIR` | Recommended | Set to `/data/workspace` |
+| `CLAWDBOT_GATEWAY_TOKEN` | Recommended | Admin secret for gateway API access |
+
+## Volume configuration
+
+Add a persistent volume to preserve configuration across deploys:
+
+- **Mount path**: `/data`
+- **Size**: 1GB or more
+
+This stores your Moltbot configuration, credentials, and workspace.
+
+## Domain and HTTPS
+
+Easypanel automatically provisions HTTPS certificates. After deployment:
+
+1. Go to **Domains** in your service settings
+2. Add your custom domain or use the generated Easypanel domain
+3. Easypanel handles TLS termination automatically
+
+## Deploy command
+
+Configure the deploy command to start the gateway:
+
+```
+node dist/index.js gateway --bind lan --port 8080
+```
+
+## Health check
+
+Configure a health check to ensure your service stays healthy:
+
+- **Type**: HTTP
+- **Path**: `/health`
+- **Port**: 8080
+- **Interval**: 30 seconds
+
+## After deployment
+
+### Complete the setup wizard
+
+1. Navigate to `https://<your-domain>/setup`
+2. Enter your `SETUP_PASSWORD`
+3. Select a model provider and paste your API key
+4. Optionally configure messaging channels (Telegram, Discord, Slack)
+5. Click **Run setup**
+
+### Access the Control UI
+
+The web dashboard is available at `https://<your-domain>/moltbot`.
+
+## Getting chat tokens
+
+### Telegram bot token
+
+1. Message `@BotFather` in Telegram
+2. Run `/newbot`
+3. Copy the token (looks like `123456789:AA...`)
+4. Paste it into `/setup`
+
+### Discord bot token
+
+1. Go to https://discord.com/developers/applications
+2. **New Application** and choose a name
+3. **Bot** and **Add Bot**
+4. **Enable MESSAGE CONTENT INTENT** under Bot and Privileged Gateway Intents (required)
+5. Copy the **Bot Token** and paste into `/setup`
+6. Invite the bot to your server (OAuth2 URL Generator; scopes: `bot`, `applications.commands`)
+
+## Backups and migration
+
+Export your configuration and workspace at any time:
+
+```
+https://<your-domain>/setup/export
+```
+
+This downloads a portable backup you can restore on any Moltbot host.
+
+## Resource recommendations
+
+| Usage | Memory | CPU |
+|-------|--------|-----|
+| Personal use | 512MB | 0.5 cores |
+| Small team | 1GB | 1 core |
+| Multiple channels | 2GB | 2 cores |
+
+## Troubleshooting
+
+### Service fails to start
+
+Check the deploy logs in Easypanel. Common issues:
+
+- Missing `SETUP_PASSWORD` environment variable
+- Port mismatch (ensure `PORT=8080`)
+- Volume not mounted at `/data`
+
+### Health check failures
+
+Ensure the health check is configured for port 8080 and path `/health`. The gateway
+needs a few seconds to start before responding to health checks.
+
+### Data not persisting
+
+Verify the volume is mounted at `/data` and that `CLAWDBOT_STATE_DIR=/data/.clawdbot`
+is set in environment variables.
