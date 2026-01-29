@@ -21,6 +21,7 @@ export type AuthChoiceGroupId =
   | "minimax"
   | "synthetic"
   | "venice"
+  | "deepseek"
   | "qwen";
 
 export type AuthChoiceGroup = {
@@ -59,6 +60,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Qwen",
     hint: "OAuth",
     choices: ["qwen-portal"],
+  },
+  {
+    value: "deepseek",
+    label: "DeepSeek",
+    hint: "V3.2 (chat + reasoning)",
+    choices: ["deepseek-api-key"],
   },
   {
     value: "synthetic",
@@ -193,6 +200,11 @@ export function buildAuthChoiceOptions(params: {
     value: "minimax-api-lightning",
     label: "MiniMax M2.1 Lightning",
     hint: "Faster, higher output cost",
+  });
+  options.push({
+    value: "deepseek-api-key",
+    label: "DeepSeek API key",
+    hint: "V3.2 chat and reasoning models",
   });
   if (params.includeSkip) {
     options.push({ value: "skip", label: "Skip for now" });
