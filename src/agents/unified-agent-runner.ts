@@ -38,7 +38,7 @@ import {
 } from "./auth-profiles.js";
 import { isReasoningTagProvider } from "../utils/provider-utils.js";
 
-const log = createSubsystemLogger("agents/unified-runner");
+const log = createSubsystemLogger("agent-runner");
 
 /** Model candidate for fallback. */
 type ModelCandidate = {
@@ -233,7 +233,7 @@ export async function runAgentWithUnifiedFailover(
   let attemptIndex = 0;
   const totalAttempts = runtimeChain.length * modelCandidates.length;
 
-  log.info("Starting unified agent run", {
+  log.info("Starting Agent run", {
     sessionId: params.sessionId,
     runId: params.runId,
     agentId,
@@ -267,8 +267,6 @@ export async function runAgentWithUnifiedFailover(
       continue;
     }
 
-    log.debug("Trying runtime", { runtime: runtimeKind, displayName: runtime.displayName });
-
     // Model-inner loop
     for (const candidate of modelCandidates) {
       attemptIndex += 1;
@@ -295,14 +293,6 @@ export async function runAgentWithUnifiedFailover(
       }
 
       try {
-        log.debug("Attempting model", {
-          runtime: runtimeKind,
-          provider: candidate.provider,
-          model: candidate.model,
-          attempt: attemptIndex,
-          total: totalAttempts,
-        });
-
         // Notify model selection before attempt (wrapped in try/catch to be resilient)
         try {
           await params.onModelSelected?.({
@@ -346,7 +336,7 @@ export async function runAgentWithUnifiedFailover(
             : { enforceFinalTag: effectiveEnforceFinalTag },
         });
 
-        log.info("Unified agent run completed", {
+        log.debug("Agent run completed", {
           sessionId: params.sessionId,
           runId: params.runId,
           runtime: runtimeKind,

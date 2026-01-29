@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Type } from "@sinclair/typebox";
 
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 
@@ -18,6 +19,8 @@ vi.mock("../tool-policy.js", () => ({
 
 import {
   extractJsonSchema,
+  extractZodCompatibleSchema,
+  createZodCompatibleSchema,
   convertToolResult,
   wrapToolHandler,
   mcpToolName,
@@ -98,6 +101,112 @@ describe("tool-bridge", () => {
 
       expect(schema).toEqual({ type: "object", properties: {} });
       expect(Object.getOwnPropertySymbols(schema)).toHaveLength(0);
+    });
+  });
+
+  describe("createZodCompatibleSchema", () => {
+    it("creates schema with parse/safeParse methods", () => {
+      const typeboxSchema = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+        },
+        required: ["name"],
+      };
+
+      const zodSchema = createZodCompatibleSchema(typeboxSchema as any);
+
+      expect(typeof zodSchema.parse).toBe("function");
+      expect(typeof zodSchema.safeParse).toBe("function");
+      expect(typeof zodSchema.safeParseAsync).toBe("function");
+      expect(zodSchema._def.typeName).toBe("ZodObject");
+    });
+
+    it("parse returns data for valid input", () => {
+      const typeboxSchema = Type.Object({
+        count: Type.Number(),
+      });
+
+      const zodSchema = createZodCompatibleSchema(typeboxSchema);
+      const result = zodSchema.parse({ count: 42 });
+
+      expect(result).toEqual({ count: 42 });
+    });
+
+    it("safeParse returns success for valid input", () => {
+      const typeboxSchema = Type.Object({
+        active: Type.Boolean(),
+      });
+
+      const zodSchema = createZodCompatibleSchema(typeboxSchema);
+      const result = zodSchema.safeParse({ active: true });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual({ active: true });
+    });
+
+    it("safeParse returns error for invalid input", () => {
+      const typeboxSchema = Type.Object({
+        value: Type.String(),
+      });
+
+      const zodSchema = createZodCompatibleSchema(typeboxSchema);
+      // Missing required 'value' property
+      const result = zodSchema.safeParse({});
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it("safeParseAsync returns promise", async () => {
+      const typeboxSchema = Type.Object({});
+
+      const zodSchema = createZodCompatibleSchema(typeboxSchema);
+      const result = await zodSchema.safeParseAsync({});
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("extractZodCompatibleSchema", () => {
+    it("returns Zod-compatible schema for tool with parameters", () => {
+      const tool = {
+        name: "test_tool",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string" },
+          },
+        },
+      } as unknown as AnyAgentTool;
+
+      const schema = extractZodCompatibleSchema(tool);
+
+      expect(schema).toBeDefined();
+      expect(typeof schema?.parse).toBe("function");
+      expect(typeof schema?.safeParse).toBe("function");
+    });
+
+    it("returns undefined for tool without parameters", () => {
+      const tool = {
+        name: "no_params_tool",
+        parameters: undefined,
+      } as unknown as AnyAgentTool;
+
+      const schema = extractZodCompatibleSchema(tool);
+
+      expect(schema).toBeUndefined();
+    });
+
+    it("returns undefined for tool with null parameters", () => {
+      const tool = {
+        name: "null_params_tool",
+        parameters: null,
+      } as unknown as AnyAgentTool;
+
+      const schema = extractZodCompatibleSchema(tool);
+
+      expect(schema).toBeUndefined();
     });
   });
 
@@ -203,6 +312,9 @@ describe("tool-bridge", () => {
   });
 
   describe("wrapToolHandler", () => {
+    // Mock extra object that MCP SDK passes to handlers
+    const mockExtra = { signal: new AbortController().signal };
+
     it("executes tool and converts result", async () => {
       const mockExecute = vi.fn().mockResolvedValue({
         content: [{ type: "text", text: "Tool output" }],
@@ -214,18 +326,18 @@ describe("tool-bridge", () => {
       } as unknown as AnyAgentTool;
 
       const handler = wrapToolHandler(tool);
-      const result = await handler({ input: "test" });
+      const result = await handler({ input: "test" }, mockExtra);
 
       expect(mockExecute).toHaveBeenCalledWith(
         expect.stringContaining("mcp-bridge-test_tool"),
         { input: "test" },
-        undefined,
+        mockExtra.signal,
         undefined,
       );
       expect(result.content).toEqual([{ type: "text", text: "Tool output" }]);
     });
 
-    it("passes abort signal to tool execute", async () => {
+    it("uses signal from extra when provided", async () => {
       const mockExecute = vi.fn().mockResolvedValue({
         content: [{ type: "text", text: "Done" }],
       });
@@ -235,14 +347,36 @@ describe("tool-bridge", () => {
         execute: mockExecute,
       } as unknown as AnyAgentTool;
 
-      const controller = new AbortController();
-      const handler = wrapToolHandler(tool, controller.signal);
-      await handler({});
+      const extraController = new AbortController();
+      const handler = wrapToolHandler(tool);
+      await handler({}, { signal: extraController.signal });
 
       expect(mockExecute).toHaveBeenCalledWith(
         expect.any(String),
         {},
-        controller.signal,
+        extraController.signal,
+        undefined,
+      );
+    });
+
+    it("falls back to shared abortSignal when extra.signal is undefined", async () => {
+      const mockExecute = vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "Done" }],
+      });
+
+      const tool = {
+        name: "fallback-signal-tool",
+        execute: mockExecute,
+      } as unknown as AnyAgentTool;
+
+      const sharedController = new AbortController();
+      const handler = wrapToolHandler(tool, sharedController.signal);
+      await handler({}, {} as any);
+
+      expect(mockExecute).toHaveBeenCalledWith(
+        expect.any(String),
+        {},
+        sharedController.signal,
         undefined,
       );
     });
@@ -256,7 +390,7 @@ describe("tool-bridge", () => {
       } as unknown as AnyAgentTool;
 
       const handler = wrapToolHandler(tool);
-      const result = await handler({});
+      const result = await handler({}, mockExtra);
 
       expect(result.isError).toBe(true);
       expect(result.content[0]).toMatchObject({
@@ -276,7 +410,7 @@ describe("tool-bridge", () => {
       } as unknown as AnyAgentTool;
 
       const handler = wrapToolHandler(tool);
-      const result = await handler({});
+      const result = await handler({}, mockExtra);
 
       expect(result.isError).toBe(true);
       expect(result.content[0]).toMatchObject({
@@ -298,7 +432,7 @@ describe("tool-bridge", () => {
 
       const onToolUpdate = vi.fn();
       const handler = wrapToolHandler(tool, undefined, onToolUpdate);
-      await handler({});
+      await handler({}, mockExtra);
 
       expect(onToolUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -323,7 +457,7 @@ describe("tool-bridge", () => {
       const handler = wrapToolHandler(tool, undefined, onToolUpdate);
 
       // Should not throw even if callback fails
-      const result = await handler({});
+      const result = await handler({}, mockExtra);
 
       expect(result.content[0]).toMatchObject({
         type: "text",
@@ -344,8 +478,8 @@ describe("tool-bridge", () => {
       } as unknown as AnyAgentTool;
 
       const handler = wrapToolHandler(tool);
-      await handler({});
-      await handler({});
+      await handler({}, mockExtra);
+      await handler({}, mockExtra);
 
       expect(toolCallIds[0]).not.toBe(toolCallIds[1]);
       expect(toolCallIds[0]).toContain("mcp-bridge-unique_id_tool");
@@ -381,21 +515,21 @@ describe("tool-bridge", () => {
 
   describe("bridgeMoltbotToolsSync", () => {
     // Helper to create a class-like McpServer mock (required because implementation uses `new`)
-    function createMockMcpServerClass(toolFn: ReturnType<typeof vi.fn>) {
+    function createMockMcpServerClass(registerToolFn: ReturnType<typeof vi.fn>) {
       return class MockMcpServer {
-        tool = toolFn;
+        registerTool = registerToolFn;
         constructor(_opts: { name: string; version: string }) {
           // Constructor receives options
         }
       };
     }
 
-    it("registers tools with MCP server", () => {
+    it("registers tools with MCP server using registerTool", () => {
       const registeredTools: string[] = [];
-      const toolFn = vi.fn((name: string) => {
+      const registerToolFn = vi.fn((name: string) => {
         registeredTools.push(name);
       });
-      const MockMcpServer = createMockMcpServerClass(toolFn);
+      const MockMcpServer = createMockMcpServerClass(registerToolFn);
 
       const tools = [
         {
@@ -421,6 +555,39 @@ describe("tool-bridge", () => {
       expect(result.toolCount).toBe(2);
       expect(result.registeredTools).toEqual(["tool_one", "tool_two"]);
       expect(result.skippedTools).toEqual([]);
+      expect(registerToolFn).toHaveBeenCalledTimes(2);
+    });
+
+    it("passes config with inputSchema to registerTool", () => {
+      const registerToolFn = vi.fn();
+      const MockMcpServer = createMockMcpServerClass(registerToolFn);
+
+      const tools = [
+        {
+          name: "schema_tool",
+          description: "Tool with schema",
+          parameters: { type: "object", properties: { query: { type: "string" } } },
+          execute: vi.fn(),
+        },
+      ] as unknown as AnyAgentTool[];
+
+      bridgeMoltbotToolsSync({
+        name: "test-server",
+        tools,
+        McpServer: MockMcpServer as any,
+      });
+
+      expect(registerToolFn).toHaveBeenCalledWith(
+        "schema_tool",
+        expect.objectContaining({
+          description: "Tool with schema",
+          inputSchema: expect.objectContaining({
+            parse: expect.any(Function),
+            safeParse: expect.any(Function),
+          }),
+        }),
+        expect.any(Function),
+      );
     });
 
     it("skips tools with empty names", () => {
@@ -458,10 +625,10 @@ describe("tool-bridge", () => {
     });
 
     it("handles tool registration errors gracefully", () => {
-      const toolFn = vi.fn((name: string) => {
+      const registerToolFn = vi.fn((name: string) => {
         if (name === "bad_tool") throw new Error("Registration failed");
       });
-      const MockMcpServer = createMockMcpServerClass(toolFn);
+      const MockMcpServer = createMockMcpServerClass(registerToolFn);
 
       const tools = [
         { name: "good_tool", execute: vi.fn() },

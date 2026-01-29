@@ -3,17 +3,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { MoltbotConfig } from "../config/config.js";
 import type { AgentRuntime, AgentRuntimeResult } from "./agent-runtime.js";
 
+// Mock run functions - defined separately to avoid unbound-method lint errors
+const mockPiRun = vi.fn();
+const mockCcsdkRun = vi.fn();
+
 // Mock dependencies
 const mockPiRuntime: AgentRuntime = {
   kind: "pi",
   displayName: "Pi Agent",
-  run: vi.fn(),
+  run: mockPiRun,
 };
 
 const mockCcsdkRuntime: AgentRuntime = {
   kind: "ccsdk",
   displayName: "Claude Code SDK",
-  run: vi.fn(),
+  run: mockCcsdkRun,
 };
 
 vi.mock("./main-agent-runtime-factory.js", () => ({
@@ -114,8 +118,8 @@ describe("unified-agent-runner", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(createAgentRuntime).mockResolvedValue(mockPiRuntime);
-    vi.mocked(mockPiRuntime.run).mockResolvedValue(successResult);
-    vi.mocked(mockCcsdkRuntime.run).mockResolvedValue(successResult);
+    mockPiRun.mockResolvedValue(successResult);
+    mockCcsdkRun.mockResolvedValue(successResult);
   });
 
   afterEach(() => {
@@ -130,7 +134,7 @@ describe("unified-agent-runner", () => {
       const result = await runAgentWithUnifiedFailover(baseParams);
 
       expect(result.runtime).toBe("pi");
-      expect(mockPiRuntime.run).toHaveBeenCalled();
+      expect(mockPiRun).toHaveBeenCalled();
     });
 
     it("uses ccsdk as primary when configured", async () => {
@@ -143,7 +147,7 @@ describe("unified-agent-runner", () => {
       const result = await runAgentWithUnifiedFailover(baseParams);
 
       expect(result.runtime).toBe("ccsdk");
-      expect(mockCcsdkRuntime.run).toHaveBeenCalled();
+      expect(mockCcsdkRun).toHaveBeenCalled();
     });
   });
 
@@ -329,7 +333,7 @@ describe("unified-agent-runner", () => {
       const abortError = new Error("Aborted");
       abortError.name = "AbortError";
 
-      vi.mocked(mockPiRuntime.run).mockRejectedValue(abortError);
+      mockPiRun.mockRejectedValue(abortError);
 
       await expect(runAgentWithUnifiedFailover(baseParams)).rejects.toThrow("Aborted");
     });

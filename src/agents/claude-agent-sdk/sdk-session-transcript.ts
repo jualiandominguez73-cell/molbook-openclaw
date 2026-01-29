@@ -166,7 +166,8 @@ export function appendSdkToolResultToSessionTranscript(params: {
       try {
         resultContent = JSON.stringify(params.result);
       } catch {
-        resultContent = String(params.result);
+        // Fallback if JSON.stringify fails (e.g., circular references)
+        resultContent = `(unserializable: ${typeof params.result})`;
       }
     } else {
       resultContent = "(no output)";

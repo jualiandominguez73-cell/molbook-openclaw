@@ -12,18 +12,6 @@ import { resolveUserPath } from "../utils.js";
 const log = createSubsystemLogger("agents/auth-profiles");
 
 const CLAUDE_CLI_CREDENTIALS_RELATIVE_PATH = ".claude/.credentials.json";
-
-/**
- * Mask a token for logging - shows length and first/last 4 chars.
- * Example: "sk-ant-api03-abc...xyz" (length: 108)
- */
-function maskToken(token: string | undefined): string {
-  if (!token) return "(empty)";
-  if (token.length <= 12) return `${"*".repeat(token.length)} (length: ${token.length})`;
-  const first = token.slice(0, 4);
-  const last = token.slice(-4);
-  return `${first}...${"*".repeat(Math.min(8, token.length - 8))}...${last} (length: ${token.length})`;
-}
 const CODEX_CLI_AUTH_FILENAME = "auth.json";
 const QWEN_CLI_CREDENTIALS_RELATIVE_PATH = ".qwen/oauth_creds.json";
 
@@ -205,25 +193,15 @@ function readQwenCliCredentials(options?: { homeDir?: string }): QwenCliCredenti
 function readClaudeCliKeychainCredentials(
   execSyncImpl: ExecSyncFn = execSync,
 ): ClaudeCliCredential | null {
-  log.debug("[CCSDK-AUTH] Attempting to read credentials from macOS Keychain", {
-    service: CLAUDE_CLI_KEYCHAIN_SERVICE,
-    account: CLAUDE_CLI_KEYCHAIN_ACCOUNT,
-  });
-
   try {
     const result = execSyncImpl(
       `security find-generic-password -s "${CLAUDE_CLI_KEYCHAIN_SERVICE}" -w`,
       { encoding: "utf8", timeout: 5000, stdio: ["pipe", "pipe", "pipe"] },
     );
 
-    log.debug("[CCSDK-AUTH] Keychain returned data", {
-      rawLength: result.length,
-    });
-
     const data = JSON.parse(result.trim());
     const claudeOauth = data?.claudeAiOauth;
     if (!claudeOauth || typeof claudeOauth !== "object") {
-      log.debug("[CCSDK-AUTH] Keychain data missing claudeAiOauth object");
       return null;
     }
 
@@ -232,29 +210,11 @@ function readClaudeCliKeychainCredentials(
     const expiresAt = claudeOauth.expiresAt;
 
     if (typeof accessToken !== "string" || !accessToken) {
-      log.debug("[CCSDK-AUTH] Keychain accessToken invalid or missing");
       return null;
     }
     if (typeof expiresAt !== "number" || expiresAt <= 0) {
-      log.debug("[CCSDK-AUTH] Keychain expiresAt invalid", { expiresAt });
       return null;
     }
-
-    const expiresDate = new Date(expiresAt);
-    const isExpired = expiresAt < Date.now();
-    const msUntilExpiry = expiresAt - Date.now();
-
-    log.debug("[CCSDK-AUTH] Keychain credentials parsed successfully", {
-      source: "keychain",
-      hasAccessToken: Boolean(accessToken),
-      accessTokenMasked: maskToken(accessToken),
-      hasRefreshToken: Boolean(refreshToken),
-      refreshTokenMasked: maskToken(refreshToken),
-      expiresAt: expiresDate.toISOString(),
-      isExpired,
-      msUntilExpiry,
-      type: refreshToken ? "oauth" : "token",
-    });
 
     if (typeof refreshToken === "string" && refreshToken) {
       return {
@@ -272,10 +232,7 @@ function readClaudeCliKeychainCredentials(
       token: accessToken,
       expires: expiresAt,
     };
-  } catch (err) {
-    log.debug("[CCSDK-AUTH] Keychain read failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+  } catch {
     return null;
   }
 }
@@ -291,10 +248,6 @@ function readClaudeCliKeychainCredentials(
 function readClaudeCliLinuxSecretServiceCredentials(
   execSyncImpl: ExecSyncFn = execSync,
 ): ClaudeCliCredential | null {
-  log.debug("[CCSDK-AUTH] Attempting to read credentials from Linux Secret Service", {
-    service: CLAUDE_CLI_KEYCHAIN_SERVICE,
-  });
-
   try {
     // secret-tool lookup returns the secret value for matching attributes
     const result = execSyncImpl(`secret-tool lookup service "${CLAUDE_CLI_KEYCHAIN_SERVICE}"`, {
@@ -304,18 +257,12 @@ function readClaudeCliLinuxSecretServiceCredentials(
     });
 
     if (!result || !result.trim()) {
-      log.debug("[CCSDK-AUTH] Linux Secret Service returned empty result");
       return null;
     }
-
-    log.debug("[CCSDK-AUTH] Linux Secret Service returned data", {
-      rawLength: result.length,
-    });
 
     const data = JSON.parse(result.trim());
     const claudeOauth = data?.claudeAiOauth;
     if (!claudeOauth || typeof claudeOauth !== "object") {
-      log.debug("[CCSDK-AUTH] Linux Secret Service data missing claudeAiOauth object");
       return null;
     }
 
@@ -324,29 +271,11 @@ function readClaudeCliLinuxSecretServiceCredentials(
     const expiresAt = claudeOauth.expiresAt;
 
     if (typeof accessToken !== "string" || !accessToken) {
-      log.debug("[CCSDK-AUTH] Linux Secret Service accessToken invalid or missing");
       return null;
     }
     if (typeof expiresAt !== "number" || expiresAt <= 0) {
-      log.debug("[CCSDK-AUTH] Linux Secret Service expiresAt invalid", { expiresAt });
       return null;
     }
-
-    const expiresDate = new Date(expiresAt);
-    const isExpired = expiresAt < Date.now();
-    const msUntilExpiry = expiresAt - Date.now();
-
-    log.debug("[CCSDK-AUTH] Linux Secret Service credentials parsed successfully", {
-      source: "linux-secret-service",
-      hasAccessToken: Boolean(accessToken),
-      accessTokenMasked: maskToken(accessToken),
-      hasRefreshToken: Boolean(refreshToken),
-      refreshTokenMasked: maskToken(refreshToken),
-      expiresAt: expiresDate.toISOString(),
-      isExpired,
-      msUntilExpiry,
-      type: refreshToken ? "oauth" : "token",
-    });
 
     if (typeof refreshToken === "string" && refreshToken) {
       return {
@@ -364,10 +293,7 @@ function readClaudeCliLinuxSecretServiceCredentials(
       token: accessToken,
       expires: expiresAt,
     };
-  } catch (err) {
-    log.debug("[CCSDK-AUTH] Linux Secret Service read failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+  } catch {
     return null;
   }
 }
@@ -381,10 +307,6 @@ function readClaudeCliLinuxSecretServiceCredentials(
 function readClaudeCliWindowsCredentialManagerCredentials(
   execSyncImpl: ExecSyncFn = execSync,
 ): ClaudeCliCredential | null {
-  log.debug("[CCSDK-AUTH] Attempting to read credentials from Windows Credential Manager", {
-    target: CLAUDE_CLI_WINDOWS_TARGET,
-  });
-
   try {
     // PowerShell script to read from Windows Credential Manager
     // Uses the .NET CredentialManager API via Add-Type
@@ -442,18 +364,12 @@ function readClaudeCliWindowsCredentialManagerCredentials(
     );
 
     if (!result || !result.trim()) {
-      log.debug("[CCSDK-AUTH] Windows Credential Manager returned empty result");
       return null;
     }
-
-    log.debug("[CCSDK-AUTH] Windows Credential Manager returned data", {
-      rawLength: result.length,
-    });
 
     const data = JSON.parse(result.trim());
     const claudeOauth = data?.claudeAiOauth;
     if (!claudeOauth || typeof claudeOauth !== "object") {
-      log.debug("[CCSDK-AUTH] Windows Credential Manager data missing claudeAiOauth object");
       return null;
     }
 
@@ -462,29 +378,11 @@ function readClaudeCliWindowsCredentialManagerCredentials(
     const expiresAt = claudeOauth.expiresAt;
 
     if (typeof accessToken !== "string" || !accessToken) {
-      log.debug("[CCSDK-AUTH] Windows Credential Manager accessToken invalid or missing");
       return null;
     }
     if (typeof expiresAt !== "number" || expiresAt <= 0) {
-      log.debug("[CCSDK-AUTH] Windows Credential Manager expiresAt invalid", { expiresAt });
       return null;
     }
-
-    const expiresDate = new Date(expiresAt);
-    const isExpired = expiresAt < Date.now();
-    const msUntilExpiry = expiresAt - Date.now();
-
-    log.debug("[CCSDK-AUTH] Windows Credential Manager credentials parsed successfully", {
-      source: "windows-credential-manager",
-      hasAccessToken: Boolean(accessToken),
-      accessTokenMasked: maskToken(accessToken),
-      hasRefreshToken: Boolean(refreshToken),
-      refreshTokenMasked: maskToken(refreshToken),
-      expiresAt: expiresDate.toISOString(),
-      isExpired,
-      msUntilExpiry,
-      type: refreshToken ? "oauth" : "token",
-    });
 
     if (typeof refreshToken === "string" && refreshToken) {
       return {
@@ -502,10 +400,7 @@ function readClaudeCliWindowsCredentialManagerCredentials(
       token: accessToken,
       expires: expiresAt,
     };
-  } catch (err) {
-    log.debug("[CCSDK-AUTH] Windows Credential Manager read failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+  } catch {
     return null;
   }
 }
@@ -518,70 +413,38 @@ export function readClaudeCliCredentials(options?: {
 }): ClaudeCliCredential | null {
   const platform = options?.platform ?? process.platform;
 
-  log.debug("[CCSDK-AUTH] readClaudeCliCredentials called", {
-    platform,
-    allowKeychainPrompt: options?.allowKeychainPrompt,
-    homeDir: options?.homeDir ?? "(default)",
-  });
-
   // Try platform-specific secure credential storage first
   if (options?.allowKeychainPrompt !== false) {
     let secureStoreCreds: ClaudeCliCredential | null = null;
     let source = "";
 
     if (platform === "darwin") {
-      log.debug("[CCSDK-AUTH] Attempting macOS Keychain read");
       secureStoreCreds = readClaudeCliKeychainCredentials(options?.execSync);
       source = "macos-keychain";
     } else if (platform === "linux") {
-      log.debug("[CCSDK-AUTH] Attempting Linux Secret Service read");
       secureStoreCreds = readClaudeCliLinuxSecretServiceCredentials(options?.execSync);
       source = "linux-secret-service";
     } else if (platform === "win32") {
-      log.debug("[CCSDK-AUTH] Attempting Windows Credential Manager read");
       secureStoreCreds = readClaudeCliWindowsCredentialManagerCredentials(options?.execSync);
       source = "windows-credential-manager";
     }
 
     if (secureStoreCreds) {
-      log.info("[CCSDK-AUTH] Successfully read credentials from secure storage", {
-        type: secureStoreCreds.type,
-        source,
-        accessTokenMasked:
-          secureStoreCreds.type === "oauth"
-            ? maskToken(secureStoreCreds.access)
-            : maskToken(secureStoreCreds.token),
-      });
+      log.debug("read claude cli credentials", { source, type: secureStoreCreds.type });
       return secureStoreCreds;
-    }
-
-    if (source) {
-      log.debug("[CCSDK-AUTH] Secure storage read returned null, falling back to file", { source });
     }
   }
 
   // Fall back to file-based credentials
   const credPath = resolveClaudeCliCredentialsPath(options?.homeDir);
-  log.debug("[CCSDK-AUTH] Attempting to read credentials from file", {
-    path: credPath,
-  });
-
   const raw = loadJsonFile(credPath);
   if (!raw || typeof raw !== "object") {
-    log.debug("[CCSDK-AUTH] Credentials file not found or invalid", {
-      path: credPath,
-      rawType: typeof raw,
-    });
     return null;
   }
 
   const data = raw as Record<string, unknown>;
   const claudeOauth = data.claudeAiOauth as Record<string, unknown> | undefined;
   if (!claudeOauth || typeof claudeOauth !== "object") {
-    log.debug("[CCSDK-AUTH] Credentials file missing claudeAiOauth", {
-      path: credPath,
-      topLevelKeys: Object.keys(data),
-    });
     return null;
   }
 
@@ -590,41 +453,21 @@ export function readClaudeCliCredentials(options?: {
   const expiresAt = claudeOauth.expiresAt;
 
   if (typeof accessToken !== "string" || !accessToken) {
-    log.debug("[CCSDK-AUTH] Credentials file accessToken invalid", {
-      path: credPath,
-    });
     return null;
   }
   if (typeof expiresAt !== "number" || expiresAt <= 0) {
-    log.debug("[CCSDK-AUTH] Credentials file expiresAt invalid", {
-      path: credPath,
-      expiresAt,
-    });
     return null;
   }
 
-  const expiresDate = new Date(expiresAt);
-  const isExpired = expiresAt < Date.now();
-  const msUntilExpiry = expiresAt - Date.now();
+  const credType = typeof refreshToken === "string" && refreshToken ? "oauth" : "token";
+  log.debug("read claude cli credentials", { source: "file", type: credType });
 
-  log.info("[CCSDK-AUTH] Successfully read credentials from file", {
-    source: "file",
-    path: credPath,
-    accessTokenMasked: maskToken(accessToken as string),
-    hasRefreshToken: Boolean(refreshToken),
-    refreshTokenMasked: maskToken(refreshToken as string | undefined),
-    expiresAt: expiresDate.toISOString(),
-    isExpired,
-    msUntilExpiry,
-    type: refreshToken ? "oauth" : "token",
-  });
-
-  if (typeof refreshToken === "string" && refreshToken) {
+  if (credType === "oauth") {
     return {
       type: "oauth",
       provider: "anthropic",
       access: accessToken,
-      refresh: refreshToken,
+      refresh: refreshToken as string,
       expires: expiresAt,
     };
   }
@@ -728,7 +571,6 @@ export function writeClaudeCliLinuxSecretServiceCredentials(
     );
 
     if (!existingResult || !existingResult.trim()) {
-      log.debug("[CCSDK-AUTH] No existing Linux Secret Service entry to update");
       return false;
     }
 
@@ -826,7 +668,6 @@ export function writeClaudeCliWindowsCredentialManagerCredentials(
     );
 
     if (!existingResult || !existingResult.trim()) {
-      log.debug("[CCSDK-AUTH] No existing Windows Credential Manager entry to update");
       return false;
     }
 

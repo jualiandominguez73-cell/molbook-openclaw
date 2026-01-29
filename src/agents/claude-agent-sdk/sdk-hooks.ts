@@ -11,6 +11,9 @@ import {
   sanitizeToolResult,
 } from "../pi-embedded-subscribe.tools.js";
 import { normalizeToolName } from "../tool-policy.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
+
+const log = createSubsystemLogger("agents/claude-agent-sdk/sdk-hooks");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -151,6 +154,13 @@ export function buildMoltbotSdkHooks(params: {
     const rawName = typeof record?.tool_name === "string" ? record.tool_name : "";
     const normalized = normalizeSdkToolName(rawName, params.mcpServerName);
     const error = extractToolErrorMessage(record ?? input);
+
+    // Log tool failures at warn level so they appear in logs
+    log.warn("Tool execution failed (via hook)", {
+      tool: normalized.name,
+      toolCallId: typeof toolUseId === "string" ? toolUseId : undefined,
+      error: error?.slice(0, 500) ?? "Unknown error",
+    });
 
     params.emitEvent("tool", {
       phase: "result",

@@ -24,8 +24,10 @@ export type PromptEnricherContext = {
   channel?: string;
   /** Channel-specific hints or instructions. */
   channelHints?: string;
-  /** Available Moltbot skills. */
+  /** Available Moltbot skills (names only). */
   skills?: string[];
+  /** Full formatted skills prompt (preferred over skills). */
+  skillsPrompt?: string;
   /** Sender identifier. */
   senderId?: string | null;
   /** Sender display name. */
@@ -110,8 +112,15 @@ const channelEnricher: PromptEnricher = (ctx) => {
 
 /**
  * Skills enricher.
+ *
+ * Prefers the full skillsPrompt (which includes descriptions) over just names.
  */
 const skillsEnricher: PromptEnricher = (ctx) => {
+  // Prefer full skills prompt with descriptions
+  if (ctx.skillsPrompt?.trim()) {
+    return ctx.skillsPrompt.trim();
+  }
+  // Fallback to skill names list
   if (!ctx.skills?.length) return null;
   return `Available Moltbot skills: ${ctx.skills.join(", ")}`;
 };
@@ -189,6 +198,7 @@ export function buildSystemPromptAdditionsFromParams(params: {
   messageChannel?: string;
   channelHints?: string;
   skills?: string[];
+  skillsPrompt?: string;
   senderId?: string | null;
   senderName?: string | null;
   senderUsername?: string | null;
@@ -202,6 +212,7 @@ export function buildSystemPromptAdditionsFromParams(params: {
     channel: params.messageChannel,
     channelHints: params.channelHints,
     skills: params.skills,
+    skillsPrompt: params.skillsPrompt,
     senderId: params.senderId,
     senderName: params.senderName,
     senderUsername: params.senderUsername,

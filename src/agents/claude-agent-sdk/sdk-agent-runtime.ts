@@ -214,14 +214,13 @@ export function createCcSdkAgentRuntime(context?: CcSdkAgentRuntimeContext): Age
         ? `${params.provider ?? "anthropic"}/${params.model}`
         : (ccsdkOpts.modelTiers?.sonnet ?? context?.ccsdkConfig?.models?.sonnet ?? "default");
 
-      log.info("Starting CCSDK Agent session", {
+      log.debug("Starting CCSDK Agent session", {
         sessionId: params.sessionId,
         runId: params.runId,
         provider: providerConfig.name,
         model: effectiveModel,
         agentId,
         thinkLevel: params.thinkLevel,
-        verboseLevel: params.verboseLevel,
       });
 
       // Load conversation history from session file if not provided
@@ -316,6 +315,7 @@ export function createCcSdkAgentRuntime(context?: CcSdkAgentRuntimeContext): Age
         verboseLevel: mapVerboseLevel(params.verboseLevel),
         timezone: resolveTimezone(effectiveConfig),
         skills: extractSkillNames(params.skillsSnapshot),
+        skillsPrompt: params.skillsSnapshot?.prompt,
 
         // ─── CCSDK options from ccsdkOptions bag ────────────────────────────────
         hooksEnabled: ccsdkOpts.hooksEnabled ?? context?.ccsdkConfig?.hooksEnabled,
@@ -345,15 +345,6 @@ export function createCcSdkAgentRuntime(context?: CcSdkAgentRuntimeContext): Age
           ? (payload) => params.onToolResult?.({ text: payload.text })
           : undefined,
         onAgentEvent: params.onAgentEvent,
-      });
-
-      log.debug("[CCSDK-RUNTIME] Callbacks passed to runSdkAgent", {
-        hasOnPartialReply: Boolean(params.onPartialReply),
-        hasOnBlockReply: Boolean(params.onBlockReply),
-        hasOnBlockReplyFlush: Boolean(params.onBlockReplyFlush),
-        hasOnReasoningStream: Boolean(params.onReasoningStream),
-        hasOnToolResult: Boolean(params.onToolResult),
-        hasOnAgentEvent: Boolean(params.onAgentEvent),
       });
 
       // Persist session transcript for multi-turn continuity.

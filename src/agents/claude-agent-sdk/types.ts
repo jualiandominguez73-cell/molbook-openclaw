@@ -148,8 +148,10 @@ export type SdkRunnerParams = {
   messageChannel?: string;
   /** Channel-specific hints. */
   channelHints?: string;
-  /** Available Moltbot skills. */
+  /** Available Moltbot skills (names only, for system prompt context). */
   skills?: string[];
+  /** Full formatted skills prompt from skillsSnapshot (preferred over skills). */
+  skillsPrompt?: string;
   /** Sender identifier. */
   senderId?: string | null;
   /** Sender display name. */

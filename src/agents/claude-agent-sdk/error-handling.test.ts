@@ -26,6 +26,10 @@ describe("error-handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    // Mock Math.random to eliminate jitter in retry backoff delays.
+    // The withRetry function adds 0-20% random jitter to delays, which causes
+    // tests using exact timer advancement to timeout when jitter > 0.
+    vi.spyOn(Math, "random").mockReturnValue(0);
   });
 
   afterEach(() => {
@@ -241,9 +245,8 @@ describe("error-handling", () => {
 
       const promise = withRetry(fn, options);
 
-      // Advance timers for retries
-      await vi.advanceTimersByTimeAsync(100);
-      await vi.advanceTimersByTimeAsync(200);
+      // Run all timers to completion (handles all retries)
+      await vi.runAllTimersAsync();
 
       const result = await promise;
 
@@ -275,13 +278,14 @@ describe("error-handling", () => {
         retryOn: ["rate_limit"],
       };
 
-      const promise = withRetry(fn, options);
+      // Attach rejection handler BEFORE running timers to avoid unhandled rejection
+      const promise = withRetry(fn, options).catch((e) => e);
 
-      // Advance timers for all retries
-      await vi.advanceTimersByTimeAsync(100);
-      await vi.advanceTimersByTimeAsync(200);
+      // Run all timers to completion (exhausts all retries)
+      await vi.runAllTimersAsync();
 
-      await expect(promise).rejects.toMatchObject({ status: 429 });
+      const error = await promise;
+      expect(error).toMatchObject({ status: 429 });
       expect(fn).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
 

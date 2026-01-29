@@ -103,20 +103,59 @@ export type SdkResultEvent = {
 };
 
 // ---------------------------------------------------------------------------
-// MCP Server tool registration (shape of McpServer.tool() from the SDK)
+// MCP Server tool registration (shape of McpServer from the SDK)
 // ---------------------------------------------------------------------------
 
 /**
+ * Extra context passed to tool handlers by the MCP SDK.
+ * Contains abort signal, session info, and other runtime context.
+ */
+export interface McpRequestHandlerExtra {
+  signal: AbortSignal;
+  sessionId?: string;
+  _meta?: Record<string, unknown>;
+  requestInfo?: { method: string; params?: unknown };
+  [key: string]: unknown;
+}
+
+/**
+ * Tool handler signature when inputSchema is provided.
+ * The SDK calls handler(args, extra) where args is the validated input.
+ */
+export type McpToolHandler = (
+  args: Record<string, unknown>,
+  extra: McpRequestHandlerExtra,
+) => Promise<McpCallToolResult>;
+
+/**
+ * Configuration object for registerTool().
+ */
+export interface McpToolConfig {
+  title?: string;
+  description?: string;
+  /** Zod-compatible schema with parse/safeParse methods */
+  inputSchema?: {
+    parse(data: unknown): unknown;
+    safeParse(data: unknown): { success: boolean; data?: unknown; error?: unknown };
+    safeParseAsync?(data: unknown): Promise<{ success: boolean; data?: unknown; error?: unknown }>;
+    _def?: Record<string, unknown>;
+  };
+  outputSchema?: unknown;
+  annotations?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
+}
+
+/**
  * Minimal interface for the McpServer class from `@modelcontextprotocol/sdk`.
- * We only use the `tool()` registration method and the constructor.
+ * We use registerTool() which properly handles Zod-compatible inputSchema.
  */
 export interface McpServerLike {
-  tool(
-    name: string,
-    description: string,
-    inputSchema: Record<string, unknown>,
-    handler: (args: Record<string, unknown>) => Promise<McpCallToolResult>,
-  ): void;
+  /**
+   * Register a tool with explicit configuration.
+   * The inputSchema must be Zod-compatible (have parse/safeParse methods)
+   * for the MCP SDK to properly validate args and pass them to the handler.
+   */
+  registerTool(name: string, config: McpToolConfig, handler: McpToolHandler): void;
 }
 
 /**

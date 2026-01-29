@@ -18,6 +18,8 @@
  */
 
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { TSchema } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { normalizeToolName } from "../tool-policy.js";
@@ -25,6 +27,7 @@ import type { AnyAgentTool } from "../tools/common.js";
 import type {
   McpCallToolResult,
   McpContentBlock,
+  McpRequestHandlerExtra,
   McpSdkServerConfig,
   McpServerConstructor,
   McpServerLike,
@@ -33,8 +36,84 @@ import type {
 const log = createSubsystemLogger("agents/claude-agent-sdk/tool-bridge");
 
 // ---------------------------------------------------------------------------
-// Schema conversion: TypeBox → JSON Schema (passthrough)
+// Schema conversion: TypeBox → Zod-compatible schema
 // ---------------------------------------------------------------------------
+
+/**
+ * Interface for Zod-compatible schema that the MCP SDK expects.
+ * The SDK checks for `parse` and `safeParse` methods to identify valid schemas.
+ */
+export interface ZodCompatibleSchema {
+  /** Synchronous parse - throws on validation failure */
+  parse(data: unknown): unknown;
+  /** Safe synchronous parse - returns success/error result */
+  safeParse(data: unknown): { success: true; data: unknown } | { success: false; error: unknown };
+  /** Async version of safeParse (used by MCP SDK) */
+  safeParseAsync(
+    data: unknown,
+  ): Promise<{ success: true; data: unknown } | { success: false; error: unknown }>;
+  /** Mark this as a Zod-like schema instance (SDK checks for _def or _zod) */
+  _def: { typeName: string; description?: string };
+}
+
+/**
+ * Wrap a TypeBox schema to make it Zod-compatible for the MCP SDK.
+ *
+ * The MCP SDK's McpServer.tool() checks `isZodTypeLike()` which requires:
+ * - `parse` method (function)
+ * - `safeParse` method (function)
+ *
+ * This wrapper uses TypeBox's Value module to perform validation.
+ */
+export function createZodCompatibleSchema(typeboxSchema: TSchema): ZodCompatibleSchema {
+  return {
+    parse(data: unknown): unknown {
+      // Decode handles coercion (string→number, etc.) and throws on failure
+      return Value.Decode(typeboxSchema, data);
+    },
+
+    safeParse(
+      data: unknown,
+    ): { success: true; data: unknown } | { success: false; error: unknown } {
+      try {
+        // First check if valid
+        if (!Value.Check(typeboxSchema, data)) {
+          // Get the first validation error for a useful message
+          const errors = [...Value.Errors(typeboxSchema, data)];
+          const firstError = errors[0];
+          return {
+            success: false,
+            error: {
+              message: firstError?.message ?? "Validation failed",
+              path: firstError?.path ?? "",
+              issues: errors.map((e) => ({ message: e.message, path: e.path })),
+            },
+          };
+        }
+        // Decode to apply any transformations
+        const decoded = Value.Decode(typeboxSchema, data);
+        return { success: true, data: decoded };
+      } catch (err) {
+        return {
+          success: false,
+          error: err instanceof Error ? { message: err.message } : { message: String(err) },
+        };
+      }
+    },
+
+    async safeParseAsync(
+      data: unknown,
+    ): Promise<{ success: true; data: unknown } | { success: false; error: unknown }> {
+      return this.safeParse(data);
+    },
+
+    // Mimic Zod v3's internal structure so isZodSchemaInstance returns true
+    _def: {
+      typeName: "ZodObject",
+      description: (typeboxSchema as { description?: string }).description,
+    },
+  };
+}
 
 /**
  * Extract a clean JSON Schema object from a TypeBox schema.
@@ -55,6 +134,20 @@ export function extractJsonSchema(tool: AnyAgentTool): Record<string, unknown> {
     log.debug(`Schema for "${tool.name}" is not JSON-serializable, using empty schema`);
     return { type: "object", properties: {} };
   }
+}
+
+/**
+ * Create a Zod-compatible schema from a tool's TypeBox parameters.
+ * Falls back to a permissive schema if the tool has no parameters.
+ */
+export function extractZodCompatibleSchema(tool: AnyAgentTool): ZodCompatibleSchema | undefined {
+  const schema = tool.parameters as TSchema | undefined;
+  if (!schema || typeof schema !== "object") {
+    // Return undefined to indicate no input schema
+    // The MCP SDK will then call handler(extra) instead of handler(args, extra)
+    return undefined;
+  }
+  return createZodCompatibleSchema(schema);
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +225,12 @@ export function convertToolResult(result: AgentToolResult<unknown>): McpCallTool
  *
  * Differences bridged:
  * - Moltbot: `execute(toolCallId, params, signal?, onUpdate?)`
- * - MCP:    `handler(args) → Promise<CallToolResult>`
+ * - MCP:    `handler(args, extra) → Promise<CallToolResult>`
+ *
+ * When using registerTool() with inputSchema, the MCP SDK calls
+ * the handler with (args, extra) where:
+ * - args: the validated tool input parameters
+ * - extra: RequestHandlerExtra with signal, sessionId, _meta, etc.
  *
  * Notable: MCP handlers have no native streaming update callback.
  * We pass the shared `abortSignal` (if provided) and create an `onUpdate`
@@ -142,10 +240,13 @@ export function wrapToolHandler(
   tool: AnyAgentTool,
   abortSignal?: AbortSignal,
   onToolUpdate?: OnToolUpdateCallback,
-): (args: Record<string, unknown>) => Promise<McpCallToolResult> {
+): (args: Record<string, unknown>, extra: McpRequestHandlerExtra) => Promise<McpCallToolResult> {
   const normalizedName = normalizeToolName(tool.name);
 
-  return async (args: Record<string, unknown>): Promise<McpCallToolResult> => {
+  return async (
+    args: Record<string, unknown>,
+    extra: McpRequestHandlerExtra,
+  ): Promise<McpCallToolResult> => {
     // Generate a synthetic toolCallId. The Claude Agent SDK doesn't expose its
     // internal tool call ID to MCP handlers, so we create a unique one for
     // internal tracking/logging. This is safe because Moltbot tools only use
@@ -160,6 +261,9 @@ export function wrapToolHandler(
       argsPreview: JSON.stringify(args).slice(0, 500),
     });
 
+    // Use the signal from extra if available, fall back to the shared abortSignal
+    const signal = extra?.signal ?? abortSignal;
+
     // Create an onUpdate callback that forwards to the bridge callback.
     const onUpdate = onToolUpdate
       ? (update: unknown) => {
@@ -172,7 +276,7 @@ export function wrapToolHandler(
       : undefined;
 
     try {
-      const result = await tool.execute(toolCallId, args, abortSignal, onUpdate);
+      const result = await tool.execute(toolCallId, args, signal, onUpdate);
       return convertToolResult(result);
     } catch (err) {
       // Propagate AbortError so the SDK runner can handle cancellation.
@@ -309,10 +413,20 @@ export async function bridgeMoltbotToolsToMcpServer(options: BridgeOptions): Pro
     }
 
     try {
-      const jsonSchema = extractJsonSchema(tool);
+      const inputSchema = extractZodCompatibleSchema(tool);
       const handler = wrapToolHandler(tool, options.abortSignal, options.onToolUpdate);
 
-      server.tool(toolName, tool.description ?? `Moltbot tool: ${toolName}`, jsonSchema, handler);
+      // Use registerTool() which properly handles inputSchema.
+      // The MCP SDK will call handler(args, extra) when inputSchema is set,
+      // and validate the args against the schema before calling the handler.
+      server.registerTool(
+        toolName,
+        {
+          description: tool.description ?? `Moltbot tool: ${toolName}`,
+          inputSchema,
+        },
+        handler,
+      );
 
       registered.push(toolName);
     } catch (err) {
@@ -364,9 +478,18 @@ export function bridgeMoltbotToolsSync(
     }
 
     try {
-      const jsonSchema = extractJsonSchema(tool);
+      const inputSchema = extractZodCompatibleSchema(tool);
       const handler = wrapToolHandler(tool, options.abortSignal, options.onToolUpdate);
-      server.tool(toolName, tool.description ?? `Moltbot tool: ${toolName}`, jsonSchema, handler);
+
+      server.registerTool(
+        toolName,
+        {
+          description: tool.description ?? `Moltbot tool: ${toolName}`,
+          inputSchema,
+        },
+        handler,
+      );
+
       registered.push(toolName);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

@@ -144,90 +144,6 @@ const DEFAULT_MCP_SERVER_NAME = "moltbot";
 const DEFAULT_MAX_TURNS = 50;
 
 // ---------------------------------------------------------------------------
-// Debug helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Mask a token for logging - shows length and first/last 4 chars.
- */
-function maskToken(token: string | undefined): string {
-  if (!token) return "(empty)";
-  if (token.length <= 12) return `${"*".repeat(token.length)} (length: ${token.length})`;
-  const first = token.slice(0, 4);
-  const last = token.slice(-4);
-  return `${first}...${"*".repeat(Math.min(8, token.length - 8))}...${last} (length: ${token.length})`;
-}
-
-/**
- * Log authentication-related environment variables (masked).
- */
-function logAuthEnvVars(env: Record<string, string>, prefix: string): void {
-  const authKeys = [
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "ANTHROPIC_BASE_URL",
-    "CLAUDE_CODE_USE_BEDROCK",
-    "CLAUDE_CODE_USE_VERTEX",
-  ];
-  const authEnv: Record<string, string> = {};
-  for (const key of authKeys) {
-    if (env[key]) {
-      authEnv[key] = key.includes("KEY") || key.includes("TOKEN") ? maskToken(env[key]) : env[key];
-    }
-  }
-  log.debug(`${prefix} Auth environment variables`, {
-    authEnv,
-    totalEnvKeys: Object.keys(env).length,
-  });
-}
-
-/**
- * Detect potential auth-related error patterns in response text.
- */
-function detectAuthErrorPatterns(text: string): {
-  hasAuthError: boolean;
-  patterns: string[];
-} {
-  const patterns: string[] = [];
-  const lowerText = text.toLowerCase();
-
-  // Common auth error patterns
-  if (lowerText.includes("unauthorized") || lowerText.includes("401")) {
-    patterns.push("unauthorized/401");
-  }
-  if (lowerText.includes("invalid api key") || lowerText.includes("invalid_api_key")) {
-    patterns.push("invalid_api_key");
-  }
-  if (lowerText.includes("authentication") && lowerText.includes("failed")) {
-    patterns.push("authentication_failed");
-  }
-  if (lowerText.includes("expired") && (lowerText.includes("token") || lowerText.includes("key"))) {
-    patterns.push("expired_credentials");
-  }
-  if (lowerText.includes("permission") && lowerText.includes("denied")) {
-    patterns.push("permission_denied");
-  }
-  if (lowerText.includes("rate limit") || lowerText.includes("ratelimit")) {
-    patterns.push("rate_limit");
-  }
-  if (
-    lowerText.includes("quota") &&
-    (lowerText.includes("exceeded") || lowerText.includes("limit"))
-  ) {
-    patterns.push("quota_exceeded");
-  }
-  // Check for suspiciously short responses that might indicate auth issues
-  if (text.length >= 100 && text.length <= 200) {
-    patterns.push("suspicious_short_response");
-  }
-
-  return {
-    hasAuthError: patterns.length > 0,
-    patterns,
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Model tier environment helpers
 // ---------------------------------------------------------------------------
 
@@ -299,13 +215,7 @@ function normalizeModelNameForProvider(modelName: string, providerType: SdkProvi
     case "anthropic-native":
       // Strip "anthropic/" prefix for direct Anthropic API
       if (hasAnthropicPrefix) {
-        const stripped = modelName.slice("anthropic/".length);
-        log.debug("[CCSDK-MODEL] Stripped anthropic/ prefix for native API", {
-          original: modelName,
-          normalized: stripped,
-          providerType,
-        });
-        return stripped;
+        return modelName.slice("anthropic/".length);
       }
       return modelName;
 
@@ -313,13 +223,7 @@ function normalizeModelNameForProvider(modelName: string, providerType: SdkProvi
       // OpenRouter expects "anthropic/model-name" format
       // Keep as-is if already prefixed, add prefix if not
       if (!hasAnthropicPrefix && modelName.startsWith("claude-")) {
-        const prefixed = `anthropic/${modelName}`;
-        log.debug("[CCSDK-MODEL] Added anthropic/ prefix for OpenRouter", {
-          original: modelName,
-          normalized: prefixed,
-          providerType,
-        });
-        return prefixed;
+        return `anthropic/${modelName}`;
       }
       return modelName;
 
@@ -328,14 +232,10 @@ function normalizeModelNameForProvider(modelName: string, providerType: SdkProvi
       // The model name should come from config already in z.AI format
       // Warn if we see Anthropic-formatted model names - likely a config issue
       if (hasAnthropicPrefix || modelName.startsWith("claude-")) {
-        log.warn(
-          "[CCSDK-MODEL] z.AI provider detected but model name looks like Anthropic format",
-          {
-            modelName,
-            providerType,
-            hint: "For z.AI, configure model tiers with z.AI model names (e.g., 'glm-4.7'), not Anthropic names",
-          },
-        );
+        log.warn("z.AI provider detected but model name looks like Anthropic format", {
+          modelName,
+          hint: "For z.AI, configure model tiers with z.AI model names (e.g., 'glm-4.7'), not Anthropic names",
+        });
       }
       // Pass through unchanged
       return modelName;
@@ -343,11 +243,6 @@ function normalizeModelNameForProvider(modelName: string, providerType: SdkProvi
     case "bedrock":
     case "vertex":
       // Bedrock/Vertex have their own model ID formats
-      // For now, pass through - may need specific handling later
-      log.debug("[CCSDK-MODEL] Passing model name through for cloud provider", {
-        modelName,
-        providerType,
-      });
       return modelName;
 
     default:
@@ -373,11 +268,6 @@ function buildModelTierEnv(
   if (!modelTiers) return env;
 
   const providerType = detectProviderType(providerConfig);
-  log.debug("[CCSDK-MODEL] Building model tier env", {
-    providerType,
-    providerName: providerConfig?.name,
-    rawTiers: modelTiers,
-  });
 
   if (modelTiers.haiku) {
     env.ANTHROPIC_DEFAULT_HAIKU_MODEL = normalizeModelNameForProvider(
@@ -593,46 +483,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   const mcpServerName = params.mcpServerName ?? DEFAULT_MCP_SERVER_NAME;
   const hooksEnabled = params.hooksEnabled === true;
 
-  // Log comprehensive run parameters for debugging
-  log.info("[CCSDK-RUN] Starting SDK agent run", {
-    runId: params.runId,
-    sessionId: params.sessionId,
-    sessionKey: params.sessionKey,
-    agentId: params.agentId,
-    promptLength: params.prompt.length,
-    promptPreview: params.prompt.slice(0, 200),
-    mcpServerName,
-    hooksEnabled,
-    timeoutMs: params.timeoutMs,
-    thinkingLevel: params.thinkingLevel,
-    maxTurns: params.maxTurns,
-  });
-
-  // Log provider configuration
-  log.debug("[CCSDK-RUN] Provider configuration", {
-    providerName: params.providerConfig?.name ?? "(not set)",
-    providerModel: params.providerConfig?.model ?? "(default)",
-    providerMaxTurns: params.providerConfig?.maxTurns ?? "(default)",
-    providerEnvKeys: params.providerConfig?.env ? Object.keys(params.providerConfig.env) : [],
-  });
-
-  // Log model tiers if configured
-  if (params.modelTiers) {
-    log.debug("[CCSDK-RUN] Model tiers configured", {
-      haiku: params.modelTiers.haiku ?? "(default)",
-      sonnet: params.modelTiers.sonnet ?? "(default)",
-      opus: params.modelTiers.opus ?? "(default)",
-    });
-  }
-
-  // Log session resume state
-  if (params.claudeSessionId) {
-    log.debug("[CCSDK-RUN] Session resume enabled", {
-      claudeSessionId: params.claudeSessionId,
-      forkSession: params.forkSession ?? false,
-    });
-  }
-
   // Standard agent event streams that should be emitted to the global system.
   // These are consumed by the Chat UI and other listeners (gateway, diagnostics).
   const GLOBAL_EVENT_STREAMS = new Set([
@@ -780,7 +630,7 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
       };
     }
 
-    log.info(
+    log.debug(
       `Bridged ${bridgeResult.toolCount} tools to MCP server "${mcpServerName}"` +
         (bridgeResult.skippedTools.length > 0
           ? ` (skipped: ${bridgeResult.skippedTools.join(", ")})`
@@ -832,11 +682,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
     if (params.forkSession) {
       sdkOptions.forkSession = true;
     }
-    log.debug("Resuming CCSDK session", {
-      claudeSessionId: params.claudeSessionId,
-      forkSession: params.forkSession ?? false,
-      sessionId: params.sessionId,
-    });
   }
 
   // System prompt (with Moltbot-specific additions and conversation history suffix).
@@ -848,6 +693,7 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
     messageChannel: params.messageChannel,
     channelHints: params.channelHints,
     skills: params.skills,
+    skillsPrompt: params.skillsPrompt,
     // Sender context for system prompt enrichment
     senderId: params.senderId,
     senderName: params.senderName,
@@ -871,18 +717,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   // when running as a LaunchAgent or daemon), then apply overrides.
   const sdkEnv: Record<string, string> = {};
 
-  // Log inherited auth env vars BEFORE we override them
-  log.debug("[CCSDK-ENV] Checking inherited auth env vars from parent process", {
-    hasAnthropicApiKey: Boolean(process.env.ANTHROPIC_API_KEY),
-    inheritedApiKeyMasked: maskToken(process.env.ANTHROPIC_API_KEY),
-    hasAnthropicAuthToken: Boolean(process.env.ANTHROPIC_AUTH_TOKEN),
-    inheritedAuthTokenMasked: maskToken(process.env.ANTHROPIC_AUTH_TOKEN),
-    hasAnthropicBaseUrl: Boolean(process.env.ANTHROPIC_BASE_URL),
-    inheritedBaseUrl: process.env.ANTHROPIC_BASE_URL ?? "(unset)",
-    claudeCodeEntrypoint: process.env.CLAUDE_CODE_ENTRYPOINT ?? "(unset)",
-    claudeCodeIndicator: process.env.CLAUDECODE ?? "(unset)",
-  });
-
   // Inherit parent process environment.
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) sdkEnv[key] = value;
@@ -891,10 +725,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   // Add provider env vars (z.AI, custom endpoints, explicit API key, etc.).
   // These override any inherited values from the parent process.
   if (params.providerConfig?.env) {
-    log.debug("[CCSDK-ENV] Applying provider config env overrides", {
-      providerName: params.providerConfig.name,
-      providerEnvKeys: Object.keys(params.providerConfig.env),
-    });
     for (const [key, value] of Object.entries(params.providerConfig.env)) {
       if (value !== undefined && value !== "") {
         sdkEnv[key] = value;
@@ -904,30 +734,9 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
 
   // Add model tier env vars (normalized based on target provider).
   const modelTierEnv = buildModelTierEnv(params.modelTiers, params.providerConfig);
-  if (Object.keys(modelTierEnv).length > 0) {
-    log.debug("[CCSDK-ENV] Applying model tier env vars", { modelTierEnv });
-  }
   for (const [key, value] of Object.entries(modelTierEnv)) {
     if (value !== undefined) sdkEnv[key] = value;
   }
-
-  // NOTE: We intentionally do NOT set CLAUDE_CONFIG_DIR.
-  // Setting it to a custom directory breaks auth because the SDK scopes
-  // credential resolution (including keychain lookups) to that directory.
-  // The user's `claude login` credentials are associated with ~/.claude,
-  // so we must let the SDK use the default config directory.
-  //
-  // TODO: If per-agent session isolation is needed, we may need to:
-  // 1. Symlink auth state from ~/.claude to the agent's config dir, OR
-  // 2. Use a different mechanism for session isolation that doesn't affect auth
-  if (params.ccsdkConfigDir) {
-    log.debug("[CCSDK-ENV] Ignoring ccsdkConfigDir to preserve auth - using default ~/.claude", {
-      ignoredConfigDir: params.ccsdkConfigDir,
-    });
-  }
-
-  // Log final auth env state
-  logAuthEnvVars(sdkEnv, "[CCSDK-ENV] Final SDK");
 
   // Always pass the full environment to the SDK.
   sdkOptions.env = sdkEnv;
@@ -950,7 +759,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   const thinkingBudget = getThinkingBudget(params.thinkingLevel);
   if (thinkingBudget !== undefined) {
     sdkOptions.budgetTokens = thinkingBudget;
-    log.debug(`Set thinking budget to ${thinkingBudget} tokens for level: ${params.thinkingLevel}`);
   }
 
   // -------------------------------------------------------------------------
@@ -1005,26 +813,12 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
     : timeoutController.signal;
 
   try {
-    log.debug("Starting SDK query", {
-      promptFormat: hasMcpServers ? "AsyncIterable" : "string",
-      promptLength: typeof prompt === "string" ? prompt.length : undefined,
-      hasSystemPrompt: Boolean(sdkOptions.systemPrompt),
-      hasMcpServers,
-      mcpServerNames: sdkOptions.mcpServers ? Object.keys(sdkOptions.mcpServers) : [],
-      allowedToolsCount: sdkOptions.allowedTools?.length ?? 0,
-      model: sdkOptions.model,
-      maxTurns: sdkOptions.maxTurns,
-      hasResume: Boolean(sdkOptions.resume),
-    });
-
     const stream = await coerceAsyncIterable(
       sdk.query({
         prompt, // SDK accepts both string and AsyncIterable<unknown>
         options: sdkOptions as Record<string, unknown>,
       }),
     );
-
-    log.debug("SDK query returned stream, beginning iteration");
 
     for await (const event of stream) {
       // Check abort before processing each event.
@@ -1035,20 +829,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
       }
 
       eventCount += 1;
-
-      // Debug: log each event received (type and key fields only)
-      if (isRecord(event)) {
-        const eventType = event.type ?? "no-type";
-        const hasText = Boolean(event.text || event.delta || event.content || event.message);
-        const hasSessionId = Boolean(event.session_id);
-        log.debug("SDK event received", {
-          eventCount,
-          type: eventType,
-          hasText,
-          hasSessionId,
-          keys: Object.keys(event).slice(0, 10),
-        });
-      }
 
       // Best-effort assistant message boundary detection.
       // Some SDK versions emit `type: "message_start"`; otherwise, we fall back
@@ -1150,6 +930,15 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
               undefined)
             : undefined;
 
+        // Log tool errors at warn level so they appear in logs
+        if (isError && phase === "result") {
+          log.warn("Tool execution failed", {
+            tool: normalizedName.name,
+            toolCallId,
+            error: toolText?.slice(0, 500) ?? "Unknown error",
+          });
+        }
+
         emitEvent("tool", {
           phase,
           name: normalizedName.name,
@@ -1176,14 +965,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
       if (kind === "result" && isRecord(event)) {
         const result = event.result;
         const subtype = event.subtype;
-        log.debug("Received result event, ending stream", {
-          eventCount,
-          hasResult: result !== undefined,
-          resultType: typeof result,
-          resultLength: typeof result === "string" ? result.length : undefined,
-          subtype,
-          hasError: Boolean(event.error),
-        });
         if (typeof result === "string") {
           resultText = result;
         }
@@ -1213,7 +994,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         const sessionId = event.session_id;
         if (typeof sessionId === "string" && sessionId) {
           extractedSessionId = sessionId;
-          log.debug(`Extracted CCSDK session ID: ${sessionId}`);
         }
       }
 
@@ -1224,40 +1004,18 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
 
         // Handle thinking/reasoning content (for breadcrumbs).
         if (extraction.thinking) {
-          log.debug("[CCSDK-STREAM] Thinking content extracted", {
-            eventCount,
-            kind,
-            textLength: extraction.thinking.length,
-            textPreview: extraction.thinking.slice(0, 100),
-            hasOnReasoningStream: Boolean(params.onReasoningStream),
-          });
           if (params.onReasoningStream) {
             try {
-              log.debug("[CCSDK-STREAM] Calling onReasoningStream", {
-                textLength: extraction.thinking.length,
-              });
               await params.onReasoningStream({ text: extraction.thinking });
-            } catch (err) {
-              log.debug("[CCSDK-STREAM] onReasoningStream error", { error: String(err) });
+            } catch {
+              // Don't break stream on callback errors
             }
-          } else {
-            log.debug(
-              "[CCSDK-STREAM] No onReasoningStream callback - thinking text will not be streamed",
-            );
           }
-          // Also emit as agent event for logging/debugging
           emitEvent("thinking", { text: extraction.thinking });
         }
 
         // Handle assistant text content.
         if (!extraction.text) {
-          log.debug("[CCSDK-STREAM] No text extracted from event", {
-            eventCount,
-            kind,
-            eventKeys: isRecord(event) ? Object.keys(event).slice(0, 15) : [],
-            hasOnBlockReply: Boolean(params.onBlockReply),
-            hadThinking: Boolean(extraction.thinking),
-          });
           continue;
         }
 
@@ -1286,60 +1044,33 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         assistantSoFar = chunks.join("\n\n");
         const delta = assistantSoFar.startsWith(prev) ? assistantSoFar.slice(prev.length) : trimmed;
 
-        log.debug("[CCSDK-STREAM] Extracted assistant text", {
-          eventCount,
-          chunkLength: trimmed.length,
-          totalExtracted: extractedChars,
-          totalChunks: chunks.length,
-          hasOnBlockReply: Boolean(params.onBlockReply),
-          hasOnPartialReply: Boolean(params.onPartialReply),
-        });
-
         emitEvent("assistant", { text: assistantSoFar, delta });
 
         // Stream partial reply (for live text updates in UI).
         if (params.onPartialReply) {
           try {
-            log.debug("[CCSDK-STREAM] Calling onPartialReply", {
-              textLength: assistantSoFar.length,
-            });
             await params.onPartialReply({ text: assistantSoFar });
-          } catch (err) {
-            log.debug("[CCSDK-STREAM] onPartialReply error", { error: String(err) });
+          } catch {
+            // Don't break stream on callback errors
           }
         }
 
         // Stream block reply (for block-based reply pipeline).
-        // This enables the reply pipeline to send incremental block updates.
         if (params.onBlockReply) {
           try {
-            log.debug("[CCSDK-STREAM] Calling onBlockReply", { textLength: assistantSoFar.length });
             await params.onBlockReply({ text: assistantSoFar });
-          } catch (err) {
-            log.debug("[CCSDK-STREAM] onBlockReply error", { error: String(err) });
+          } catch {
+            // Don't break stream on callback errors
           }
-        } else {
-          log.debug("[CCSDK-STREAM] onBlockReply not provided - skipping");
         }
 
         // Truncate if we've extracted too much text.
         if (extractedChars >= DEFAULT_MAX_EXTRACTED_CHARS) {
           truncated = true;
-          log.debug(`Truncated after ${extractedChars} chars`);
           break;
         }
       }
     }
-
-    // Log when the stream ends naturally (not via break from result/abort/truncate)
-    log.debug("SDK event stream ended", {
-      eventCount,
-      extractedChars,
-      aborted,
-      truncated,
-      hasResultText: Boolean(resultText),
-      chunksCount: chunks.length,
-    });
   } catch (err) {
     if (timeoutId) clearTimeout(timeoutId);
 
@@ -1428,49 +1159,7 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
 
   const text = (resultText ?? chunks.join("\n\n")).trim();
 
-  // Log per-turn response characteristics for debugging
-  log.debug("[CCSDK-TURN] Turn completed - response analysis", {
-    responseLength: text.length,
-    eventCount,
-    extractedChars,
-    chunksCount: chunks.length,
-    hasResultText: Boolean(resultText),
-    aborted,
-    truncated,
-    durationMs: Date.now() - startedAt,
-  });
-
-  // Detect potential auth errors in the response
-  if (text) {
-    const authCheck = detectAuthErrorPatterns(text);
-    if (authCheck.hasAuthError) {
-      log.warn("[CCSDK-TURN] Potential auth-related issue detected in response", {
-        patterns: authCheck.patterns,
-        responseLength: text.length,
-        responsePreview: text.slice(0, 500),
-      });
-    }
-
-    // Log full response text at debug level for troubleshooting
-    // Truncate very long responses but log short ones in full
-    if (text.length <= 1000) {
-      log.debug("[CCSDK-TURN] Full response text", { text });
-    } else {
-      log.debug("[CCSDK-TURN] Response text (truncated for logging)", {
-        textPreview: text.slice(0, 500),
-        textSuffix: text.slice(-200),
-        fullLength: text.length,
-      });
-    }
-  }
-
   if (!text) {
-    log.warn("[CCSDK-TURN] No text output - possible auth or SDK issue", {
-      eventCount,
-      hasResultText: Boolean(resultText),
-      chunksCount: chunks.length,
-      aborted,
-    });
     emitEvent("lifecycle", {
       phase: "error",
       startedAt,
@@ -1509,40 +1198,22 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   const suffix = truncated ? "\n\n[Output truncated]" : "";
   const finalText = `${text}${suffix}`;
 
-  log.debug("[CCSDK-FINAL] Final result prepared", {
-    textLength: finalText.length,
-    textPreview: finalText.slice(0, 200),
-    hasOnBlockReply: Boolean(params.onBlockReply),
-    hasOnBlockReplyFlush: Boolean(params.onBlockReplyFlush),
-    truncated,
-    aborted,
-  });
-
   // Emit the final block reply.
   if (params.onBlockReply) {
     try {
-      log.debug("[CCSDK-FINAL] Calling final onBlockReply", { textLength: finalText.length });
       await params.onBlockReply({ text: finalText });
-      log.debug("[CCSDK-FINAL] Final onBlockReply completed successfully");
-    } catch (err) {
-      log.debug("[CCSDK-FINAL] Final onBlockReply error", { error: String(err) });
+    } catch {
+      // Don't break on callback errors
     }
-  } else {
-    log.debug("[CCSDK-FINAL] No onBlockReply callback - final text will only be in payloads");
   }
 
-  // CRITICAL: Flush block reply pipeline to signal message completion.
-  // Without this, the UI stays stuck on "..." waiting for the flush signal.
+  // Flush block reply pipeline to signal message completion.
   if (params.onBlockReplyFlush) {
     try {
-      log.debug("[CCSDK-FINAL] Flushing block reply pipeline");
       await params.onBlockReplyFlush();
-      log.debug("[CCSDK-FINAL] Block reply flush completed");
-    } catch (err) {
-      log.debug("[CCSDK-FINAL] Block reply flush error", { error: String(err) });
+    } catch {
+      // Don't break on callback errors
     }
-  } else {
-    log.debug("[CCSDK-FINAL] No onBlockReplyFlush callback - UI may stay on typing indicator");
   }
 
   emitEvent("lifecycle", {

@@ -6,10 +6,7 @@
  */
 
 import type { AgentRuntime, AgentRuntimeRunParams, AgentRuntimeResult } from "./agent-runtime.js";
-import { createSubsystemLogger } from "../logging/subsystem.js";
 import { runEmbeddedPiAgent } from "./pi-embedded.js";
-
-const log = createSubsystemLogger("agents/pi-runtime");
 
 /**
  * Create a Pi Agent runtime instance.
@@ -23,13 +20,6 @@ export function createPiAgentRuntime(): AgentRuntime {
     displayName: "Pi Agent",
 
     async run(params: AgentRuntimeRunParams): Promise<AgentRuntimeResult> {
-      log.info("Starting Pi Agent session", {
-        sessionId: params.sessionId,
-        runId: params.runId,
-        provider: params.provider ?? "default",
-        model: params.model ?? "default",
-      });
-
       // Extract Pi-specific options from the options bag
       const piOpts = params.piOptions ?? {};
 

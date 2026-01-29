@@ -55,8 +55,6 @@ export async function createAgentRuntime(
 ): Promise<AgentRuntime> {
   const runtimeKind = forceKind ?? resolveAgentRuntimeKind(config, agentId);
 
-  log.debug("Creating agent runtime", { agentId, runtime: runtimeKind, forced: !!forceKind });
-
   if (runtimeKind === "ccsdk") {
     // Dynamically import to avoid loading SDK when not needed
     const { createCcSdkAgentRuntime, isSdkAvailable } = await import("./claude-agent-sdk/index.js");

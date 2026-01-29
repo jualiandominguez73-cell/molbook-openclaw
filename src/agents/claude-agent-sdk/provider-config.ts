@@ -16,47 +16,6 @@
  */
 
 import type { SdkProviderConfig, SdkProviderEnv } from "./types.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
-
-const log = createSubsystemLogger("agents/claude-agent-sdk");
-
-/**
- * Mask a token for logging - shows length and first/last 4 chars.
- */
-function maskToken(token: string | undefined): string {
-  if (!token) return "(empty)";
-  if (token.length <= 12) return `${"*".repeat(token.length)} (length: ${token.length})`;
-  const first = token.slice(0, 4);
-  const last = token.slice(-4);
-  return `${first}...${"*".repeat(Math.min(8, token.length - 8))}...${last} (length: ${token.length})`;
-}
-
-/**
- * Log the resolved provider config with masked credentials.
- */
-function logProviderConfig(config: SdkProviderConfig, source: string): void {
-  const envKeys = config.env ? Object.keys(config.env) : [];
-  const maskedEnv: Record<string, string> = {};
-
-  if (config.env) {
-    for (const [key, value] of Object.entries(config.env)) {
-      if (key.includes("KEY") || key.includes("TOKEN") || key.includes("SECRET")) {
-        maskedEnv[key] = maskToken(value);
-      } else {
-        maskedEnv[key] = value ?? "(undefined)";
-      }
-    }
-  }
-
-  log.debug("[CCSDK-PROVIDER] Provider config resolved", {
-    source,
-    providerName: config.name,
-    envKeys,
-    maskedEnv,
-    model: config.model,
-    maxTurns: config.maxTurns,
-  });
-}
 
 /**
  * Build provider config for direct Anthropic API access.
@@ -81,15 +40,10 @@ export function buildAnthropicSdkProvider(apiKey: string): SdkProviderConfig {
  * env vars set in their system environment, that's their configuration choice.
  */
 export function buildClaudeCliSdkProvider(): SdkProviderConfig {
-  log.debug("[CCSDK-PROVIDER] buildClaudeCliSdkProvider called - using SDK native auth");
-
-  const config: SdkProviderConfig = {
+  return {
     name: "Claude CLI (SDK native)",
     env: {},
   };
-
-  logProviderConfig(config, "sdk-native-auth");
-  return config;
 }
 
 /**
@@ -127,23 +81,11 @@ export function buildZaiSdkProvider(
     env.ANTHROPIC_DEFAULT_OPUS_MODEL = options.opusModel;
   }
 
-  const config: SdkProviderConfig = {
+  return {
     name: "z.AI",
     env,
     model: options?.defaultModel,
   };
-
-  log.debug("[CCSDK-PROVIDER] Built z.AI provider config", {
-    hasBaseUrl: Boolean(options?.baseUrl),
-    baseUrl: options?.baseUrl ?? "(default)",
-    defaultModel: options?.defaultModel ?? "(sdk default)",
-    haikuModel: options?.haikuModel ?? "(sdk default)",
-    sonnetModel: options?.sonnetModel ?? "(sdk default)",
-    opusModel: options?.opusModel ?? "(sdk default)",
-    authTokenMasked: maskToken(authToken),
-  });
-
-  return config;
 }
 
 /**
@@ -182,22 +124,11 @@ export function buildOpenRouterSdkProvider(
     env.ANTHROPIC_DEFAULT_OPUS_MODEL = options.opusModel;
   }
 
-  const config: SdkProviderConfig = {
+  return {
     name: "OpenRouter (Anthropic-compatible)",
     env,
     model: options?.defaultModel,
   };
-
-  log.debug("[CCSDK-PROVIDER] Built OpenRouter provider config", {
-    baseUrl: env.ANTHROPIC_BASE_URL,
-    defaultModel: options?.defaultModel ?? "(sdk default)",
-    haikuModel: options?.haikuModel ?? "(sdk default)",
-    sonnetModel: options?.sonnetModel ?? "(sdk default)",
-    opusModel: options?.opusModel ?? "(sdk default)",
-    apiKeyMasked: maskToken(apiKey),
-  });
-
-  return config;
 }
 
 /**
@@ -249,48 +180,33 @@ export function resolveProviderConfig(options?: {
   baseUrl?: string;
   useCliCredentials?: boolean;
 }): SdkProviderConfig {
-  log.debug("[CCSDK-PROVIDER] resolveProviderConfig called", {
-    hasApiKey: Boolean(options?.apiKey),
-    apiKeyMasked: maskToken(options?.apiKey),
-    hasAuthToken: Boolean(options?.authToken),
-    authTokenMasked: maskToken(options?.authToken),
-    baseUrl: options?.baseUrl ?? "(default)",
-    useCliCredentials: options?.useCliCredentials ?? true,
-  });
-
   // 1. Explicit API key from moltbot config takes precedence
   if (options?.apiKey) {
-    log.debug("[CCSDK-PROVIDER] Using explicit API key from moltbot config");
     const config = buildAnthropicSdkProvider(options.apiKey);
     if (options.baseUrl && config.env) {
       config.env.ANTHROPIC_BASE_URL = options.baseUrl;
     }
-    logProviderConfig(config, "explicit-api-key");
     return config;
   }
 
   // 2. Explicit auth token from moltbot config (for z.AI, custom endpoints, etc.)
   if (options?.authToken) {
-    log.debug("[CCSDK-PROVIDER] Using explicit auth token from moltbot config");
     const env: SdkProviderEnv = {
       ANTHROPIC_AUTH_TOKEN: options.authToken,
     };
     if (options.baseUrl) {
       env.ANTHROPIC_BASE_URL = options.baseUrl;
     }
-    const config: SdkProviderConfig = {
+    return {
       name: "Anthropic (auth token)",
       env,
     };
-    logProviderConfig(config, "explicit-auth-token");
-    return config;
   }
 
   // 3. Default: SDK native auth
   // Let the SDK use its internal credential resolution (keychain → OAuth flow).
   // We inherit the full parent process env - if the user has ANTHROPIC_API_KEY or
   // ANTHROPIC_AUTH_TOKEN set, that's their configuration choice.
-  log.debug("[CCSDK-PROVIDER] Using SDK native auth (no explicit credentials configured)");
   const cliConfig = buildClaudeCliSdkProvider();
   if (options?.baseUrl && cliConfig.env) {
     cliConfig.env.ANTHROPIC_BASE_URL = options.baseUrl;

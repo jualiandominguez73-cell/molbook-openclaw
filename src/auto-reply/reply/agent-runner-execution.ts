@@ -5,10 +5,7 @@ import { runCliAgent } from "../../agents/cli-runner.js";
 import { getCliSessionId } from "../../agents/cli-session.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
-import {
-  runAgentWithUnifiedFailover,
-  type UnifiedAgentRunResult,
-} from "../../agents/unified-agent-runner.js";
+import { runAgentWithUnifiedFailover } from "../../agents/unified-agent-runner.js";
 import {
   isCompactionFailureError,
   isContextOverflowError,
@@ -240,11 +237,7 @@ export async function runAgentTurnWithFallback(params: {
             : ("plain" as const);
         })();
 
-        let unifiedResult: UnifiedAgentRunResult;
-        logVerbose(
-          `[CCSDK-EXEC] Calling runAgentWithUnifiedFailover. hasOnBlockReply=${Boolean(params.opts?.onBlockReply)}, blockStreamingEnabled=${params.blockStreamingEnabled}, hasBlockReplyPipeline=${Boolean(params.blockReplyPipeline)}, hasOnReasoningStream=${Boolean(params.opts?.onReasoningStream)}, shouldStartOnReasoning=${params.typingSignals.shouldStartOnReasoning}`,
-        );
-        unifiedResult = await runAgentWithUnifiedFailover({
+        const unifiedResult = await runAgentWithUnifiedFailover({
           // Core params
           sessionId: params.followupRun.run.sessionId,
           sessionKey: params.sessionKey,
