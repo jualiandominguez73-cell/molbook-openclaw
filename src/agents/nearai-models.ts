@@ -20,10 +20,31 @@ export const NEAR_AI_DEFAULT_COST = {
  * - NVIDIA TEE for GPU-level isolation
  * - Cryptographic signing of all AI outputs inside TEE
  *
- * All NEAR AI models are fully private - prompts/responses are not logged.
- * The `privacy` field is set to "private" for all models.
+ * Models marked as "private" are fully private - prompts/responses are not logged.
+ * Models marked as "anonymized" use anonymized proxy endpoints (not TEE-protected).
+ * The `privacy` field indicates the privacy level for each model.
  */
 export const NEAR_AI_MODEL_CATALOG = [
+  {
+    id: "anthropic/claude-sonnet-4-5",
+    name: "Claude Sonnet 4.5",
+    reasoning: true,
+    input: ["text"],
+    contextWindow: 200000,
+    maxTokens: 8192,
+    cost: { input: 3, output: 15.5, cacheRead: 0, cacheWrite: 0 },
+    privacy: "anonymized",
+  },
+  {
+    id: "black-forest-labs/FLUX.2-klein-4B",
+    name: "FLUX.2-klein-4B",
+    reasoning: false,
+    input: ["text"],
+    contextWindow: 128000,
+    maxTokens: 8192,
+    cost: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+    privacy: "private",
+  },
   {
     id: "deepseek-ai/DeepSeek-V3.1",
     name: "DeepSeek V3.1",
@@ -33,6 +54,26 @@ export const NEAR_AI_MODEL_CATALOG = [
     maxTokens: 8192,
     cost: { input: 1.05, output: 3.1, cacheRead: 0, cacheWrite: 0 },
     privacy: "private",
+  },
+  {
+    id: "google/gemini-3-pro",
+    name: "Gemini 3 Pro Preview",
+    reasoning: true,
+    input: ["text"],
+    contextWindow: 1000000,
+    maxTokens: 8192,
+    cost: { input: 1.25, output: 15, cacheRead: 0, cacheWrite: 0 },
+    privacy: "anonymized",
+  },
+  {
+    id: "openai/gpt-5.2",
+    name: "OpenAI GPT-5.2",
+    reasoning: true,
+    input: ["text"],
+    contextWindow: 400000,
+    maxTokens: 8192,
+    cost: { input: 1.8, output: 15.5, cacheRead: 0, cacheWrite: 0 },
+    privacy: "anonymized",
   },
   {
     id: "openai/gpt-oss-120b",
@@ -80,6 +121,5 @@ export function buildNearAiModelDefinition(entry: NearAiCatalogEntry): ModelDefi
     cost: entry.cost,
     contextWindow: entry.contextWindow,
     maxTokens: entry.maxTokens,
-    privacy: entry.privacy,
   };
 }
