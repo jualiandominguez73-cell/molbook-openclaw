@@ -9,6 +9,8 @@ read_when:
 
 Open the terminal UI connected to the Gateway.
 
+Tip: If you pass `--url`, Moltbot treats this as client-only mode and won’t block on local config validation.
+
 Related:
 - TUI guide: [TUI](/tui)
 
@@ -19,4 +21,3 @@ moltbot tui
 moltbot tui --url ws://127.0.0.1:18789 --token <token>
 moltbot tui --session main --deliver
 ```
-

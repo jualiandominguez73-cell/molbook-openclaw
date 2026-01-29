@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { defaultRuntime } from "../../runtime.js";
 import { emitCliBanner } from "../banner.js";
-import { getCommandPath, getVerboseFlag, hasHelpOrVersion } from "../argv.js";
+import { getCommandPath, getFlagValue, getVerboseFlag, hasHelpOrVersion } from "../argv.js";
 import { ensureConfigReady } from "./config-guard.js";
 import { ensurePluginRegistryLoaded } from "../plugin-registry.js";
 import { isTruthyEnvValue } from "../../infra/env.js";
@@ -41,7 +41,12 @@ export function registerPreActionHooks(program: Command, programVersion: string)
       process.env.NODE_NO_WARNINGS ??= "1";
     }
     if (commandPath[0] === "doctor") return;
-    await ensureConfigReady({ runtime: defaultRuntime, commandPath });
+    // `tui --url` is client-only, so it should not require a valid local config (e.g. local plugins).
+    const url = commandPath[0] === "tui" ? getFlagValue(argv, "--url") : undefined;
+    const shouldBypassConfigGuardForTui = typeof url === "string" && url.trim().length > 0;
+    if (!shouldBypassConfigGuardForTui) {
+      await ensureConfigReady({ runtime: defaultRuntime, commandPath });
+    }
     // Load plugins for commands that need channel access
     if (PLUGIN_REQUIRED_COMMANDS.has(commandPath[0])) {
       ensurePluginRegistryLoaded();
