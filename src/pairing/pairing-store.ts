@@ -7,11 +7,38 @@ import lockfile from "proper-lockfile";
 import { getPairingAdapter } from "../channels/plugins/pairing.js";
 import type { ChannelId, ChannelPairingAdapter } from "../channels/plugins/types.js";
 import { resolveOAuthDir, resolveStateDir } from "../config/paths.js";
+import { logPairingEvent } from "../security/audit-log.js";
 
 const PAIRING_CODE_LENGTH = 8;
 const PAIRING_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const PAIRING_PENDING_TTL_MS = 60 * 60 * 1000;
 const PAIRING_PENDING_MAX = 3;
+
+// SECURITY: Rate limiting for pairing code verification
+const PAIRING_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const PAIRING_RATE_LIMIT_MAX_ATTEMPTS = 5; // Max 5 attempts per minute
+const pairingAttemptsByChannel = new Map<string, { count: number; windowStart: number }>();
+
+function checkPairingRateLimit(channel: PairingChannel): boolean {
+  const key = String(channel);
+  const now = Date.now();
+  const existing = pairingAttemptsByChannel.get(key);
+
+  if (!existing || now - existing.windowStart > PAIRING_RATE_LIMIT_WINDOW_MS) {
+    // Start new window
+    pairingAttemptsByChannel.set(key, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (existing.count >= PAIRING_RATE_LIMIT_MAX_ATTEMPTS) {
+    // Rate limited
+    return false;
+  }
+
+  // Increment count
+  existing.count += 1;
+  return true;
+}
 const PAIRING_STORE_LOCK_OPTIONS = {
   retries: {
     retries: 10,
@@ -411,6 +438,15 @@ export async function upsertChannelPairingRequest(params: {
         version: 1,
         requests: [...reqs, next],
       } satisfies PairingStore);
+
+      // SECURITY: Log new pairing request
+      logPairingEvent({
+        event: "pairing.request",
+        channel: String(params.channel),
+        userId: id,
+        pairingCode: code,
+      });
+
       return { code, created: true };
     },
   );
@@ -419,11 +455,23 @@ export async function upsertChannelPairingRequest(params: {
 export async function approveChannelPairingCode(params: {
   channel: PairingChannel;
   code: string;
+  userId?: string;
   env?: NodeJS.ProcessEnv;
-}): Promise<{ id: string; entry?: PairingRequest } | null> {
+}): Promise<{ id: string; entry?: PairingRequest; rateLimited?: boolean } | null> {
   const env = params.env ?? process.env;
   const code = params.code.trim().toUpperCase();
   if (!code) return null;
+
+  // SECURITY: Check rate limit before processing
+  if (!checkPairingRateLimit(params.channel)) {
+    logPairingEvent({
+      event: "pairing.rejected",
+      channel: String(params.channel),
+      userId: params.userId,
+      reason: "rate_limited",
+    });
+    return { id: "", rateLimited: true };
+  }
 
   const filePath = resolvePairingPath(params.channel, env);
   return await withFileLock(
@@ -445,6 +493,13 @@ export async function approveChannelPairingCode(params: {
             requests: pruned,
           } satisfies PairingStore);
         }
+        // SECURITY: Log failed pairing attempt
+        logPairingEvent({
+          event: "pairing.rejected",
+          channel: String(params.channel),
+          userId: params.userId,
+          reason: "invalid_code",
+        });
         return null;
       }
       const entry = pruned[idx];
@@ -459,6 +514,15 @@ export async function approveChannelPairingCode(params: {
         entry: entry.id,
         env,
       });
+
+      // SECURITY: Log successful pairing
+      logPairingEvent({
+        event: "pairing.approved",
+        channel: String(params.channel),
+        userId: entry.id,
+        pairingCode: code,
+      });
+
       return { id: entry.id, entry };
     },
   );
