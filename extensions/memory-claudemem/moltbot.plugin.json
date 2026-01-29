@@ -1,0 +1,32 @@
+{
+  "id": "memory-claudemem",
+  "name": "Memory (Claude-Mem)",
+  "description": "Integrates claude-mem memory system using the hook CLI for persistent context across sessions",
+  "kind": "memory",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "project": {
+        "type": "string",
+        "description": "Project name for scoping observations (defaults to workspace directory name)"
+      },
+      "syncMemoryFile": {
+        "type": "boolean",
+        "default": true,
+        "description": "Sync MEMORY.md with claude-mem context on session start"
+      }
+    }
+  },
+  "uiHints": {
+    "project": {
+      "label": "Project Name",
+      "help": "Scopes observations to this project. Defaults to workspace directory name."
+    },
+    "syncMemoryFile": {
+      "label": "Sync MEMORY.md",
+      "help": "Update MEMORY.md with claude-mem context on session/gateway start"
+    }
+  }
+}
