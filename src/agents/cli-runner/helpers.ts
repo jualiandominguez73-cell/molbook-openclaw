@@ -282,6 +282,35 @@ export function parseCliJson(raw: string, backend: CliBackendConfig): CliOutput 
   } catch {
     return null;
   }
+
+  // Handle JSON array output (Claude CLI with --output-format json returns an array)
+  if (Array.isArray(parsed)) {
+    let sessionId: string | undefined;
+    let usage: CliUsage | undefined;
+    let text = "";
+
+    for (const item of parsed) {
+      if (!isRecord(item)) continue;
+
+      // Extract session_id from any item that has it
+      if (!sessionId) sessionId = pickSessionId(item, backend);
+
+      // Look for the result object (final output)
+      if (item.type === "result" && typeof item.result === "string") {
+        text = item.result;
+        if (isRecord(item.usage)) {
+          usage = toUsage(item.usage) ?? usage;
+        }
+        break; // Use first result object found
+      }
+    }
+
+    if (text) {
+      return { text: text.trim(), sessionId, usage };
+    }
+    return null;
+  }
+
   if (!isRecord(parsed)) return null;
   const sessionId = pickSessionId(parsed, backend);
   const usage = isRecord(parsed.usage) ? toUsage(parsed.usage) : undefined;
