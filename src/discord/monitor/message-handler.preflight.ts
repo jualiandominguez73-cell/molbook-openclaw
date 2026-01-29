@@ -42,6 +42,7 @@ import {
   resolveDiscordUserAllowed,
   resolveGroupDmAllow,
 } from "./allow-list.js";
+import { evaluateChimeIn } from "./chime-in-eval.js";
 import {
   formatDiscordUserTag,
   resolveDiscordSystemLocation,
@@ -50,7 +51,6 @@ import {
 import { resolveDiscordChannelInfo, resolveDiscordMessageText } from "./message-utils.js";
 import { resolveDiscordSenderIdentity, resolveDiscordWebhookId } from "./sender-identity.js";
 import { resolveDiscordSystemEvent } from "./system-events.js";
-import { evaluateChimeIn } from "./chime-in-eval.js";
 import { resolveDiscordThreadChannel, resolveDiscordThreadParentInfo } from "./threading.js";
 
 export type {
@@ -471,6 +471,23 @@ export async function preflightDiscordMessage(
     commandAuthorized,
   });
   const effectiveWasMentioned = mentionGate.effectiveWasMentioned;
+
+  if (isGuildMessage) {
+    const channelUsers = channelConfig?.users ?? guildInfo?.users;
+    if (Array.isArray(channelUsers) && channelUsers.length > 0) {
+      const userOk = resolveDiscordUserAllowed({
+        allowList: channelUsers,
+        userId: sender.id,
+        userName: sender.name,
+        userTag: sender.tag,
+      });
+      if (!userOk) {
+        logVerbose(`Blocked discord guild sender ${sender.id} (not in channel users allowlist)`);
+        return null;
+      }
+    }
+  }
+
   if (isGuildMessage && shouldRequireMention) {
     if (botId && mentionGate.shouldSkip) {
       // ChimeIn frequency gating: accumulate messages, don't drop immediately
@@ -536,22 +553,6 @@ export async function preflightDiscordMessage(
   // Reset chimeIn counter when bot is mentioned
   if (isGuildMessage && chimeInConfig && !mentionGate.shouldSkip) {
     params.chimeInCounters.set(message.channelId, 0);
-  }
-
-  if (isGuildMessage) {
-    const channelUsers = channelConfig?.users ?? guildInfo?.users;
-    if (Array.isArray(channelUsers) && channelUsers.length > 0) {
-      const userOk = resolveDiscordUserAllowed({
-        allowList: channelUsers,
-        userId: sender.id,
-        userName: sender.name,
-        userTag: sender.tag,
-      });
-      if (!userOk) {
-        logVerbose(`Blocked discord guild sender ${sender.id} (not in channel users allowlist)`);
-        return null;
-      }
-    }
   }
 
   const systemLocation = resolveDiscordSystemLocation({
