@@ -329,12 +329,33 @@ export default function (api: ClawdbotPluginApi) {
   });
 
   // agent_end → hook claude-code summarize (generate session summary)
-  api.on("agent_end", async (_event, ctx) => {
+  api.on("agent_end", async (event, ctx) => {
     const contentSessionId = getContentSessionId(ctx.sessionKey);
+
+    // Extract the last assistant message from the conversation
+    let lastAssistantMessage = "";
+    if (Array.isArray(event.messages)) {
+      for (let i = event.messages.length - 1; i >= 0; i--) {
+        const msg = event.messages[i] as any;
+        if (msg?.role === "assistant") {
+          // Handle different content formats
+          if (typeof msg.content === "string") {
+            lastAssistantMessage = msg.content;
+          } else if (Array.isArray(msg.content)) {
+            const textParts = msg.content
+              .filter((c: any) => c.type === "text" && c.text)
+              .map((c: any) => c.text);
+            lastAssistantMessage = textParts.join("\n");
+          }
+          break;
+        }
+      }
+    }
 
     // Fire-and-forget summary generation
     callHookFireAndForget("summarize", {
       session_id: contentSessionId,
+      last_assistant_message: lastAssistantMessage,
       cwd: hookCwd,
     });
   });
