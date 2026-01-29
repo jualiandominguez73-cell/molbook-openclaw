@@ -88,7 +88,7 @@ export class SecretScrubber {
     if (!text || !this.regex || this.secrets.size === 0) {
       return text;
     }
-    return text.replace(this.regex, "[REDACTED]");
+    return text.replace(this.regex, "your-key-here");
   }
 
   private rebuildRegex(): void {

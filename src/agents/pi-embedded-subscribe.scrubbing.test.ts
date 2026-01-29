@@ -57,7 +57,7 @@ describe("Scrubbing Integration", () => {
 
     expect(onBlockReply).toHaveBeenCalled();
     const lastCall = onBlockReply.mock.calls[0][0];
-    expect(lastCall.text).toContain("[REDACTED]");
+    expect(lastCall.text).toContain("your-key-here");
     expect(lastCall.text).not.toContain("super-secret-token-123");
   });
 
@@ -93,7 +93,7 @@ describe("Scrubbing Integration", () => {
 
     expect(onToolResult).toHaveBeenCalled();
     const lastCall = onToolResult.mock.calls[0][0];
-    expect(lastCall.text).toContain("[REDACTED]");
+    expect(lastCall.text).toContain("your-key-here");
     expect(lastCall.text).not.toContain("db-password-xyz");
   });
 
@@ -132,7 +132,7 @@ describe("Scrubbing Integration", () => {
 
     expect(onReasoningStream).toHaveBeenCalled();
     const lastCall = onReasoningStream.mock.calls[0][0];
-    expect(lastCall.text).toContain("[REDACTED]");
+    expect(lastCall.text).toContain("your-key-here");
     expect(lastCall.text).not.toContain("reasoning-secret-123");
   });
 });

@@ -16,8 +16,8 @@ describe("SecretScrubber", () => {
         "Key: sensitive-key-123, Pass: sensitive-password-123, Layout: not-sensitive-123";
       const scrubbed = scrubber.scrub(text);
 
-      expect(scrubbed).toContain("Key: [REDACTED]");
-      expect(scrubbed).toContain("Pass: [REDACTED]");
+      expect(scrubbed).toContain("Key: your-key-here");
+      expect(scrubbed).toContain("Pass: your-key-here");
       expect(scrubbed).toContain("Layout: not-sensitive-123");
     });
 
@@ -31,7 +31,7 @@ describe("SecretScrubber", () => {
       const text = "api: sensitive-api-key, token: sensitive-auth-token";
       const scrubbed = scrubber.scrub(text);
 
-      expect(scrubbed).toBe("api: [REDACTED], token: [REDACTED]");
+      expect(scrubbed).toBe("api: your-key-here, token: your-key-here");
     });
   });
 
@@ -42,20 +42,20 @@ describe("SecretScrubber", () => {
       config.self = config;
 
       expect(() => scrubber.extractFromConfig(config)).not.toThrow();
-      expect(scrubber.scrub("secret-circular")).toBe("[REDACTED]");
+      expect(scrubber.scrub("secret-circular")).toBe("your-key-here");
     });
 
     it("escapes regex special characters in secrets", () => {
       const scrubber = new SecretScrubber(["$ecret.with*chars+"]);
       const text = "My secret is $ecret.with*chars+ now.";
-      expect(scrubber.scrub(text)).toBe("My secret is [REDACTED] now.");
+      expect(scrubber.scrub(text)).toBe("My secret is your-key-here now.");
     });
 
     it("handles overlapping secrets by redacting longer ones first", () => {
       const scrubber = new SecretScrubber(["password", "password123"]);
       const text = "My pass is password123";
-      // If "password" matched first, result would be "[REDACTED]123"
-      expect(scrubber.scrub(text)).toBe("My pass is [REDACTED]");
+      // If "password" matched first, result would be "your-key-here123"
+      expect(scrubber.scrub(text)).toBe("My pass is your-key-here");
     });
   });
 
