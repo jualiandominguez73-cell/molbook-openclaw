@@ -79,6 +79,10 @@ This enables nuanced evaluation of subtle attacks that regex can't catch.
 
 ## Quick Start
 
+> **Note:** Security tests require an `ANTHROPIC_API_KEY` for the LLM judge. The GitHub Actions
+> workflow does **not** have access to this key, so tests can only be run locally or in
+> environments where you provide your own API key.
+
 ```bash
 # Run security tests (requires gateway running)
 # Terminal 1:
