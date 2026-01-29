@@ -10,6 +10,13 @@
 <body>
     <header>
         <h1>SYSTEM MONITOR</h1>
+        <nav class="main-nav">
+            <a href="/" class="active">Dashboard</a>
+            <a href="/cis.html">CIS</a>
+            <a href="/sticker-business.html">Sticker Business</a>
+            <a href="/ceramics-intelligence.html">Ceramics</a>
+            <a href="/natural-capture.html">Natural Capture</a>
+        </nav>
         <div class="status" id="gateway-status" aria-live="polite" aria-atomic="true">
             <span class="status-dot" aria-hidden="true"></span>
             <span class="status-text">Loading...</span>
@@ -147,32 +154,6 @@
                 <div class="skill-card">
                     <div class="skill-label">HABIT STREAKS</div>
                     <div class="skill-content" id="ef-habits-list">Loading...</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- NATURAL CAPTURE PANEL -->
-        <section class="skills-panel">
-            <h2>NATURAL CAPTURE</h2>
-            <div class="capture-container">
-                <!-- Quick Capture Input -->
-                <div class="capture-input-wrapper">
-                    <input type="text" id="capture-input" placeholder="Capture something... (idea:, todo:, note:, etc.)" aria-label="Quick capture input">
-                    <button id="capture-submit" aria-label="Submit capture">CAPTURE</button>
-                </div>
-
-                <!-- Recent Captures -->
-                <div class="captures-grid">
-                    <div class="capture-list" id="capture-recent">
-                        <div class="skill-label">RECENT CAPTURES</div>
-                        <div id="captures-list-content">Loading...</div>
-                    </div>
-
-                    <!-- Capture Type Counts -->
-                    <div class="capture-stats">
-                        <div class="skill-label">TODAY'S CAPTURES</div>
-                        <div id="capture-type-counts">Loading...</div>
-                    </div>
                 </div>
             </div>
         </section>

@@ -49,6 +49,35 @@
         }
         .nav a:hover, .nav a.active { background: #252525; color: #4a9eff; }
 
+        /* Main Navigation */
+        .main-nav {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .main-nav a {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #888;
+            padding: 0.4rem 0.75rem;
+            text-decoration: none;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 0;
+            transition: all 0.2s;
+        }
+        .main-nav a:hover {
+            background: #252525;
+            color: #fff;
+        }
+        .main-nav a.active {
+            background: #4a9eff;
+            border-color: #4a9eff;
+            color: #0f0f0f;
+        }
+
         /* Filters */
         .filters {
             background: #1a1a1a;
@@ -293,6 +322,13 @@
 </head>
 <body>
     <div class="header">
+        <nav class="main-nav">
+            <a href="/">Dashboard</a>
+            <a href="/cis.html" class="active">CIS</a>
+            <a href="/sticker-business.html">Sticker Business</a>
+            <a href="/ceramics-intelligence.html">Ceramics</a>
+            <a href="/natural-capture.html">Natural Capture</a>
+        </nav>
         <h1>🧠 Content Intelligence System</h1>
         <p>Track, harvest, and extract insights from your content sources</p>
     </div>

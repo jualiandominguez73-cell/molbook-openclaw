@@ -49,6 +49,35 @@
         }
         .nav a:hover, .nav a.active { background: #252525; color: #c9a87c; }
 
+        /* Main Navigation */
+        .main-nav {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .main-nav a {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #888;
+            padding: 0.4rem 0.75rem;
+            text-decoration: none;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 0;
+            transition: all 0.2s;
+        }
+        .main-nav a:hover {
+            background: #252525;
+            color: #fff;
+        }
+        .main-nav a.active {
+            background: #c9a87c;
+            border-color: #c9a87c;
+            color: #0f0f0f;
+        }
+
         /* Phase Tracker */
         .phase-tracker {
             background: #1a1a1a;
@@ -304,6 +333,13 @@
 </head>
 <body>
     <div class="header">
+        <nav class="main-nav">
+            <a href="/">Dashboard</a>
+            <a href="/cis.html">CIS</a>
+            <a href="/sticker-business.html">Sticker Business</a>
+            <a href="/ceramics-intelligence.html" class="active">Ceramics</a>
+            <a href="/natural-capture.html">Natural Capture</a>
+        </nav>
         <h1>🏺 Ceramics Intelligence</h1>
         <p>AI-powered content and strategy for your ceramics business</p>
     </div>
