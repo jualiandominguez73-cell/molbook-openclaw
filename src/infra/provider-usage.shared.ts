@@ -10,7 +10,10 @@ export const PROVIDER_LABELS: Record<UsageProviderId, string> = {
   "google-antigravity": "Antigravity",
   minimax: "MiniMax",
   "openai-codex": "Codex",
-  zai: "z.ai",
+  zai: "Z.AI",
+  "zai-coding": "Z.AI Coding",
+  zhipu: "Zhipu AI",
+  "zhipu-coding": "Zhipu AI Coding",
 };
 
 export const usageProviders: UsageProviderId[] = [
@@ -21,6 +24,9 @@ export const usageProviders: UsageProviderId[] = [
   "minimax",
   "openai-codex",
   "zai",
+  "zai-coding",
+  "zhipu",
+  "zhipu-coding",
 ];
 
 export function resolveUsageProviderId(provider?: string | null): UsageProviderId | undefined {

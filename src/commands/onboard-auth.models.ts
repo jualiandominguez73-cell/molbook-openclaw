@@ -20,6 +20,11 @@ export const KIMI_CODE_MAX_TOKENS = 32768;
 export const KIMI_CODE_HEADERS = { "User-Agent": "KimiCLI/0.77" } as const;
 export const KIMI_CODE_COMPAT = { supportsDeveloperRole: false } as const;
 
+// GLM (Z.AI / Zhipu AI) models
+export const GLM_DEFAULT_MODEL_ID = "glm-4.7";
+export const GLM_DEFAULT_CONTEXT_WINDOW = 205000;
+export const GLM_DEFAULT_MAX_TOKENS = 8192;
+
 // Pricing: MiniMax doesn't publish public rates. Override in models.json for accurate costs.
 export const MINIMAX_API_COST = {
   input: 15,
@@ -46,6 +51,12 @@ export const MOONSHOT_DEFAULT_COST = {
   cacheWrite: 0,
 };
 export const KIMI_CODE_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+export const GLM_DEFAULT_COST = {
   input: 0,
   output: 0,
   cacheRead: 0,
@@ -114,5 +125,17 @@ export function buildKimiCodeModelDefinition(): ModelDefinitionConfig {
     maxTokens: KIMI_CODE_MAX_TOKENS,
     headers: KIMI_CODE_HEADERS,
     compat: KIMI_CODE_COMPAT,
+  };
+}
+
+export function buildGlmModelDefinition(): ModelDefinitionConfig {
+  return {
+    id: GLM_DEFAULT_MODEL_ID,
+    name: "GLM 4.7",
+    reasoning: false,
+    input: ["text"],
+    cost: GLM_DEFAULT_COST,
+    contextWindow: GLM_DEFAULT_CONTEXT_WINDOW,
+    maxTokens: GLM_DEFAULT_MAX_TOKENS,
   };
 }
