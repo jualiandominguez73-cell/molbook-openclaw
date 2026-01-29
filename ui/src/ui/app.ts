@@ -79,6 +79,9 @@ import {
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity";
 
+// Import i18n components
+import './i18n/LocaleSelector.js';
+
 declare global {
   interface Window {
     __CLAWDBOT_CONTROL_UI_BASE_PATH__?: string;

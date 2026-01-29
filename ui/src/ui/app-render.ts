@@ -81,6 +81,7 @@ import {
 import { loadCronRuns, toggleCronJob, runCronJob, removeCronJob, addCronJob } from "./controllers/cron";
 import { loadDebug, callDebugMethod } from "./controllers/debug";
 import { loadLogs } from "./controllers/logs";
+import { t } from "./i18n/i18n.js";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -122,8 +123,8 @@ export function renderApp(state: AppViewState) {
                 ...state.settings,
                 navCollapsed: !state.settings.navCollapsed,
               })}
-            title="${state.settings.navCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
-            aria-label="${state.settings.navCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
+            title="${state.settings.navCollapsed ? t("topbar.expand_sidebar") : t("topbar.collapse_sidebar")}"
+            aria-label="${state.settings.navCollapsed ? t("topbar.expand_sidebar") : t("topbar.collapse_sidebar")}"
           >
             <span class="nav-collapse-toggle__icon">${icons.menu}</span>
           </button>
@@ -132,17 +133,18 @@ export function renderApp(state: AppViewState) {
               <img src="https://mintcdn.com/clawdhub/4rYvG-uuZrMK_URE/assets/pixel-lobster.svg?fit=max&auto=format&n=4rYvG-uuZrMK_URE&q=85&s=da2032e9eac3b5d9bfe7eb96ca6a8a26" alt="Moltbot" />
             </div>
             <div class="brand-text">
-              <div class="brand-title">MOLTBOT</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-title">${t("topbar.brand_title")}</div>
+              <div class="brand-sub">${t("topbar.brand_sub")}</div>
             </div>
           </div>
         </div>
         <div class="topbar-status">
           <div class="pill">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
-            <span>Health</span>
-            <span class="mono">${state.connected ? "OK" : "Offline"}</span>
+            <span>${t("topbar.status.health")}</span>
+            <span class="mono">${state.connected ? t("topbar.status.ok") : t("topbar.status.offline")}</span>
           </div>
+          <locale-selector></locale-selector>
           ${renderThemeToggle(state)}
         </div>
       </header>
@@ -175,7 +177,7 @@ export function renderApp(state: AppViewState) {
         })}
         <div class="nav-group nav-group--links">
           <div class="nav-label nav-label--static">
-            <span class="nav-label__text">Resources</span>
+            <span class="nav-label__text">${t("nav.resources")}</span>
           </div>
           <div class="nav-group__items">
             <a
@@ -183,10 +185,10 @@ export function renderApp(state: AppViewState) {
               href="https://docs.molt.bot"
               target="_blank"
               rel="noreferrer"
-              title="Docs (opens in new tab)"
+              title="${t("nav.docs")} (${t("common.open_in_new_tab")})"
             >
               <span class="nav-item__icon" aria-hidden="true">${icons.book}</span>
-              <span class="nav-item__text">Docs</span>
+              <span class="nav-item__text">${t("nav.docs")}</span>
             </a>
           </div>
         </div>
