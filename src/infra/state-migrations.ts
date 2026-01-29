@@ -360,7 +360,13 @@ export async function autoMigrateLegacyStateDir(params: {
 
   try {
     fs.renameSync(legacyDir, targetDir);
-  } catch (err) {
+  } catch (err: any) {
+    if (err.code === "EBUSY") {
+      warnings.push(
+        `Legacy state dir (${legacyDir}) could not be renamed (EBUSY). This is common in Docker with bind mounts. Skipping automatic migration.`,
+      );
+      return { migrated: false, skipped: true, changes: [], warnings };
+    }
     warnings.push(`Failed to move legacy state dir (${legacyDir} → ${targetDir}): ${String(err)}`);
     return { migrated: false, skipped: false, changes, warnings };
   }
@@ -430,11 +436,11 @@ export async function detectLegacyStateMigrations(params: {
     : { store: {}, ok: true };
   const legacyKeys = targetSessionParsed.ok
     ? listLegacySessionKeys({
-        store: targetSessionParsed.store,
-        agentId: targetAgentId,
-        mainKey: targetMainKey,
-        scope: targetScope,
-      })
+      store: targetSessionParsed.store,
+      agentId: targetAgentId,
+      mainKey: targetMainKey,
+      scope: targetScope,
+    })
     : [];
 
   const legacyAgentDir = path.join(stateDir, "agent");

@@ -32,6 +32,13 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
+# Create global CLI symlink
+RUN ln -s /app/moltbot.mjs /usr/local/bin/moltbot
+
+# Ensure state directories exist and are owned by node
+RUN mkdir -p /var/lib/moltbot /home/node/clawd && \
+    chown -R node:node /var/lib/moltbot /home/node/clawd
+
 # Security hardening: Run as non-root user
 # The node:22-bookworm image includes a 'node' user (uid 1000)
 # This reduces the attack surface by preventing container escape via root privileges
