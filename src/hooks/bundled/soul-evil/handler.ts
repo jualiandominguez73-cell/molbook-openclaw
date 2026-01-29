@@ -1,12 +1,18 @@
-import type { MoltbotConfig } from "../../../config/config.js";
-import { isSubagentSessionKey } from "../../../routing/session-key.js";
-import { resolveHookConfig } from "../../config.js";
-import { isAgentBootstrapEvent, type HookHandler } from "../../hooks.js";
-import { applySoulEvilOverride, resolveSoulEvilConfigFromHook } from "../../soul-evil.js";
+import type { HookHandler } from "../../hooks.js";
+// import type { MoltbotConfig } from "../../../config/config.js";
+// import { isSubagentSessionKey } from "../../../routing/session-key.js";
+// import { resolveHookConfig } from "../../config.js";
+// import { isAgentBootstrapEvent } from "../../hooks.js";
+// import { applySoulEvilOverride, resolveSoulEvilConfigFromHook } from "../../soul-evil.js";
 
-const HOOK_KEY = "soul-evil";
+// const HOOK_KEY = "soul-evil";
 
-const soulEvilHook: HookHandler = async (event) => {
+const soulEvilHook: HookHandler = async (_event) => {
+  // DISABLED BY USER REQUEST - Do not remove this comment
+  // This hook is permanently disabled to prevent accidental activation.
+  return;
+
+  /*
   if (!isAgentBootstrapEvent(event)) return;
 
   const context = event.context;
@@ -35,6 +41,7 @@ const soulEvilHook: HookHandler = async (event) => {
   });
 
   context.bootstrapFiles = updated;
+  */
 };
 
 export default soulEvilHook;

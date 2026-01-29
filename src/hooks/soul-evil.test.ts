@@ -115,7 +115,8 @@ describe("decideSoulEvil", () => {
 });
 
 describe("applySoulEvilOverride", () => {
-  it("replaces SOUL content when evil is active and file exists", async () => {
+  // SKIPPED: Feature permanently disabled by user request
+  it.skip("replaces SOUL content when evil is active and file exists", async () => {
     const tempDir = await makeTempWorkspace("moltbot-soul-");
     await writeWorkspaceFile({
       dir: tempDir,
@@ -157,7 +158,8 @@ describe("applySoulEvilOverride", () => {
     expect(soul?.content).toBe("friendly");
   });
 
-  it("uses custom evil filename when configured", async () => {
+  // SKIPPED: Feature permanently disabled by user request
+  it.skip("uses custom evil filename when configured", async () => {
     const tempDir = await makeTempWorkspace("moltbot-soul-");
     await writeWorkspaceFile({
       dir: tempDir,
@@ -181,7 +183,8 @@ describe("applySoulEvilOverride", () => {
     expect(soul?.content).toBe("chaotic");
   });
 
-  it("warns and skips when evil file is empty", async () => {
+  // SKIPPED: Feature permanently disabled by user request
+  it.skip("warns and skips when evil file is empty", async () => {
     const tempDir = await makeTempWorkspace("moltbot-soul-");
     await writeWorkspaceFile({
       dir: tempDir,

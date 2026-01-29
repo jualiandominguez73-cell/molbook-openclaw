@@ -1,10 +1,10 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+// import fs from "node:fs/promises";
+// import path from "node:path";
 
 import { resolveUserTimezone } from "../agents/date-time.js";
 import type { WorkspaceBootstrapFile } from "../agents/workspace.js";
 import { parseDurationMs } from "../cli/parse-duration.js";
-import { resolveUserPath } from "../utils.js";
+// import { resolveUserPath } from "../utils.js";
 
 export const DEFAULT_SOUL_EVIL_FILENAME = "SOUL_EVIL.md";
 
@@ -198,6 +198,11 @@ export async function applySoulEvilOverride(params: {
   random?: () => number;
   log?: SoulEvilLog;
 }): Promise<WorkspaceBootstrapFile[]> {
+  // SAFETY: Feature is permanently disabled by user request.
+  // Do not re-enable without explicit permission.
+  return params.files;
+
+  /*
   const decision = decideSoulEvil({
     config: params.config,
     userTimezone: params.userTimezone,
@@ -246,4 +251,5 @@ export async function applySoulEvilOverride(params: {
   );
 
   return updated;
+  */
 }
