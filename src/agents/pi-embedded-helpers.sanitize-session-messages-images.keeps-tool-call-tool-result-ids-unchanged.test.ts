@@ -92,7 +92,7 @@ describe("sanitizeSessionMessagesImages", () => {
         role: "assistant",
         content: [{ type: "toolCall", id: "call_1", name: "read" }],
       },
-    ] satisfies AgentMessage[];
+    ] as AgentMessage[];
 
     const out = await sanitizeSessionMessagesImages(input, "test");
     const assistant = out[0] as { content?: Array<Record<string, unknown>> };
