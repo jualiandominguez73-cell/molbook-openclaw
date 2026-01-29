@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { __testing, acquireSessionWriteLock } from "./session-write-lock.js";
+import {
+  __testing,
+  acquireSessionWriteLock,
+  releaseAllSessionWriteLocks,
+} from "./session-write-lock.js";
 
 describe("acquireSessionWriteLock", () => {
   it("reuses locks across symlinked session paths", async () => {
@@ -158,5 +162,34 @@ describe("acquireSessionWriteLock", () => {
 
     expect(process.listeners("SIGINT")).toContain(keepAlive);
     process.off("SIGINT", keepAlive);
+  });
+
+  it("releaseAllSessionWriteLocks removes all held locks", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-lock-release-all-"));
+    try {
+      const sessionA = path.join(root, "a.json");
+      const sessionB = path.join(root, "b.json");
+      const lockA = `${sessionA}.lock`;
+      const lockB = `${sessionB}.lock`;
+
+      await acquireSessionWriteLock({ sessionFile: sessionA, timeoutMs: 500 });
+      await acquireSessionWriteLock({ sessionFile: sessionB, timeoutMs: 500 });
+
+      // Both lock files should exist
+      await expect(fs.access(lockA)).resolves.toBeUndefined();
+      await expect(fs.access(lockB)).resolves.toBeUndefined();
+
+      await releaseAllSessionWriteLocks();
+
+      // Both lock files should be removed
+      await expect(fs.access(lockA)).rejects.toThrow();
+      await expect(fs.access(lockB)).rejects.toThrow();
+
+      // Should be able to re-acquire after release
+      const lock = await acquireSessionWriteLock({ sessionFile: sessionA, timeoutMs: 500 });
+      await lock.release();
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });

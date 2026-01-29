@@ -181,6 +181,31 @@ export async function acquireSessionWriteLock(params: {
   throw new Error(`session file locked (timeout ${timeoutMs}ms): ${owner} ${lockPath}`);
 }
 
+
+/**
+ * Release all held session write locks.
+ *
+ * Call this during gateway shutdown (e.g., before an in-process SIGUSR1
+ * restart) to ensure on-disk `.lock` files are removed. Without this,
+ * locks owned by PID 1 survive an in-process restart because
+ * `isAlive(1)` returns true for the same process, making the lock
+ * appear valid for up to `staleMs` (30 min).
+ */
+export async function releaseAllSessionWriteLocks(): Promise<void> {
+  for (const [sessionFile, held] of HELD_LOCKS) {
+    try {
+      await held.handle.close();
+    } catch {
+      // Best effort - handle may already be closed.
+    }
+    try {
+      await fs.rm(held.lockPath, { force: true });
+    } catch {
+      // Best effort - file may already be removed.
+    }
+    HELD_LOCKS.delete(sessionFile);
+  }
+}
 export const __testing = {
   cleanupSignals: [...CLEANUP_SIGNALS],
   handleTerminationSignal,
