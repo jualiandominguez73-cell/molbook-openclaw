@@ -20,6 +20,27 @@ type SessionRef = {
 
 const sessionStates = new Map<string, SessionState>();
 
+/** Tracks the last time a stuck alert was emitted per session key, plus the alert count for escalation. */
+const stuckAlertState = new Map<string, { lastAlertMs: number; alertCount: number }>();
+
+/** Escalating intervals: 5min (first seen) → 15min → 30min → every 30min */
+const STUCK_ESCALATION_INTERVALS = [
+  5 * 60_000, // after first alert, wait 5 min before second
+  15 * 60_000, // then 15 min
+  30 * 60_000, // then 30 min (repeats)
+];
+
+function getStuckInterval(alertCount: number): number {
+  const idx = Math.min(alertCount, STUCK_ESCALATION_INTERVALS.length - 1);
+  return STUCK_ESCALATION_INTERVALS[idx];
+}
+
+/** Threshold before a session is considered stuck (5 minutes). */
+const STUCK_THRESHOLD_MS = 300_000;
+
+/** Auto-resolve threshold: force-clear after 15 minutes stuck. */
+const STUCK_AUTO_RESOLVE_MS = 15 * 60_000;
+
 const webhookStats = {
   received: 0,
   processed: 0,
@@ -202,6 +223,11 @@ export function logSessionStateChange(
   state.state = params.state;
   state.lastActivity = Date.now();
   if (params.state === "idle") state.queueDepth = Math.max(0, state.queueDepth - 1);
+  // Clear stuck-alert tracking when leaving "processing"
+  if (prevState === "processing" && params.state !== "processing") {
+    const key = resolveSessionKey(params);
+    stuckAlertState.delete(key);
+  }
   if (!isProbeSession) {
     diag.debug(
       `session state: sessionId=${state.sessionId ?? "unknown"} sessionKey=${
@@ -329,16 +355,47 @@ export function startDiagnosticHeartbeat() {
       queued: totalQueued,
     });
 
-    for (const [, state] of sessionStates) {
+    for (const [key, state] of sessionStates) {
+      if (state.state !== "processing") continue;
       const ageMs = now - state.lastActivity;
-      if (state.state === "processing" && ageMs > 120_000) {
-        logSessionStuck({
+      if (ageMs <= STUCK_THRESHOLD_MS) continue;
+
+      // Auto-resolve: force-clear sessions stuck for 15+ minutes
+      if (ageMs > STUCK_AUTO_RESOLVE_MS) {
+        state.state = "idle";
+        state.lastActivity = now;
+        stuckAlertState.delete(key);
+        diag.warn(
+          `force-clearing stuck session: sessionId=${state.sessionId ?? "unknown"} sessionKey=${
+            state.sessionKey ?? "unknown"
+          } age=${Math.round(ageMs / 1000)}s`,
+        );
+        emitDiagnosticEvent({
+          type: "session.stuck.cleared",
           sessionId: state.sessionId,
           sessionKey: state.sessionKey,
-          state: state.state,
           ageMs,
         });
+        continue;
       }
+
+      // Deduplicate alerts with escalating intervals
+      const alertState = stuckAlertState.get(key);
+      if (alertState) {
+        const interval = getStuckInterval(alertState.alertCount);
+        if (now - alertState.lastAlertMs < interval) continue;
+        alertState.lastAlertMs = now;
+        alertState.alertCount += 1;
+      } else {
+        stuckAlertState.set(key, { lastAlertMs: now, alertCount: 0 });
+      }
+
+      logSessionStuck({
+        sessionId: state.sessionId,
+        sessionKey: state.sessionKey,
+        state: state.state,
+        ageMs,
+      });
     }
   }, 30_000);
   heartbeatInterval.unref?.();

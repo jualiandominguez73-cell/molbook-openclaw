@@ -243,6 +243,13 @@ export async function startGatewayServer(
           `⚠️ **Stuck session detected:** \`${key}\` has been in \`${evt.state}\` state for ${ageMin}+ minutes.`,
         );
       }
+      if (evt.type === "session.stuck.cleared") {
+        const ageMin = Math.round(evt.ageMs / 60_000);
+        const key = evt.sessionKey ?? evt.sessionId ?? "unknown";
+        postStatus(
+          `⚠️ **Force-cleared stuck session:** \`${key}\` was stuck for ${ageMin}+ minutes and has been reset to idle.`,
+        );
+      }
       if (evt.type === "message.processed" && evt.outcome === "error") {
         const key = evt.sessionKey ?? evt.sessionId ?? "unknown";
         const err = evt.error ?? evt.reason ?? "unknown error";

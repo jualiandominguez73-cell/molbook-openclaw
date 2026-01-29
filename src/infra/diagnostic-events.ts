@@ -94,6 +94,13 @@ export type DiagnosticSessionStuckEvent = DiagnosticBaseEvent & {
   queueDepth?: number;
 };
 
+export type DiagnosticSessionStuckClearedEvent = DiagnosticBaseEvent & {
+  type: "session.stuck.cleared";
+  sessionKey?: string;
+  sessionId?: string;
+  ageMs: number;
+};
+
 export type DiagnosticLaneEnqueueEvent = DiagnosticBaseEvent & {
   type: "queue.lane.enqueue";
   lane: string;
@@ -151,6 +158,7 @@ export type DiagnosticEventPayload =
   | DiagnosticMessageProcessedEvent
   | DiagnosticSessionStateEvent
   | DiagnosticSessionStuckEvent
+  | DiagnosticSessionStuckClearedEvent
   | DiagnosticSessionCompactedEvent
   | DiagnosticChannelTransportFailedEvent
   | DiagnosticLaneEnqueueEvent
