@@ -20,6 +20,7 @@ export type AuthChoiceGroupId =
   | "minimax"
   | "synthetic"
   | "venice"
+  | "nearai"
   | "qwen";
 
 export type AuthChoiceGroup = {
@@ -70,6 +71,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Venice AI",
     hint: "Privacy-focused (uncensored models)",
     choices: ["venice-api-key"],
+  },
+  {
+    value: "nearai",
+    label: "NEAR AI",
+    hint: "Private and verifiable inference (TEE)",
+    choices: ["nearai-api-key"],
   },
   {
     value: "google",
@@ -146,6 +153,11 @@ export function buildAuthChoiceOptions(params: {
     value: "venice-api-key",
     label: "Venice AI API key",
     hint: "Privacy-focused inference (uncensored models)",
+  });
+  options.push({
+    value: "nearai-api-key",
+    label: "NEAR AI API key",
+    hint: "Private and verifiable inference with Intel TDX/NVIDIA TEE",
   });
   options.push({
     value: "github-copilot",
