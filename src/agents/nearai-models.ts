@@ -36,16 +36,6 @@ export const NEAR_AI_MODEL_CATALOG = [
     privacy: "anonymized",
   },
   {
-    id: "black-forest-labs/FLUX.2-klein-4B",
-    name: "FLUX.2-klein-4B",
-    reasoning: false,
-    input: ["text"],
-    contextWindow: 128000,
-    maxTokens: 8192,
-    cost: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
-    privacy: "private",
-  },
-  {
     id: "deepseek-ai/DeepSeek-V3.1",
     name: "DeepSeek V3.1",
     reasoning: false,

@@ -28,7 +28,7 @@ All AI outputs are cryptographically signed inside the TEE before leaving the se
 
 ## Features
 
-- **OpenAI-compatible API**: Standard `/v1/chat/completions` endpoint
+- **OpenAI-compatible APIs**: Standard endpoints like `/v1/chat/completions`, `v1/responses`, `/v1/images/generations`, etc.
 - **Streaming**: Supported on all models
 - **Function calling**: Supported
 - **Vision**: Supported on vision-capable models
@@ -93,16 +93,16 @@ moltbot models list | grep nearai
 
 > **Note:** The model list may change. See the latest available models at [cloud.near.ai/models](https://cloud.near.ai/models).
 
-| Model ID | Name | Privacy | Reasoning | Context | Cost ($/M tokens) |
-|----------|------|---------|-----------|---------|-------------------|
-| `anthropic/claude-sonnet-4-5` | Claude Sonnet 4.5 | Anonymized | ✅ | 200K | $3.00 in / $15.50 out |
-| `black-forest-labs/FLUX.2-klein-4B` | FLUX.2-klein-4B | Private | ❌ | 128K | $1.00 in / $1.00 out |
-| `deepseek-ai/DeepSeek-V3.1` | DeepSeek V3.1 | Private | ❌ | 128K | $1.05 in / $3.10 out |
-| `google/gemini-3-pro` | Gemini 3 Pro Preview | Anonymized | ✅ | 1M | $1.25 in / $15.00 out |
-| `openai/gpt-5.2` | OpenAI GPT-5.2 | Anonymized | ✅ | 400K | $1.80 in / $15.50 out |
-| `openai/gpt-oss-120b` | GPT OSS 120B | Private | ✅ | 131K | $0.15 in / $0.55 out |
-| `Qwen/Qwen3-30B-A3B-Instruct-2507` | Qwen3 30B | Private | ❌ | 262K | $0.15 in / $0.55 out |
-| `zai-org/GLM-4.7` | GLM 4.7 (default) | Private | ✅ | 131K | $0.85 in / $3.30 out |
+| Model ID | Name | Privacy | Reasoning | Context | Cost |
+|----------|------|---------|-----------|---------|------|
+| `anthropic/claude-sonnet-4-5` | Claude Sonnet 4.5 | Anonymized | ✅ | 200K | $3.00 in / $15.50 out ($/M tokens) |
+| `black-forest-labs/FLUX.2-klein-4B` | FLUX.2-klein-4B | Private | ❌ | 128K | $0.012/image |
+| `deepseek-ai/DeepSeek-V3.1` | DeepSeek V3.1 | Private | ❌ | 128K | $1.05 in / $3.10 out ($/M tokens) |
+| `google/gemini-3-pro` | Gemini 3 Pro Preview | Anonymized | ✅ | 1M | $1.25 in / $15.00 out ($/M tokens) |
+| `openai/gpt-5.2` | OpenAI GPT-5.2 | Anonymized | ✅ | 400K | $1.80 in / $15.50 out ($/M tokens) |
+| `openai/gpt-oss-120b` | GPT OSS 120B | Private | ✅ | 131K | $0.15 in / $0.55 out ($/M tokens) |
+| `Qwen/Qwen3-30B-A3B-Instruct-2507` | Qwen3 30B | Private | ❌ | 262K | $0.15 in / $0.55 out ($/M tokens) |
+| `zai-org/GLM-4.7` | GLM 4.7 (default) | Private | ✅ | 131K | $0.85 in / $3.30 out ($/M tokens) |
 
 ## Configure via `moltbot configure`
 
