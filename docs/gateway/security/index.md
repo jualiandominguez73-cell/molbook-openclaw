@@ -5,7 +5,7 @@ read_when:
 ---
 # Security 🔒
 
-## Quick check: `moltbot security audit` (formerly `clawdbot security audit`)
+## Quick check: `moltbot security audit`
 
 See also: [Formal Verification (Security Models)](/security/formal-verification/)
 
@@ -15,8 +15,6 @@ Run this regularly (especially after changing config or exposing network surface
 moltbot security audit
 moltbot security audit --deep
 moltbot security audit --fix
-
-# (On older installs, the command is `clawdbot ...`.)
 ```
 
 It flags common footguns (Gateway auth exposure, browser control exposure, elevated allowlists, filesystem permissions).
