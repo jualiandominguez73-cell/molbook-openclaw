@@ -22,8 +22,8 @@ export function remapPathForDinD(containerPath: string): string {
   const hostConfigDir = process.env.CLAWDBOT_SANDBOX_HOST_CONFIG_DIR;
   const hostWorkspaceDir = process.env.CLAWDBOT_SANDBOX_HOST_WORKSPACE_DIR;
 
-  // If no host path mappings are set, we're not in Docker-in-Docker mode
-  if (!hostConfigDir && !hostWorkspaceDir) {
+  // Both must be set for DinD mode, or neither (partial config is invalid)
+  if (!hostConfigDir || !hostWorkspaceDir) {
     return containerPath;
   }
 

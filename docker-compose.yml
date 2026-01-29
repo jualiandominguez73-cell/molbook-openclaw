@@ -1,6 +1,7 @@
 services:
   moltbot-gateway:
     image: ${CLAWDBOT_IMAGE:-moltbot:local}
+    # Required for Docker socket access when creating sandbox containers (DinD)
     user: root
     environment:
       HOME: /home/node
