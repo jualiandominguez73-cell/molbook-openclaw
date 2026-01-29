@@ -8,6 +8,10 @@ Docs: https://docs.openclaw.ai
 
 - TBD.
 
+### Changes
+
+- Tools: add HTTP/HTTPS proxy support for web_search and web_fetch via environment variables (HTTP_PROXY/HTTPS_PROXY).
+
 ### Fixes
 
 - Telegram: honor session model overrides in inline model selection. (#8193) Thanks @gildo.
