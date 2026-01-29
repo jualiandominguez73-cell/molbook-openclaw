@@ -10,6 +10,7 @@ import { syncUrlWithSessionKey } from "./app-settings";
 import type { SessionsListResult } from "./types";
 import type { ThemeMode } from "./theme";
 import type { ThemeTransitionContext } from "./theme-transition";
+import { t, getLocale, setLocale, getAvailableLocales, getLocaleDisplayName, type Locale } from "../../i18n";
 
 export function renderTab(state: AppViewState, tab: Tab) {
   const href = pathForTab(tab, state.basePath);
@@ -95,7 +96,7 @@ export function renderChatControls(state: AppViewState) {
           state.resetToolStream();
           void refreshChat(state as unknown as Parameters<typeof refreshChat>[0]);
         }}
-        title="Refresh chat data"
+        title="${t("common.refresh")}"
       >
         ${refreshIcon}
       </button>
@@ -112,8 +113,8 @@ export function renderChatControls(state: AppViewState) {
         }}
         aria-pressed=${showThinking}
         title=${disableThinkingToggle
-          ? "Disabled during onboarding"
-          : "Toggle assistant thinking/working output"}
+          ? t("chatControls.disabledDuringOnboarding")
+          : t("chatControls.toggleThinking")}
       >
         ${icons.brain}
       </button>
@@ -129,8 +130,8 @@ export function renderChatControls(state: AppViewState) {
         }}
         aria-pressed=${focusActive}
         title=${disableFocusToggle
-          ? "Disabled during onboarding"
-          : "Toggle focus mode (hide sidebar + page header)"}
+          ? t("chatControls.disabledDuringOnboarding")
+          : t("chatControls.toggleFocusMode")}
       >
         ${focusIcon}
       </button>
@@ -209,14 +210,14 @@ export function renderThemeToggle(state: AppViewState) {
 
   return html`
     <div class="theme-toggle" style="--theme-index: ${index};">
-      <div class="theme-toggle__track" role="group" aria-label="Theme">
+      <div class="theme-toggle__track" role="group" aria-label="${t("theme.ariaLabel")}">
         <span class="theme-toggle__indicator"></span>
         <button
           class="theme-toggle__button ${state.theme === "system" ? "active" : ""}"
           @click=${applyTheme("system")}
           aria-pressed=${state.theme === "system"}
-          aria-label="System theme"
-          title="System"
+          aria-label="${t("theme.systemAriaLabel")}"
+          title="${t("theme.system")}"
         >
           ${renderMonitorIcon()}
         </button>
@@ -224,8 +225,8 @@ export function renderThemeToggle(state: AppViewState) {
           class="theme-toggle__button ${state.theme === "light" ? "active" : ""}"
           @click=${applyTheme("light")}
           aria-pressed=${state.theme === "light"}
-          aria-label="Light theme"
-          title="Light"
+          aria-label="${t("theme.lightAriaLabel")}"
+          title="${t("theme.light")}"
         >
           ${renderSunIcon()}
         </button>
@@ -233,8 +234,8 @@ export function renderThemeToggle(state: AppViewState) {
           class="theme-toggle__button ${state.theme === "dark" ? "active" : ""}"
           @click=${applyTheme("dark")}
           aria-pressed=${state.theme === "dark"}
-          aria-label="Dark theme"
-          title="Dark"
+          aria-label="${t("theme.darkAriaLabel")}"
+          title="${t("theme.dark")}"
         >
           ${renderMoonIcon()}
         </button>
@@ -276,5 +277,40 @@ function renderMonitorIcon() {
       <line x1="8" x2="16" y1="21" y2="21"></line>
       <line x1="12" x2="12" y1="17" y2="21"></line>
     </svg>
+  `;
+}
+
+/**
+ * Render language switcher
+ */
+export function renderLanguageSwitcher() {
+  const currentLocale = getLocale();
+  const locales = getAvailableLocales();
+
+  const handleChange = (e: Event) => {
+    const select = e.target as HTMLSelectElement;
+    const newLocale = select.value as Locale;
+    setLocale(newLocale);
+    // Reload the page to apply new locale
+    window.location.reload();
+  };
+
+  return html`
+    <div class="language-switcher">
+      <select
+        class="language-switcher__select"
+        .value=${currentLocale}
+        @change=${handleChange}
+        aria-label="${t("chatControls.selectLanguage")}"
+      >
+        ${locales.map(
+          (locale) => html`
+            <option value=${locale} ?selected=${locale === currentLocale}>
+              ${getLocaleDisplayName(locale)}
+            </option>
+          `,
+        )}
+      </select>
+    </div>
   `;
 }

@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 
+import { t } from "../../i18n";
 import { formatAgo } from "../format";
 import type {
   ChannelAccountSnapshot,
@@ -77,10 +78,10 @@ export function renderChannels(props: ChannelsProps) {
     <section class="card" style="margin-top: 18px;">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Channel health</div>
-          <div class="card-sub">Channel status snapshots from the gateway.</div>
+          <div class="card-title">${t("channels.health")}</div>
+          <div class="card-sub">${t("channels.healthDesc")}</div>
         </div>
-        <div class="muted">${props.lastSuccessAt ? formatAgo(props.lastSuccessAt) : "n/a"}</div>
+        <div class="muted">${props.lastSuccessAt ? formatAgo(props.lastSuccessAt) : t("common.na")}</div>
       </div>
       ${props.lastError
         ? html`<div class="callout danger" style="margin-top: 12px;">
@@ -88,7 +89,7 @@ export function renderChannels(props: ChannelsProps) {
           </div>`
         : nothing}
       <pre class="code-block" style="margin-top: 12px;">
-${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : "No snapshot yet."}
+${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : t("channels.noSnapshot")}
       </pre>
     </section>
   `;

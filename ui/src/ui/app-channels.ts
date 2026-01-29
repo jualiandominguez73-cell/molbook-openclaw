@@ -8,6 +8,7 @@ import { loadConfig, saveConfig } from "./controllers/config";
 import type { MoltbotApp } from "./app";
 import type { NostrProfile } from "./types";
 import { createNostrProfileFormState } from "./views/channels.nostr-profile-form";
+import { t } from "../i18n";
 
 export async function handleWhatsAppStart(host: MoltbotApp, force: boolean) {
   await startWhatsAppLogin(host, force);
@@ -142,7 +143,7 @@ export async function handleNostrProfileSave(host: MoltbotApp) {
       host.nostrProfileFormState = {
         ...state,
         saving: false,
-        error: "Profile publish failed on all relays.",
+        error: t("nostrProfile.publishFailed"),
         success: null,
       };
       return;
@@ -152,7 +153,7 @@ export async function handleNostrProfileSave(host: MoltbotApp) {
       ...state,
       saving: false,
       error: null,
-      success: "Profile published to relays.",
+      success: t("nostrProfile.publishSuccess"),
       fieldErrors: {},
       original: { ...state.values },
     };
@@ -161,7 +162,7 @@ export async function handleNostrProfileSave(host: MoltbotApp) {
     host.nostrProfileFormState = {
       ...state,
       saving: false,
-      error: `Profile update failed: ${String(err)}`,
+      error: `${t("nostrProfile.updateFailed")}: ${String(err)}`,
       success: null,
     };
   }
@@ -214,8 +215,8 @@ export async function handleNostrProfileImport(host: MoltbotApp) {
       values: nextValues,
       error: null,
       success: data.saved
-        ? "Profile imported from relays. Review and publish."
-        : "Profile imported. Review and publish.",
+        ? t("nostrProfile.importedFromRelays")
+        : t("nostrProfile.importedReviewPublish"),
       showAdvanced,
     };
 
@@ -226,7 +227,7 @@ export async function handleNostrProfileImport(host: MoltbotApp) {
     host.nostrProfileFormState = {
       ...state,
       importing: false,
-      error: `Profile import failed: ${String(err)}`,
+      error: `${t("nostrProfile.importFailed")}: ${String(err)}`,
       success: null,
     };
   }
