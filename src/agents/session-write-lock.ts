@@ -9,6 +9,7 @@ type LockFilePayload = {
 
 type HeldLock = {
   count: number;
+  handle: fs.FileHandle;
   lockPath: string;
 };
 
@@ -33,6 +34,13 @@ function isAlive(pid: number): boolean {
  */
 function releaseAllLocksSync(): void {
   for (const [sessionFile, held] of HELD_LOCKS) {
+    try {
+      if (typeof held.handle.close === "function") {
+        void held.handle.close().catch(() => {});
+      }
+    } catch {
+      // Ignore errors during cleanup - best effort
+    }
     try {
       fsSync.rmSync(held.lockPath, { force: true });
     } catch {
@@ -123,6 +131,7 @@ export async function acquireSessionWriteLock(params: {
         current.count -= 1;
         if (current.count > 0) return;
         HELD_LOCKS.delete(normalizedSessionFile);
+        await current.handle.close();
         await fs.rm(current.lockPath, { force: true });
       },
     };
@@ -134,15 +143,11 @@ export async function acquireSessionWriteLock(params: {
     attempt += 1;
     try {
       const handle = await fs.open(lockPath, "wx");
-      try {
-        await handle.writeFile(
-          JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }, null, 2),
-          "utf8",
-        );
-      } finally {
-        await handle.close();
-      }
-      HELD_LOCKS.set(normalizedSessionFile, { count: 1, lockPath });
+      await handle.writeFile(
+        JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }, null, 2),
+        "utf8",
+      );
+      HELD_LOCKS.set(normalizedSessionFile, { count: 1, handle, lockPath });
       return {
         release: async () => {
           const current = HELD_LOCKS.get(normalizedSessionFile);
@@ -150,6 +155,7 @@ export async function acquireSessionWriteLock(params: {
           current.count -= 1;
           if (current.count > 0) return;
           HELD_LOCKS.delete(normalizedSessionFile);
+          await current.handle.close();
           await fs.rm(current.lockPath, { force: true });
         },
       };
