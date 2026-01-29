@@ -533,6 +533,15 @@ final class AppState {
                     gateway["remote"] = remote
                     changed = true
                 }
+            } else if connectionMode == .unconfigured {
+                // Prevent implicit remote-mode re-selection when the user explicitly
+                // chooses "Not configured" in the UI. Leaving gateway.remote.url
+                // behind causes applyConfigOverrides to force .remote.
+                if var remote = gateway["remote"] as? [String: Any], remote["url"] != nil {
+                    remote.removeValue(forKey: "url")
+                    gateway["remote"] = remote
+                    changed = true
+                }
             }
 
             guard changed else { return }
