@@ -1,3 +1,4 @@
+import type { DingTalkConfig } from "./types.dingtalk.js";
 import type { DiscordConfig } from "./types.discord.js";
 import type { GoogleChatConfig } from "./types.googlechat.js";
 import type { IMessageConfig } from "./types.imessage.js";
@@ -25,6 +26,7 @@ export type ChannelDefaultsConfig = {
 
 export type ChannelsConfig = {
   defaults?: ChannelDefaultsConfig;
+  dingtalk?: DingTalkConfig;
   whatsapp?: WhatsAppConfig;
   telegram?: TelegramConfig;
   discord?: DiscordConfig;

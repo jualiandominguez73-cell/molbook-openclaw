@@ -84,6 +84,10 @@ export type {
   GroupToolPolicyBySenderConfig,
   MarkdownConfig,
   MarkdownTableMode,
+  DingTalkAccountConfig,
+  DingTalkConfig,
+  DingTalkDmConfig,
+  DingTalkGroupConfig,
   GoogleChatAccountConfig,
   GoogleChatConfig,
   GoogleChatDmConfig,
@@ -95,6 +99,8 @@ export type {
   MSTeamsTeamConfig,
 } from "../config/types.js";
 export {
+  DingTalkConfigSchema,
+  DingTalkAccountSchema,
   DiscordConfigSchema,
   GoogleChatConfigSchema,
   IMessageConfigSchema,

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   BlueBubblesConfigSchema,
+  DingTalkConfigSchema,
   DiscordConfigSchema,
   GoogleChatConfigSchema,
   IMessageConfigSchema,
@@ -27,6 +28,7 @@ export const ChannelsSchema = z
       })
       .strict()
       .optional(),
+    dingtalk: DingTalkConfigSchema.optional(),
     whatsapp: WhatsAppConfigSchema.optional(),
     telegram: TelegramConfigSchema.optional(),
     discord: DiscordConfigSchema.optional(),

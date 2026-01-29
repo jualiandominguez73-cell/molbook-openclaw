@@ -1,0 +1,39 @@
+{
+  "name": "@moltbot/dingtalk",
+  "version": "2026.1.27-beta.1",
+  "type": "module",
+  "description": "Moltbot DingTalk channel plugin",
+  "moltbot": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "dingtalk",
+      "label": "DingTalk",
+      "selectionLabel": "DingTalk (钉钉)",
+      "detailLabel": "DingTalk",
+      "docsPath": "/channels/dingtalk",
+      "docsLabel": "dingtalk",
+      "blurb": "DingTalk enterprise robot via Stream mode.",
+      "aliases": [
+        "dingding",
+        "ding"
+      ],
+      "order": 56
+    },
+    "install": {
+      "npmSpec": "@moltbot/dingtalk",
+      "localPath": "extensions/dingtalk",
+      "defaultChoice": "npm"
+    }
+  },
+  "dependencies": {
+    "dingtalk-stream": "^2.1.4"
+  },
+  "devDependencies": {
+    "moltbot": "workspace:*"
+  },
+  "peerDependencies": {
+    "moltbot": ">=2026.1.26"
+  }
+}

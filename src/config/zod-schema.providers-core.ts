@@ -770,3 +770,65 @@ export const MSTeamsConfigSchema = z
         'channels.msteams.dmPolicy="open" requires channels.msteams.allowFrom to include "*"',
     });
   });
+
+// DingTalk schemas
+export const DingTalkDmSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    policy: DmPolicySchema.optional().default("pairing"),
+    allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    requireOpenAllowFrom({
+      policy: value.policy,
+      allowFrom: value.allowFrom,
+      ctx,
+      path: ["allowFrom"],
+      message:
+        'channels.dingtalk.dm.policy="open" requires channels.dingtalk.dm.allowFrom to include "*"',
+    });
+  });
+
+export const DingTalkGroupSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    allow: z.boolean().optional(),
+    requireMention: z.boolean().optional(),
+    tools: ToolPolicySchema,
+    toolsBySender: ToolPolicyBySenderSchema,
+    users: z.array(z.union([z.string(), z.number()])).optional(),
+    systemPrompt: z.string().optional(),
+  })
+  .strict();
+
+export const DingTalkAccountSchema = z
+  .object({
+    name: z.string().optional(),
+    capabilities: z.array(z.string()).optional(),
+    markdown: MarkdownConfigSchema.optional(),
+    configWrites: z.boolean().optional(),
+    enabled: z.boolean().optional(),
+    clientId: z.string().optional(),
+    clientSecret: z.string().optional(),
+    allowBots: z.boolean().optional(),
+    requireMention: z.boolean().optional(),
+    groupPolicy: GroupPolicySchema.optional().default("allowlist"),
+    historyLimit: z.number().int().min(0).optional(),
+    dmHistoryLimit: z.number().int().min(0).optional(),
+    dms: z.record(z.string(), DmConfigSchema.optional()).optional(),
+    textChunkLimit: z.number().int().positive().optional(),
+    chunkMode: z.enum(["length", "newline"]).optional(),
+    blockStreaming: z.boolean().optional(),
+    blockStreamingCoalesce: BlockStreamingCoalesceSchema.optional(),
+    mediaMaxMb: z.number().positive().optional(),
+    replyToMode: ReplyToModeSchema.optional(),
+    dm: DingTalkDmSchema.optional(),
+    groups: z.record(z.string(), DingTalkGroupSchema.optional()).optional(),
+    heartbeat: ChannelHeartbeatVisibilitySchema,
+  })
+  .strict();
+
+export const DingTalkConfigSchema = DingTalkAccountSchema.extend({
+  accounts: z.record(z.string(), DingTalkAccountSchema.optional()).optional(),
+});
