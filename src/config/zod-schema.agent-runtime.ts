@@ -426,6 +426,7 @@ export const AgentEntrySchema = z
     heartbeat: HeartbeatSchema,
     identity: IdentitySchema,
     groupChat: GroupChatSchema,
+    allowedConfigPaths: z.array(z.string()).optional(),
     subagents: z
       .object({
         allowAgents: z.array(z.string()).optional(),
