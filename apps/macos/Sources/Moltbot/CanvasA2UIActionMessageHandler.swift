@@ -1,7 +1,7 @@
 import AppKit
+import Foundation
 import MoltbotIPC
 import MoltbotKit
-import Foundation
 import WebKit
 
 final class CanvasA2UIActionMessageHandler: NSObject, WKScriptMessageHandler {

@@ -1,6 +1,5 @@
 import CoreLocation
 import Testing
-
 @testable import Moltbot
 
 @Suite("PermissionManager Location")

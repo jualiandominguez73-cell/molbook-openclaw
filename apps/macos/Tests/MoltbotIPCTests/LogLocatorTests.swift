@@ -4,7 +4,7 @@ import Testing
 @testable import Moltbot
 
 @Suite struct LogLocatorTests {
-    @Test func launchdGatewayLogPathEnsuresTmpDirExists() throws {
+    @Test func launchdGatewayLogPathEnsuresTmpDirExists() {
         let fm = FileManager()
         let baseDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         let logDir = baseDir.appendingPathComponent("moltbot-tests-\(UUID().uuidString)")

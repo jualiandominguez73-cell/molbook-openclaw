@@ -1,6 +1,6 @@
-import MoltbotKit
 import CoreLocation
 import Foundation
+import MoltbotKit
 import Testing
 @testable import Moltbot
 
@@ -65,8 +65,14 @@ struct MacNodeRuntimeTests {
                 return (path: url.path, hasAudio: false)
             }
 
-            func locationAuthorizationStatus() -> CLAuthorizationStatus { .authorizedAlways }
-            func locationAccuracyAuthorization() -> CLAccuracyAuthorization { .fullAccuracy }
+            func locationAuthorizationStatus() -> CLAuthorizationStatus {
+                .authorizedAlways
+            }
+
+            func locationAccuracyAuthorization() -> CLAccuracyAuthorization {
+                .fullAccuracy
+            }
+
             func currentLocation(
                 desiredAccuracy: MoltbotLocationAccuracy,
                 maxAgeMs: Int?,

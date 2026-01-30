@@ -1,5 +1,5 @@
-import MoltbotKit
 import Foundation
+import MoltbotKit
 import Testing
 @testable import Moltbot
 @testable import MoltbotIPC

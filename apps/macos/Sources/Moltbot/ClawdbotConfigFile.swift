@@ -1,5 +1,5 @@
-import MoltbotProtocol
 import Foundation
+import MoltbotProtocol
 
 enum MoltbotConfigFile {
     private static let logger = Logger(subsystem: "bot.molt", category: "config")

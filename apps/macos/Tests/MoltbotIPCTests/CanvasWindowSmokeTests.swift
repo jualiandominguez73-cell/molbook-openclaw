@@ -1,6 +1,6 @@
 import AppKit
-import MoltbotIPC
 import Foundation
+import MoltbotIPC
 import Testing
 @testable import Moltbot
 
@@ -30,7 +30,7 @@ struct CanvasWindowSmokeTests {
         controller.close()
     }
 
-    @Test func windowControllerShowsAndCloses() async throws {
+    @Test func windowControllerShowsAndCloses() throws {
         let root = FileManager().temporaryDirectory
             .appendingPathComponent("moltbot-canvas-test-\(UUID().uuidString)")
         try FileManager().createDirectory(at: root, withIntermediateDirectories: true)

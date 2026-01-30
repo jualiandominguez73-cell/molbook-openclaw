@@ -1,6 +1,6 @@
 import AppKit
-import MoltbotChatUI
 import Foundation
+import MoltbotChatUI
 import Testing
 @testable import Moltbot
 
@@ -28,7 +28,9 @@ struct WebChatSwiftUISmokeTests {
             return try JSONDecoder().decode(MoltbotChatSendResponse.self, from: Data(json.utf8))
         }
 
-        func requestHealth(timeoutMs _: Int) async throws -> Bool { true }
+        func requestHealth(timeoutMs _: Int) async throws -> Bool {
+            true
+        }
 
         func events() -> AsyncStream<MoltbotChatTransportEvent> {
             AsyncStream { continuation in

@@ -2,7 +2,6 @@ import AppKit
 import MoltbotProtocol
 import SwiftUI
 import Testing
-
 @testable import Moltbot
 
 @Suite(.serialized)

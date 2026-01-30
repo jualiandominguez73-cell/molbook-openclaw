@@ -267,7 +267,7 @@ enum CommandResolver {
         }
     }
 
-    // Existing callers still refer to moltbotCommand; keep it as node alias.
+    /// Existing callers still refer to moltbotCommand; keep it as node alias.
     static func moltbotCommand(
         subcommand: String,
         extraArgs: [String] = [],

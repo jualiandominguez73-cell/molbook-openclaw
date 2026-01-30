@@ -1,5 +1,5 @@
-import MoltbotIPC
 import CoreLocation
+import MoltbotIPC
 import Testing
 @testable import Moltbot
 

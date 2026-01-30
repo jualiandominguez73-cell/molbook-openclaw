@@ -1,7 +1,7 @@
-import MoltbotKit
-import MoltbotProtocol
 import Darwin
 import Foundation
+import MoltbotKit
+import MoltbotProtocol
 
 struct WizardCliOptions {
     var url: String?

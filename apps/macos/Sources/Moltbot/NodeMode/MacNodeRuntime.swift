@@ -1,7 +1,7 @@
 import AppKit
+import Foundation
 import MoltbotIPC
 import MoltbotKit
-import Foundation
 
 actor MacNodeRuntime {
     private let cameraCapture = CameraCaptureService()

@@ -1,7 +1,7 @@
 import AVFoundation
+import Foundation
 import MoltbotChatUI
 import MoltbotKit
-import Foundation
 import OSLog
 import Speech
 

@@ -1,6 +1,6 @@
+import Foundation
 import MoltbotKit
 import MoltbotProtocol
-import Foundation
 import Observation
 import SwiftUI
 
@@ -15,7 +15,10 @@ struct ControlHeartbeatEvent: Codable {
 }
 
 struct ControlAgentEvent: Codable, Sendable, Identifiable {
-    var id: String { "\(self.runId)-\(self.seq)" }
+    var id: String {
+        "\(self.runId)-\(self.seq)"
+    }
+
     let runId: String
     let seq: Int
     let stream: String
