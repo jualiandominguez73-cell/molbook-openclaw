@@ -21,7 +21,8 @@ export function ignoreCiaoCancellationRejection(reason: unknown): boolean {
   const isTransientError = BONJOUR_TRANSIENT_ERRORS.some((pattern) => message.includes(pattern));
 
   // Also catch AssertionError from MDNServer (common during network changes)
-  const isAssertionError = errorName === "ASSERTIONERROR" && message.includes("MDNS");
+  // Note: The error message typically contains "MDNSServer" in the stack trace
+  const isAssertionError = errorName === "ASSERTIONERROR" && message.includes("MDNSSERVER");
 
   if (!isTransientError && !isAssertionError) {
     return false;
