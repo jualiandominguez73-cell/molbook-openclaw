@@ -5,9 +5,22 @@ export function formatMs(ms?: number | null): string {
   return new Date(ms).toLocaleString();
 }
 
-export function formatAgo(ms?: number | null): string {
+export function formatAgo(ms?: number | null, locale?: string): string {
   if (!ms && ms !== 0) return "n/a";
   const diff = Date.now() - ms;
+  
+  if (locale === "zh") {
+    if (diff < 0) return "刚刚";
+    const sec = Math.round(diff / 1000);
+    if (sec < 60) return `${sec}秒前`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `${min}分钟前`;
+    const hr = Math.round(min / 60);
+    if (hr < 48) return `${hr}小时前`;
+    const day = Math.round(hr / 24);
+    return `${day}天前`;
+  }
+
   if (diff < 0) return "just now";
   const sec = Math.round(diff / 1000);
   if (sec < 60) return `${sec}s ago`;
@@ -19,8 +32,21 @@ export function formatAgo(ms?: number | null): string {
   return `${day}d ago`;
 }
 
-export function formatDurationMs(ms?: number | null): string {
+export function formatDurationMs(ms?: number | null, locale?: string): string {
   if (!ms && ms !== 0) return "n/a";
+  
+  if (locale === "zh") {
+    if (ms < 1000) return `${ms}毫秒`;
+    const sec = Math.round(ms / 1000);
+    if (sec < 60) return `${sec}秒`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `${min}分钟`;
+    const hr = Math.round(min / 60);
+    if (hr < 48) return `${hr}小时`;
+    const day = Math.round(hr / 24);
+    return `${day}天`;
+  }
+
   if (ms < 1000) return `${ms}ms`;
   const sec = Math.round(ms / 1000);
   if (sec < 60) return `${sec}s`;

@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 
 import { formatAgo } from "../format";
 import type { IMessageStatus } from "../types";
+import { t } from "../i18n";
 import type { ChannelsProps } from "./channels.types";
 import { renderChannelConfigSection } from "./channels.config";
 
@@ -11,29 +12,34 @@ export function renderIMessageCard(params: {
   accountCountLabel: unknown;
 }) {
   const { props, imessage, accountCountLabel } = params;
+  const locale = props.locale;
 
   return html`
     <div class="card">
-      <div class="card-title">iMessage</div>
-      <div class="card-sub">macOS bridge status and channel configuration.</div>
+      <div class="card-title">${t(locale, "channels.imessage.title")}</div>
+      <div class="card-sub">${t(locale, "channels.card.subtitle")}</div>
       ${accountCountLabel}
 
       <div class="status-list" style="margin-top: 16px;">
         <div>
-          <span class="label">Configured</span>
-          <span>${imessage?.configured ? "Yes" : "No"}</span>
+          <span class="label">${t(locale, "common.configured")}</span>
+          <span>${imessage?.configured ? t(locale, "common.yes") : t(locale, "common.no")}</span>
         </div>
         <div>
-          <span class="label">Running</span>
-          <span>${imessage?.running ? "Yes" : "No"}</span>
+          <span class="label">${t(locale, "common.running")}</span>
+          <span>${imessage?.running ? t(locale, "common.yes") : t(locale, "common.no")}</span>
         </div>
         <div>
-          <span class="label">Last start</span>
-          <span>${imessage?.lastStartAt ? formatAgo(imessage.lastStartAt) : "n/a"}</span>
+          <span class="label">${t(locale, "common.lastStart")}</span>
+          <span>
+            ${imessage?.lastStartAt ? formatAgo(imessage.lastStartAt, locale) : t(locale, "common.na")}
+          </span>
         </div>
         <div>
-          <span class="label">Last probe</span>
-          <span>${imessage?.lastProbeAt ? formatAgo(imessage.lastProbeAt) : "n/a"}</span>
+          <span class="label">${t(locale, "common.lastProbe")}</span>
+          <span>
+            ${imessage?.lastProbeAt ? formatAgo(imessage.lastProbeAt, locale) : t(locale, "common.na")}
+          </span>
         </div>
       </div>
 
@@ -45,7 +51,7 @@ export function renderIMessageCard(params: {
 
       ${imessage?.probe
         ? html`<div class="callout" style="margin-top: 12px;">
-            Probe ${imessage.probe.ok ? "ok" : "failed"} ·
+            ${t(locale, "channels.probe")} ${imessage.probe.ok ? t(locale, "channels.probe.ok") : t(locale, "channels.probe.failed")} ·
             ${imessage.probe.error ?? ""}
           </div>`
         : nothing}
@@ -54,7 +60,7 @@ export function renderIMessageCard(params: {
 
       <div class="row" style="margin-top: 12px;">
         <button class="btn" @click=${() => props.onRefresh(true)}>
-          Probe
+          ${t(locale, "channels.probe")}
         </button>
       </div>
     </div>

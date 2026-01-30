@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 
 import type { LogEntry, LogLevel } from "../types";
+import { t, tFormat, type Locale } from "../i18n";
 
 const LEVELS: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal"];
 
@@ -13,6 +14,7 @@ export type LogsProps = {
   levelFilters: Record<LogLevel, boolean>;
   autoFollow: boolean;
   truncated: boolean;
+  locale?: Locale;
   onFilterTextChange: (next: string) => void;
   onLevelToggle: (level: LogLevel, enabled: boolean) => void;
   onToggleAutoFollow: (next: boolean) => void;
@@ -38,47 +40,50 @@ function matchesFilter(entry: LogEntry, needle: string) {
 }
 
 export function renderLogs(props: LogsProps) {
+  const locale = props.locale;
   const needle = props.filterText.trim().toLowerCase();
   const levelFiltered = LEVELS.some((level) => !props.levelFilters[level]);
   const filtered = props.entries.filter((entry) => {
     if (entry.level && !props.levelFilters[entry.level]) return false;
     return matchesFilter(entry, needle);
   });
-  const exportLabel = needle || levelFiltered ? "filtered" : "visible";
+  const exportLabel = needle || levelFiltered 
+    ? t(locale, "logs.export.filtered") 
+    : t(locale, "logs.export.visible");
 
   return html`
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Logs</div>
-          <div class="card-sub">Gateway file logs (JSONL).</div>
+          <div class="card-title">${t(locale, "logs.title")}</div>
+          <div class="card-sub">${t(locale, "logs.subtitle")}</div>
         </div>
         <div class="row" style="gap: 8px;">
           <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-            ${props.loading ? "Loading…" : "Refresh"}
+            ${props.loading ? t(locale, "common.loading") : t(locale, "common.refresh")}
           </button>
           <button
             class="btn"
             ?disabled=${filtered.length === 0}
             @click=${() => props.onExport(filtered.map((entry) => entry.raw), exportLabel)}
           >
-            Export ${exportLabel}
+            ${tFormat(locale, "logs.export", { label: exportLabel })}
           </button>
         </div>
       </div>
 
       <div class="filters" style="margin-top: 14px;">
         <label class="field" style="min-width: 220px;">
-          <span>Filter</span>
+          <span>${t(locale, "logs.filter")}</span>
           <input
             .value=${props.filterText}
             @input=${(e: Event) =>
               props.onFilterTextChange((e.target as HTMLInputElement).value)}
-            placeholder="Search logs"
+            placeholder=${t(locale, "logs.search")}
           />
         </label>
         <label class="field checkbox">
-          <span>Auto-follow</span>
+          <span>${t(locale, "logs.autoFollow")}</span>
           <input
             type="checkbox"
             .checked=${props.autoFollow}
@@ -105,11 +110,11 @@ export function renderLogs(props: LogsProps) {
       </div>
 
       ${props.file
-        ? html`<div class="muted" style="margin-top: 10px;">File: ${props.file}</div>`
+        ? html`<div class="muted" style="margin-top: 10px;">${tFormat(locale, "logs.file", { path: props.file })}</div>`
         : nothing}
       ${props.truncated
         ? html`<div class="callout" style="margin-top: 10px;">
-            Log output truncated; showing latest chunk.
+            ${t(locale, "logs.truncated")}
           </div>`
         : nothing}
       ${props.error
@@ -118,7 +123,7 @@ export function renderLogs(props: LogsProps) {
 
       <div class="log-stream" style="margin-top: 12px;" @scroll=${props.onScroll}>
         ${filtered.length === 0
-          ? html`<div class="muted" style="padding: 12px;">No log entries.</div>`
+          ? html`<div class="muted" style="padding: 12px;">${t(locale, "logs.none")}</div>`
           : filtered.map(
               (entry) => html`
                 <div class="log-row">

@@ -55,6 +55,8 @@ function extractImages(message: unknown): ImageBlock[] {
   return images;
 }
 
+import { t, type Locale } from "../i18n";
+
 export function renderReadingIndicatorGroup(assistant?: AssistantIdentity) {
   return html`
     <div class="chat-group assistant">

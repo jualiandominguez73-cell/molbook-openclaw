@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 import type { ConfigUiHints } from "../types";
 import { icons } from "../icons";
+import { t, tFormat, type Locale } from "../i18n";
 import {
   hintForPath,
   humanize,
@@ -19,6 +20,7 @@ export type ConfigFormProps = {
   activeSection?: string | null;
   activeSubsection?: string | null;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 };
 
 // SVG Icons for section cards (Lucide-style)
@@ -86,6 +88,16 @@ export const SECTION_META: Record<string, { label: string; description: string }
   plugins: { label: "Plugins", description: "Plugin management and extensions" },
 };
 
+function getSectionMeta(key: string, locale?: Locale): { label: string; description: string } {
+  const meta = SECTION_META[key];
+  if (!meta) return { label: humanize(key), description: "" };
+  
+  return {
+    label: t(locale, `config.meta.${key}.label`, meta.label),
+    description: t(locale, `config.meta.${key}.desc`, meta.description),
+  };
+}
+
 function getSectionIcon(key: string) {
   return sectionIcons[key as keyof typeof sectionIcons] ?? sectionIcons.default;
 }
@@ -141,13 +153,14 @@ function schemaMatches(schema: JsonSchema, query: string): boolean {
 }
 
 export function renderConfigForm(props: ConfigFormProps) {
+  const locale = props.locale;
   if (!props.schema) {
-    return html`<div class="muted">Schema unavailable.</div>`;
+    return html`<div class="muted">${t(locale, "config.schemaUnavailable")}</div>`;
   }
   const schema = props.schema;
   const value = props.value ?? {};
   if (schemaType(schema) !== "object" || !schema.properties) {
-    return html`<div class="callout danger">Unsupported schema. Use Raw.</div>`;
+    return html`<div class="callout danger">${t(locale, "config.error.unsafe")}</div>`;
   }
   const unsupported = new Set(props.unsupportedPaths ?? []);
   const properties = schema.properties;
@@ -193,8 +206,8 @@ export function renderConfigForm(props: ConfigFormProps) {
         <div class="config-empty__icon">${icons.search}</div>
         <div class="config-empty__text">
           ${searchQuery
-            ? `No settings match "${searchQuery}"`
-            : "No settings in this section"}
+            ? tFormat(locale, "config.form.emptyAll", { query: searchQuery })
+            : t(locale, "config.form.emptySection")}
         </div>
       </div>
     `;
@@ -235,16 +248,14 @@ export function renderConfigForm(props: ConfigFormProps) {
                     disabled: props.disabled ?? false,
                     showLabel: false,
                     onPatch: props.onPatch,
+                    locale,
                   })}
                 </div>
               </section>
             `;
           })()
         : filteredEntries.map(([key, node]) => {
-            const meta = SECTION_META[key] ?? {
-              label: key.charAt(0).toUpperCase() + key.slice(1),
-              description: node.description ?? "",
-            };
+            const meta = getSectionMeta(key, locale);
 
             return html`
               <section class="config-section-card" id="config-section-${key}">
@@ -267,6 +278,7 @@ export function renderConfigForm(props: ConfigFormProps) {
                     disabled: props.disabled ?? false,
                     showLabel: false,
                     onPatch: props.onPatch,
+                    locale,
                   })}
                 </div>
               </section>

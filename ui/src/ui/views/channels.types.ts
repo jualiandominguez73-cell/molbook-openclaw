@@ -13,6 +13,7 @@ import type {
     WhatsAppStatus,
 } from "../types";
 import type { NostrProfileFormState } from "./channels.nostr-profile-form";
+import type { Locale } from "../i18n";
 
 export type ChannelKey = string;
 
@@ -22,6 +23,7 @@ export type ChannelsProps = {
   snapshot: ChannelsStatusSnapshot | null;
   lastError: string | null;
   lastSuccessAt: number | null;
+  locale?: Locale;
   whatsappMessage: string | null;
   whatsappQrDataUrl: string | null;
   whatsappConnected: boolean | null;

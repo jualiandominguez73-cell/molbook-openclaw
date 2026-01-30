@@ -4,10 +4,10 @@ import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway";
 import type { AppViewState } from "./app-view-state";
 import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
 import {
-  TAB_GROUPS,
   iconForTab,
   pathForTab,
   subtitleForTab,
+  tabGroupsForLocale,
   titleForTab,
   type Tab,
 } from "./navigation";
@@ -51,7 +51,12 @@ import {
   rotateDeviceToken,
 } from "./controllers/devices";
 import { renderSkills } from "./views/skills";
-import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers";
+import {
+  renderChatControls,
+  renderLocaleToggle,
+  renderTab,
+  renderThemeToggle,
+} from "./app-render.helpers";
 import { loadChannels } from "./controllers/channels";
 import { loadPresence } from "./controllers/presence";
 import { deleteSession, loadSessions, patchSession } from "./controllers/sessions";
@@ -82,6 +87,7 @@ import {
 import { loadCronRuns, toggleCronJob, runCronJob, removeCronJob, addCronJob } from "./controllers/cron";
 import { loadDebug, callDebugMethod } from "./controllers/debug";
 import { loadLogs } from "./controllers/logs";
+import { t } from "./i18n";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -105,12 +111,14 @@ export function renderApp(state: AppViewState) {
   const presenceCount = state.presenceEntries.length;
   const sessionsCount = state.sessionsResult?.count ?? null;
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
-  const chatDisabledReason = state.connected ? null : "Disconnected from gateway.";
+  const locale = state.settings.locale;
+  const chatDisabledReason = state.connected ? null : t(locale, "app.chat.disconnected");
   const isChat = state.tab === "chat";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
   const chatAvatarUrl = state.chatAvatarUrl ?? assistantAvatarUrl ?? null;
+  const tabGroups = tabGroupsForLocale(locale);
 
   return html`
     <div class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
@@ -123,8 +131,12 @@ export function renderApp(state: AppViewState) {
                 ...state.settings,
                 navCollapsed: !state.settings.navCollapsed,
               })}
-            title="${state.settings.navCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
-            aria-label="${state.settings.navCollapsed ? "Expand sidebar" : "Collapse sidebar"}"
+            title="${state.settings.navCollapsed
+              ? t(locale, "app.sidebar.expand")
+              : t(locale, "app.sidebar.collapse")}"
+            aria-label="${state.settings.navCollapsed
+              ? t(locale, "app.sidebar.expand")
+              : t(locale, "app.sidebar.collapse")}"
           >
             <span class="nav-collapse-toggle__icon">${icons.menu}</span>
           </button>
@@ -134,22 +146,25 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="brand-text">
               <div class="brand-title">MOLTBOT</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-sub">${t(locale, "app.brand.subtitle")}</div>
             </div>
           </div>
         </div>
         <div class="topbar-status">
           <div class="pill">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
-            <span>Health</span>
-            <span class="mono">${state.connected ? "OK" : "Offline"}</span>
+            <span>${t(locale, "app.health.label")}</span>
+            <span class="mono">
+              ${state.connected ? t(locale, "app.health.ok") : t(locale, "app.health.offline")}
+            </span>
           </div>
+          ${renderLocaleToggle(state)}
           ${renderThemeToggle(state)}
         </div>
       </header>
       <aside class="nav ${state.settings.navCollapsed ? "nav--collapsed" : ""}">
-        ${TAB_GROUPS.map((group) => {
-          const isGroupCollapsed = state.settings.navGroupsCollapsed[group.label] ?? false;
+        ${tabGroups.map((group) => {
+          const isGroupCollapsed = state.settings.navGroupsCollapsed[group.key] ?? false;
           const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`
             <div class="nav-group ${isGroupCollapsed && !hasActiveTab ? "nav-group--collapsed" : ""}">
@@ -157,7 +172,7 @@ export function renderApp(state: AppViewState) {
                 class="nav-label"
                 @click=${() => {
                   const next = { ...state.settings.navGroupsCollapsed };
-                  next[group.label] = !isGroupCollapsed;
+                  next[group.key] = !isGroupCollapsed;
                   state.applySettings({
                     ...state.settings,
                     navGroupsCollapsed: next,
@@ -176,7 +191,7 @@ export function renderApp(state: AppViewState) {
         })}
         <div class="nav-group nav-group--links">
           <div class="nav-label nav-label--static">
-            <span class="nav-label__text">Resources</span>
+            <span class="nav-label__text">${t(locale, "app.resources")}</span>
           </div>
           <div class="nav-group__items">
             <a
@@ -184,10 +199,10 @@ export function renderApp(state: AppViewState) {
               href="https://docs.molt.bot"
               target="_blank"
               rel="noreferrer"
-              title="Docs (opens in new tab)"
+              title=${t(locale, "app.docs.title")}
             >
               <span class="nav-item__icon" aria-hidden="true">${icons.book}</span>
-              <span class="nav-item__text">Docs</span>
+              <span class="nav-item__text">${t(locale, "app.docs")}</span>
             </a>
           </div>
         </div>
@@ -195,8 +210,8 @@ export function renderApp(state: AppViewState) {
       <main class="content ${isChat ? "content--chat" : ""}">
         <section class="content-header">
           <div>
-            <div class="page-title">${titleForTab(state.tab)}</div>
-            <div class="page-sub">${subtitleForTab(state.tab)}</div>
+            <div class="page-title">${titleForTab(state.tab, locale)}</div>
+            <div class="page-sub">${subtitleForTab(state.tab, locale)}</div>
           </div>
           <div class="page-meta">
             ${state.lastError
@@ -238,6 +253,7 @@ export function renderApp(state: AppViewState) {
 
         ${state.tab === "channels"
           ? renderChannels({
+              locale: state.settings.locale,
               connected: state.connected,
               loading: state.channelsLoading,
               snapshot: state.channelsSnapshot,
@@ -279,6 +295,7 @@ export function renderApp(state: AppViewState) {
               entries: state.presenceEntries,
               lastError: state.presenceError,
               statusMessage: state.presenceStatus,
+              locale,
               onRefresh: () => loadPresence(state),
             })
           : nothing}
@@ -293,6 +310,7 @@ export function renderApp(state: AppViewState) {
               includeGlobal: state.sessionsIncludeGlobal,
               includeUnknown: state.sessionsIncludeUnknown,
               basePath: state.basePath,
+              locale,
               onFiltersChange: (next) => {
                 state.sessionsFilterActive = next.activeMinutes;
                 state.sessionsFilterLimit = next.limit;
@@ -320,6 +338,7 @@ export function renderApp(state: AppViewState) {
               channelMeta: state.channelsSnapshot?.channelMeta ?? [],
               runsJobId: state.cronRunsJobId,
               runs: state.cronRuns,
+              locale,
               onFormChange: (patch) => (state.cronForm = { ...state.cronForm, ...patch }),
               onRefresh: () => state.loadCron(),
               onAdd: () => addCronJob(state),
@@ -339,6 +358,7 @@ export function renderApp(state: AppViewState) {
               edits: state.skillEdits,
               messages: state.skillMessages,
               busyKey: state.skillsBusyKey,
+              locale,
               onFilterChange: (next) => (state.skillsFilter = next),
               onRefresh: () => loadSkills(state, { clearMessages: true }),
               onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
@@ -369,6 +389,7 @@ export function renderApp(state: AppViewState) {
               execApprovalsSelectedAgent: state.execApprovalsSelectedAgent,
               execApprovalsTarget: state.execApprovalsTarget,
               execApprovalsTargetNodeId: state.execApprovalsTargetNodeId,
+              locale,
               onRefresh: () => loadNodes(state),
               onDevicesRefresh: () => loadDevices(state),
               onDeviceApprove: (requestId) => approveDevicePairing(state, requestId),
@@ -466,6 +487,7 @@ export function renderApp(state: AppViewState) {
               error: state.lastError,
               sessions: state.sessionsResult,
               focusMode: chatFocus,
+              locale,
               onRefresh: () => {
                 state.resetToolStream();
                 return Promise.all([loadChatHistory(state), refreshChatAvatar(state)]);
@@ -520,6 +542,7 @@ export function renderApp(state: AppViewState) {
               searchQuery: state.configSearchQuery,
               activeSection: state.configActiveSection,
               activeSubsection: state.configActiveSubsection,
+              locale,
               onRawChange: (next) => {
                 state.configRaw = next;
               },
@@ -550,6 +573,7 @@ export function renderApp(state: AppViewState) {
               callParams: state.debugCallParams,
               callResult: state.debugCallResult,
               callError: state.debugCallError,
+              locale,
               onCallMethodChange: (next) => (state.debugCallMethod = next),
               onCallParamsChange: (next) => (state.debugCallParams = next),
               onRefresh: () => loadDebug(state),
@@ -567,6 +591,7 @@ export function renderApp(state: AppViewState) {
               levelFilters: state.logsLevelFilters,
               autoFollow: state.logsAutoFollow,
               truncated: state.logsTruncated,
+              locale,
               onFilterTextChange: (next) => (state.logsFilterText = next),
               onLevelToggle: (level, enabled) => {
                 state.logsLevelFilters = { ...state.logsLevelFilters, [level]: enabled };

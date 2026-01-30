@@ -1,6 +1,7 @@
 const KEY = "moltbot.control.settings.v1";
 
 import type { ThemeMode } from "./theme";
+import type { Locale } from "./i18n";
 
 export type UiSettings = {
   gatewayUrl: string;
@@ -8,6 +9,7 @@ export type UiSettings = {
   sessionKey: string;
   lastActiveSessionKey: string;
   theme: ThemeMode;
+  locale: Locale;
   chatFocusMode: boolean;
   chatShowThinking: boolean;
   splitRatio: number; // Sidebar split ratio (0.4 to 0.7, default 0.6)
@@ -27,6 +29,7 @@ export function loadSettings(): UiSettings {
     sessionKey: "main",
     lastActiveSessionKey: "main",
     theme: "system",
+    locale: navigator.language.startsWith("zh") ? "zh" : "en",
     chatFocusMode: false,
     chatShowThinking: true,
     splitRatio: 0.6,
@@ -61,6 +64,7 @@ export function loadSettings(): UiSettings {
         parsed.theme === "system"
           ? parsed.theme
           : defaults.theme,
+      locale: parsed.locale === "zh" || parsed.locale === "en" ? parsed.locale : defaults.locale,
       chatFocusMode:
         typeof parsed.chatFocusMode === "boolean"
           ? parsed.chatFocusMode
@@ -79,11 +83,24 @@ export function loadSettings(): UiSettings {
         typeof parsed.navCollapsed === "boolean"
           ? parsed.navCollapsed
           : defaults.navCollapsed,
-      navGroupsCollapsed:
-        typeof parsed.navGroupsCollapsed === "object" &&
-        parsed.navGroupsCollapsed !== null
-          ? parsed.navGroupsCollapsed
-          : defaults.navGroupsCollapsed,
+      navGroupsCollapsed: (() => {
+        if (typeof parsed.navGroupsCollapsed !== "object" || parsed.navGroupsCollapsed === null) {
+          return defaults.navGroupsCollapsed;
+        }
+        const raw = parsed.navGroupsCollapsed as Record<string, boolean>;
+        const normalized: Record<string, boolean> = {};
+        const keyMap: Record<string, string> = {
+          Chat: "chat",
+          Control: "control",
+          Agent: "agent",
+          Settings: "settings",
+        };
+        for (const [key, value] of Object.entries(raw)) {
+          const nextKey = keyMap[key] ?? key;
+          normalized[nextKey] = Boolean(value);
+        }
+        return normalized;
+      })(),
     };
   } catch {
     return defaults;

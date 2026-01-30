@@ -1,5 +1,6 @@
 import { html, nothing, type TemplateResult } from "lit";
 import type { ConfigUiHints } from "../types";
+import { autoTranslateDescription, autoTranslateLabel, hasTranslation, t, tFormat, type Locale } from "../i18n";
 import {
   defaultValue,
   hintForPath,
@@ -44,19 +45,41 @@ export function renderNode(params: {
   disabled: boolean;
   showLabel?: boolean;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult | typeof nothing {
-  const { schema, value, path, hints, unsupported, disabled, onPatch } = params;
+  const { schema, value, path, hints, unsupported, disabled, onPatch, locale } = params;
   const showLabel = params.showLabel ?? true;
   const type = schemaType(schema);
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
   const key = pathKey(path);
+  const lastKey = String(path.at(-1));
+
+  const commonKey = `config.schema.${lastKey}`;
+  const labelFallback = hint?.label ?? schema.title ?? humanize(lastKey);
+  const helpFallbackRaw = hint?.help ?? schema.description;
+  const helpFallback =
+    typeof helpFallbackRaw === "string" && helpFallbackRaw.startsWith("config.")
+      ? undefined
+      : helpFallbackRaw;
+  const labelKey = commonKey + ".label";
+  const helpKey = commonKey + ".desc";
+  const label = hasTranslation(locale, labelKey)
+    ? t(locale, labelKey, labelFallback)
+    : t(locale, labelKey, autoTranslateLabel(labelFallback) ?? labelFallback);
+  const help = hasTranslation(locale, helpKey)
+    ? t(locale, helpKey, helpFallback)
+    : helpFallback
+      ? t(locale, helpKey, autoTranslateDescription(helpFallback) ?? helpFallback)
+      : undefined;
+  const optionLabel = (opt: unknown) =>
+    typeof opt === "string"
+      ? t(locale, `config.schema.${lastKey}.option.${opt}`, t(locale, `config.option.${opt}`, opt))
+      : String(opt);
 
   if (unsupported.has(key)) {
     return html`<div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">Unsupported schema node. Use Raw mode.</div>
+      <div class="cfg-field__error">${t(locale, "config.form.unsupportedSchema")}</div>
     </div>`;
   }
 
@@ -95,7 +118,7 @@ export function renderNode(params: {
                 ?disabled=${disabled}
                 @click=${() => onPatch(path, lit)}
               >
-                ${String(lit)}
+                ${optionLabel(lit)}
               </button>
             `)}
           </div>
@@ -154,7 +177,7 @@ export function renderNode(params: {
                 ?disabled=${disabled}
                 @click=${() => onPatch(path, opt)}
               >
-                ${String(opt)}
+                ${optionLabel(opt)}
               </button>
             `)}
           </div>
@@ -178,7 +201,7 @@ export function renderNode(params: {
   if (type === "boolean") {
     const displayValue = typeof value === "boolean" ? value : typeof schema.default === "boolean" ? schema.default : false;
     return html`
-      <label class="cfg-toggle-row ${disabled ? 'disabled' : ''}">
+      <label class="cfg-toggle-row ${disabled ? 'disabled' : ''}" data-path=${pathKey(path)}>
         <div class="cfg-toggle-row__content">
           <span class="cfg-toggle-row__label">${label}</span>
           ${help ? html`<span class="cfg-toggle-row__help">${help}</span>` : nothing}
@@ -210,7 +233,7 @@ export function renderNode(params: {
   return html`
     <div class="cfg-field cfg-field--error">
       <div class="cfg-field__label">${label}</div>
-      <div class="cfg-field__error">Unsupported type: ${type}. Use Raw mode.</div>
+      <div class="cfg-field__error">${tFormat(locale, "config.form.unsupported", { type: type || "unknown" })}</div>
     </div>
   `;
 }
@@ -224,12 +247,21 @@ function renderTextInput(params: {
   showLabel?: boolean;
   inputType: "text" | "number";
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult {
-  const { schema, value, path, hints, disabled, onPatch, inputType } = params;
+  const { schema, value, path, hints, disabled, onPatch, inputType, locale } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const commonKey = `config.schema.${lastKey}`;
+  const labelFallback = hint?.label ?? schema.title ?? humanize(lastKey);
+  const helpFallbackRaw = hint?.help ?? schema.description;
+  const helpFallback =
+    typeof helpFallbackRaw === "string" && helpFallbackRaw.startsWith("config.")
+      ? undefined
+      : helpFallbackRaw;
+  const label = t(locale, commonKey + ".label", labelFallback);
+  const help = t(locale, commonKey + ".desc", helpFallback);
   const isSensitive = hint?.sensitive ?? isSensitivePath(path);
   const placeholder =
     hint?.placeholder ??
@@ -237,7 +269,7 @@ function renderTextInput(params: {
   const displayValue = value ?? "";
 
   return html`
-    <div class="cfg-field">
+    <div class="cfg-field" data-path=${pathKey(path)}>
       ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
       ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
       <div class="cfg-input-wrap">
@@ -270,7 +302,7 @@ function renderTextInput(params: {
           <button
             type="button"
             class="cfg-input__reset"
-            title="Reset to default"
+            title="${t(locale, "config.form.reset")}"
             ?disabled=${disabled}
             @click=${() => onPatch(path, schema.default)}
           >↺</button>
@@ -288,17 +320,26 @@ function renderNumberInput(params: {
   disabled: boolean;
   showLabel?: boolean;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult {
-  const { schema, value, path, hints, disabled, onPatch } = params;
+  const { schema, value, path, hints, disabled, onPatch, locale } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const commonKey = `config.schema.${lastKey}`;
+  const labelFallback = hint?.label ?? schema.title ?? humanize(lastKey);
+  const helpFallbackRaw = hint?.help ?? schema.description;
+  const helpFallback =
+    typeof helpFallbackRaw === "string" && helpFallbackRaw.startsWith("config.")
+      ? undefined
+      : helpFallbackRaw;
+  const label = t(locale, commonKey + ".label", labelFallback);
+  const help = t(locale, commonKey + ".desc", helpFallback);
   const displayValue = value ?? schema.default ?? "";
   const numValue = typeof displayValue === "number" ? displayValue : 0;
 
   return html`
-    <div class="cfg-field">
+    <div class="cfg-field" data-path=${pathKey(path)}>
       ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
       ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
       <div class="cfg-number">
@@ -339,12 +380,25 @@ function renderSelect(params: {
   showLabel?: boolean;
   options: unknown[];
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult {
-  const { schema, value, path, hints, disabled, options, onPatch } = params;
+  const { schema, value, path, hints, disabled, options, onPatch, locale } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const commonKey = `config.schema.${lastKey}`;
+  const labelFallback = hint?.label ?? schema.title ?? humanize(lastKey);
+  const helpFallbackRaw = hint?.help ?? schema.description;
+  const helpFallback =
+    typeof helpFallbackRaw === "string" && helpFallbackRaw.startsWith("config.")
+      ? undefined
+      : helpFallbackRaw;
+  const label = t(locale, commonKey + ".label", labelFallback);
+  const help = t(locale, commonKey + ".desc", helpFallback);
+  const optionLabel = (opt: unknown) =>
+    typeof opt === "string"
+      ? t(locale, `config.schema.${lastKey}.option.${opt}`, t(locale, `config.option.${opt}`, opt))
+      : String(opt);
   const resolvedValue = value ?? schema.default;
   const currentIndex = options.findIndex(
     (opt) => opt === resolvedValue || String(opt) === String(resolvedValue),
@@ -352,7 +406,7 @@ function renderSelect(params: {
   const unset = "__unset__";
 
   return html`
-    <div class="cfg-field">
+    <div class="cfg-field" data-path=${pathKey(path)}>
       ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
       ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
       <select
@@ -364,9 +418,11 @@ function renderSelect(params: {
           onPatch(path, val === unset ? undefined : options[Number(val)]);
         }}
       >
-        <option value=${unset}>Select...</option>
+        <option value=${unset}>${t(locale, "config.form.select")}</option>
         ${options.map((opt, idx) => html`
-          <option value=${String(idx)}>${String(opt)}</option>
+          <option value=${String(idx)}>
+            ${optionLabel(opt)}
+          </option>
         `)}
       </select>
     </div>
@@ -382,12 +438,29 @@ function renderObject(params: {
   disabled: boolean;
   showLabel?: boolean;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult {
-  const { schema, value, path, hints, unsupported, disabled, onPatch } = params;
+  const { schema, value, path, hints, unsupported, disabled, onPatch, locale } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const commonKey = `config.schema.${lastKey}`;
+  const labelFallback = hint?.label ?? schema.title ?? humanize(lastKey);
+  const helpFallbackRaw = hint?.help ?? schema.description;
+  const helpFallback =
+    typeof helpFallbackRaw === "string" && helpFallbackRaw.startsWith("config.")
+      ? undefined
+      : helpFallbackRaw;
+  const labelKey = commonKey + ".label";
+  const helpKey = commonKey + ".desc";
+  const label = hasTranslation(locale, labelKey)
+    ? t(locale, labelKey, labelFallback)
+    : t(locale, labelKey, autoTranslateLabel(labelFallback) ?? labelFallback);
+  const help = hasTranslation(locale, helpKey)
+    ? t(locale, helpKey, helpFallback)
+    : helpFallback
+      ? t(locale, helpKey, autoTranslateDescription(helpFallback) ?? helpFallback)
+      : undefined;
 
   const fallback = value ?? schema.default;
   const obj = fallback && typeof fallback === "object" && !Array.isArray(fallback)
@@ -421,6 +494,7 @@ function renderObject(params: {
             unsupported,
             disabled,
             onPatch,
+            locale,
           })
         )}
         ${allowExtra ? renderMapField({
@@ -432,6 +506,7 @@ function renderObject(params: {
           disabled,
           reservedKeys: reserved,
           onPatch,
+          locale,
         }) : nothing}
       </div>
     `;
@@ -440,7 +515,7 @@ function renderObject(params: {
   // Nested objects get collapsible treatment
   return html`
     <details class="cfg-object" open>
-      <summary class="cfg-object__header">
+      <summary class="cfg-object__header" data-path=${pathKey(path)}>
         <span class="cfg-object__title">${label}</span>
         <span class="cfg-object__chevron">${icons.chevronDown}</span>
       </summary>
@@ -455,6 +530,7 @@ function renderObject(params: {
             unsupported,
             disabled,
             onPatch,
+            locale,
           })
         )}
         ${allowExtra ? renderMapField({
@@ -466,6 +542,7 @@ function renderObject(params: {
           disabled,
           reservedKeys: reserved,
           onPatch,
+          locale,
         }) : nothing}
       </div>
     </details>
@@ -481,19 +558,36 @@ function renderArray(params: {
   disabled: boolean;
   showLabel?: boolean;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult {
-  const { schema, value, path, hints, unsupported, disabled, onPatch } = params;
+  const { schema, value, path, hints, unsupported, disabled, onPatch, locale } = params;
   const showLabel = params.showLabel ?? true;
   const hint = hintForPath(path, hints);
-  const label = hint?.label ?? schema.title ?? humanize(String(path.at(-1)));
-  const help = hint?.help ?? schema.description;
+  const lastKey = String(path.at(-1));
+  const commonKey = `config.schema.${lastKey}`;
+  const labelFallback = hint?.label ?? schema.title ?? humanize(lastKey);
+  const helpFallbackRaw = hint?.help ?? schema.description;
+  const helpFallback =
+    typeof helpFallbackRaw === "string" && helpFallbackRaw.startsWith("config.")
+      ? undefined
+      : helpFallbackRaw;
+  const labelKey = commonKey + ".label";
+  const helpKey = commonKey + ".desc";
+  const label = hasTranslation(locale, labelKey)
+    ? t(locale, labelKey, labelFallback)
+    : t(locale, labelKey, autoTranslateLabel(labelFallback) ?? labelFallback);
+  const help = hasTranslation(locale, helpKey)
+    ? t(locale, helpKey, helpFallback)
+    : helpFallback
+      ? t(locale, helpKey, autoTranslateDescription(helpFallback) ?? helpFallback)
+      : undefined;
 
   const itemsSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
   if (!itemsSchema) {
     return html`
       <div class="cfg-field cfg-field--error">
         <div class="cfg-field__label">${label}</div>
-        <div class="cfg-field__error">Unsupported array schema. Use Raw mode.</div>
+        <div class="cfg-field__error">${t(locale, "config.form.unsupportedArray")}</div>
       </div>
     `;
   }
@@ -504,7 +598,7 @@ function renderArray(params: {
     <div class="cfg-array">
       <div class="cfg-array__header">
         ${showLabel ? html`<span class="cfg-array__label">${label}</span>` : nothing}
-        <span class="cfg-array__count">${arr.length} item${arr.length !== 1 ? 's' : ''}</span>
+        <span class="cfg-array__count">${tFormat(locale, "config.form.items", { count: arr.length })}</span>
         <button
           type="button"
           class="cfg-array__add"
@@ -515,14 +609,14 @@ function renderArray(params: {
           }}
         >
           <span class="cfg-array__add-icon">${icons.plus}</span>
-          Add
+          ${t(locale, "config.form.add")}
         </button>
       </div>
       ${help ? html`<div class="cfg-array__help">${help}</div>` : nothing}
 
       ${arr.length === 0 ? html`
         <div class="cfg-array__empty">
-          No items yet. Click "Add" to create one.
+          ${t(locale, "config.form.emptyArray")}
         </div>
       ` : html`
         <div class="cfg-array__items">
@@ -533,7 +627,7 @@ function renderArray(params: {
                 <button
                   type="button"
                   class="cfg-array__item-remove"
-                  title="Remove item"
+                  title="${t(locale, "config.form.remove")}"
                   ?disabled=${disabled}
                   @click=${() => {
                     const next = [...arr];
@@ -554,6 +648,7 @@ function renderArray(params: {
                   disabled,
                   showLabel: false,
                   onPatch,
+                  locale,
                 })}
               </div>
             </div>
@@ -573,15 +668,16 @@ function renderMapField(params: {
   disabled: boolean;
   reservedKeys: Set<string>;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 }): TemplateResult {
-  const { schema, value, path, hints, unsupported, disabled, reservedKeys, onPatch } = params;
+  const { schema, value, path, hints, unsupported, disabled, reservedKeys, onPatch, locale } = params;
   const anySchema = isAnySchema(schema);
   const entries = Object.entries(value ?? {}).filter(([key]) => !reservedKeys.has(key));
 
   return html`
     <div class="cfg-map">
       <div class="cfg-map__header">
-        <span class="cfg-map__label">Custom entries</span>
+        <span class="cfg-map__label">${t(locale, "config.form.customEntries")}</span>
         <button
           type="button"
           class="cfg-map__add"
@@ -599,12 +695,12 @@ function renderMapField(params: {
           }}
         >
           <span class="cfg-map__add-icon">${icons.plus}</span>
-          Add Entry
+          ${t(locale, "config.form.addEntry")}
         </button>
       </div>
 
       ${entries.length === 0 ? html`
-        <div class="cfg-map__empty">No custom entries.</div>
+        <div class="cfg-map__empty">${t(locale, "config.form.noCustom")}</div>
       ` : html`
         <div class="cfg-map__items">
           ${entries.map(([key, entryValue]) => {
@@ -616,7 +712,7 @@ function renderMapField(params: {
                   <input
                     type="text"
                     class="cfg-input cfg-input--sm"
-                    placeholder="Key"
+                    placeholder="${t(locale, "config.form.key")}"
                     .value=${key}
                     ?disabled=${disabled}
                     @change=${(e: Event) => {
@@ -635,7 +731,7 @@ function renderMapField(params: {
                     ? html`
                         <textarea
                           class="cfg-textarea cfg-textarea--sm"
-                          placeholder="JSON value"
+                          placeholder="${t(locale, "config.form.value")}"
                           rows="2"
                           .value=${fallback}
                           ?disabled=${disabled}
@@ -663,12 +759,13 @@ function renderMapField(params: {
                         disabled,
                         showLabel: false,
                         onPatch,
+                        locale,
                       })}
                 </div>
                 <button
                   type="button"
                   class="cfg-map__item-remove"
-                  title="Remove entry"
+                  title="${t(locale, "config.form.remove")}"
                   ?disabled=${disabled}
                   @click=${() => {
                     const next = { ...(value ?? {}) };

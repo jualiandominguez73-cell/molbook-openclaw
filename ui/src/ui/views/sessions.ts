@@ -4,6 +4,7 @@ import { formatAgo } from "../format";
 import { formatSessionTokens } from "../presenter";
 import { pathForTab } from "../navigation";
 import type { GatewaySessionRow, SessionsListResult } from "../types";
+import { t, tFormat, type Locale } from "../i18n";
 
 export type SessionsProps = {
   loading: boolean;
@@ -14,6 +15,7 @@ export type SessionsProps = {
   includeGlobal: boolean;
   includeUnknown: boolean;
   basePath: string;
+  locale?: Locale;
   onFiltersChange: (next: {
     activeMinutes: string;
     limit: string;
@@ -35,11 +37,6 @@ export type SessionsProps = {
 
 const THINK_LEVELS = ["", "off", "minimal", "low", "medium", "high"] as const;
 const BINARY_THINK_LEVELS = ["", "off", "on"] as const;
-const VERBOSE_LEVELS = [
-  { value: "", label: "inherit" },
-  { value: "off", label: "off (explicit)" },
-  { value: "on", label: "on" },
-] as const;
 const REASONING_LEVELS = ["", "off", "on", "stream"] as const;
 
 function normalizeProviderId(provider?: string | null): string {
@@ -72,21 +69,22 @@ function resolveThinkLevelPatchValue(value: string, isBinary: boolean): string |
 
 export function renderSessions(props: SessionsProps) {
   const rows = props.result?.sessions ?? [];
+  const locale = props.locale;
   return html`
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Sessions</div>
-          <div class="card-sub">Active session keys and per-session overrides.</div>
+          <div class="card-title">${t(locale, "sessions.title")}</div>
+          <div class="card-sub">${t(locale, "sessions.subtitle")}</div>
         </div>
         <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-          ${props.loading ? "Loading…" : "Refresh"}
+          ${props.loading ? t(locale, "common.loading") : t(locale, "common.refresh")}
         </button>
       </div>
 
       <div class="filters" style="margin-top: 14px;">
         <label class="field">
-          <span>Active within (minutes)</span>
+          <span>${t(locale, "sessions.activeWithin")}</span>
           <input
             .value=${props.activeMinutes}
             @input=${(e: Event) =>
@@ -99,7 +97,7 @@ export function renderSessions(props: SessionsProps) {
           />
         </label>
         <label class="field">
-          <span>Limit</span>
+          <span>${t(locale, "sessions.limit")}</span>
           <input
             .value=${props.limit}
             @input=${(e: Event) =>
@@ -112,7 +110,7 @@ export function renderSessions(props: SessionsProps) {
           />
         </label>
         <label class="field checkbox">
-          <span>Include global</span>
+          <span>${t(locale, "sessions.includeGlobal")}</span>
           <input
             type="checkbox"
             .checked=${props.includeGlobal}
@@ -126,7 +124,7 @@ export function renderSessions(props: SessionsProps) {
           />
         </label>
         <label class="field checkbox">
-          <span>Include unknown</span>
+          <span>${t(locale, "sessions.includeUnknown")}</span>
           <input
             type="checkbox"
             .checked=${props.includeUnknown}
@@ -146,25 +144,25 @@ export function renderSessions(props: SessionsProps) {
         : nothing}
 
       <div class="muted" style="margin-top: 12px;">
-        ${props.result ? `Store: ${props.result.path}` : ""}
+        ${props.result ? tFormat(locale, "sessions.store", { path: props.result.path }) : ""}
       </div>
 
       <div class="table" style="margin-top: 16px;">
         <div class="table-head">
-          <div>Key</div>
-          <div>Label</div>
-          <div>Kind</div>
-          <div>Updated</div>
-          <div>Tokens</div>
-          <div>Thinking</div>
-          <div>Verbose</div>
-          <div>Reasoning</div>
-          <div>Actions</div>
+          <div>${t(locale, "common.key")}</div>
+          <div>${t(locale, "common.label")}</div>
+          <div>${t(locale, "common.kind")}</div>
+          <div>${t(locale, "common.updated")}</div>
+          <div>${t(locale, "common.tokens")}</div>
+          <div>${t(locale, "common.thinking")}</div>
+          <div>${t(locale, "common.verbose")}</div>
+          <div>${t(locale, "common.reasoning")}</div>
+          <div>${t(locale, "common.actions")}</div>
         </div>
         ${rows.length === 0
-          ? html`<div class="muted">No sessions found.</div>`
+          ? html`<div class="muted">${t(locale, "sessions.none")}</div>`
           : rows.map((row) =>
-              renderRow(row, props.basePath, props.onPatch, props.onDelete, props.loading),
+              renderRow(row, props.basePath, props.onPatch, props.onDelete, props.loading, locale),
             )}
       </div>
     </section>
@@ -177,8 +175,9 @@ function renderRow(
   onPatch: SessionsProps["onPatch"],
   onDelete: SessionsProps["onDelete"],
   disabled: boolean,
+  locale?: Locale,
 ) {
-  const updated = row.updatedAt ? formatAgo(row.updatedAt) : "n/a";
+  const updated = row.updatedAt ? formatAgo(row.updatedAt, locale) : t(locale, "common.na");
   const rawThinking = row.thinkingLevel ?? "";
   const isBinaryThinking = isBinaryThinkingProvider(row.modelProvider);
   const thinking = resolveThinkLevelDisplay(rawThinking, isBinaryThinking);
@@ -191,6 +190,12 @@ function renderRow(
     ? `${pathForTab("chat", basePath)}?session=${encodeURIComponent(row.key)}`
     : null;
 
+  const verboseLevels = [
+    { value: "", label: t(locale, "sessions.verbose.inherit") },
+    { value: "off", label: t(locale, "sessions.verbose.off") },
+    { value: "on", label: t(locale, "sessions.verbose.on") },
+  ];
+
   return html`
     <div class="table-row">
       <div class="mono">${canLink
@@ -200,7 +205,7 @@ function renderRow(
         <input
           .value=${row.label ?? ""}
           ?disabled=${disabled}
-          placeholder="(optional)"
+          placeholder=${t(locale, "sessions.optional")}
           @change=${(e: Event) => {
             const value = (e.target as HTMLInputElement).value.trim();
             onPatch(row.key, { label: value || null });
@@ -222,7 +227,7 @@ function renderRow(
           }}
         >
           ${thinkLevels.map((level) =>
-            html`<option value=${level}>${level || "inherit"}</option>`,
+            html`<option value=${level}>${level ? t(locale, `sessions.think.${level}`, level) : t(locale, "sessions.verbose.inherit")}</option>`,
           )}
         </select>
       </div>
@@ -235,7 +240,7 @@ function renderRow(
             onPatch(row.key, { verboseLevel: value || null });
           }}
         >
-          ${VERBOSE_LEVELS.map(
+          ${verboseLevels.map(
             (level) => html`<option value=${level.value}>${level.label}</option>`,
           )}
         </select>
@@ -250,13 +255,13 @@ function renderRow(
           }}
         >
           ${REASONING_LEVELS.map((level) =>
-            html`<option value=${level}>${level || "inherit"}</option>`,
+            html`<option value=${level}>${level ? t(locale, `sessions.reasoning.${level}`, level) : t(locale, "sessions.verbose.inherit")}</option>`,
           )}
         </select>
       </div>
       <div>
         <button class="btn danger" ?disabled=${disabled} @click=${() => onDelete(row.key)}>
-          Delete
+          ${t(locale, "sessions.delete")}
         </button>
       </div>
     </div>

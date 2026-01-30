@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  TAB_GROUPS,
   iconForTab,
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -9,12 +8,13 @@ import {
   pathForTab,
   subtitleForTab,
   tabFromPath,
+  tabGroupsForLocale,
   titleForTab,
   type Tab,
 } from "./navigation";
 
 /** All valid tab identifiers derived from TAB_GROUPS */
-const ALL_TABS: Tab[] = TAB_GROUPS.flatMap((group) => group.tabs) as Tab[];
+const ALL_TABS: Tab[] = tabGroupsForLocale("en").flatMap((group) => group.tabs) as Tab[];
 
 describe("iconForTab", () => {
   it("returns a non-empty string for every tab", () => {
@@ -50,30 +50,30 @@ describe("iconForTab", () => {
 describe("titleForTab", () => {
   it("returns a non-empty string for every tab", () => {
     for (const tab of ALL_TABS) {
-      const title = titleForTab(tab);
+      const title = titleForTab(tab, "en");
       expect(title).toBeTruthy();
       expect(typeof title).toBe("string");
     }
   });
 
   it("returns expected titles", () => {
-    expect(titleForTab("chat")).toBe("Chat");
-    expect(titleForTab("overview")).toBe("Overview");
-    expect(titleForTab("cron")).toBe("Cron Jobs");
+    expect(titleForTab("chat", "en")).toBe("Chat");
+    expect(titleForTab("overview", "en")).toBe("Overview");
+    expect(titleForTab("cron", "en")).toBe("Cron Jobs");
   });
 });
 
 describe("subtitleForTab", () => {
   it("returns a string for every tab", () => {
     for (const tab of ALL_TABS) {
-      const subtitle = subtitleForTab(tab);
+      const subtitle = subtitleForTab(tab, "en");
       expect(typeof subtitle).toBe("string");
     }
   });
 
   it("returns descriptive subtitles", () => {
-    expect(subtitleForTab("chat")).toContain("chat session");
-    expect(subtitleForTab("config")).toContain("moltbot.json");
+    expect(subtitleForTab("chat", "en")).toContain("chat session");
+    expect(subtitleForTab("config", "en")).toContain("moltbot.json");
   });
 });
 
@@ -175,7 +175,7 @@ describe("inferBasePathFromPathname", () => {
 
 describe("TAB_GROUPS", () => {
   it("contains all expected groups", () => {
-    const labels = TAB_GROUPS.map((g) => g.label);
+    const labels = tabGroupsForLocale("en").map((g) => g.label);
     expect(labels).toContain("Chat");
     expect(labels).toContain("Control");
     expect(labels).toContain("Agent");
@@ -183,7 +183,7 @@ describe("TAB_GROUPS", () => {
   });
 
   it("all tabs are unique", () => {
-    const allTabs = TAB_GROUPS.flatMap((g) => g.tabs);
+    const allTabs = tabGroupsForLocale("en").flatMap((g) => g.tabs);
     const uniqueTabs = new Set(allTabs);
     expect(uniqueTabs.size).toBe(allTabs.length);
   });

@@ -1,14 +1,19 @@
 import type { IconName } from "./icons.js";
+import type { Locale } from "./i18n";
+import { t } from "./i18n";
 
-export const TAB_GROUPS = [
-  { label: "Chat", tabs: ["chat"] },
-  {
-    label: "Control",
-    tabs: ["overview", "channels", "instances", "sessions", "cron"],
-  },
-  { label: "Agent", tabs: ["skills", "nodes"] },
-  { label: "Settings", tabs: ["config", "debug", "logs"] },
-] as const;
+export function tabGroupsForLocale(locale: Locale | undefined) {
+  return [
+    { key: "chat", label: t(locale, "nav.group.chat"), tabs: ["chat"] },
+    {
+      key: "control",
+      label: t(locale, "nav.group.control"),
+      tabs: ["overview", "channels", "instances", "sessions", "cron"],
+    },
+    { key: "agent", label: t(locale, "nav.group.agent"), tabs: ["skills", "nodes"] },
+    { key: "settings", label: t(locale, "nav.group.settings"), tabs: ["config", "debug", "logs"] },
+  ] as const;
+}
 
 export type Tab =
   | "overview"
@@ -129,59 +134,59 @@ export function iconForTab(tab: Tab): IconName {
   }
 }
 
-export function titleForTab(tab: Tab) {
+export function titleForTab(tab: Tab, locale: Locale | undefined) {
   switch (tab) {
     case "overview":
-      return "Overview";
+      return t(locale, "nav.tab.overview");
     case "channels":
-      return "Channels";
+      return t(locale, "nav.tab.channels");
     case "instances":
-      return "Instances";
+      return t(locale, "nav.tab.instances");
     case "sessions":
-      return "Sessions";
+      return t(locale, "nav.tab.sessions");
     case "cron":
-      return "Cron Jobs";
+      return t(locale, "nav.tab.cron");
     case "skills":
-      return "Skills";
+      return t(locale, "nav.tab.skills");
     case "nodes":
-      return "Nodes";
+      return t(locale, "nav.tab.nodes");
     case "chat":
-      return "Chat";
+      return t(locale, "nav.tab.chat");
     case "config":
-      return "Config";
+      return t(locale, "nav.tab.config");
     case "debug":
-      return "Debug";
+      return t(locale, "nav.tab.debug");
     case "logs":
-      return "Logs";
+      return t(locale, "nav.tab.logs");
     default:
-      return "Control";
+      return t(locale, "nav.group.control");
   }
 }
 
-export function subtitleForTab(tab: Tab) {
+export function subtitleForTab(tab: Tab, locale: Locale | undefined) {
   switch (tab) {
     case "overview":
-      return "Gateway status, entry points, and a fast health read.";
+      return t(locale, "nav.subtitle.overview");
     case "channels":
-      return "Manage channels and settings.";
+      return t(locale, "nav.subtitle.channels");
     case "instances":
-      return "Presence beacons from connected clients and nodes.";
+      return t(locale, "nav.subtitle.instances");
     case "sessions":
-      return "Inspect active sessions and adjust per-session defaults.";
+      return t(locale, "nav.subtitle.sessions");
     case "cron":
-      return "Schedule wakeups and recurring agent runs.";
+      return t(locale, "nav.subtitle.cron");
     case "skills":
-      return "Manage skill availability and API key injection.";
+      return t(locale, "nav.subtitle.skills");
     case "nodes":
-      return "Paired devices, capabilities, and command exposure.";
+      return t(locale, "nav.subtitle.nodes");
     case "chat":
-      return "Direct gateway chat session for quick interventions.";
+      return t(locale, "nav.subtitle.chat");
     case "config":
-      return "Edit ~/.clawdbot/moltbot.json safely.";
+      return t(locale, "nav.subtitle.config");
     case "debug":
-      return "Gateway snapshots, events, and manual RPC calls.";
+      return t(locale, "nav.subtitle.debug");
     case "logs":
-      return "Live tail of the gateway file logs.";
+      return t(locale, "nav.subtitle.logs");
     default:
       return "";
   }

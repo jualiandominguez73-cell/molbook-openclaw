@@ -1,6 +1,7 @@
 import { html } from "lit";
 
 import type { ConfigUiHints } from "../types";
+import { t, type Locale } from "../i18n";
 import type { ChannelsProps } from "./channels.types";
 import {
   analyzeConfigSchema,
@@ -16,6 +17,7 @@ type ChannelConfigFormProps = {
   uiHints: ConfigUiHints;
   disabled: boolean;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  locale?: Locale;
 };
 
 function resolveSchemaNode(
@@ -70,12 +72,14 @@ function resolveChannelValue(
 export function renderChannelConfigForm(props: ChannelConfigFormProps) {
   const analysis = analyzeConfigSchema(props.schema);
   const normalized = analysis.schema;
+  const locale = props.locale;
+
   if (!normalized) {
-    return html`<div class="callout danger">Schema unavailable. Use Raw.</div>`;
+    return html`<div class="callout danger">${t(locale, "config.schema.unavailable")}</div>`;
   }
   const node = resolveSchemaNode(normalized, ["channels", props.channelId]);
   if (!node) {
-    return html`<div class="callout danger">Channel config schema unavailable.</div>`;
+    return html`<div class="callout danger">${t(locale, "config.channel.schemaUnavailable")}</div>`;
   }
   const configValue = props.configValue ?? {};
   const value = resolveChannelValue(configValue, props.channelId);
@@ -90,6 +94,7 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
         disabled: props.disabled,
         showLabel: false,
         onPatch: props.onPatch,
+        locale,
       })}
     </div>
   `;
@@ -101,10 +106,11 @@ export function renderChannelConfigSection(params: {
 }) {
   const { channelId, props } = params;
   const disabled = props.configSaving || props.configSchemaLoading;
+  const locale = props.locale;
   return html`
     <div style="margin-top: 16px;">
       ${props.configSchemaLoading
-        ? html`<div class="muted">Loading config schema…</div>`
+        ? html`<div class="muted">${t(locale, "config.loading")}</div>`
         : renderChannelConfigForm({
             channelId,
             configValue: props.configForm,
@@ -112,6 +118,7 @@ export function renderChannelConfigSection(params: {
             uiHints: props.configUiHints,
             disabled,
             onPatch: props.onConfigPatch,
+            locale,
           })}
       <div class="row" style="margin-top: 12px;">
         <button
@@ -119,14 +126,14 @@ export function renderChannelConfigSection(params: {
           ?disabled=${disabled || !props.configFormDirty}
           @click=${() => props.onConfigSave()}
         >
-          ${props.configSaving ? "Saving…" : "Save"}
+          ${props.configSaving ? t(locale, "config.saving") : t(locale, "config.save")}
         </button>
         <button
           class="btn"
           ?disabled=${disabled}
           @click=${() => props.onConfigReload()}
         >
-          Reload
+          ${t(locale, "config.reload")}
         </button>
       </div>
     </div>

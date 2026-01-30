@@ -10,6 +10,7 @@ import { syncUrlWithSessionKey } from "./app-settings";
 import type { SessionsListResult } from "./types";
 import type { ThemeMode } from "./theme";
 import type { ThemeTransitionContext } from "./theme-transition";
+import { t } from "./i18n";
 
 export function renderTab(state: AppViewState, tab: Tab) {
   const href = pathForTab(tab, state.basePath);
@@ -31,15 +32,16 @@ export function renderTab(state: AppViewState, tab: Tab) {
         event.preventDefault();
         state.setTab(tab);
       }}
-      title=${titleForTab(tab)}
+      title=${titleForTab(tab, state.settings.locale)}
     >
       <span class="nav-item__icon" aria-hidden="true">${icons[iconForTab(tab)]}</span>
-      <span class="nav-item__text">${titleForTab(tab)}</span>
+      <span class="nav-item__text">${titleForTab(tab, state.settings.locale)}</span>
     </a>
   `;
 }
 
 export function renderChatControls(state: AppViewState) {
+  const locale = state.settings.locale;
   const mainSessionKey = resolveMainSessionKey(state.hello, state.sessionsResult);
   const sessionOptions = resolveSessionOptions(
     state.sessionKey,
@@ -95,7 +97,7 @@ export function renderChatControls(state: AppViewState) {
           state.resetToolStream();
           void refreshChat(state as unknown as Parameters<typeof refreshChat>[0]);
         }}
-        title="Refresh chat data"
+        title=${t(locale, "chat.controls.refresh")}
       >
         ${refreshIcon}
       </button>
@@ -112,8 +114,8 @@ export function renderChatControls(state: AppViewState) {
         }}
         aria-pressed=${showThinking}
         title=${disableThinkingToggle
-          ? "Disabled during onboarding"
-          : "Toggle assistant thinking/working output"}
+          ? t(locale, "chat.controls.disabledOnboarding")
+          : t(locale, "chat.controls.toggleThinking")}
       >
         ${icons.brain}
       </button>
@@ -129,8 +131,8 @@ export function renderChatControls(state: AppViewState) {
         }}
         aria-pressed=${focusActive}
         title=${disableFocusToggle
-          ? "Disabled during onboarding"
-          : "Toggle focus mode (hide sidebar + page header)"}
+          ? t(locale, "chat.controls.disabledOnboarding")
+          : t(locale, "chat.controls.toggleFocus")}
       >
         ${focusIcon}
       </button>
@@ -196,6 +198,7 @@ function resolveSessionOptions(
 const THEME_ORDER: ThemeMode[] = ["system", "light", "dark"];
 
 export function renderThemeToggle(state: AppViewState) {
+  const locale = state.settings.locale;
   const index = Math.max(0, THEME_ORDER.indexOf(state.theme));
   const applyTheme = (next: ThemeMode) => (event: MouseEvent) => {
     const element = event.currentTarget as HTMLElement;
@@ -209,14 +212,14 @@ export function renderThemeToggle(state: AppViewState) {
 
   return html`
     <div class="theme-toggle" style="--theme-index: ${index};">
-      <div class="theme-toggle__track" role="group" aria-label="Theme">
+      <div class="theme-toggle__track" role="group" aria-label=${t(locale, "app.theme.group")}>
         <span class="theme-toggle__indicator"></span>
         <button
           class="theme-toggle__button ${state.theme === "system" ? "active" : ""}"
           @click=${applyTheme("system")}
           aria-pressed=${state.theme === "system"}
-          aria-label="System theme"
-          title="System"
+          aria-label=${t(locale, "app.theme.system.aria")}
+          title=${t(locale, "app.theme.system")}
         >
           ${renderMonitorIcon()}
         </button>
@@ -224,8 +227,8 @@ export function renderThemeToggle(state: AppViewState) {
           class="theme-toggle__button ${state.theme === "light" ? "active" : ""}"
           @click=${applyTheme("light")}
           aria-pressed=${state.theme === "light"}
-          aria-label="Light theme"
-          title="Light"
+          aria-label=${t(locale, "app.theme.light.aria")}
+          title=${t(locale, "app.theme.light")}
         >
           ${renderSunIcon()}
         </button>
@@ -233,13 +236,35 @@ export function renderThemeToggle(state: AppViewState) {
           class="theme-toggle__button ${state.theme === "dark" ? "active" : ""}"
           @click=${applyTheme("dark")}
           aria-pressed=${state.theme === "dark"}
-          aria-label="Dark theme"
-          title="Dark"
+          aria-label=${t(locale, "app.theme.dark.aria")}
+          title=${t(locale, "app.theme.dark")}
         >
           ${renderMoonIcon()}
         </button>
       </div>
     </div>
+  `;
+}
+
+export function renderLocaleToggle(state: AppViewState) {
+  const locale = state.settings.locale === "zh" ? "zh" : "en";
+  const nextLocale = locale === "zh" ? "en" : "zh";
+  const label = locale === "zh" ? t(locale, "app.lang.en") : t(locale, "app.lang.zh");
+  const title =
+    locale === "zh" ? t(locale, "app.lang.switch.toEn") : t(locale, "app.lang.switch.toZh");
+  return html`
+    <button
+      class="btn btn--sm"
+      @click=${() =>
+        state.applySettings({
+          ...state.settings,
+          locale: nextLocale,
+        })}
+      title=${title}
+      aria-label=${title}
+    >
+      ${label}
+    </button>
   `;
 }
 
