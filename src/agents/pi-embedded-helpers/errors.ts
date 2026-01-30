@@ -504,6 +504,8 @@ export function classifyFailoverReason(raw: string): FailoverReason | null {
   if (isCloudCodeAssistFormatError(raw)) return "format";
   if (isBillingErrorMessage(raw)) return "billing";
   if (isTimeoutErrorMessage(raw)) return "timeout";
+  // Check for specific auth profile unavailability/cooldown patterns to allow fallback
+  if (/no available auth profile.*all in cooldown/i.test(raw)) return "rate_limit";
   if (isAuthErrorMessage(raw)) return "auth";
   return null;
 }
