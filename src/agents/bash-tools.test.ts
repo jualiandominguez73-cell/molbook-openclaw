@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { peekSystemEvents, resetSystemEventsForTest } from "../infra/system-events.js";
 import { getFinishedSession, resetProcessRegistryForTests } from "./bash-process-registry.js";
-import { createExecTool, createProcessTool, execTool, processTool } from "./bash-tools.js";
+import { createExecTool, createProcessTool, processTool } from "./bash-tools.js";
 import { buildDockerExecArgs } from "./bash-tools.shared.js";
 import { sanitizeBinaryOutput } from "./shell-utils.js";
 
@@ -69,6 +69,8 @@ beforeEach(() => {
 
 describe("exec tool backgrounding", () => {
   const originalShell = process.env.SHELL;
+  // Use security: "full" to bypass approval for tests (gateway host now defaults when sandbox is disabled)
+  const testExecTool = createExecTool({ security: "full" });
 
   beforeEach(() => {
     if (!isWin && defaultShell) process.env.SHELL = defaultShell;
@@ -81,7 +83,7 @@ describe("exec tool backgrounding", () => {
   it(
     "backgrounds after yield and can be polled",
     async () => {
-      const result = await execTool.execute("call1", {
+      const result = await testExecTool.execute("call1", {
         command: joinCommands([yieldDelayCmd, "echo done"]),
         yieldMs: 10,
       });
@@ -113,7 +115,7 @@ describe("exec tool backgrounding", () => {
   );
 
   it("supports explicit background", async () => {
-    const result = await execTool.execute("call1", {
+    const result = await testExecTool.execute("call1", {
       command: echoAfterDelay("later"),
       background: true,
     });
@@ -127,7 +129,7 @@ describe("exec tool backgrounding", () => {
   });
 
   it("derives a session name from the command", async () => {
-    const result = await execTool.execute("call1", {
+    const result = await testExecTool.execute("call1", {
       command: "echo hello",
       background: true,
     });
@@ -142,7 +144,7 @@ describe("exec tool backgrounding", () => {
   });
 
   it("uses default timeout when timeout is omitted", async () => {
-    const customBash = createExecTool({ timeoutSec: 1, backgroundMs: 10 });
+    const customBash = createExecTool({ timeoutSec: 1, backgroundMs: 10, security: "full" });
     const customProcess = createProcessTool();
 
     const result = await customBash.execute("call1", {
@@ -188,6 +190,7 @@ describe("exec tool backgrounding", () => {
       elevated: { enabled: true, allowed: false, defaultLevel: "on" },
       backgroundMs: 1000,
       timeoutSec: 5,
+      security: "full",
     });
 
     const result = await customBash.execute("call1", {
@@ -198,7 +201,7 @@ describe("exec tool backgrounding", () => {
   });
 
   it("logs line-based slices and defaults to last lines", async () => {
-    const result = await execTool.execute("call1", {
+    const result = await testExecTool.execute("call1", {
       command: echoLines(["one", "two", "three"]),
       background: true,
     });
@@ -218,7 +221,7 @@ describe("exec tool backgrounding", () => {
   });
 
   it("supports line offsets for log slices", async () => {
-    const result = await execTool.execute("call1", {
+    const result = await testExecTool.execute("call1", {
       command: echoLines(["alpha", "beta", "gamma"]),
       background: true,
     });
@@ -236,9 +239,9 @@ describe("exec tool backgrounding", () => {
   });
 
   it("scopes process sessions by scopeKey", async () => {
-    const bashA = createExecTool({ backgroundMs: 10, scopeKey: "agent:alpha" });
+    const bashA = createExecTool({ backgroundMs: 10, scopeKey: "agent:alpha", security: "full" });
     const processA = createProcessTool({ scopeKey: "agent:alpha" });
-    const bashB = createExecTool({ backgroundMs: 10, scopeKey: "agent:beta" });
+    const bashB = createExecTool({ backgroundMs: 10, scopeKey: "agent:beta", security: "full" });
     const processB = createProcessTool({ scopeKey: "agent:beta" });
 
     const resultA = await bashA.execute("call1", {
@@ -273,6 +276,7 @@ describe("exec notifyOnExit", () => {
       backgroundMs: 0,
       notifyOnExit: true,
       sessionKey: "agent:main:main",
+      security: "full",
     });
 
     const result = await tool.execute("call1", {
@@ -314,7 +318,7 @@ describe("exec PATH handling", () => {
     const prepend = isWin ? ["C:\\custom\\bin", "C:\\oss\\bin"] : ["/custom/bin", "/opt/oss/bin"];
     process.env.PATH = basePath;
 
-    const tool = createExecTool({ pathPrepend: prepend });
+    const tool = createExecTool({ pathPrepend: prepend, security: "full" });
     const result = await tool.execute("call1", {
       command: isWin ? "Write-Output $env:PATH" : "echo $PATH",
     });
