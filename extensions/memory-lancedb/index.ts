@@ -2,7 +2,7 @@
  * Moltbot Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
- * Uses LanceDB for storage and OpenAI for embeddings.
+ * Uses LanceDB for storage and supports OpenAI/MiniMax/custom embeddings.
  * Provides seamless auto-recall and auto-capture via lifecycle hooks.
  */
 
@@ -154,10 +154,16 @@ class Embeddings {
   private client: OpenAI;
 
   constructor(
-    apiKey: string,
+    apiKey: string | undefined,
     private model: string,
+    baseUrl?: string,
   ) {
-    this.client = new OpenAI({ apiKey });
+    // For Ollama/custom providers without API key, use a placeholder
+    const effectiveKey = apiKey || "ollama-placeholder-key";
+    this.client = new OpenAI({
+      apiKey: effectiveKey,
+      baseURL: baseUrl,
+    });
   }
 
   async embed(text: string): Promise<number[]> {
@@ -223,12 +229,20 @@ const memoryPlugin = {
   register(api: MoltbotPluginApi) {
     const cfg = memoryConfigSchema.parse(api.pluginConfig);
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
-    const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
+    const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "nomic-embed-text");
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = new Embeddings(
+      cfg.embedding.apiKey,
+      cfg.embedding.model ?? "nomic-embed-text",
+      cfg.embedding.baseUrl,
+    );
+
+    const providerInfo = cfg.embedding.provider === "ollama"
+      ? `Ollama (${cfg.embedding.baseUrl || "http://localhost:11434/v1"})`
+      : `provider: ${cfg.embedding.provider}`;
 
     api.logger.info(
-      `memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`,
+      `memory-lancedb: plugin registered (db: ${resolvedDbPath}, model: ${cfg.embedding.model}, ${providerInfo})`,
     );
 
     // ========================================================================

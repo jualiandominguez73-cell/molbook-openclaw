@@ -1,0 +1,24 @@
+name: Moltbot Gateway
+targetPort: 18789
+displayName: Moltbot Gateway
+description: Personal AI Assistant with Ollama integration
+icon: https://raw.githubusercontent.com/moltbot/moltbot/main/docs/whatsapp-clawd.jpg
+documentation: https://github.com/moltbot/moltbot/blob/main/.github/GITHUB-DEPLOY.md
+features:
+  - devcontainer
+permissions:
+  contents: read
+  issues: read
+  pull_requests: read
+devContainer:
+  extensions:
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - ms-vscode.vscode-typescript-next
+repository:
+  url: https://github.com/moltbot/moltbot
+contact:
+  - type: issue
+    url: https://github.com/moltbot/moltbot/issues
+  - type: discussion
+    url: https://github.com/moltbot/moltbot/discussions

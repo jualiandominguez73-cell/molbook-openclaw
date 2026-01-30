@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  moltbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspace:cached
+      - moltbot-data:/root/.clawdbot
+      - moltbot-memory:/root/.clawdbot/memory
+    ports:
+      - "18789:18789"
+      - "18791:18791"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    command: sleep infinity
+    network_mode: host
+
+volumes:
+  moltbot-data:
+  moltbot-memory:

@@ -3,15 +3,24 @@
   "kind": "memory",
   "uiHints": {
     "embedding.apiKey": {
-      "label": "OpenAI API Key",
+      "label": "API Key",
       "sensitive": true,
-      "placeholder": "sk-proj-...",
-      "help": "API key for OpenAI embeddings (or use ${OPENAI_API_KEY})"
+      "placeholder": "sk-proj-... (not needed for Ollama)",
+      "help": "API key for embedding provider (optional for Ollama/custom)"
     },
     "embedding.model": {
       "label": "Embedding Model",
-      "placeholder": "text-embedding-3-small",
-      "help": "OpenAI embedding model to use"
+      "placeholder": "nomic-embed-text",
+      "help": "Embedding model: nomic-embed-text (Ollama), text-embedding-3-small (OpenAI), embedding-3 (Zhipu AI)"
+    },
+    "embedding.baseUrl": {
+      "label": "Base URL",
+      "placeholder": "http://localhost:11434/v1 (Ollama)",
+      "help": "Base URL for embedding API"
+    },
+    "embedding.provider": {
+      "label": "Provider",
+      "help": "Embedding provider: openai, minimax, custom, or ollama"
     },
     "dbPath": {
       "label": "Database Path",
@@ -39,16 +48,16 @@
             "type": "string"
           },
           "model": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": "string"
+          },
+          "provider": {
             "type": "string",
-            "enum": [
-              "text-embedding-3-small",
-              "text-embedding-3-large"
-            ]
+            "enum": ["openai", "minimax", "custom", "ollama"]
           }
-        },
-        "required": [
-          "apiKey"
-        ]
+        }
       },
       "dbPath": {
         "type": "string"
@@ -60,8 +69,6 @@
         "type": "boolean"
       }
     },
-    "required": [
-      "embedding"
-    ]
+    "required": ["embedding"]
   }
 }
