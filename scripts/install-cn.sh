@@ -136,13 +136,13 @@ ensure_node() {
     if check_cmd node; then
         local ver
         ver=$(node -v | cut -d. -f1 | tr -d 'v')
-        if [[ "$ver" -ge 18 ]]; then
+        if [[ "$ver" -ge 22 ]]; then
             return 0
         fi
-        echo -e "${WARN}Node.js 版本过低 (检测到 v${ver})，需要 v18+"
+        echo -e "${WARN}Node.js 版本过低 (检测到 v${ver})，需要 v22+"
     fi
 
-    echo -e "${INFO}未检测到 Node.js v18+，正在尝试自动安装..."
+    echo -e "${INFO}未检测到 Node.js v22+，正在尝试自动安装..."
 
     # macOS
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -157,26 +157,26 @@ ensure_node() {
          export NVM_DIR="$HOME/.nvm"
          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
          if check_cmd nvm; then
-             nvm install 20
-             nvm alias default 20
+             nvm install 22
+             nvm alias default 22
              return 0
          fi
     
     # Linux
     elif [[ -f /etc/debian_version ]]; then
-        echo -e "${INFO}检测到 Debian/Ubuntu，使用 NodeSource 安装 Node.js v20..."
+        echo -e "${INFO}检测到 Debian/Ubuntu，使用 NodeSource 安装 Node.js v22..."
         if ! check_cmd curl; then 
             run_root apt-get update && run_root apt-get install -y curl
         fi
-        curl -fsSL https://deb.nodesource.com/setup_20.x | run_root bash -
+        curl -fsSL https://deb.nodesource.com/setup_22.x | run_root bash -
         run_root apt-get install -y nodejs build-essential
         return 0
     elif [[ -f /etc/redhat-release ]]; then
-        echo -e "${INFO}检测到 CentOS/RedHat，使用 NodeSource 安装 Node.js v20..."
+        echo -e "${INFO}检测到 CentOS/RedHat，使用 NodeSource 安装 Node.js v22..."
         if ! check_cmd curl; then 
             if check_cmd dnf; then run_root dnf install -y curl; else run_root yum install -y curl; fi
         fi
-        curl -fsSL https://rpm.nodesource.com/setup_20.x | run_root bash -
+        curl -fsSL https://rpm.nodesource.com/setup_22.x | run_root bash -
         if check_cmd dnf; then
             run_root dnf install -y nodejs
             # 尝试安装构建工具，失败不阻断
@@ -188,11 +188,12 @@ ensure_node() {
         return 0
     elif [[ -f /etc/alpine-release ]]; then
         echo -e "${INFO}检测到 Alpine，安装 Node.js..."
+        # Alpine edge/community 可能包含较新 node
         run_root apk add nodejs npm make g++
         return 0
     fi
     
-    echo -e "${ERROR}无法自动安装 Node.js，请手动安装 v18+ 后重试。"
+    echo -e "${ERROR}无法自动安装 Node.js v22+，请手动安装后重试。"
     exit 1
 }
 
