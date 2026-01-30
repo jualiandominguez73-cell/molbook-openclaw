@@ -36,6 +36,10 @@ export type HookMappingConfig = {
   thinking?: string;
   timeoutSeconds?: number;
   transform?: HookMappingTransform;
+  /** Session cleanup after hook completes. "delete" removes session + transcript. Default: "keep" */
+  cleanup?: "delete" | "keep";
+  /** Minutes to wait before cleanup when cleanup="delete". Default: 0 (immediate) */
+  cleanupDelayMinutes?: number;
 };
 
 export type HooksGmailTailscaleMode = "off" | "serve" | "funnel";

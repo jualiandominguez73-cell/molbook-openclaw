@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import type { HookAction, HookMappingResolved } from "./hooks-mapping.js";
 import { applyHookMappings, resolveHookMappings } from "./hooks-mapping.js";
 
 const baseUrl = new URL("http://127.0.0.1:18789/hooks/gmail");
@@ -32,8 +33,7 @@ describe("hooks mapping", () => {
       path: "gmail",
     });
     expect(result?.ok).toBe(true);
-    if (result?.ok) {
-      expect(result.action.kind).toBe("agent");
+    if (result?.ok && result.action?.kind === "agent") {
       expect(result.action.message).toBe("Subject: Hello");
     }
   });
@@ -57,7 +57,7 @@ describe("hooks mapping", () => {
       path: "gmail",
     });
     expect(result?.ok).toBe(true);
-    if (result?.ok && result.action.kind === "agent") {
+    if (result?.ok && result.action?.kind === "agent") {
       expect(result.action.model).toBe("openai/gpt-4.1-mini");
     }
   });
@@ -90,11 +90,8 @@ describe("hooks mapping", () => {
     });
 
     expect(result?.ok).toBe(true);
-    if (result?.ok) {
-      expect(result.action.kind).toBe("wake");
-      if (result.action.kind === "wake") {
-        expect(result.action.text).toBe("Ping Ada");
-      }
+    if (result?.ok && result.action?.kind === "wake") {
+      expect(result.action.text).toBe("Ping Ada");
     }
   });
 
@@ -147,8 +144,7 @@ describe("hooks mapping", () => {
       path: "gmail",
     });
     expect(result?.ok).toBe(true);
-    if (result?.ok) {
-      expect(result.action.kind).toBe("agent");
+    if (result?.ok && result.action?.kind === "agent") {
       expect(result.action.message).toBe("Override subject: Hello");
     }
   });
@@ -164,5 +160,91 @@ describe("hooks mapping", () => {
       path: "noop",
     });
     expect(result?.ok).toBe(false);
+  });
+});
+
+describe("HookMappingResolved", () => {
+  it("includes cleanup fields", () => {
+    const resolved: HookMappingResolved = {
+      id: "test",
+      matchPath: "test",
+      action: "agent",
+      cleanup: "delete",
+      cleanupDelayMinutes: 5,
+    };
+    expect(resolved.cleanup).toBe("delete");
+    expect(resolved.cleanupDelayMinutes).toBe(5);
+  });
+});
+
+describe("HookAction", () => {
+  it("agent action includes cleanup fields", () => {
+    const action: HookAction = {
+      kind: "agent",
+      message: "test",
+      wakeMode: "now",
+      cleanup: "delete",
+      cleanupDelayMinutes: 5,
+    };
+    expect(action.kind).toBe("agent");
+    if (action.kind === "agent") {
+      expect(action.cleanup).toBe("delete");
+      expect(action.cleanupDelayMinutes).toBe(5);
+    }
+  });
+});
+
+describe("applyHookMappings cleanup propagation", () => {
+  it("propagates cleanup option from config to action", async () => {
+    const mappings = resolveHookMappings({
+      mappings: [
+        {
+          id: "test",
+          match: { path: "test" },
+          action: "agent",
+          messageTemplate: "hello",
+          cleanup: "delete",
+          cleanupDelayMinutes: 5,
+        },
+      ],
+    });
+
+    const result = await applyHookMappings(mappings, {
+      payload: {},
+      headers: {},
+      url: new URL("http://localhost/hooks/test"),
+      path: "test",
+    });
+
+    expect(result?.ok).toBe(true);
+    if (result?.ok && result.action?.kind === "agent") {
+      expect(result.action.cleanup).toBe("delete");
+      expect(result.action.cleanupDelayMinutes).toBe(5);
+    }
+  });
+
+  it("defaults cleanup to undefined when not specified", async () => {
+    const mappings = resolveHookMappings({
+      mappings: [
+        {
+          id: "test",
+          match: { path: "test" },
+          action: "agent",
+          messageTemplate: "hello",
+        },
+      ],
+    });
+
+    const result = await applyHookMappings(mappings, {
+      payload: {},
+      headers: {},
+      url: new URL("http://localhost/hooks/test"),
+      path: "test",
+    });
+
+    expect(result?.ok).toBe(true);
+    if (result?.ok && result.action?.kind === "agent") {
+      expect(result.action.cleanup).toBeUndefined();
+    }
   });
 });

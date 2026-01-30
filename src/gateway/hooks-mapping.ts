@@ -21,6 +21,8 @@ export type HookMappingResolved = {
   model?: string;
   thinking?: string;
   timeoutSeconds?: number;
+  cleanup?: "delete" | "keep";
+  cleanupDelayMinutes?: number;
   transform?: HookMappingTransformResolved;
 };
 
@@ -55,6 +57,8 @@ export type HookAction =
       model?: string;
       thinking?: string;
       timeoutSeconds?: number;
+      cleanup?: "delete" | "keep";
+      cleanupDelayMinutes?: number;
     };
 
 export type HookMappingResult =
@@ -94,6 +98,8 @@ type HookTransformResult = Partial<{
   model: string;
   thinking: string;
   timeoutSeconds: number;
+  cleanup: "delete" | "keep";
+  cleanupDelayMinutes: number;
 }> | null;
 
 type HookTransformFn = (
@@ -191,6 +197,8 @@ function normalizeHookMapping(
     model: mapping.model,
     thinking: mapping.thinking,
     timeoutSeconds: mapping.timeoutSeconds,
+    cleanup: mapping.cleanup,
+    cleanupDelayMinutes: mapping.cleanupDelayMinutes,
     transform,
   };
 }
@@ -237,6 +245,8 @@ function buildActionFromMapping(
       model: renderOptional(mapping.model, ctx),
       thinking: renderOptional(mapping.thinking, ctx),
       timeoutSeconds: mapping.timeoutSeconds,
+      cleanup: mapping.cleanup,
+      cleanupDelayMinutes: mapping.cleanupDelayMinutes,
     },
   };
 }
@@ -277,6 +287,8 @@ function mergeAction(
     model: override.model ?? baseAgent?.model,
     thinking: override.thinking ?? baseAgent?.thinking,
     timeoutSeconds: override.timeoutSeconds ?? baseAgent?.timeoutSeconds,
+    cleanup: override.cleanup ?? baseAgent?.cleanup,
+    cleanupDelayMinutes: override.cleanupDelayMinutes ?? baseAgent?.cleanupDelayMinutes,
   });
 }
 
