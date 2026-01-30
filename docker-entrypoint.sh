@@ -42,4 +42,4 @@ export HOST="0.0.0.0"
 : "${OPENCLAW_GATEWAY_PORT:=8080}"
 
 # Run the gateway server with --allow-unconfigured for Railway deployments
-exec node openclaw.mjs gateway run --bind 0.0.0.0 --host 0.0.0.0 --port "$OPENCLAW_GATEWAY_PORT" --allow-unconfigured
+exec node openclaw.mjs gateway run --bind 0.0.0.0 --port "$OPENCLAW_GATEWAY_PORT" --allow-unconfigured
