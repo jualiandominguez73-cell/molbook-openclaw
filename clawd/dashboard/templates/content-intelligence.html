@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Intelligence - Clawd Dashboard</title>
+    <link rel="stylesheet" href="/static/design-system.css">
+    <style>
+        /* Content Intelligence specific styles - following design system */
+        .network-container {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+            height: 500px;
+            position: relative;
+        }
+        
+        .network-canvas {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+        }
+        
+        .insight-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-md);
+        }
+        
+        .insight-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .insight-content {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        
+        .connection-line {
+            position: absolute;
+            background: var(--border-default);
+            height: 1px;
+        }
+        
+        .entity-node {
+            position: absolute;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xs) var(--space-sm);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .entity-node:hover {
+            background: var(--accent-system);
+            color: var(--bg-primary);
+            border-color: var(--accent-system);
+        }
+        
+        .entity-node.entity-person { border-color: var(--accent-cis); }
+        .entity-node.entity-concept { border-color: var(--accent-capture); }
+        .entity-node.entity-event { border-color: var(--accent-sticker); }
+        
+        .pattern-section {
+            margin: var(--space-xl) 0;
+        }
+        
+        .pattern-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            color: var(--text-primary);
+        }
+        
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+        }
+        
+        .pattern-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+        }
+        
+        .pattern-name {
+            font-weight: 600;
+            color: var(--accent-system);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .pattern-value {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <div class="app-header-content">
+                <nav class="main-nav">
+                    <a href="/" class="nav-link" data-module="dashboard">🦞 Dashboard</a>
+                    <a href="/cis.html" class="nav-link" data-module="cis">CIS</a>
+                    <a href="/sticker-business.html" class="nav-link" data-module="sticker">Stickers</a>
+                    <a href="/ceramics-intelligence.html" class="nav-link" data-module="ceramics">Ceramics</a>
+                    <a href="/natural-capture.html" class="nav-link" data-module="capture">Capture</a>
+                    <a href="/content-intelligence.html" class="nav-link active" data-module="capture">Content Intelligence</a>
+                </nav>
+                <h1 class="app-title">Content Intelligence</h1>
+                <p class="app-subtitle">Visual analysis of text patterns and connections</p>
+            </div>
+        </header>
+        <main class="app-body">
+            <div class="app-content">
+                <!-- Analysis Controls -->
+                <div class="card mb-lg">
+                    <div class="card-header">
+                        <h3 class="card-title">Text Analysis</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Enter Text to Analyze</label>
+                            <textarea id="analysis-text" class="form-textarea" placeholder="Paste or type text here...">
+The content intelligence system provides deep insights into text patterns, connections, and semantic relationships. It can extract key entities like people, concepts, and events, then visualize how they relate to each other. This helps understand complex information structures and uncover hidden patterns in large text corpora.
+                            </textarea>
+                        </div>
+                        <button id="analyze-btn" class="btn btn-primary">Analyze Text</button>
+                        <button id="clear-btn" class="btn btn-secondary">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Network Visualization -->
+                <div class="card mb-lg">
+                    <div class="card-header">
+                        <h3 class="card-title">Entity Relationship Network</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="network-container">
+                            <div class="network-canvas" id="network-canvas"></div>
+                        </div>
+                        <div class="insight-card">
+                            <div class="insight-title">Network Insights</div>
+                            <div class="insight-content" id="network-insights">
+                                The network visualization shows how entities (people, concepts, events) are connected in the text. Nodes represent entities, and lines represent relationships. Hover over nodes to see details.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extracted Entities -->
+                <div class="card mb-lg">
+                    <div class="card-header">
+                        <h3 class="card-title">Extracted Entities</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="grid-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">People</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="entities-people" class="empty">No people detected</div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Concepts</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="entities-concepts" class="empty">No concepts detected</div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Events</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="entities-events" class="empty">No events detected</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Patterns -->
+                <div class="pattern-section">
+                    <h3 class="pattern-title">Text Patterns</h3>
+                    <div class="pattern-grid" id="patterns-container">
+                        <div class="pattern-item">
+                            <div class="pattern-name">Sentiment</div>
+                            <div class="pattern-value" id="pattern-sentiment">Neutral</div>
+                        </div>
+                        <div class="pattern-item">
+                            <div class="pattern-name">Reading Level</div>
+                            <div class="pattern-value" id="pattern-reading-level">College</div>
+                        </div>
+                        <div class="pattern-item">
+                            <div class="pattern-name">Key Phrases</div>
+                            <div class="pattern-value" id="pattern-key-phrases">content intelligence, text patterns, semantic relationships</div>
+                        </div>
+                        <div class="pattern-item">
+                            <div class="pattern-name">Word Count</div>
+                            <div class="pattern-value" id="pattern-word-count">50</div>
+                        </div>
+                        <div class="pattern-item">
+                            <div class="pattern-name">Sentence Count</div>
+                            <div class="pattern-value" id="pattern-sentence-count">3</div>
+                        </div>
+                        <div class="pattern-item">
+                            <div class="pattern-name">Paragraph Count</div>
+                            <div class="pattern-value" id="pattern-paragraph-count">1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Insights -->
+                <div class="card mb-lg">
+                    <div class="card-header">
+                        <h3 class="card-title">Key Insights</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="key-insights">
+                            <div class="insight-card">
+                                <div class="insight-title">Main Topic</div>
+                                <div class="insight-content">Content intelligence systems and their ability to analyze text patterns and relationships</div>
+                            </div>
+                            <div class="insight-card">
+                                <div class="insight-title">Core Function</div>
+                                <div class="insight-content">Extracting entities (people, concepts, events) and visualizing their connections</div>
+                            </div>
+                            <div class="insight-card">
+                                <div class="insight-title">Benefit</div>
+                                <div class="insight-content">Helps understand complex information structures and uncover hidden patterns</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connections Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Entity Connections</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Source Entity</th>
+                                        <th>Target Entity</th>
+                                        <th>Relationship</th>
+                                        <th>Strength</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="connections-table">
+                                    <tr>
+                                        <td>content intelligence</td>
+                                        <td>text patterns</td>
+                                        <td>analyzes</td>
+                                        <td>0.95</td>
+                                    </tr>
+                                    <tr>
+                                        <td>content intelligence</td>
+                                        <td>semantic relationships</td>
+                                        <td>identifies</td>
+                                        <td>0.92</td>
+                                    </tr>
+                                    <tr>
+                                        <td>content intelligence</td>
+                                        <td>entities</td>
+                                        <td>extracts</td>
+                                        <td>0.88</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Simple content intelligence visualization
+        document.addEventListener('DOMContentLoaded', function() {
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const textArea = document.getElementById('analysis-text');
+            const networkCanvas = document.getElementById('network-canvas');
+            
+            // Simple analysis function
+            analyzeBtn.addEventListener('click', function() {
+                const text = textArea.value;
+                if (!text.trim()) return;
+                
+                // Simple text analysis
+                analyzeText(text);
+            });
+            
+            clearBtn.addEventListener('click', function() {
+                textArea.value = '';
+                resetVisualization();
+            });
+            
+            function analyzeText(text) {
+                // Update pattern metrics
+                const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+                const sentenceCount = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+                const paragraphCount = text.split('\n\n').filter(p => p.trim().length > 0).length;
+                
+                document.getElementById('pattern-word-count').textContent = wordCount;
+                document.getElementById('pattern-sentence-count').textContent = sentenceCount;
+                document.getElementById('pattern-paragraph-count').textContent = paragraphCount;
+                
+                // Simple entity extraction (mock for demo)
+                const entities = {
+                    people: ['user', 'analyst'],
+                    concepts: ['content intelligence', 'text patterns', 'semantic relationships', 'entities'],
+                    events: ['analysis', 'visualization', 'extraction']
+                };
+                
+                updateEntities(entities);
+                createNetworkVisualization(entities);
+                
+                // Update insights
+                document.getElementById('network-insights').textContent = 
+                    `Analyzed ${wordCount} words across ${sentenceCount} sentences. ` +
+                    `Found ${entities.concepts.length} key concepts, ${entities.people.length} people references, ` +
+                    `and ${entities.events.length} events. The text focuses on content intelligence capabilities.`;
+            }
+            
+            function updateEntities(entities) {
+                const peopleEl = document.getElementById('entities-people');
+                const conceptsEl = document.getElementById('entities-concepts');
+                const eventsEl = document.getElementById('entities-events');
+                
+                peopleEl.innerHTML = entities.people.length > 0 
+                    ? entities.people.map(p => `<div class="badge badge-pill badge-cis">${p}</div>`).join(' ')
+                    : '<div class="empty">No people detected</div>';
+                
+                conceptsEl.innerHTML = entities.concepts.length > 0
+                    ? entities.concepts.map(c => `<div class="badge badge-pill badge-capture">${c}</div>`).join(' ')
+                    : '<div class="empty">No concepts detected</div>';
+                
+                eventsEl.innerHTML = entities.events.length > 0
+                    ? entities.events.map(e => `<div class="badge badge-pill badge-sticker">${e}</div>`).join(' ')
+                    : '<div class="empty">No events detected</div>';
+            }
+            
+            function createNetworkVisualization(entities) {
+                // Simple network visualization with positioned nodes
+                networkCanvas.innerHTML = '';
+                
+                // Create some connections
+                const connections = [
+                    { from: 'content intelligence', to: 'text patterns', type: 'analyzes' },
+                    { from: 'content intelligence', to: 'semantic relationships', type: 'identifies' },
+                    { from: 'content intelligence', to: 'entities', type: 'extracts' },
+                    { from: 'text patterns', to: 'entities', type: 'contains' },
+                    { from: 'semantic relationships', to: 'entities', type: 'connects' }
+                ];
+                
+                // Position entities
+                const positions = {
+                    'content intelligence': { x: 150, y: 100 },
+                    'text patterns': { x: 400, y: 150 },
+                    'semantic relationships': { x: 400, y: 300 },
+                    'entities': { x: 650, y: 200 }
+                };
+                
+                // Draw connections
+                connections.forEach(conn => {
+                    const fromPos = positions[conn.from];
+                    const toPos = positions[conn.to];
+                    
+                    if (fromPos && toPos) {
+                        const line = document.createElement('div');
+                        line.className = 'connection-line';
+                        
+                        // Calculate line position and dimensions
+                        const length = Math.sqrt(Math.pow(toPos.x - fromPos.x, 2) + Math.pow(toPos.y - fromPos.y, 2));
+                        const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI;
+                        
+                        line.style.width = length + 'px';
+                        line.style.left = fromPos.x + 'px';
+                        line.style.top = (fromPos.y + 15) + 'px';
+                        line.style.transform = `rotate(${angle}deg)`;
+                        line.style.transformOrigin = '0 0';
+                        
+                        networkCanvas.appendChild(line);
+                    }
+                });
+                
+                // Draw entities
+                Object.entries(positions).forEach(([entity, pos]) => {
+                    const node = document.createElement('div');
+                    node.className = 'entity-node';
+                    
+                    // Determine entity type
+                    if (entities.concepts.includes(entity)) {
+                        node.classList.add('entity-concept');
+                    } else if (entities.events.includes(entity)) {
+                        node.classList.add('entity-event');
+                    } else if (entities.people.includes(entity)) {
+                        node.classList.add('entity-person');
+                    }
+                    
+                    node.style.left = pos.x + 'px';
+                    node.style.top = pos.y + 'px';
+                    node.textContent = entity;
+                    
+                    // Add tooltip
+                    node.title = `Entity: ${entity}\nType: ${entities.concepts.includes(entity) ? 'Concept' : entities.events.includes(entity) ? 'Event' : 'Person'}`;
+                    
+                    networkCanvas.appendChild(node);
+                });
+            }
+            
+            function resetVisualization() {
+                networkCanvas.innerHTML = '';
+                document.getElementById('entities-people').innerHTML = '<div class="empty">No people detected</div>';
+                document.getElementById('entities-concepts').innerHTML = '<div class="empty">No concepts detected</div>';
+                document.getElementById('entities-events').innerHTML = '<div class="empty">No events detected</div>';
+                document.getElementById('network-insights').textContent = 'The network visualization shows how entities are connected in the text.';
+            }
+            
+            // Initialize with default text
+            analyzeText(textArea.value);
+        });
+    </script>
+</body>
+</html>

@@ -680,6 +680,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_file(TEMPLATES_DIR / 'natural-capture.html', 'text/html')
         elif path == '/ceramics-intelligence.html':
             self.send_file(TEMPLATES_DIR / 'ceramics-intelligence.html', 'text/html')
+        elif path == '/content-intelligence.html':
+            self.send_file(TEMPLATES_DIR / 'content-intelligence.html', 'text/html')
         elif path == '/static/style.css':
             self.send_file(STATIC_DIR / 'style.css', 'text/css')
         elif path == '/static/design-system.css':
