@@ -22,6 +22,7 @@ import type {
 import type { ChatQueueItem, CronFormState } from "./ui-types";
 import type { EventLogEntry } from "./app-events";
 import type { SkillMessage } from "./controllers/skills";
+import type { ChatAttachment } from "./controllers/chat";
 import type {
   ExecApprovalsFile,
   ExecApprovalsSnapshot,
@@ -56,6 +57,7 @@ export type AppViewState = {
   chatAvatarUrl: string | null;
   chatThinkingLevel: string | null;
   chatQueue: ChatQueueItem[];
+  chatAttachments: ChatAttachment[];
   nodesLoading: boolean;
   nodes: Array<Record<string, unknown>>;
   devicesLoading: boolean;

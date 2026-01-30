@@ -127,6 +127,39 @@ export function extractRawText(message: unknown): string | null {
   return null;
 }
 
+export type ImageBlock = {
+  dataUrl: string;
+  mimeType: string;
+};
+
+const imageCache = new WeakMap<object, ImageBlock[]>();
+
+export function extractImages(message: unknown): ImageBlock[] {
+  const m = message as Record<string, unknown>;
+  const content = m.content;
+  if (!Array.isArray(content)) return [];
+  const images: ImageBlock[] = [];
+  for (const p of content) {
+    const item = p as Record<string, unknown>;
+    if (item.type === "image" && typeof item.dataUrl === "string") {
+      images.push({
+        dataUrl: item.dataUrl as string,
+        mimeType: (item.mimeType as string) ?? "image/png",
+      });
+    }
+  }
+  return images;
+}
+
+export function extractImagesCached(message: unknown): ImageBlock[] {
+  if (!message || typeof message !== "object") return extractImages(message);
+  const obj = message as object;
+  if (imageCache.has(obj)) return imageCache.get(obj)!;
+  const value = extractImages(message);
+  imageCache.set(obj, value);
+  return value;
+}
+
 export function formatReasoningMarkdown(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return "";

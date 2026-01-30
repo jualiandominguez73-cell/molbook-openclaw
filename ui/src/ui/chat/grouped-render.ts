@@ -9,6 +9,7 @@ import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normali
 import {
   extractTextCached,
   extractThinkingCached,
+  extractImagesCached,
   formatReasoningMarkdown,
 } from "./message-extract";
 import { extractToolCards, renderToolCardSidebar } from "./tool-cards";
@@ -181,6 +182,8 @@ function renderGroupedMessage(
   const hasToolCards = toolCards.length > 0;
 
   const extractedText = extractTextCached(message);
+  const extractedImages = extractImagesCached(message);
+  const hasImages = extractedImages.length > 0;
   const extractedThinking =
     opts.showReasoning && role === "assistant"
       ? extractThinkingCached(message)
@@ -207,7 +210,7 @@ function renderGroupedMessage(
     )}`;
   }
 
-  if (!markdown && !hasToolCards) return nothing;
+  if (!markdown && !hasToolCards && !hasImages) return nothing;
 
   return html`
     <div class="${bubbleClasses}">
@@ -215,6 +218,11 @@ function renderGroupedMessage(
       ${reasoningMarkdown
         ? html`<div class="chat-thinking">${unsafeHTML(
             toSanitizedMarkdownHtml(reasoningMarkdown),
+          )}</div>`
+        : nothing}
+      ${hasImages
+        ? html`<div class="chat-images">${extractedImages.map(
+            (img) => html`<img class="chat-image" src=${img.dataUrl} alt="Attached image" />`,
           )}</div>`
         : nothing}
       ${markdown

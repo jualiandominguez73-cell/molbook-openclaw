@@ -3,7 +3,9 @@ import { repeat } from "lit/directives/repeat.js";
 import type { SessionsListResult } from "../types";
 import type { ChatQueueItem } from "../ui-types";
 import type { ChatItem, MessageGroup } from "../types/chat-types";
+import type { ChatAttachment } from "../controllers/chat";
 import { icons } from "../icons";
+import { generateUUID } from "../uuid";
 import {
   normalizeMessage,
   normalizeRoleForGrouping,
@@ -37,6 +39,7 @@ export type ChatProps = {
   streamStartedAt: number | null;
   assistantAvatarUrl?: string | null;
   draft: string;
+  attachments: ChatAttachment[];
   queue: ChatQueueItem[];
   connected: boolean;
   canSend: boolean;
@@ -56,6 +59,7 @@ export type ChatProps = {
   onRefresh: () => void;
   onToggleFocusMode: () => void;
   onDraftChange: (next: string) => void;
+  onAttachmentsChange: (next: ChatAttachment[]) => void;
   onSend: () => void;
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
@@ -65,6 +69,45 @@ export type ChatProps = {
   onSplitRatioChange?: (ratio: number) => void;
   onChatScroll?: (event: Event) => void;
 };
+
+const MAX_ATTACHMENT_BYTES = 5_000_000; // 5 MB
+
+function handlePaste(e: ClipboardEvent, props: ChatProps) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const imageFiles: File[] = [];
+  for (const item of items) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) imageFiles.push(file);
+    }
+  }
+  if (imageFiles.length === 0) return;
+  e.preventDefault();
+  for (const file of imageFiles) {
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      console.warn(`Skipped image "${file.name}": exceeds 5 MB limit (${file.size} bytes)`);
+      continue;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const attachment: ChatAttachment = {
+        id: generateUUID(),
+        dataUrl,
+        mimeType: file.type,
+        fileName: file.name || "pasted-image",
+        size: file.size,
+      };
+      props.onAttachmentsChange([...props.attachments, attachment]);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function removeAttachment(props: ChatProps, id: string) {
+  props.onAttachmentsChange(props.attachments.filter((a) => a.id !== id));
+}
 
 const COMPACTION_TOAST_DURATION_MS = 5000;
 
@@ -235,39 +278,63 @@ export function renderChat(props: ChatProps) {
         : nothing}
 
       <div class="chat-compose">
-        <label class="field chat-compose__field">
-          <span>Message</span>
-          <textarea
-            .value=${props.draft}
-            ?disabled=${!props.connected}
-            @keydown=${(e: KeyboardEvent) => {
-              if (e.key !== "Enter") return;
-              if (e.isComposing || e.keyCode === 229) return;
-              if (e.shiftKey) return; // Allow Shift+Enter for line breaks
-              if (!props.connected) return;
-              e.preventDefault();
-              if (canCompose) props.onSend();
-            }}
-            @input=${(e: Event) =>
-              props.onDraftChange((e.target as HTMLTextAreaElement).value)}
-            placeholder=${composePlaceholder}
-          ></textarea>
-        </label>
-        <div class="chat-compose__actions">
-          <button
-            class="btn"
-            ?disabled=${!props.connected || (!canAbort && props.sending)}
-            @click=${canAbort ? props.onAbort : props.onNewSession}
-          >
-            ${canAbort ? "Stop" : "New session"}
-          </button>
-          <button
-            class="btn primary"
-            ?disabled=${!props.connected}
-            @click=${props.onSend}
-          >
-            ${isBusy ? "Queue" : "Send"}<kbd class="btn-kbd">↵</kbd>
-          </button>
+        ${props.attachments.length > 0
+          ? html`
+              <div class="chat-attachments">
+                ${props.attachments.map(
+                  (att) => html`
+                    <div class="chat-attachment">
+                      <img class="chat-attachment__img" src=${att.dataUrl} alt=${att.fileName} />
+                      <button
+                        class="chat-attachment__remove"
+                        type="button"
+                        aria-label="Remove attachment"
+                        @click=${() => removeAttachment(props, att.id)}
+                      >
+                        ${icons.x}
+                      </button>
+                    </div>
+                  `,
+                )}
+              </div>
+            `
+          : nothing}
+        <div class="chat-compose__row">
+          <label class="field chat-compose__field">
+            <span>Message</span>
+            <textarea
+              .value=${props.draft}
+              ?disabled=${!props.connected}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key !== "Enter") return;
+                if (e.isComposing || e.keyCode === 229) return;
+                if (e.shiftKey) return; // Allow Shift+Enter for line breaks
+                if (!props.connected) return;
+                e.preventDefault();
+                if (canCompose) props.onSend();
+              }}
+              @input=${(e: Event) =>
+                props.onDraftChange((e.target as HTMLTextAreaElement).value)}
+              @paste=${(e: ClipboardEvent) => handlePaste(e, props)}
+              placeholder=${composePlaceholder}
+            ></textarea>
+          </label>
+          <div class="chat-compose__actions">
+            <button
+              class="btn"
+              ?disabled=${!props.connected || (!canAbort && props.sending)}
+              @click=${canAbort ? props.onAbort : props.onNewSession}
+            >
+              ${canAbort ? "Stop" : "New session"}
+            </button>
+            <button
+              class="btn primary"
+              ?disabled=${!props.connected}
+              @click=${props.onSend}
+            >
+              ${isBusy ? "Queue" : "Send"}<kbd class="btn-kbd">↵</kbd>
+            </button>
+          </div>
         </div>
       </div>
     </section>

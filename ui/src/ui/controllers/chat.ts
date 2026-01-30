@@ -2,6 +2,14 @@ import type { GatewayBrowserClient } from "../gateway";
 import { extractText } from "../chat/message-extract";
 import { generateUUID } from "../uuid";
 
+export type ChatAttachment = {
+  id: string;
+  dataUrl: string;
+  mimeType: string;
+  fileName: string;
+  size: number;
+};
+
 export type ChatState = {
   client: GatewayBrowserClient | null;
   connected: boolean;
@@ -43,20 +51,45 @@ export async function loadChatHistory(state: ChatState) {
   }
 }
 
-export async function sendChatMessage(state: ChatState, message: string): Promise<boolean> {
+export async function sendChatMessage(
+  state: ChatState,
+  message: string,
+  attachments?: ChatAttachment[],
+): Promise<boolean> {
   if (!state.client || !state.connected) return false;
   const msg = message.trim();
-  if (!msg) return false;
+  const hasAttachments = attachments && attachments.length > 0;
+  if (!msg && !hasAttachments) return false;
+
+  // Build local content blocks for chat history
+  const contentBlocks: unknown[] = [];
+  if (msg) contentBlocks.push({ type: "text", text: msg });
+  if (hasAttachments) {
+    for (const att of attachments) {
+      contentBlocks.push({ type: "image", dataUrl: att.dataUrl, mimeType: att.mimeType });
+    }
+  }
 
   const now = Date.now();
   state.chatMessages = [
     ...state.chatMessages,
     {
       role: "user",
-      content: [{ type: "text", text: msg }],
+      content: contentBlocks,
       timestamp: now,
     },
   ];
+
+  // Backend requires NonEmptyString for message; use space fallback for image-only sends
+  const wireMessage = msg || " ";
+
+  // Convert attachments to gateway format (base64 content without data URL prefix)
+  const wireAttachments = hasAttachments
+    ? attachments.map((att) => {
+        const base64 = att.dataUrl.replace(/^data:[^;]+;base64,/, "");
+        return { type: "image", mimeType: att.mimeType, fileName: att.fileName, content: base64 };
+      })
+    : undefined;
 
   state.chatSending = true;
   state.lastError = null;
@@ -67,9 +100,10 @@ export async function sendChatMessage(state: ChatState, message: string): Promis
   try {
     await state.client.request("chat.send", {
       sessionKey: state.sessionKey,
-      message: msg,
+      message: wireMessage,
       deliver: false,
       idempotencyKey: runId,
+      ...(wireAttachments ? { attachments: wireAttachments } : {}),
     });
     return true;
   } catch (err) {
