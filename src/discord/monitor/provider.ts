@@ -434,6 +434,7 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
         token,
         accountId: account.accountId,
         config: execApprovalsConfig,
+        gatewayToken: cfg.gateway?.auth?.token,
         cfg,
         runtime,
       })
