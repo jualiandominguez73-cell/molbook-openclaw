@@ -15,7 +15,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DevicePairingPendingRequest } from "../infra/device-pairing.js";
 import { approveDevicePairing, listDevicePairing } from "../infra/device-pairing.js";
-import type { MoltbotConfig } from "../config/config.js";
+import type { MoltbotConfig } from "../config/types.clawdbot.js";
 
 /**
  * Configuration for remote pairing approval

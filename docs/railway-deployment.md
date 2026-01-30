@@ -56,6 +56,39 @@ The remote pairing approval endpoint uses:
 - **Timestamp + nonce** - prevents replay attacks
 - **Rate limiting** - prevents brute force
 
+## ⚠️ CRITICAL: Volume Mount Required
+
+Railway deployments **MUST** have a persistent volume mounted at `/data`. Without this:
+- Device pairing approvals will be lost on container restart
+- Session data will be ephemeral  
+- Gateway will require re-pairing after each deployment
+- **Pairing will appear to work but fail on reconnect**
+
+### Railway Dashboard Setup
+
+1. Go to your Railway service → **Settings** → **Volumes**
+2. Click **New Volume**
+3. Set **Mount Path**: `/data`
+4. Set **Size**: 1GB minimum (recommended: 5GB)
+5. Deploy/redeploy the service
+
+### Automatic Configuration (railway.json)
+
+This repository includes a [`railway.json`](railway.json) file that automatically configures the volume mount:
+
+```json
+{
+  "volumes": [
+    {
+      "mountPath": "/data",
+      "sizeGB": 1
+    }
+  ]
+}
+```
+
+If you're deploying from this repo, Railway should automatically detect and use this configuration.
+
 ## Configuration
 
 ### Required Environment Variables

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import {
   createServer as createHttpServer,
   type Server as HttpServer,
@@ -238,6 +239,32 @@ export function createGatewayHttpServer(opts: {
   async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     // Don't interfere with WebSocket upgrades; ws handles the 'upgrade' event.
     if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") return;
+
+    // Health check endpoint for Railway
+    if (req.url === "/health" && req.method === "GET") {
+      // Check if state directory is writable (critical for Railway)
+      const stateDir = process.env.CLAWDBOT_STATE_DIR || process.env.MOLTBOT_STATE_DIR;
+      if (stateDir) {
+        try {
+          const testFile = `${stateDir}/.write-test-${Date.now()}`;
+          await fs.promises.writeFile(testFile, "test");
+          await fs.promises.unlink(testFile);
+        } catch (err) {
+          res.statusCode = 503;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({
+            status: "error",
+            message: "State directory is not writable. Ensure volume is mounted at /data",
+            stateDir,
+          }));
+          return;
+        }
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
 
     try {
       const configSnapshot = loadConfig();
