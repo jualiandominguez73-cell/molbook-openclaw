@@ -21,7 +21,7 @@ describe("signalMessageActions", () => {
     const cfg = {
       channels: { signal: { account: "+15550001111", actions: { reactions: false } } },
     } as MoltbotConfig;
-    expect(signalMessageActions.listActions({ cfg })).toEqual(["send"]);
+    expect(signalMessageActions.listActions({ cfg })).toEqual(["send", "poll"]);
   });
 
   it("enables react when at least one account allows reactions", () => {
@@ -35,7 +35,7 @@ describe("signalMessageActions", () => {
         },
       },
     } as MoltbotConfig;
-    expect(signalMessageActions.listActions({ cfg })).toEqual(["send", "react"]);
+    expect(signalMessageActions.listActions({ cfg })).toEqual(["send", "poll", "react"]);
   });
 
   it("skips send for plugin dispatch", () => {
