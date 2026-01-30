@@ -370,8 +370,16 @@
       "destination": "/start/openclaw"
     },
     {
+      "source": "/clawhub",
+      "destination": "/tools/clawhub"
+    },
+    {
       "source": "/clawdhub",
-      "destination": "/tools/clawdhub"
+      "destination": "/tools/clawhub"
+    },
+    {
+      "source": "/tools/clawdhub",
+      "destination": "/tools/clawhub"
     },
     {
       "source": "/configuration",
@@ -1074,7 +1082,7 @@
           "tools/reactions",
           "tools/skills",
           "tools/skills-config",
-          "tools/clawdhub"
+          "tools/clawhub"
         ]
       },
       {
