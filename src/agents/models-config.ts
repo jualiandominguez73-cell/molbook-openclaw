@@ -29,18 +29,33 @@ function mergeProviderModels(implicit: ProviderConfig, explicit: ProviderConfig)
     const id = (model as { id?: unknown }).id;
     return typeof id === "string" ? id.trim() : "";
   };
-  const seen = new Set(explicitModels.map(getId).filter(Boolean));
 
-  const mergedModels = [
-    ...explicitModels,
-    ...implicitModels.filter((model) => {
-      const id = getId(model);
-      if (!id) return false;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    }),
-  ];
+  // Build a lookup of implicit (code-defined) models by ID so we can
+  // refresh stale config-written definitions with up-to-date capability
+  // fields (input, reasoning, contextWindow, maxTokens) while preserving
+  // any user-specific overrides (cost, headers, compat).
+  const implicitById = new Map(
+    implicitModels.map((m) => [getId(m), m] as const).filter(([id]) => id),
+  );
+
+  const seen = new Set<string>();
+  const mergedModels = explicitModels.map((explicitModel) => {
+    const id = getId(explicitModel);
+    if (id) seen.add(id);
+    const implicitModel = id ? implicitById.get(id) : undefined;
+    if (!implicitModel) return explicitModel;
+    // Merge: code-defined capability fields override stale config values,
+    // while config-only fields (cost, headers, compat) are preserved.
+    return { ...explicitModel, ...implicitModel };
+  });
+
+  // Append implicit models whose IDs are not present in the explicit list.
+  for (const model of implicitModels) {
+    const id = getId(model);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    mergedModels.push(model);
+  }
 
   return {
     ...implicit,
