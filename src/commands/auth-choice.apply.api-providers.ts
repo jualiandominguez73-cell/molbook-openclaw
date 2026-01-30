@@ -590,6 +590,17 @@ export async function applyAuthChoiceApiProviders(
       hasCredential = true;
     }
 
+    if (!hasCredential) {
+      await params.prompter.note(
+        [
+          "Baseten provides fast inference for open-source models via OpenAI-compatible API.",
+          "Get your API key at: https://baseten.co/settings/api-keys",
+          "Supports DeepSeek, GLM, Kimi, Qwen, and OpenAI GPT OSS models.",
+        ].join("\n"),
+        "Baseten",
+      );
+    }
+
     const envKey = resolveEnvApiKey("baseten");
     if (envKey) {
       const useExisting = await params.prompter.confirm({
