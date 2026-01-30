@@ -232,15 +232,37 @@ vi.mock("@mariozechner/pi-coding-agent", async () => {
     "@mariozechner/pi-coding-agent",
   );
 
+  // Create a mock ModelRegistry class that can be controlled via piSdkMock
+  class MockModelRegistry extends actual.ModelRegistry {
+    constructor(...args: ConstructorParameters<typeof actual.ModelRegistry>) {
+      super(...args);
+      piSdkMock.discoverCalls += 1;
+    }
+    override getAll(): ReturnType<typeof actual.ModelRegistry.prototype.getAll> {
+      if (piSdkMock.enabled && piSdkMock.models && Array.isArray(piSdkMock.models)) {
+        // Test mock returns partial models - cast for test compatibility
+        return piSdkMock.models as ReturnType<typeof actual.ModelRegistry.prototype.getAll>;
+      }
+      return super.getAll();
+    }
+    override find(
+      provider: string,
+      modelId: string,
+    ): ReturnType<typeof actual.ModelRegistry.prototype.find> {
+      if (piSdkMock.enabled && piSdkMock.models && Array.isArray(piSdkMock.models)) {
+        const found = piSdkMock.models.find(
+          (m: { provider: string; id: string }) => m.provider === provider && m.id === modelId,
+        );
+        // Test mock returns partial models - cast for test compatibility
+        return found as ReturnType<typeof actual.ModelRegistry.prototype.find>;
+      }
+      return super.find(provider, modelId);
+    }
+  }
+
   return {
     ...actual,
-    discoverModels: (...args: unknown[]) => {
-      if (!piSdkMock.enabled) {
-        return (actual.discoverModels as (...args: unknown[]) => unknown)(...args);
-      }
-      piSdkMock.discoverCalls += 1;
-      return piSdkMock.models;
-    },
+    ModelRegistry: piSdkMock.enabled ? MockModelRegistry : actual.ModelRegistry,
   };
 });
 

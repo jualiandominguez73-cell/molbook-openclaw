@@ -64,8 +64,8 @@ export async function loadModelCatalog(params?: {
       // will keep failing until restart).
       const piSdk = await importPiSdk();
       const agentDir = resolveOpenClawAgentDir();
-      const authStorage = piSdk.discoverAuthStorage(agentDir);
-      const registry = piSdk.discoverModels(authStorage, agentDir) as
+      const authStorage = new piSdk.AuthStorage(`${agentDir}/auth.json`);
+      const registry = new piSdk.ModelRegistry(authStorage, `${agentDir}/models.json`) as
         | {
             getAll: () => Array<DiscoveredModel>;
           }
