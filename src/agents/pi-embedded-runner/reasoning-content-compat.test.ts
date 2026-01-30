@@ -99,6 +99,46 @@ describe("patchReasoningContentCompat", () => {
     // Should not throw
   });
 
+  it("adds reasoning_content for Kimi K2.5 even when no message has the field", () => {
+    const params = {
+      messages: [
+        { role: "user", content: "hello" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [{ id: "tc_1", type: "function", function: { name: "fn", arguments: "{}" } }],
+        },
+        { role: "tool", content: "result", tool_call_id: "tc_1" },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "done" }],
+        },
+      ],
+    };
+
+    // Without modelId: no patching (existing behavior)
+    const before = JSON.parse(JSON.stringify(params));
+    patchReasoningContentCompat(params);
+    expect(params).toEqual(before);
+
+    // With Kimi K2.5 modelId: adds reasoning_content to all assistant messages
+    patchReasoningContentCompat(params, "moonshotai/kimi-k2.5");
+    expect((params.messages[1] as Record<string, unknown>).reasoning_content).toBe("");
+    expect((params.messages[3] as Record<string, unknown>).reasoning_content).toBe("");
+    // Non-assistant: untouched
+    expect(params.messages[0]).not.toHaveProperty("reasoning_content");
+    expect(params.messages[2]).not.toHaveProperty("reasoning_content");
+  });
+
+  it("does not force reasoning_content for non-Kimi models without existing field", () => {
+    const params = {
+      messages: [{ role: "assistant", content: "hi", tool_calls: [{ id: "tc_1" }] }],
+    };
+
+    patchReasoningContentCompat(params, "anthropic/claude-sonnet-4-5");
+    expect(params.messages[0]).not.toHaveProperty("reasoning_content");
+  });
+
   it("does not add field when reasoning_content is explicitly set to empty string", () => {
     const params = {
       messages: [

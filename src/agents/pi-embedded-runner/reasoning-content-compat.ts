@@ -14,6 +14,9 @@ import type { Api, Model } from "@mariozechner/pi-ai";
 /** Well-known reasoning field names used by OpenAI-compatible providers. */
 const REASONING_FIELDS = ["reasoning_content", "reasoning", "reasoning_text"];
 
+/** Model IDs that always require reasoning_content on all assistant messages. */
+const ALWAYS_REASONING_MODEL_HINTS = ["kimi-k2.5", "kimi-k2-5", "kimi-k25"];
+
 type ApiMessage = Record<string, unknown> & { role?: string };
 
 function detectReasoningField(messages: ApiMessage[]): string | null {
@@ -28,6 +31,12 @@ function detectReasoningField(messages: ApiMessage[]): string | null {
   return null;
 }
 
+function requiresAlwaysReasoning(modelId: string | undefined): boolean {
+  if (!modelId) return false;
+  const lower = modelId.toLowerCase();
+  return ALWAYS_REASONING_MODEL_HINTS.some((hint) => lower.includes(hint));
+}
+
 function ensureReasoningFieldPresent(messages: ApiMessage[], field: string): void {
   for (const msg of messages) {
     if (msg.role !== "assistant") continue;
@@ -38,14 +47,24 @@ function ensureReasoningFieldPresent(messages: ApiMessage[], field: string): voi
 }
 
 /** @internal Exported for testing only. */
-export function patchReasoningContentCompat(params: Record<string, unknown>): void {
+export function patchReasoningContentCompat(
+  params: Record<string, unknown>,
+  modelId?: string,
+): void {
   const messages = params.messages;
   if (!Array.isArray(messages)) return;
 
   const field = detectReasoningField(messages as ApiMessage[]);
-  if (!field) return;
+  if (field) {
+    ensureReasoningFieldPresent(messages as ApiMessage[], field);
+    return;
+  }
 
-  ensureReasoningFieldPresent(messages as ApiMessage[], field);
+  // For models that always require reasoning_content (e.g. Kimi K2.5),
+  // add it even when no prior message has it yet (first interaction).
+  if (requiresAlwaysReasoning(modelId)) {
+    ensureReasoningFieldPresent(messages as ApiMessage[], "reasoning_content");
+  }
 }
 
 /**
@@ -54,9 +73,10 @@ export function patchReasoningContentCompat(params: Record<string, unknown>): vo
  */
 export function wrapStreamFnForReasoningCompat(baseStreamFn: StreamFn): StreamFn {
   const wrapped: StreamFn = (model, context, options) => {
+    const modelId = (model as Model<Api>)?.id;
     const patchingOnPayload = (payload: unknown) => {
       if (payload && typeof payload === "object") {
-        patchReasoningContentCompat(payload as Record<string, unknown>);
+        patchReasoningContentCompat(payload as Record<string, unknown>, modelId);
       }
       options?.onPayload?.(payload);
     };
