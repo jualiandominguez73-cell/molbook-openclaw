@@ -12,7 +12,7 @@ metadata: {"openclaw":{"emoji":"🗣️","requires":{"bins":["sag"],"env":["ELEV
 ## Quick Start
 
 ```bash
-# Basic voice note (female voice by ID, 1.4x faster)
+# Basic voice note (female voice by ID, 1.3x faster)
 sag -v "EXAVITQu4vr4xnSDxMaL" -o /tmp/voice.opus "Hey Elie, quick update on the project."
 
 # List available voices
@@ -22,9 +22,9 @@ sag voices
 ## Send to Elie (Telegram)
 
 ```bash
-# Generate voice (1.4x faster = --rate 200)
+# Generate voice (1.3x faster = --rate 175)
 # Use VOICE ID for reliable matching (names can fail)
-sag -v "EXAVITQu4vr4xnSDxMaL" --rate 200 -o /tmp/voice.opus "Your message here"
+sag -v "EXAVITQu4vr4xnSDxMaL" --rate 175 -o /tmp/voice.opus "Your message here"
 
 # Send via message tool
 message action=send media=/tmp/voice.opus target=733180662
@@ -35,12 +35,12 @@ message action=send media=/tmp/voice.opus target=733180662
 | Speed | Rate Flag | Use Case |
 |-------|-----------|----------|
 | Normal | `--rate 100` | Default |
-| **1.4x faster** | `--rate 200` | **Elie's preferred** |
+| **1.3x faster** | `--rate 175` | **Elie's preferred** |
 | 2x faster | `--rate 300` | Quick updates |
 
 ```bash
-# Elie's preferred: Sarah (voice ID), 1.4x faster
-sag -v "EXAVITQu4vr4xnSDxMaL" --rate 200 -o /tmp/voice.opus "Quick update: [short pause] All systems operational."
+# Elie's preferred: Sarah (voice ID), 1.3x faster
+sag -v "EXAVITQu4vr4xnSDxMaL" --rate 175 -o /tmp/voice.opus "Quick update: [short pause] All systems operational."
 ```
 
 ## Available Female Voices (by ID)
@@ -76,14 +76,14 @@ sag "[whispers] I found something interesting. [short pause] Look at this data."
 3. **Exaggerate emotion** — ElevenLabs v3 is expressive
 4. **SSML-free** — use `[pause]` tags instead of `<break>`
 
-## Elie's Preferred (1.4x faster, Female voice by ID)
+## Elie's Preferred (1.3x faster, Female voice by ID)
 
 ```bash
-# Quick update voice note (Sarah, voice ID, 1.4x faster)
-sag -v "EXAVITQu4vr4xnSDxMaL" --rate 200 -o /tmp/voice.opus "Quick update: [short pause] All systems operational."
+# Quick update voice note (Sarah, voice ID, 1.3x faster)
+sag -v "EXAVITQu4vr4xnSDxMaL" --rate 175 -o /tmp/voice.opus "Quick update: [short pause] All systems operational."
 
 # Report style (Laura, female)
-sag -v "FGY2WhTYpPnrIDTdsKH5" --rate 200 -o /tmp/report.opus "Daily report: [short pause] Three critical signals detected."
+sag -v "FGY2WhTYpPnrIDTdsKH5" --rate 175 -o /tmp/report.opus "Daily report: [short pause] Three critical signals detected."
 ```
 
 ## Troubleshooting
