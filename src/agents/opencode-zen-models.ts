@@ -70,6 +70,10 @@ export const OPENCODE_ZEN_MODEL_ALIASES: Record<string, string> = {
   // GLM (free)
   glm: "glm-4.7",
   "glm-free": "glm-4.7",
+
+  // Kimi (free)
+  kimi: "kimi-k2.5",
+  "kimi-free": "kimi-k2.5-free",
 };
 
 /**
@@ -89,7 +93,7 @@ export function resolveOpencodeZenModelApi(modelId: string): ModelApi {
   if (lower.startsWith("gpt-")) {
     return "openai-responses";
   }
-  if (lower.startsWith("claude-") || lower.startsWith("minimax-")) {
+  if (lower.startsWith("claude-") || lower.startsWith("minimax-") || lower.startsWith("kimi-")) {
     return "anthropic-messages";
   }
   if (lower.startsWith("gemini-")) {
@@ -103,7 +107,7 @@ export function resolveOpencodeZenModelApi(modelId: string): ModelApi {
  */
 function supportsImageInput(modelId: string): boolean {
   const lower = modelId.toLowerCase();
-  if (lower.includes("glm") || lower.includes("minimax")) {
+  if (lower.includes("glm") || lower.includes("minimax") || lower.includes("kimi")) {
     return false;
   }
   return true;
@@ -137,6 +141,8 @@ const MODEL_COSTS: Record<
     cacheWrite: 0,
   },
   "gpt-5.2": { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
+  "kimi-k2.5": { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  "kimi-k2.5-free": { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 };
 
 const DEFAULT_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
@@ -151,6 +157,8 @@ const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   "gemini-3-flash": 1048576,
   "gpt-5.1-codex-max": 400000,
   "gpt-5.2": 400000,
+  "kimi-k2.5": 256000,
+  "kimi-k2.5-free": 256000,
 };
 
 function getDefaultContextWindow(modelId: string): number {
@@ -167,6 +175,8 @@ const MODEL_MAX_TOKENS: Record<string, number> = {
   "gemini-3-flash": 65536,
   "gpt-5.1-codex-max": 128000,
   "gpt-5.2": 128000,
+  "kimi-k2.5": 8192,
+  "kimi-k2.5-free": 8192,
 };
 
 function getDefaultMaxTokens(modelId: string): number {
@@ -203,6 +213,8 @@ const MODEL_NAMES: Record<string, string> = {
   "gemini-3-flash": "Gemini 3 Flash",
   "gpt-5.1-codex-max": "GPT-5.1 Codex Max",
   "gpt-5.2": "GPT-5.2",
+  "kimi-k2.5": "Kimi K2.5",
+  "kimi-k2.5-free": "Kimi K2.5 Free",
 };
 
 function formatModelName(modelId: string): string {
@@ -230,6 +242,8 @@ export function getOpencodeZenStaticFallbackModels(): ModelDefinitionConfig[] {
     "gemini-3-flash",
     "gpt-5.1-codex-max",
     "gpt-5.2",
+    "kimi-k2.5",
+    "kimi-k2.5-free",
   ];
 
   return modelIds.map(buildModelDefinition);
