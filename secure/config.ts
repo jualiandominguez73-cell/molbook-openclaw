@@ -1,5 +1,5 @@
 /**
- * Moltbot Secure - Environment-only Configuration
+ * AssureBot - Environment-only Configuration
  *
  * All configuration via environment variables.
  * No config files, no filesystem secrets.
@@ -177,7 +177,7 @@ export function loadSecureConfig(): SecureConfig {
     server: {
       port,
       host: optional("HOST", "0.0.0.0"),
-      gatewayToken: optional("MOLTBOT_GATEWAY_TOKEN", generateSecureToken()),
+      gatewayToken: optional("ASSUREBOT_GATEWAY_TOKEN", generateSecureToken()),
     },
   };
 }

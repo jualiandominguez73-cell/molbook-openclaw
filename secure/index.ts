@@ -56,33 +56,40 @@ async function main() {
   // Create conversation store
   const conversations = createConversationStore();
 
-  // Create Telegram bot
-  console.log("[init] Creating Telegram bot...");
-  const telegram = createTelegramBot({
-    config,
-    audit,
-    agent,
-    conversations,
-  });
-
-  // Create webhook handler
-  console.log("[init] Creating webhook handler...");
-  const webhooks = createWebhookHandler({
-    config,
-    audit,
-    agent,
-    telegramBot: telegram.bot,
-  });
-
   // Create sandbox runner
   console.log("[init] Creating sandbox runner...");
   const sandbox = createSandboxRunner(config, audit);
   const sandboxAvailable = await sandbox.isAvailable();
   console.log(`[init] Sandbox available: ${sandboxAvailable}`);
 
-  // Create scheduler
+  // Create a placeholder bot for circular deps
+  // We'll create telegram, scheduler, and webhooks together
+  const { Bot } = await import("grammy");
+  const bot = new Bot(config.telegram.botToken);
+
+  // Create scheduler (needs bot for notifications)
   console.log("[init] Creating scheduler...");
   const scheduler = createScheduler({
+    config,
+    audit,
+    agent,
+    telegramBot: bot,
+  });
+
+  // Create Telegram bot handler (with sandbox and scheduler)
+  console.log("[init] Creating Telegram bot...");
+  const telegram = createTelegramBot({
+    config,
+    audit,
+    agent,
+    conversations,
+    sandbox,
+    scheduler,
+  });
+
+  // Create webhook handler
+  console.log("[init] Creating webhook handler...");
+  const webhooks = createWebhookHandler({
     config,
     audit,
     agent,

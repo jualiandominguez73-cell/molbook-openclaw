@@ -6,7 +6,7 @@ Your AI agent that runs on your infrastructure, answers only to you, and you can
 
 ## Why AssureBot?
 
-| Full Moltbot | AssureBot |
+| Full OpenClaw | AssureBot |
 |--------------|----------------|
 | 12+ channels | Telegram only |
 | File-based config | Env vars only |
@@ -169,7 +169,7 @@ All webhooks are:
 
 ```
 ┌────────────────────┐     ┌────────────────────┐
-│   moltbot-secure   │────▶│     sandbox        │
+│     assurebot      │────▶│     sandbox        │
 │   (main container) │     │  (Docker sidecar)  │
 │                    │     │                    │
 │  • Telegram bot    │     │  • Isolated exec   │
@@ -185,8 +185,8 @@ All webhooks are:
 
 ## License
 
-MIT - Same as Moltbot.
+MIT
 
 ---
 
-**Full Moltbot**: [github.com/moltbot/moltbot](https://github.com/moltbot/moltbot)
+Based on [OpenClaw](https://github.com/openclaw/openclaw)

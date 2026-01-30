@@ -1,5 +1,5 @@
 /**
- * Moltbot Secure - Sandbox Execution
+ * AssureBot - Sandbox Execution
  *
  * Isolated Docker container for code/script execution.
  * Security-first: no network, read-only root, resource limits.

@@ -9,6 +9,8 @@ import { Bot, Context } from "grammy";
 import type { SecureConfig } from "./config.js";
 import type { AuditLogger } from "./audit.js";
 import type { AgentCore, ConversationStore, ImageContent } from "./agent.js";
+import type { SandboxRunner } from "./sandbox.js";
+import type { Scheduler } from "./scheduler.js";
 
 export type TelegramBot = {
   bot: Bot;
@@ -21,6 +23,8 @@ export type TelegramDeps = {
   audit: AuditLogger;
   agent: AgentCore;
   conversations: ConversationStore;
+  sandbox?: SandboxRunner;
+  scheduler?: Scheduler;
   onWebhookMessage?: (userId: number, text: string) => void;
 };
 
@@ -37,7 +41,7 @@ function formatUsername(ctx: Context): string {
 }
 
 export function createTelegramBot(deps: TelegramDeps): TelegramBot {
-  const { config, audit, agent, conversations } = deps;
+  const { config, audit, agent, conversations, sandbox, scheduler } = deps;
   const bot = new Bot(config.telegram.botToken);
 
   // Error handler
@@ -70,6 +74,9 @@ Commands:
 /start - Show this message
 /clear - Clear conversation history
 /status - Check bot status
+/sandbox <code> - Run code in sandbox
+/schedule <cron> <task> - Schedule a task
+/tasks - List scheduled tasks
 /help - Show help
 
 Features:
@@ -124,19 +131,181 @@ Features:
 - Chat with AI (text messages)
 - Image analysis (send photos)
 - Forward content for analysis
-- Receive webhook notifications
+- Run code in isolated sandbox
+- Schedule recurring AI tasks
 
 Commands:
 /start - Welcome message
 /clear - Clear conversation history
 /status - Bot status
+/sandbox <code> - Run code in sandbox
+/schedule "<cron>" "<name>" <prompt> - Schedule task
+/tasks - List scheduled tasks
+/deltask <id> - Delete a task
 /help - This message
 
 Security:
 - Only authorized users can interact
 - All interactions are logged
-- No data is sent to third parties (except AI provider)`
+- Sandbox runs in isolated Docker (no network)`
     );
+  });
+
+  // Command: /sandbox <code>
+  bot.command("sandbox", async (ctx) => {
+    const userId = ctx.from?.id;
+    const username = formatUsername(ctx);
+    if (!userId || !isUserAllowed(userId, config.telegram.allowedUsers)) {
+      return;
+    }
+
+    if (!sandbox) {
+      await ctx.reply("Sandbox is not configured.");
+      return;
+    }
+
+    if (!config.sandbox.enabled) {
+      await ctx.reply("Sandbox is disabled.");
+      return;
+    }
+
+    const code = ctx.message?.text?.replace(/^\/sandbox\s*/, "").trim() ?? "";
+    if (!code) {
+      await ctx.reply("Usage: /sandbox <code>\n\nExample: /sandbox echo Hello World");
+      return;
+    }
+
+    const startTime = Date.now();
+    await ctx.replyWithChatAction("typing");
+
+    try {
+      const result = await sandbox.run(code);
+      const output = result.stdout || result.stderr || "(no output)";
+      const status = result.exitCode === 0 ? "✓" : `✗ (exit ${result.exitCode})`;
+      const timeout = result.timedOut ? " [TIMED OUT]" : "";
+
+      await ctx.reply(
+        `**Sandbox Result** ${status}${timeout}\n\`\`\`\n${output.slice(0, 3000)}\n\`\`\`\nDuration: ${result.durationMs}ms`,
+        { parse_mode: "Markdown" }
+      ).catch(async () => {
+        await ctx.reply(`Sandbox Result ${status}${timeout}\n\n${output.slice(0, 3500)}\n\nDuration: ${result.durationMs}ms`);
+      });
+
+      audit.sandbox({
+        command: code,
+        exitCode: result.exitCode,
+        durationMs: result.durationMs,
+      });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      audit.error({ error: `Sandbox error: ${errorMsg}`, metadata: { userId, code } });
+      await ctx.reply(`Sandbox error: ${errorMsg}`);
+    }
+  });
+
+  // Command: /schedule <cron> <name> <prompt>
+  bot.command("schedule", async (ctx) => {
+    const userId = ctx.from?.id;
+    if (!userId || !isUserAllowed(userId, config.telegram.allowedUsers)) {
+      return;
+    }
+
+    if (!scheduler) {
+      await ctx.reply("Scheduler is not configured.");
+      return;
+    }
+
+    if (!config.scheduler.enabled) {
+      await ctx.reply("Scheduler is disabled.");
+      return;
+    }
+
+    // Parse: /schedule "*/5 * * * *" "Task Name" What to do
+    const text = ctx.message?.text?.replace(/^\/schedule\s*/, "").trim() ?? "";
+    const match = text.match(/^"([^"]+)"\s+"([^"]+)"\s+(.+)$/s);
+    if (!match) {
+      await ctx.reply(
+        `Usage: /schedule "<cron>" "<name>" <prompt>
+
+Example:
+/schedule "0 9 * * *" "Morning Brief" Give me a summary of what I should focus on today
+
+Cron format: minute hour day month weekday
+- "0 9 * * *" = 9:00 AM daily
+- "*/30 * * * *" = Every 30 minutes
+- "0 0 * * 1" = Midnight on Mondays`
+      );
+      return;
+    }
+
+    const [, cronExpr, name, prompt] = match;
+
+    try {
+      const taskId = scheduler.addTask({
+        name,
+        schedule: cronExpr,
+        prompt,
+        enabled: true,
+      });
+      await ctx.reply(`Task scheduled!\n\nID: ${taskId}\nName: ${name}\nSchedule: ${cronExpr}`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      await ctx.reply(`Failed to schedule task: ${errorMsg}`);
+    }
+  });
+
+  // Command: /tasks
+  bot.command("tasks", async (ctx) => {
+    const userId = ctx.from?.id;
+    if (!userId || !isUserAllowed(userId, config.telegram.allowedUsers)) {
+      return;
+    }
+
+    if (!scheduler) {
+      await ctx.reply("Scheduler is not configured.");
+      return;
+    }
+
+    const tasks = scheduler.listTasks();
+    if (tasks.length === 0) {
+      await ctx.reply("No scheduled tasks.\n\nUse /schedule to create one.");
+      return;
+    }
+
+    const lines = tasks.map((t) => {
+      const status = t.enabled ? "✓" : "✗";
+      const lastRun = t.lastRun ? t.lastRun.toISOString().slice(0, 16) : "never";
+      return `${status} **${t.name}** (${t.id})\n   ${t.schedule}\n   Last: ${lastRun}`;
+    });
+
+    await ctx.reply(`**Scheduled Tasks**\n\n${lines.join("\n\n")}`, { parse_mode: "Markdown" }).catch(async () => {
+      await ctx.reply(`Scheduled Tasks\n\n${lines.join("\n\n").replace(/\*\*/g, "")}`);
+    });
+  });
+
+  // Command: /deltask <id>
+  bot.command("deltask", async (ctx) => {
+    const userId = ctx.from?.id;
+    if (!userId || !isUserAllowed(userId, config.telegram.allowedUsers)) {
+      return;
+    }
+
+    if (!scheduler) {
+      await ctx.reply("Scheduler is not configured.");
+      return;
+    }
+
+    const taskId = ctx.message?.text?.replace(/^\/deltask\s*/, "").trim() ?? "";
+    if (!taskId) {
+      await ctx.reply("Usage: /deltask <task_id>");
+      return;
+    }
+
+    if (scheduler.removeTask(taskId)) {
+      await ctx.reply(`Task ${taskId} deleted.`);
+    } else {
+      await ctx.reply(`Task ${taskId} not found.`);
+    }
   });
 
   // Handle all text messages

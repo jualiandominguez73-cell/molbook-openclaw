@@ -1,5 +1,5 @@
 /**
- * Moltbot Secure - Task Scheduler
+ * AssureBot - Task Scheduler
  *
  * Simple cron-like scheduler for recurring tasks.
  * Stores jobs in memory or optionally persists to file.
