@@ -40,6 +40,22 @@ function writeSse(res: ServerResponse, data: unknown) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+function buildFinalChunk(params: { runId: string; model: string }) {
+  return {
+    id: params.runId,
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model: params.model,
+    choices: [
+      {
+        index: 0,
+        delta: {},
+        finish_reason: "stop",
+      },
+    ],
+  };
+}
+
 function asMessages(val: unknown): OpenAiChatMessage[] {
   return Array.isArray(val) ? (val as OpenAiChatMessage[]) : [];
 }
@@ -54,7 +70,10 @@ function extractTextContent(content: unknown): string {
         const text = (part as { text?: unknown }).text;
         const inputText = (part as { input_text?: unknown }).input_text;
         if (type === "text" && typeof text === "string") return text;
-        if (type === "input_text" && typeof text === "string") return text;
+        if (type === "input_text") {
+          if (typeof inputText === "string") return inputText;
+          if (typeof text === "string") return text;
+        }
         if (typeof inputText === "string") return inputText;
         return "";
       })
@@ -251,7 +270,21 @@ export async function handleOpenAiHttpRequest(
 
   let wroteRole = false;
   let sawAssistantDelta = false;
+  let sentTerminalChunk = false;
   let closed = false;
+
+  const endStream = () => {
+    if (closed) return;
+    closed = true;
+    if (!sentTerminalChunk) {
+      sentTerminalChunk = true;
+      // Some OpenAI-compatible clients expect a terminal chunk before [DONE].
+      writeSse(res, buildFinalChunk({ runId, model }));
+    }
+    unsubscribe();
+    writeDone(res);
+    res.end();
+  };
 
   const unsubscribe = onAgentEvent((evt) => {
     if (evt.runId !== runId) return;
@@ -294,10 +327,7 @@ export async function handleOpenAiHttpRequest(
     if (evt.stream === "lifecycle") {
       const phase = evt.data?.phase;
       if (phase === "end" || phase === "error") {
-        closed = true;
-        unsubscribe();
-        writeDone(res);
-        res.end();
+        endStream();
       }
     }
   });
@@ -383,10 +413,7 @@ export async function handleOpenAiHttpRequest(
       });
     } finally {
       if (!closed) {
-        closed = true;
-        unsubscribe();
-        writeDone(res);
-        res.end();
+        endStream();
       }
     }
   })();
