@@ -84,6 +84,23 @@ openclaw agent --model amazon-nova/nova-2-lite-v1
 }
 ```
 
+## Testing the API directly
+
+```bash
+curl -L 'https://api.nova.amazon.com/v1/chat/completions' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer $NOVA_API_KEY' \
+  -d '{
+    "model": "nova-2-lite-v1",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello! How are you?"
+      }
+    ]
+  }'
+```
+
 ## Notes
 
 - The `Accept-Encoding: identity` header is required by the Nova API to disable compression.
