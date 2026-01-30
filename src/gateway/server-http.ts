@@ -30,6 +30,10 @@ import { applyHookMappings } from "./hooks-mapping.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
+import {
+  handleRemotePairingRequest,
+  resolveRemotePairingConfig,
+} from "./remote-pairing.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
@@ -238,6 +242,13 @@ export function createGatewayHttpServer(opts: {
     try {
       const configSnapshot = loadConfig();
       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
+
+      // Handle remote pairing API (for Railway/cloud deployments)
+      const remotePairingConfig = resolveRemotePairingConfig(configSnapshot);
+      if (remotePairingConfig) {
+        if (await handleRemotePairingRequest(req, res, remotePairingConfig)) return;
+      }
+
       if (await handleHooksRequest(req, res)) return;
       if (
         await handleToolsInvokeHttpRequest(req, res, {

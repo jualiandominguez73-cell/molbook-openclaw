@@ -175,9 +175,47 @@ export async function handleRemotePairingRequest(
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   
-  // Only handle POST to /approve
-  if (req.method !== "POST" || !url.pathname.endsWith("/approve")) {
+  // Check if this is a pairing path
+  if (!url.pathname.endsWith("/approve") && !url.pathname.endsWith("/pending")) {
     return false;
+  }
+  
+  // Extract auth (required for all pairing endpoints)
+  const auth = parseAuthHeader(req.headers.authorization);
+  if (!auth) {
+    sendError(res, 401, "missing authorization header");
+    return true;
+  }
+  
+  if (auth !== config.adminSecret) {
+    sendError(res, 401, "invalid authorization");
+    return true;
+  }
+  
+  // Handle GET /pending - list pending requests
+  if (req.method === "GET" && url.pathname.endsWith("/pending")) {
+    const list = await listDevicePairing();
+    sendJson(res, 200, {
+      ok: true,
+      pending: list.pending.map((p) => ({
+        requestId: p.requestId,
+        deviceId: p.deviceId,
+        displayName: p.displayName,
+        platform: p.platform,
+        role: p.role,
+        scopes: p.scopes,
+        remoteIp: p.remoteIp,
+        ts: p.ts,
+        isRepair: p.isRepair,
+      })),
+    });
+    return true;
+  }
+  
+  // Only handle POST to /approve
+  if (req.method !== "POST") {
+    sendError(res, 405, "method not allowed");
+    return true;
   }
   
   // Extract auth
