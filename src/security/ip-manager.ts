@@ -9,6 +9,7 @@ import os from "node:os";
 
 import { securityLogger } from "./events/logger.js";
 import { SecurityActions } from "./events/schema.js";
+import { getFirewallManager } from "./firewall/manager.js";
 
 const BLOCKLIST_FILE = "blocklist.json";
 const SECURITY_DIR_NAME = "security";
@@ -241,6 +242,19 @@ export class IpManager {
         source,
       },
     });
+
+    // Update firewall (async, fire-and-forget)
+    const firewall = getFirewallManager();
+    if (firewall?.isEnabled()) {
+      firewall.blockIp(ip, reason).catch((err) => {
+        securityLogger.logIpManagement({
+          action: "firewall_block_failed",
+          ip,
+          severity: "error",
+          details: { error: String(err) },
+        });
+      });
+    }
   }
 
   /**
@@ -260,6 +274,19 @@ export class IpManager {
         severity: "info",
         details: {},
       });
+
+      // Update firewall (async, fire-and-forget)
+      const firewall = getFirewallManager();
+      if (firewall?.isEnabled()) {
+        firewall.unblockIp(ip).catch((err) => {
+          securityLogger.logIpManagement({
+            action: "firewall_unblock_failed",
+            ip,
+            severity: "error",
+            details: { error: String(err) },
+          });
+        });
+      }
     }
 
     return removed;

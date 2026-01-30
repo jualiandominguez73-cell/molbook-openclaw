@@ -59,6 +59,7 @@ import { NodeRegistry } from "./node-registry.js";
 import { createNodeSubscriptionManager } from "./server-node-subscriptions.js";
 import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import { initSecurityShield } from "../security/shield.js";
+import { initFirewallManager } from "../security/firewall/manager.js";
 import { loadGatewayPlugins } from "./server-plugins.js";
 import { createGatewayReloadHandlers } from "./server-reload-handlers.js";
 import { resolveGatewayRuntimeConfig } from "./server-runtime-config.js";
@@ -219,6 +220,15 @@ export async function startGatewayServer(
 
   // Initialize security shield with configuration
   initSecurityShield(cfgAtStart.security?.shield);
+
+  // Initialize firewall integration
+  if (cfgAtStart.security?.shield?.ipManagement?.firewall?.enabled) {
+    await initFirewallManager({
+      enabled: true,
+      backend: cfgAtStart.security.shield.ipManagement.firewall.backend ?? "iptables",
+      dryRun: false,
+    });
+  }
 
   initSubagentRegistry();
   const defaultAgentId = resolveDefaultAgentId(cfgAtStart);
