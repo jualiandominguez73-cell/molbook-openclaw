@@ -6,6 +6,7 @@ Docs: https://docs.molt.bot
 Status: beta.
 
 ### Highlights
+- CLI: add modern TUI (mtui) using React and Ink. (#4419) Thanks @M1Vj.
 - Rebrand: rename the npm package/CLI to `moltbot`, keep a `moltbot` compatibility shim, move extensions to the `@moltbot/*` scope, and update bot.molt bundle IDs/labels/logging subsystems. Thanks @thewilloftheshadow.
 - New channels/plugins: Twitch plugin; Google Chat (beta) with Workspace Add-on events + typing indicator. (#1612, #1635) Thanks @tyler6204, @iHildy.
 - Security hardening: gateway auth defaults required, hook token query-param deprecation, Windows ACL audits, mDNS minimal discovery, and SSH target option injection fix. (#4001, #2016, #1957, #1882, #2200)

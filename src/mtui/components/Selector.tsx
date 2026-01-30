@@ -17,10 +17,9 @@ type SelectorProps = {
 export const Selector: React.FC<SelectorProps> = ({ title, items, onSelect, onCancel }) => {
   const [query, setQuery] = useState("");
 
-  const filteredItems = items.filter(
-    (item) =>
-      item.label.toLowerCase().includes(query.toLowerCase()) ||
-      item.value.toLowerCase().includes(query.toLowerCase()),
+  const filteredItems = items.filter(item => 
+    item.label.toLowerCase().includes(query.toLowerCase()) || 
+    item.value.toLowerCase().includes(query.toLowerCase())
   );
 
   useInput((input, key) => {
@@ -28,10 +27,10 @@ export const Selector: React.FC<SelectorProps> = ({ title, items, onSelect, onCa
       onCancel();
     }
     if (!key.ctrl && !key.meta && input.length === 1 && !key.return) {
-      setQuery((q) => q + input);
+      setQuery(q => q + input);
     }
     if (key.backspace || key.delete) {
-      setQuery((q) => q.slice(0, -1));
+      setQuery(q => q.slice(0, -1));
     }
   });
 
