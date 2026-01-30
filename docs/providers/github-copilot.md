@@ -1,50 +1,58 @@
+````markdown
 ---
-summary: "Sign in to GitHub Copilot from Moltbot using the official SDK"
+summary: "Sign in to GitHub Copilot from OpenClaw using the device flow"
 read_when:
   - You want to use GitHub Copilot as a model provider
-  - You need the `moltbot models auth login-github-copilot` flow
+  - You need the `openclaw models auth login-github-copilot` flow
 ---
-# Github Copilot
+# GitHub Copilot
 
 ## What is GitHub Copilot?
 
 GitHub Copilot is GitHub's AI coding assistant. It provides access to Copilot
-models for your GitHub account and plan. Moltbot uses the official
-`@github/copilot-sdk` to integrate with Copilot.
+models for your GitHub account and plan. OpenClaw can use Copilot as a model
+provider in two different ways.
 
-## Prerequisites
+## Two ways to use Copilot in OpenClaw
 
-The official SDK requires the **Copilot CLI** to be installed and authenticated:
+### 1) Device flow (recommended)
 
-```bash
-# Install Copilot CLI (if not already installed)
-npm install -g @github/copilot-cli
+Use the native GitHub device-login flow to obtain a GitHub token, then exchange
+it for Copilot API tokens when OpenClaw runs. This is the **default** and
+simplest path because it does not require VS Code.
 
-# Authenticate with GitHub
-copilot auth login
-```
+### 2) Copilot Proxy plugin (`copilot-proxy`)
+
+Use the **Copilot Proxy** VS Code extension as a local bridge. OpenClaw talks to
+the proxy’s `/v1` endpoint and uses the model list you configure there. Choose
+this when you already run Copilot Proxy in VS Code or need to route through it.
+You must enable the plugin and keep the VS Code extension running.
+
+Use GitHub Copilot as a model provider (`github-copilot`). The login command runs
+the GitHub device flow, saves an auth profile, and updates your config to use
+that profile.
 
 ## CLI setup
 
-After authenticating with the Copilot CLI, verify your auth in Moltbot:
+Run the OpenClaw login flow to create an auth profile:
 
 ```bash
-moltbot models auth login-github-copilot
+openclaw models auth login-github-copilot
 ```
 
-This checks your Copilot CLI authentication status and creates an auth profile.
+This creates an auth profile and (optionally) updates your config to use it.
 
 ### Optional flags
 
 ```bash
-moltbot models auth login-github-copilot --profile-id github-copilot:work
-moltbot models auth login-github-copilot --yes
+openclaw models auth login-github-copilot --profile-id github-copilot:work
+openclaw models auth login-github-copilot --yes
 ```
 
 ## Set a default model
 
 ```bash
-moltbot models set github-copilot/gpt-4o
+openclaw models set github-copilot/gpt-4o
 ```
 
 ### Config snippet
@@ -57,7 +65,9 @@ moltbot models set github-copilot/gpt-4o
 
 ## Notes
 
-- Requires the Copilot CLI (`copilot`) to be installed and in your PATH.
-- Run `copilot auth login` first to authenticate with GitHub.
-- Model availability depends on your Copilot subscription plan.
-- The official SDK manages token exchange internally.
+- Requires an interactive TTY; run it directly in a terminal.
+- Copilot model availability depends on your plan; if a model is rejected, try
+  another ID (for example `github-copilot/gpt-4.1`).
+- The login stores a GitHub token in the auth profile store and exchanges it for a
+  Copilot API token when OpenClaw runs.
+````
