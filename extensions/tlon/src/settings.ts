@@ -32,6 +32,31 @@ const SETTINGS_DESK = "moltbot";
 const SETTINGS_BUCKET = "tlon";
 
 /**
+ * Parse channelRules - handles both JSON string and object formats.
+ * Settings-store doesn't support nested objects, so we store as JSON string.
+ */
+function parseChannelRules(
+  value: unknown
+): Record<string, { mode?: "restricted" | "open"; allowedShips?: string[] }> | undefined {
+  if (!value) return undefined;
+  
+  // If it's a string, try to parse as JSON
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (isChannelRulesObject(parsed)) return parsed;
+    } catch {
+      return undefined;
+    }
+  }
+  
+  // If it's already an object, use directly
+  if (isChannelRulesObject(value)) return value;
+  
+  return undefined;
+}
+
+/**
  * Parse settings from the raw Urbit settings-store response.
  * The response shape is: { [bucket]: { [key]: value } }
  */
@@ -57,9 +82,7 @@ function parseSettingsResponse(raw: unknown): TlonSettingsStore {
     showModelSig: typeof settings.showModelSig === "boolean"
       ? settings.showModelSig
       : undefined,
-    channelRules: isChannelRulesObject(settings.channelRules)
-      ? settings.channelRules
-      : undefined,
+    channelRules: parseChannelRules(settings.channelRules),
     defaultAuthorizedShips: Array.isArray(settings.defaultAuthorizedShips)
       ? settings.defaultAuthorizedShips.filter((x): x is string => typeof x === "string")
       : undefined,
@@ -139,7 +162,7 @@ function applySettingsUpdate(
       next.showModelSig = typeof value === "boolean" ? value : undefined;
       break;
     case "channelRules":
-      next.channelRules = isChannelRulesObject(value) ? value : undefined;
+      next.channelRules = parseChannelRules(value);
       break;
     case "defaultAuthorizedShips":
       next.defaultAuthorizedShips = Array.isArray(value)
