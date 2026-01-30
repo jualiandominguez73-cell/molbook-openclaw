@@ -17,6 +17,30 @@ vi.mock("../../infra/restart.js", () => ({
   scheduleGatewaySigusr1Restart: vi.fn().mockReturnValue({ ok: true }),
 }));
 
+// Mock config/session modules used by checkActiveSessions
+vi.mock("../../config/io.js", () => ({
+  loadConfig: vi.fn().mockReturnValue({ session: {} }),
+  resolveConfigSnapshotHash: vi.fn().mockReturnValue("mock-hash"),
+}));
+
+vi.mock("../../gateway/session-utils.js", () => ({
+  loadCombinedSessionStoreForGateway: vi.fn().mockReturnValue({ storePath: "/tmp", store: {} }),
+  listSessionsFromStore: vi.fn().mockReturnValue({ sessions: [] }),
+}));
+
+/**
+ * Helper to extract the JSON payload from an AgentToolResult.
+ * tool.execute() returns { content: [{ type: "text", text: "..." }] }
+ */
+function parseToolResult(result: unknown): Record<string, unknown> {
+  if (typeof result === "string") return JSON.parse(result);
+  const content = (result as { content?: Array<{ type: string; text: string }> })?.content;
+  if (Array.isArray(content) && content.length > 0 && content[0].text) {
+    return JSON.parse(content[0].text);
+  }
+  throw new Error(`Unexpected tool result shape: ${JSON.stringify(result).slice(0, 200)}`);
+}
+
 describe("gateway tool - config.patch path restrictions", () => {
   it("allows all paths when agent has no restrictions (default)", async () => {
     const config: MoltbotConfig = {
@@ -47,7 +71,7 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(true);
   });
 
@@ -57,7 +81,7 @@ describe("gateway tool - config.patch path restrictions", () => {
         list: [
           {
             id: "atlas",
-            allowedConfigPaths: ["agents.*.*.model", "agents.defaults.model"],
+            allowedConfigPaths: ["agents.*.model", "agents.defaults.model"],
           },
         ],
       },
@@ -81,7 +105,7 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(true);
   });
 
@@ -91,7 +115,7 @@ describe("gateway tool - config.patch path restrictions", () => {
         list: [
           {
             id: "atlas",
-            allowedConfigPaths: ["agents.*.*.model"],
+            allowedConfigPaths: ["agents.*.model"],
           },
         ],
       },
@@ -120,7 +144,7 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(false);
     expect(parsed.error).toBe("config_path_restricted");
     expect(parsed.blockedPaths).toBeDefined();
@@ -165,7 +189,7 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(true);
   });
 
@@ -203,7 +227,7 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(false);
     expect(parsed.error).toBe("config_path_restricted");
     expect(parsed.blockedPaths).toContain("agents.list.0.model");
@@ -215,7 +239,7 @@ describe("gateway tool - config.patch path restrictions", () => {
         list: [
           {
             id: "atlas",
-            allowedConfigPaths: ["agents.*.*.model", "agents.defaults.**"],
+            allowedConfigPaths: ["agents.*.model", "agents.defaults.**"],
           },
         ],
       },
@@ -238,13 +262,13 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(false);
     expect(parsed.message).toContain('agent "atlas"');
     expect(parsed.message).toContain("not authorized");
     expect(parsed.message).toContain("agents.list.0.identity.name");
     expect(parsed.message).toContain("Allowed patterns");
-    expect(parsed.message).toContain("agents.*.*.model");
+    expect(parsed.message).toContain("agents.*.model");
     expect(parsed.message).toContain("agents.defaults.**");
     expect(parsed.hint).toContain("allowedConfigPaths");
   });
@@ -282,7 +306,7 @@ describe("gateway tool - config.patch path restrictions", () => {
           {
             id: "atlas",
             allowedConfigPaths: [
-              "agents.*.*.model",
+              "agents.*.model",
               "agents.defaults.model",
               "agents.**.tools.allow.*",
             ],
@@ -314,7 +338,7 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     expect(parsed.ok).toBe(true);
   });
 
@@ -345,8 +369,40 @@ describe("gateway tool - config.patch path restrictions", () => {
       baseHash: "test-hash",
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = parseToolResult(result);
     // Should allow all when agent config not found (backward compatible)
     expect(parsed.ok).toBe(true);
+  });
+
+  it("includes restartWarning in config.patch response", async () => {
+    const config: MoltbotConfig = {
+      agents: {
+        list: [
+          {
+            id: "atlas",
+            // No restrictions
+          },
+        ],
+      },
+    } as MoltbotConfig;
+
+    const tool = createGatewayTool({
+      agentSessionKey: "agent:atlas:session:test",
+      config,
+    });
+
+    const patch = JSON.stringify({ messages: { ackReactionScope: "all" } });
+
+    const result = await tool.execute("test-call-id", {
+      action: "config.patch",
+      raw: patch,
+      baseHash: "test-hash",
+    });
+
+    const parsed = parseToolResult(result);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.restartWarning).toBeDefined();
+    expect(parsed.restartWarning).toContain("Gateway restarting");
+    expect(parsed.restartWarning).toContain("config patch");
   });
 });
