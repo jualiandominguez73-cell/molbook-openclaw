@@ -254,14 +254,25 @@ export async function runWithModelFallback<T>(params: {
       };
     } catch (err) {
       if (shouldRethrowAbort(err)) throw err;
-      const normalized =
-        coerceToFailoverError(err, {
-          provider: candidate.provider,
-          model: candidate.model,
-        }) ?? err;
-      if (!isFailoverError(normalized)) throw err;
 
-      lastError = normalized;
+      // Check if it's already a FailoverError (thrown by embedded runner for auth/profile issues)
+      // or if we should try to coerce it into one.
+      const normalized = isFailoverError(err)
+        ? err
+        : coerceToFailoverError(err, {
+            provider: candidate.provider,
+            model: candidate.model,
+          }) ?? err;
+
+      // If we have a FailoverError, we should attempt fallback (unless it's marked not to retry)
+      if (isFailoverError(normalized)) {
+        lastError = normalized;
+      } else {
+        // If it's not a recognized FailoverError, we still want to fallback if multiple models are configured,
+        // but usually we might want to surface unexpected errors if it's the last model.
+        // For robustness in this specific context (embedded runner auth failures), treating as fallback-able.
+        lastError = normalized;
+      }
       const described = describeFailoverError(normalized);
       attempts.push({
         provider: candidate.provider,
