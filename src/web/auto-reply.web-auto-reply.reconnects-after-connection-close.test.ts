@@ -14,8 +14,17 @@ vi.mock("../agents/pi-embedded.js", () => ({
   resolveEmbeddedSessionLane: (key: string) => `session:${key.trim() || "main"}`,
 }));
 
+vi.mock("../session.js", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../session.js")>();
+  return {
+    ...mod,
+    webAuthExists: vi.fn().mockResolvedValue(false),
+  };
+});
+
 import { resetInboundDedupe } from "../auto-reply/reply/inbound-dedupe.js";
 import { resetLogger, setLoggerOverride } from "../logging.js";
+import { webAuthExists } from "../session.js";
 import { monitorWebChannel } from "./auto-reply.js";
 import { resetBaileysMocks, resetLoadConfigMock, setLoadConfigMock } from "./test-helpers.js";
 
@@ -229,9 +238,18 @@ describe("web auto-reply", () => {
     await run;
   }, 15_000);
 
-  it("stops after hitting max reconnect attempts", { timeout: 60_000 }, async () => {
+  it("enters recovery mode after hitting max reconnect attempts", { timeout: 60_000 }, async () => {
     const closeResolvers: Array<() => void> = [];
-    const sleep = vi.fn(async () => {});
+    const webAuthExistsMock = vi.mocked(webAuthExists);
+    const sleepGate: { resolve?: () => void } = {};
+    let sleepCalls = 0;
+    const sleep = vi.fn(async () => {
+      sleepCalls += 1;
+      if (sleepCalls < 2) return;
+      await new Promise<void>((resolve) => {
+        sleepGate.resolve = resolve;
+      });
+    });
     const listenerFactory = vi.fn(async () => {
       const onClose = new Promise<void>((res) => closeResolvers.push(res));
       return { close: vi.fn(), onClose };
@@ -241,6 +259,7 @@ describe("web auto-reply", () => {
       error: vi.fn(),
       exit: vi.fn(),
     };
+    const controller = new AbortController();
 
     const run = monitorWebChannel(
       false,
@@ -248,7 +267,7 @@ describe("web auto-reply", () => {
       true,
       async () => ({ text: "ok" }),
       runtime as never,
-      undefined,
+      controller.signal,
       {
         heartbeatSeconds: 1,
         reconnect: { initialMs: 5, maxMs: 5, maxAttempts: 2, factor: 1.1 },
@@ -265,9 +284,17 @@ describe("web auto-reply", () => {
 
     closeResolvers.shift()?.();
     await new Promise((resolve) => setTimeout(resolve, 15));
-    await run;
 
-    expect(runtime.error).toHaveBeenCalledWith(expect.stringContaining("max attempts reached"));
+    expect(runtime.error).toHaveBeenCalledWith(expect.stringContaining("Entering recovery mode"));
+
+    webAuthExistsMock.mockResolvedValueOnce(false);
+    for (let i = 0; i < 5 && !sleepGate.resolve; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    sleepGate.resolve?.();
+    controller.abort();
+    await run;
   });
 
   it("processes inbound messages without batching and preserves timestamps", async () => {
