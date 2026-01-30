@@ -40,6 +40,7 @@ import {
 import { cleanToolSchemaForGemini, normalizeToolParameters } from "./pi-tools.schema.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
 import type { SandboxContext } from "./sandbox.js";
+import { registerToolSchemas } from "./contextual-rag/index.js";
 import {
   buildPluginToolGroups,
   collectExplicitAllowlist,
@@ -412,6 +413,15 @@ export function createOpenClawCodingTools(options?: {
   const withAbort = options?.abortSignal
     ? normalized.map((tool) => wrapToolWithAbortSignal(tool, options.abortSignal))
     : normalized;
+
+  // Register tool schemas for RAG lazy-loading (get_tool_schema tool)
+  registerToolSchemas(
+    withAbort.map((tool) => ({
+      name: tool.name,
+      parameters: tool.parameters,
+      description: tool.description,
+    })),
+  );
 
   // NOTE: Keep canonical (lowercase) tool names here.
   // pi-ai's Anthropic OAuth transport remaps tool names to Claude Code-style names

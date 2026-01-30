@@ -950,6 +950,17 @@
         ]
       },
       {
+        "group": "Optimization",
+        "pages": [
+          "optimization/overview",
+          "optimization/technical-analysis",
+          "optimization/prompt-caching",
+          "optimization/system-prompt-optimization",
+          "optimization/context-management",
+          "optimization/implementation-checklist"
+        ]
+      },
+      {
         "group": "Gateway & Ops",
         "pages": [
           "gateway",

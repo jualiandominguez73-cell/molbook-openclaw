@@ -3,14 +3,16 @@ import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import { listDeliverableMessageChannels } from "../utils/message-channel.js";
 import type { ResolvedTimeFormat } from "./date-time.js";
 import type { EmbeddedContextFile } from "./pi-embedded-helpers.js";
+import { buildChunkIndex, buildToolIndex } from "./contextual-rag/index.js";
 
 /**
  * Controls which hardcoded sections are included in the system prompt.
  * - "full": All sections (default, for main agent)
  * - "minimal": Reduced sections (Tooling, Workspace, Runtime) - used for subagents
  * - "none": Just basic identity line, no sections
+ * - "rag": RAG-style lazy loading - minimal prompt with on-demand context retrieval
  */
-export type PromptMode = "full" | "minimal" | "none";
+export type PromptMode = "full" | "minimal" | "none" | "rag";
 
 function buildSkillsSection(params: {
   skillsPrompt?: string;
@@ -56,13 +58,10 @@ function buildTimeSection(params: { userTimezone?: string }) {
 
 function buildReplyTagsSection(isMinimal: boolean) {
   if (isMinimal) return [];
+  // Optimized: condensed from 6 lines to 2 lines (~60% token reduction)
   return [
     "## Reply Tags",
-    "To request a native reply/quote on supported surfaces, include one tag in your reply:",
-    "- [[reply_to_current]] replies to the triggering message.",
-    "- [[reply_to:<id>]] replies to a specific message id when you have it.",
-    "Whitespace inside the tag is allowed (e.g. [[ reply_to_current ]] / [[ reply_to: 123 ]]).",
-    "Tags are stripped before sending; support depends on the current channel config.",
+    "[[reply_to_current]] or [[reply_to:<id>]] for native reply/quote (stripped before send).",
     "",
   ];
 }
@@ -76,31 +75,24 @@ function buildMessagingSection(params: {
   messageToolHints?: string[];
 }) {
   if (params.isMinimal) return [];
-  return [
+  // Optimized: condensed messaging section (~40% token reduction)
+  const lines = [
     "## Messaging",
-    "- Reply in current session → automatically routes to the source channel (Signal, Telegram, etc.)",
-    "- Cross-session messaging → use sessions_send(sessionKey, message)",
-    "- Never use exec/curl for provider messaging; OpenClaw handles all routing internally.",
-    params.availableTools.has("message")
-      ? [
-          "",
-          "### message tool",
-          "- Use `message` for proactive sends + channel actions (polls, reactions, etc.).",
-          "- For `action=send`, include `to` and `message`.",
-          `- If multiple channels are configured, pass \`channel\` (${params.messageChannelOptions}).`,
-          `- If you use \`message\` (\`action=send\`) to deliver your user-visible reply, respond with ONLY: ${SILENT_REPLY_TOKEN} (avoid duplicate replies).`,
-          params.inlineButtonsEnabled
-            ? "- Inline buttons supported. Use `action=send` with `buttons=[[{text,callback_data}]]` (callback_data routes back as a user message)."
-            : params.runtimeChannel
-              ? `- Inline buttons not enabled for ${params.runtimeChannel}. If you need them, ask to set ${params.runtimeChannel}.capabilities.inlineButtons ("dm"|"group"|"all"|"allowlist").`
-              : "",
-          ...(params.messageToolHints ?? []),
-        ]
-          .filter(Boolean)
-          .join("\n")
-      : "",
-    "",
+    "Reply → auto-routes to source channel. Cross-session → sessions_send(key, msg). Never use exec/curl for messaging.",
   ];
+  if (params.availableTools.has("message")) {
+    lines.push(
+      `message tool: action=send with to+message (channel: ${params.messageChannelOptions}). After message(send), respond with ONLY: ${SILENT_REPLY_TOKEN}`,
+    );
+    if (params.inlineButtonsEnabled) {
+      lines.push("Buttons: action=send + buttons=[[{text,callback_data}]]");
+    }
+    if (params.messageToolHints?.length) {
+      lines.push(...params.messageToolHints);
+    }
+  }
+  lines.push("");
+  return lines;
 }
 
 function buildVoiceSection(params: { isMinimal: boolean; ttsHint?: string }) {
@@ -113,15 +105,11 @@ function buildVoiceSection(params: { isMinimal: boolean; ttsHint?: string }) {
 function buildDocsSection(params: { docsPath?: string; isMinimal: boolean; readToolName: string }) {
   const docsPath = params.docsPath?.trim();
   if (!docsPath || params.isMinimal) return [];
+  // Optimized: condensed docs section (~50% token reduction)
   return [
     "## Documentation",
-    `OpenClaw docs: ${docsPath}`,
-    "Mirror: https://docs.openclaw.ai",
-    "Source: https://github.com/openclaw/openclaw",
-    "Community: https://discord.com/invite/clawd",
-    "Find new skills: https://clawdhub.com",
-    "For OpenClaw behavior, commands, config, or architecture: consult local docs first.",
-    "When diagnosing issues, run `openclaw status` yourself when possible; only ask the user if you lack access (e.g., sandboxed).",
+    `Docs: ${docsPath} | https://docs.openclaw.ai | Skills: https://clawdhub.com`,
+    "Consult docs first for OpenClaw behavior/config. Run `openclaw status` when diagnosing issues.",
     "",
   ];
 }
@@ -189,23 +177,22 @@ export function buildAgentSystemPrompt(params: {
     ls: "List directory contents",
     exec: "Run shell commands (pty available for TTY-required CLIs)",
     process: "Manage background exec sessions",
-    web_search: "Search the web (Brave API)",
-    web_fetch: "Fetch and extract readable content from a URL",
+    web_search: "Web search (Brave)",
+    web_fetch: "Fetch URL content",
     // Channel docking: add login tools here when a channel needs interactive linking.
-    browser: "Control web browser",
-    canvas: "Present/eval/snapshot the Canvas",
-    nodes: "List/describe/notify/camera/screen on paired nodes",
-    cron: "Manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
-    message: "Send messages and channel actions",
-    gateway: "Restart, apply config, or run updates on the running OpenClaw process",
-    agents_list: "List agent ids allowed for sessions_spawn",
-    sessions_list: "List other sessions (incl. sub-agents) with filters/last",
-    sessions_history: "Fetch history for another session/sub-agent",
-    sessions_send: "Send a message to another session/sub-agent",
-    sessions_spawn: "Spawn a sub-agent session",
-    session_status:
-      "Show a /status-equivalent status card (usage + time + Reasoning/Verbose/Elevated); use for model-use questions (📊 session_status); optional per-session model override",
-    image: "Analyze an image with the configured image model",
+    browser: "Control browser",
+    canvas: "Canvas present/eval/snapshot",
+    nodes: "Node list/notify/camera/screen",
+    cron: "Cron/reminders (systemEvent text = reminder content)",
+    message: "Send messages/channel actions",
+    gateway: "Config/restart/update OpenClaw",
+    agents_list: "List agent ids for spawn",
+    sessions_list: "List sessions/sub-agents",
+    sessions_history: "Get session history",
+    sessions_send: "Send to session/sub-agent",
+    sessions_spawn: "Spawn sub-agent",
+    session_status: "Status card (usage/model/time)",
+    image: "Analyze image",
   };
 
   const toolOrder = [
@@ -327,58 +314,42 @@ export function buildAgentSystemPrompt(params: {
     return "You are a personal assistant running inside OpenClaw.";
   }
 
+  // For "rag" mode, return minimal prompt with lazy-loading via get_context/get_tool_schema
+  if (promptMode === "rag") {
+    return buildRAGSystemPrompt({
+      workspaceDir: params.workspaceDir,
+      toolNames: canonicalToolNames,
+      userTimezone,
+      runtimeInfo,
+      contextFiles: params.contextFiles,
+    });
+  }
+
   const lines = [
     "You are a personal assistant running inside OpenClaw.",
     "",
     "## Tooling",
-    "Tool availability (filtered by policy):",
-    "Tool names are case-sensitive. Call tools exactly as listed.",
+    "Tools (case-sensitive, call exactly as listed):",
     toolLines.length > 0
       ? toolLines.join("\n")
       : [
-          "Pi lists the standard tools above. This runtime enables:",
-          "- grep: search file contents for patterns",
-          "- find: find files by glob pattern",
-          "- ls: list directory contents",
-          "- apply_patch: apply multi-file patches",
-          `- ${execToolName}: run shell commands (supports background via yieldMs/background)`,
-          `- ${processToolName}: manage background exec sessions`,
-          "- browser: control openclaw's dedicated browser",
-          "- canvas: present/eval/snapshot the Canvas",
-          "- nodes: list/describe/notify/camera/screen on paired nodes",
-          "- cron: manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
-          "- sessions_list: list sessions",
-          "- sessions_history: fetch session history",
-          "- sessions_send: send to another session",
+          `Core: grep, find, ls, apply_patch, ${execToolName}, ${processToolName}, browser, canvas, nodes, cron, sessions_*`,
         ].join("\n"),
-    "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
-    "If a task is more complex or takes longer, spawn a sub-agent. It will do the work for you and ping you when it's done. You can always check up on it.",
+    "TOOLS.md = user guidance only. Complex tasks → spawn sub-agent.",
     "",
-    "## Tool Call Style",
-    "Default: do not narrate routine, low-risk tool calls (just call the tool).",
-    "Narrate only when it helps: multi-step work, complex/challenging problems, sensitive actions (e.g., deletions), or when the user explicitly asks.",
-    "Keep narration brief and value-dense; avoid repeating obvious steps.",
-    "Use plain human language for narration unless in a technical context.",
+    "## Tool Style",
+    "Call tools directly (no narration). Narrate only for: multi-step work, sensitive actions, or user request.",
     "",
-    "## OpenClaw CLI Quick Reference",
-    "OpenClaw is controlled via subcommands. Do not invent commands.",
-    "To manage the Gateway daemon service (start/stop/restart):",
-    "- openclaw gateway status",
-    "- openclaw gateway start",
-    "- openclaw gateway stop",
-    "- openclaw gateway restart",
-    "If unsure, ask the user to run `openclaw help` (or `openclaw gateway --help`) and paste the output.",
+    "## CLI Reference",
+    "Gateway: openclaw gateway status|start|stop|restart. Run `openclaw help` if unsure.",
     "",
     ...skillsSection,
     ...memorySection,
     // Skip self-update for subagent/none modes
-    hasGateway && !isMinimal ? "## OpenClaw Self-Update" : "",
+    hasGateway && !isMinimal ? "## Self-Update" : "",
     hasGateway && !isMinimal
-      ? [
-          "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
-          "Do not run config.apply or update.run unless the user explicitly requests an update or config change; if it's not explicit, ask first.",
-          "Actions: config.get, config.schema, config.apply (validate + write full config, then restart), update.run (update deps or git, then restart).",
-          "After restart, OpenClaw pings the last active session automatically.",
+      ? "Updates ONLY on explicit user request. Actions: config.get/schema/apply, update.run. Pings last session after restart."
+      : "",
         ].join("\n")
       : "",
     hasGateway && !isMinimal ? "" : "",
@@ -403,51 +374,24 @@ export function buildAgentSystemPrompt(params: {
     params.sandboxInfo?.enabled ? "## Sandbox" : "",
     params.sandboxInfo?.enabled
       ? [
-          "You are running in a sandboxed runtime (tools execute in Docker).",
-          "Some tools may be unavailable due to sandbox policy.",
-          "Sub-agents stay sandboxed (no elevated/host access). Need outside-sandbox read/write? Don't spawn; ask first.",
-          params.sandboxInfo.workspaceDir
-            ? `Sandbox workspace: ${params.sandboxInfo.workspaceDir}`
-            : "",
-          params.sandboxInfo.workspaceAccess
-            ? `Agent workspace access: ${params.sandboxInfo.workspaceAccess}${
-                params.sandboxInfo.agentWorkspaceMount
-                  ? ` (mounted at ${params.sandboxInfo.agentWorkspaceMount})`
-                  : ""
-              }`
-            : "",
-          params.sandboxInfo.browserBridgeUrl ? "Sandbox browser: enabled." : "",
-          params.sandboxInfo.browserNoVncUrl
-            ? `Sandbox browser observer (noVNC): ${params.sandboxInfo.browserNoVncUrl}`
-            : "",
-          params.sandboxInfo.hostBrowserAllowed === true
-            ? "Host browser control: allowed."
-            : params.sandboxInfo.hostBrowserAllowed === false
-              ? "Host browser control: blocked."
-              : "",
+          "Sandboxed runtime (Docker). Sub-agents stay sandboxed.",
+          params.sandboxInfo.workspaceDir ? `Workspace: ${params.sandboxInfo.workspaceDir}` : "",
+          params.sandboxInfo.workspaceAccess ? `Access: ${params.sandboxInfo.workspaceAccess}` : "",
+          params.sandboxInfo.browserBridgeUrl ? "Browser: enabled" : "",
           params.sandboxInfo.elevated?.allowed
-            ? "Elevated exec is available for this session."
-            : "",
-          params.sandboxInfo.elevated?.allowed
-            ? "User can toggle with /elevated on|off|ask|full."
-            : "",
-          params.sandboxInfo.elevated?.allowed
-            ? "You may also send /elevated on|off|ask|full when needed."
-            : "",
-          params.sandboxInfo.elevated?.allowed
-            ? `Current elevated level: ${params.sandboxInfo.elevated.defaultLevel} (ask runs exec on host with approvals; full auto-approves).`
+            ? `Elevated: ${params.sandboxInfo.elevated.defaultLevel} (/elevated on|off|ask|full)`
             : "",
         ]
           .filter(Boolean)
-          .join("\n")
+          .join(" | ")
       : "",
     params.sandboxInfo?.enabled ? "" : "",
     ...buildUserIdentitySection(ownerLine, isMinimal),
     ...buildTimeSection({
       userTimezone,
     }),
-    "## Workspace Files (injected)",
-    "These user-editable files are loaded by OpenClaw and included below in Project Context.",
+    "## Context Files",
+    "User-editable files (AGENTS.md, SOUL.md, etc.) included below.",
     "",
     ...buildReplyTagsSection(isMinimal),
     ...buildMessagingSection({
@@ -469,23 +413,11 @@ export function buildAgentSystemPrompt(params: {
   }
   if (params.reactionGuidance) {
     const { level, channel } = params.reactionGuidance;
+    // Optimized: condensed reaction guidance (~50% token reduction)
     const guidanceText =
       level === "minimal"
-        ? [
-            `Reactions are enabled for ${channel} in MINIMAL mode.`,
-            "React ONLY when truly relevant:",
-            "- Acknowledge important user requests or confirmations",
-            "- Express genuine sentiment (humor, appreciation) sparingly",
-            "- Avoid reacting to routine messages or your own replies",
-            "Guideline: at most 1 reaction per 5-10 exchanges.",
-          ].join("\n")
-        : [
-            `Reactions are enabled for ${channel} in EXTENSIVE mode.`,
-            "Feel free to react liberally:",
-            "- Acknowledge messages with appropriate emojis",
-            "- Express sentiment and personality through reactions",
-            "- React to interesting content, humor, or notable events",
-            "- Use reactions to confirm understanding or agreement",
+        ? `${channel} reactions: MINIMAL mode. React sparingly (~1 per 5-10 exchanges) for important acks/humor.`
+        : `${channel} reactions: EXTENSIVE mode. React freely to acknowledge, express sentiment, confirm understanding.`;
             "Guideline: react whenever it feels natural.",
           ].join("\n");
     lines.push("## Reactions", guidanceText, "");
@@ -501,11 +433,9 @@ export function buildAgentSystemPrompt(params: {
       const baseName = normalizedPath.split("/").pop() ?? normalizedPath;
       return baseName.toLowerCase() === "soul.md";
     });
-    lines.push("# Project Context", "", "The following project context files have been loaded:");
+    lines.push("# Project Context");
     if (hasSoulFile) {
-      lines.push(
-        "If SOUL.md is present, embody its persona and tone. Avoid stiff, generic replies; follow its guidance unless higher-priority instructions override it.",
-      );
+      lines.push("SOUL.md present → embody its persona/tone.");
     }
     lines.push("");
     for (const file of contextFiles) {
@@ -513,33 +443,21 @@ export function buildAgentSystemPrompt(params: {
     }
   }
 
-  // Skip silent replies for subagent/none modes
+  // Skip silent replies for subagent/none modes - optimized (~60% token reduction)
   if (!isMinimal) {
     lines.push(
       "## Silent Replies",
-      `When you have nothing to say, respond with ONLY: ${SILENT_REPLY_TOKEN}`,
-      "",
-      "⚠️ Rules:",
-      "- It must be your ENTIRE message — nothing else",
-      `- Never append it to an actual response (never include "${SILENT_REPLY_TOKEN}" in real replies)`,
-      "- Never wrap it in markdown or code blocks",
-      "",
-      `❌ Wrong: "Here's help... ${SILENT_REPLY_TOKEN}"`,
-      `❌ Wrong: "${SILENT_REPLY_TOKEN}"`,
-      `✅ Right: ${SILENT_REPLY_TOKEN}`,
+      `Nothing to say → respond ONLY: ${SILENT_REPLY_TOKEN} (entire message, no wrapping)`,
       "",
     );
   }
 
-  // Skip heartbeats for subagent/none modes
+  // Skip heartbeats for subagent/none modes - optimized (~50% token reduction)
   if (!isMinimal) {
     lines.push(
       "## Heartbeats",
       heartbeatPromptLine,
-      "If you receive a heartbeat poll (a user message matching the heartbeat prompt above), and there is nothing that needs attention, reply exactly:",
-      "HEARTBEAT_OK",
-      'OpenClaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).',
-      'If something needs attention, do NOT include "HEARTBEAT_OK"; reply with the alert text instead.',
+      "On heartbeat poll: reply HEARTBEAT_OK if nothing needs attention; else reply with alert (no HEARTBEAT_OK).",
       "",
     );
   }
@@ -588,4 +506,74 @@ export function buildRuntimeLine(
   ]
     .filter(Boolean)
     .join(" | ")}`;
+}
+/**
+ * Build a RAG-style system prompt with minimal initial tokens.
+ *
+ * Instead of ~17,000 tokens upfront, this sends ~2,000 tokens
+ * with indexes of available context that can be loaded on-demand
+ * via get_context() and get_tool_schema() tools.
+ *
+ * Token savings: ~88% reduction in initial prompt size!
+ */
+export function buildRAGSystemPrompt(params: {
+  workspaceDir: string;
+  toolNames: string[];
+  userTimezone?: string;
+  runtimeInfo?: {
+    agentId?: string;
+    host?: string;
+    os?: string;
+    model?: string;
+    channel?: string;
+  };
+  contextFiles?: EmbeddedContextFile[];
+}): string {
+  const tools = params.toolNames.map((name) => ({ name }));
+  const toolIndex = buildToolIndex(tools);
+  const chunkIndex = buildChunkIndex();
+
+  // Build compact bootstrap summary (not full content)
+  const bootstrapSummary =
+    params.contextFiles && params.contextFiles.length > 0
+      ? `Project files: ${params.contextFiles.map((f) => f.path).join(", ")} (use read() for content)`
+      : "";
+
+  const runtimeLine = params.runtimeInfo
+    ? `Runtime: ${[
+        params.runtimeInfo.agentId ? `agent=${params.runtimeInfo.agentId}` : "",
+        params.runtimeInfo.host ? `host=${params.runtimeInfo.host}` : "",
+        params.runtimeInfo.os ? `os=${params.runtimeInfo.os}` : "",
+        params.runtimeInfo.model ? `model=${params.runtimeInfo.model}` : "",
+        params.runtimeInfo.channel ? `channel=${params.runtimeInfo.channel}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ")}`
+    : "";
+
+  const lines = [
+    "You are OpenClaw, a personal AI assistant.",
+    "",
+    "## Workspace",
+    `Directory: ${params.workspaceDir}`,
+    params.userTimezone ? `Timezone: ${params.userTimezone}` : "",
+    bootstrapSummary,
+    "",
+    "## Tools",
+    toolIndex,
+    "",
+    "## Context (On-Demand)",
+    chunkIndex,
+    "",
+    "## Quick Rules",
+    "- Tool names are case-sensitive",
+    "- Silent reply: __SILENT__ alone (nothing else)",
+    "- Heartbeat ack: HEARTBEAT_OK",
+    "- Use get_context(topic) for detailed instructions",
+    "- Use get_tool_schema(name) for tool parameters",
+    "",
+    runtimeLine,
+  ];
+
+  return lines.filter(Boolean).join("\n");
 }

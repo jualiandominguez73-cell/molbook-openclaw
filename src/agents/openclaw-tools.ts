@@ -2,6 +2,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import { resolvePluginTools } from "../plugins/tools.js";
 import type { GatewayMessageChannel } from "../utils/message-channel.js";
 import { resolveSessionAgentId } from "./agent-scope.js";
+import { createGetContextTool, createGetToolSchemaTool } from "./contextual-rag/index.js";
 import { createAgentsListTool } from "./tools/agents-list-tool.js";
 import { createBrowserTool } from "./tools/browser-tool.js";
 import { createCanvasTool } from "./tools/canvas-tool.js";
@@ -71,6 +72,9 @@ export function createOpenClawTools(options?: {
     sandboxed: options?.sandboxed,
   });
   const tools: AnyAgentTool[] = [
+    // RAG tools for on-demand context loading (token optimization)
+    createGetContextTool() as unknown as AnyAgentTool,
+    createGetToolSchemaTool() as unknown as AnyAgentTool,
     createBrowserTool({
       sandboxBridgeUrl: options?.sandboxBrowserBridgeUrl,
       allowHostControl: options?.allowHostBrowserControl,

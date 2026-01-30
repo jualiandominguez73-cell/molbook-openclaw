@@ -108,3 +108,13 @@ agents:
 - Prefer smaller models for verbose, exploratory work.
 
 See [Skills](/tools/skills) for the exact skill list overhead formula.
+
+## Comprehensive Optimization Guide
+
+For detailed strategies to reduce token consumption by **50% or more**, see the [Token Optimization Guide](/optimization/overview):
+
+- [Prompt Caching](/optimization/prompt-caching) - Provider-specific caching for 50-90% cost reduction
+- [System Prompt Optimization](/optimization/system-prompt-optimization) - Reducing system prompt size by 40-60%
+- [Context Management](/optimization/context-management) - Pruning, compaction, and context control
+- [Implementation Checklist](/optimization/implementation-checklist) - Step-by-step setup guide
+

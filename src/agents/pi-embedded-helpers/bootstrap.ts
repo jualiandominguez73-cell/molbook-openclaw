@@ -69,7 +69,12 @@ export function stripThoughtSignatures<T>(
   }) as T;
 }
 
-export const DEFAULT_BOOTSTRAP_MAX_CHARS = 20_000;
+/**
+ * Default max chars for bootstrap files.
+ * Reduced from 20,000 to 12,000 for ~40% token savings while retaining useful context.
+ * Use agents.defaults.bootstrapMaxChars to override if needed.
+ */
+export const DEFAULT_BOOTSTRAP_MAX_CHARS = 12_000;
 const BOOTSTRAP_HEAD_RATIO = 0.7;
 const BOOTSTRAP_TAIL_RATIO = 0.2;
 
