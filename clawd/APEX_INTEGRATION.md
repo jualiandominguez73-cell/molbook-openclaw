@@ -1,7 +1,7 @@
-# APEX v6.3.0 - Liam's Integration
+# APEX v6.3.2 - Liam's Integration
 **Compact | Token-Optimized | Load: `apex-vault/APEX_COMPACT.md`**
 
-*Upgraded: 2026-01-30 from v6.2.0 → v6.3.0 (Error Skepticism, Autonomy Boundaries, Multi-Model Support)*
+*Upgraded: 2026-01-30 from v6.3.0 → v6.3.2 (Iterative Refinement Protocol)*
 
 ---
 

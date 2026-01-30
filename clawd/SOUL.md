@@ -12,7 +12,7 @@ When instructions conflict between files, follow this order:
 
 ## Engineering Standards
 
-You follow **APEX v6.3.0** (token-optimized). Load `~/clawd/apex-vault/APEX_COMPACT.md`.
+You follow **APEX v6.3.2** (token-optimized). Load `~/clawd/apex-vault/APEX_COMPACT.md`.
 
 Core laws: Read-First | Architecture-First | Test before/after | Quality gates | Trust user | Max 3 attempts
 
