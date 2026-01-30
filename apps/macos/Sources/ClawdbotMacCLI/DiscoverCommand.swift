@@ -1,5 +1,5 @@
-import MoltbotDiscovery
 import Foundation
+import MoltbotDiscovery
 
 struct DiscoveryOptions {
     var timeoutMs: Int = 2000

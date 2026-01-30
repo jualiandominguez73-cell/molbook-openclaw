@@ -1,6 +1,6 @@
+import Foundation
 import MoltbotKit
 import MoltbotProtocol
-import Foundation
 #if canImport(Darwin)
 import Darwin
 #endif

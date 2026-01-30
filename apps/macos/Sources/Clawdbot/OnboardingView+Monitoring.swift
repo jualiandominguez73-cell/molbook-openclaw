@@ -1,5 +1,5 @@
-import MoltbotIPC
 import Foundation
+import MoltbotIPC
 
 extension OnboardingView {
     @MainActor

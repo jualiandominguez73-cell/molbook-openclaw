@@ -1,7 +1,7 @@
-import MoltbotKit
-import MoltbotProtocol
 import CoreGraphics
 import Foundation
+import MoltbotKit
+import MoltbotProtocol
 import OSLog
 
 @MainActor
