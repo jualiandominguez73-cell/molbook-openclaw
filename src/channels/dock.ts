@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "../config/config.js";
 import { resolveDiscordAccount } from "../discord/accounts.js";
+import { resolveFeishuAccount } from "../feishu/accounts.js";
 import { resolveIMessageAccount } from "../imessage/accounts.js";
 import { resolveSignalAccount } from "../signal/accounts.js";
 import { resolveSlackAccount, resolveSlackReplyToMode } from "../slack/accounts.js";
@@ -125,6 +126,32 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       },
     },
   },
+  feishu: {
+    id: "feishu",
+    capabilities: {
+      chatTypes: ["direct", "group"],
+      reactions: false,
+      media: true,
+    },
+    outbound: { textChunkLimit: 4000 },
+    config: {
+      resolveAllowFrom: ({ cfg, accountId }) =>
+        (resolveFeishuAccount({ cfg, accountId }).config.allowFrom ?? []).map((entry) =>
+          String(entry),
+        ),
+      formatAllowFrom: ({ allowFrom }) =>
+        allowFrom.map((entry) => String(entry).trim()).filter(Boolean),
+    },
+    groups: {
+      // Default to requiring mentions in groups for now
+      resolveRequireMention: ({ cfg, accountId }) =>
+        resolveFeishuAccount({ cfg, accountId }).config.requireMention ?? true,
+      resolveToolPolicy: () => undefined,
+    },
+    mentions: {
+      stripPatterns: () => ["@_user_\\d+"], // Basic strip pattern, refine if needed
+    },
+  },
   whatsapp: {
     id: "whatsapp",
     capabilities: {
@@ -227,17 +254,17 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       resolveAllowFrom: ({ cfg, accountId }) => {
         const channel = cfg.channels?.googlechat as
           | {
-              accounts?: Record<string, { dm?: { allowFrom?: Array<string | number> } }>;
-              dm?: { allowFrom?: Array<string | number> };
-            }
+            accounts?: Record<string, { dm?: { allowFrom?: Array<string | number> } }>;
+            dm?: { allowFrom?: Array<string | number> };
+          }
           | undefined;
         const normalized = normalizeAccountId(accountId);
         const account =
           channel?.accounts?.[normalized] ??
           channel?.accounts?.[
-            Object.keys(channel?.accounts ?? {}).find(
-              (key) => key.toLowerCase() === normalized.toLowerCase(),
-            ) ?? ""
+          Object.keys(channel?.accounts ?? {}).find(
+            (key) => key.toLowerCase() === normalized.toLowerCase(),
+          ) ?? ""
           ];
         return (account?.dm?.allowFrom ?? channel?.dm?.allowFrom ?? []).map((entry) =>
           String(entry),
@@ -385,9 +412,9 @@ function buildDockFromPlugin(plugin: ChannelPlugin): ChannelDock {
     elevated: plugin.elevated,
     config: plugin.config
       ? {
-          resolveAllowFrom: plugin.config.resolveAllowFrom,
-          formatAllowFrom: plugin.config.formatAllowFrom,
-        }
+        resolveAllowFrom: plugin.config.resolveAllowFrom,
+        formatAllowFrom: plugin.config.formatAllowFrom,
+      }
       : undefined,
     groups: plugin.groups,
     mentions: plugin.mentions,
