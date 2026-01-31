@@ -239,6 +239,13 @@ export function createGatewayHttpServer(opts: {
       return;
     }
 
+    // Health check endpoint for deployment platforms (Railway, Render, etc.)
+    if (req.url === "/health" || req.url === "/healthz") {
+      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("ok");
+      return;
+    }
+
     try {
       const configSnapshot = loadConfig();
       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
