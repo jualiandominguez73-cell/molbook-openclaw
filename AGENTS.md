@@ -71,16 +71,21 @@ This way David can see everything you know about people in one place. Use emoji 
 
 ### 🧠 Memory Recall - Use qmd!
 
-When you need to remember something from the past, use `qmd` instead of grepping files:
+When you need to remember something from the past, use `qmd` for semantic search:
 
 ```bash
-qmd query "what happened at Christmas"   # Semantic search with reranking
-qmd search "specific phrase"              # BM25 keyword search
+qmd query "what happened at Christmas"   # Hybrid + reranking (best)
+qmd search "specific phrase"              # BM25 keyword search (fast)
 qmd vsearch "conceptual question"         # Pure vector similarity
+qmd search "topic" -c sessions            # Search conversation history
 ```
 
-Index your memory folder: `qmd index memory/`
-Vectors + BM25 + reranking finds things even with different wording.
+**Collections indexed:**
+- `memory` — daily notes and long-term memory
+- `workspace` — MEMORY.md, AGENTS.md, SOUL.md
+- `sessions` — ALL conversation transcripts (968+ files!)
+
+Re-index after changes: `qmd update && qmd embed`
 
 ## Safety
 

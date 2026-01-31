@@ -2,6 +2,55 @@
 
 Skills define *how* tools work. This file is for *your* specifics — the stuff that's unique to your setup.
 
+## qmd — Quick Markdown Search
+
+Local semantic + keyword search across memory, workspace, and session transcripts.
+
+**Collections:**
+- `memory` — daily notes, decisions (`/Users/steve/clawd/memory/`)
+- `workspace` — MEMORY.md, AGENTS.md, SOUL.md, etc. (`/Users/steve/clawd/*.md`)
+- `sessions` — all conversation transcripts (`~/.openclaw/agents/main/sessions/*.jsonl`)
+
+**Commands:**
+```bash
+# Keyword search (fast BM25)
+qmd search "sub-agent spawning"
+
+# Semantic search (vector similarity)
+qmd vsearch "how do we deploy projects"
+
+# Hybrid search with reranking (best quality)
+qmd query "what did David say about design"
+
+# Search specific collection
+qmd search "API" -c memory
+qmd search "UndercoverAgent" -c sessions
+
+# Retrieve full document
+qmd get "memory/2026-01-31.md"
+qmd get "#abc123"  # by docid from search results
+
+# Get multiple docs
+qmd multi-get "memory/2026-01*.md"
+
+# Re-index after changes
+qmd update
+
+# Generate new embeddings
+qmd embed
+
+# Check status
+qmd status
+```
+
+**Output formats:**
+- `--json` — structured for LLM consumption
+- `--files` — list matching files with scores
+- `--full` — include full document content
+- `-n 10` — limit results
+
+**Index location:** `~/.cache/qmd/index.sqlite`
+
 ## System Cron Jobs (launchd)
 
 These run independently of the gateway via macOS launchd. You can manage them:
