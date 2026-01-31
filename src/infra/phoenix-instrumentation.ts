@@ -65,10 +65,7 @@ export async function initializePhoenix(config?: OpenClawConfig): Promise<void> 
     // We must manually patch the SDK after it's loaded
     log.info("Manually instrumenting OpenAI SDK for ESM...");
     try {
-      // Import OpenAI from pnpm store (pi-ai's dependency)
-      // From src/infra/ we need to go up two levels to reach node_modules
-      const openaiModule =
-        await import("../../node_modules/.pnpm/openai@6.10.0_ws@8.19.0_zod@4.3.6/node_modules/openai/index.mjs");
+      const openaiModule = await import("openai");
       const OpenAI = openaiModule.default;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       openaiInst.manuallyInstrument(OpenAI as any);

@@ -34,7 +34,6 @@ if (phoenixEnabled) {
 
 	// Manually instrument OpenAI SDK for ESM (required because auto-instrumentation hooks don't fire for ESM imports)
 	// Use top-level await to ensure this completes BEFORE any application code loads OpenAI
-	// OpenAI is a dependency of @mariozechner/pi-ai, import from pnpm store
-	const { default: OpenAI } = await import("./node_modules/.pnpm/openai@6.10.0_ws@8.19.0_zod@4.3.6/node_modules/openai/index.mjs");
+	const { default: OpenAI } = await import("openai");
 	openaiInst.manuallyInstrument(OpenAI);
 }
