@@ -22,7 +22,7 @@ import {
   Timestamp,
   PublicKey,
   SecretKey,
-  Nip04,
+  Metadata,
 } from "@rust-nostr/nostr-sdk";
 
 import {
@@ -33,6 +33,7 @@ import {
   writeNostrProfileState,
 } from "./nostr-state-store.js";
 import type { NostrProfile } from "./config-schema.js";
+import type { ProfilePublishResult } from "./nostr-profile.js";
 import { createSeenTracker, type SeenTracker } from "./seen-tracker.js";
 import {
   createMetrics,
@@ -58,6 +59,9 @@ const STATE_PERSIST_DEBOUNCE_MS = 5000;
 const TYPING_KIND = 20001;
 const TYPING_TTL_SEC = 30;
 const TYPING_THROTTLE_MS = 5000;
+
+// Profile publish timeout per relay
+const RELAY_PUBLISH_TIMEOUT_MS = 5000;
 
 // ============================================================================
 // Types
@@ -106,6 +110,14 @@ export interface RustNostrBusHandle {
   sendTypingStart: (toPubkey: string) => Promise<void>;
   /** Send typing indicator stop (kind 20001) */
   sendTypingStop: (toPubkey: string) => Promise<void>;
+  /** Publish a profile (kind:0) to all relays */
+  publishProfile: (profile: NostrProfile) => Promise<ProfilePublishResult>;
+  /** Get the last profile publish state */
+  getProfileState: () => Promise<{
+    lastPublishedAt: number | null;
+    lastPublishedEventId: string | null;
+    lastPublishResults: Record<string, "ok" | "failed" | "timeout"> | null;
+  }>;
 }
 
 // Track WASM initialization
@@ -337,6 +349,106 @@ export async function startRustNostrBus(
     }
   };
 
+  // Profile publishing function using rust-nostr Metadata
+  const publishProfile = async (profile: NostrProfile): Promise<ProfilePublishResult> => {
+    // Read last published timestamp for monotonic ordering
+    const profileState = await readNostrProfileState({ accountId });
+    const lastPublishedAt = profileState?.lastPublishedAt ?? undefined;
+
+    // Ensure monotonic timestamp
+    const now = Math.floor(Date.now() / 1000);
+    const createdAt = lastPublishedAt !== undefined ? Math.max(now, lastPublishedAt + 1) : now;
+
+    // Build metadata using rust-nostr's Metadata class
+    let metadata = new Metadata();
+    if (profile.name) metadata = metadata.name(profile.name);
+    if (profile.displayName) metadata = metadata.displayName(profile.displayName);
+    if (profile.about) metadata = metadata.about(profile.about);
+    if (profile.picture) metadata = metadata.picture(profile.picture);
+    if (profile.banner) metadata = metadata.banner(profile.banner);
+    if (profile.website) metadata = metadata.website(profile.website);
+    if (profile.nip05) metadata = metadata.nip05(profile.nip05);
+    if (profile.lud16) metadata = metadata.lud16(profile.lud16);
+
+    // Create and sign the profile event
+    const profileEvent = EventBuilder.metadata(metadata);
+
+    // Publish to all relays and collect results
+    const successes: string[] = [];
+    const failures: Array<{ relay: string; error: string }> = [];
+    let eventId = "";
+
+    // Publish to each relay with timeout
+    const publishPromises = relays.map(async (relay) => {
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("timeout")), RELAY_PUBLISH_TIMEOUT_MS);
+        });
+
+        // rust-nostr client publishes to all connected relays
+        // We need to track per-relay results
+        await Promise.race([client.sendEventBuilder(profileEvent), timeoutPromise]);
+
+        successes.push(relay);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        failures.push({ relay, error: errorMessage });
+      }
+    });
+
+    // For rust-nostr, sendEventBuilder publishes to all relays at once
+    // We publish once and mark all relays as success/failure based on that
+    try {
+      const output = await client.sendEventBuilder(profileEvent);
+      eventId = output.id.toHex();
+      // All connected relays receive it
+      for (const relay of relays) {
+        if (!failures.some((f) => f.relay === relay)) {
+          successes.push(relay);
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      for (const relay of relays) {
+        failures.push({ relay, error: errorMessage });
+      }
+    }
+
+    // Convert results to state format
+    const publishResults: Record<string, "ok" | "failed" | "timeout"> = {};
+    for (const relay of successes) {
+      publishResults[relay] = "ok";
+    }
+    for (const { relay, error } of failures) {
+      publishResults[relay] = error === "timeout" ? "timeout" : "failed";
+    }
+
+    // Persist the publish state
+    await writeNostrProfileState({
+      accountId,
+      lastPublishedAt: createdAt,
+      lastPublishedEventId: eventId,
+      lastPublishResults: publishResults,
+    });
+
+    return {
+      eventId,
+      successes,
+      failures,
+      createdAt,
+    };
+  };
+
+  // Get profile state function
+  const getProfileState = async () => {
+    const state = await readNostrProfileState({ accountId });
+    return {
+      lastPublishedAt: state?.lastPublishedAt ?? null,
+      lastPublishedEventId: state?.lastPublishedEventId ?? null,
+      lastPublishResults: state?.lastPublishResults ?? null,
+    };
+  };
+
   return {
     close: async () => {
       if (pendingWrite) {
@@ -362,17 +474,52 @@ export async function startRustNostrBus(
     getMetrics: () => metrics.getSnapshot(),
     sendTypingStart: (toPubkey: string) => sendTypingIndicator(toPubkey, "start"),
     sendTypingStop: (toPubkey: string) => sendTypingIndicator(toPubkey, "stop"),
+    publishProfile,
+    getProfileState,
   };
 }
 
 /**
+ * Check if a string looks like a valid Nostr pubkey (hex or npub)
+ * Works without WASM - uses simple validation
+ */
+export function isValidPubkeyRust(input: string): boolean {
+  if (typeof input !== "string") {
+    return false;
+  }
+  const trimmed = input.trim();
+
+  // npub format - basic check
+  if (trimmed.startsWith("npub1")) {
+    return trimmed.length >= 60 && /^npub1[a-z0-9]+$/.test(trimmed);
+  }
+
+  // Hex format
+  return /^[0-9a-fA-F]{64}$/.test(trimmed);
+}
+
+/**
  * Normalize a pubkey to hex format (accepts npub or hex)
+ * Works without WASM for hex keys, requires WASM for npub decoding
  */
 export function normalizePubkeyRust(input: string): string {
   const trimmed = input.trim();
-  // parse() handles both hex and npub formats
-  const pk = PublicKey.parse(trimmed);
-  return pk.toHex();
+
+  // Already hex - validate and return lowercase
+  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+
+  // npub format - requires WASM
+  if (trimmed.startsWith("npub1")) {
+    if (!wasmInitialized) {
+      throw new Error("WASM not initialized - call initRustNostr() first for npub decoding");
+    }
+    const pk = PublicKey.parse(trimmed);
+    return pk.toHex();
+  }
+
+  throw new Error("Pubkey must be 64 hex characters or npub format");
 }
 
 /**
@@ -381,4 +528,18 @@ export function normalizePubkeyRust(input: string): string {
 export function pubkeyToNpubRust(hexPubkey: string): string {
   const pk = PublicKey.parse(hexPubkey);
   return pk.toBech32();
+}
+
+/**
+ * Get public key from private key (hex or nsec format)
+ * Uses rust-nostr's SecretKey.parse which handles both formats
+ * Note: WASM must be initialized via initRustNostr() before calling this
+ */
+export function getPublicKeyFromPrivateRust(privateKey: string): string {
+  if (!wasmInitialized) {
+    throw new Error("WASM not initialized - call initRustNostr() first");
+  }
+  const secretKey = SecretKey.parse(privateKey.trim());
+  const keys = new Keys(secretKey);
+  return keys.publicKey.toHex();
 }

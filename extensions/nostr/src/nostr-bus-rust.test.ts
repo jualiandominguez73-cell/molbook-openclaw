@@ -77,11 +77,10 @@ describe("rust-nostr SDK integration", () => {
   });
 });
 
-describe("rust-nostr vs nostr-tools comparison", () => {
-  it("both implementations derive the same public key from private key", async () => {
+describe("rust-nostr key derivation", () => {
+  it("derives expected public key from test private key", async () => {
     const { initRustNostr } = await import("./nostr-bus-rust.js");
     const { Keys, SecretKey } = await import("@rust-nostr/nostr-sdk");
-    const { getPublicKey } = await import("nostr-tools");
 
     await initRustNostr();
 
@@ -90,14 +89,55 @@ describe("rust-nostr vs nostr-tools comparison", () => {
     const rustKeys = new Keys(rustSecretKey);
     const rustPubkey = rustKeys.publicKey.toHex();
 
-    // nostr-tools - convert hex to Uint8Array
-    const skBytes = new Uint8Array(32);
-    for (let i = 0; i < 32; i++) {
-      skBytes[i] = parseInt(TEST_HEX_KEY.slice(i * 2, i * 2 + 2), 16);
-    }
-    const toolsPubkey = getPublicKey(skBytes);
+    // Should be a valid 64-char hex pubkey
+    expect(rustPubkey).toMatch(/^[0-9a-f]{64}$/);
+    // The expected pubkey for this test key
+    expect(rustPubkey).toBe("4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff");
+  });
+});
 
-    // Should match
-    expect(rustPubkey).toBe(toolsPubkey);
+describe("getPublicKeyFromPrivateRust integration", () => {
+  it("derives correct public key from hex private key after WASM init", async () => {
+    const { initRustNostr, getPublicKeyFromPrivateRust } = await import("./nostr-bus-rust.js");
+
+    // Initialize WASM (same as startRustNostrBus does internally)
+    await initRustNostr();
+
+    // The critical assertion: getPublicKeyFromPrivateRust should work after init
+    const publicKey = getPublicKeyFromPrivateRust(TEST_HEX_KEY);
+
+    expect(publicKey).toMatch(/^[0-9a-f]{64}$/);
+    expect(publicKey).toBe("4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff");
+
+    // Verify it matches direct derivation
+    const { Keys, SecretKey } = await import("@rust-nostr/nostr-sdk");
+    const secretKey = SecretKey.parse(TEST_HEX_KEY);
+    const keys = new Keys(secretKey);
+    expect(publicKey).toBe(keys.publicKey.toHex());
+  });
+
+  it("derives correct public key from nsec format private key", async () => {
+    const { initRustNostr, getPublicKeyFromPrivateRust } = await import("./nostr-bus-rust.js");
+    const { SecretKey } = await import("@rust-nostr/nostr-sdk");
+
+    await initRustNostr();
+
+    // Get the nsec format of our test key
+    const secretKey = SecretKey.parse(TEST_HEX_KEY);
+    const nsecKey = secretKey.toBech32();
+    expect(nsecKey).toMatch(/^nsec1/);
+
+    // Should derive the same public key regardless of input format
+    const publicKey = getPublicKeyFromPrivateRust(nsecKey);
+    expect(publicKey).toBe("4646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff");
+  });
+
+  it("throws error if WASM not initialized", async () => {
+    // Reset module to get fresh state (simulate not initialized)
+    vi.resetModules();
+    const { getPublicKeyFromPrivateRust } = await import("./nostr-bus-rust.js");
+
+    // Should throw because WASM not initialized
+    expect(() => getPublicKeyFromPrivateRust(TEST_HEX_KEY)).toThrow("WASM not initialized");
   });
 });
