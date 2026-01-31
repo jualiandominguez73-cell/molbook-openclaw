@@ -16,7 +16,13 @@ import {
   resolveNostrAccount,
   type ResolvedNostrAccount,
 } from "./types.js";
-import { normalizePubkey, startNostrBus, type NostrBusHandle } from "./nostr-bus.js";
+// Use rust-nostr for all nostr operations
+import {
+  startRustNostrBus as startNostrBus,
+  normalizePubkeyRust as normalizePubkey,
+  initRustNostr,
+  type RustNostrBusHandle as NostrBusHandle,
+} from "./nostr-bus-rust.js";
 import type { MetricEvent, MetricsSnapshot } from "./metrics.js";
 import type { NostrProfile } from "./config-schema.js";
 import type { ProfilePublishResult } from "./nostr-profile.js";
@@ -206,17 +212,13 @@ export const nostrPlugin: ChannelPlugin<ResolvedNostrAccount> = {
   gateway: {
     startAccount: async (ctx) => {
       const account = ctx.account;
-      ctx.setStatus({
-        accountId: account.accountId,
-        publicKey: account.publicKey,
-      });
-      ctx.log?.info(
-        `[${account.accountId}] starting Nostr provider (pubkey: ${account.publicKey})`,
-      );
 
       if (!account.configured) {
         throw new Error("Nostr private key not configured");
       }
+
+      // Initialize WASM before any crypto operations
+      await initRustNostr();
 
       const runtime = getNostrRuntime();
 
@@ -417,8 +419,14 @@ export const nostrPlugin: ChannelPlugin<ResolvedNostrAccount> = {
       // Store the bus handle
       activeBuses.set(account.accountId, bus);
 
+      // Update status with the actual public key (derived after WASM init)
+      ctx.setStatus({
+        accountId: account.accountId,
+        publicKey: bus.publicKey,
+      });
+
       ctx.log?.info(
-        `[${account.accountId}] Nostr provider started, connected to ${account.relays.length} relay(s)`,
+        `[${account.accountId}] Nostr provider started (pubkey: ${bus.publicKey}), connected to ${account.relays.length} relay(s)`,
       );
 
       // Return cleanup function
