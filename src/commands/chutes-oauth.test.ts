@@ -218,7 +218,7 @@ describe("loginChutes", () => {
     const creds = await loginChutes({
       app: { clientId: "cid_test", redirectUri, scopes: ["openid"] },
       timeoutMs: 500, // Short timeout for test
-      onAuth: async ({ url }) => {
+      onAuth: async ({ url: _url }) => {
         // 1. Send WRONG state to local server
         const response = await fetch(`${redirectUri}?code=code_local&state=wrong_state`);
         expect(response.status).toBe(400);
