@@ -1,5 +1,6 @@
 import type { Server as HttpServer } from "node:http";
 import type { WebSocketServer } from "ws";
+import { releaseAllSessionWriteLocks } from "../agents/session-write-lock.js";
 import type { CanvasHostHandler, CanvasHostServer } from "../canvas-host/server.js";
 import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js";
 import { stopGmailWatcher } from "../hooks/gmail-watcher.js";
@@ -96,6 +97,20 @@ export function createGatewayCloseHandler(params: {
       }
     }
     params.chatRunState.clear();
+
+    // Release all held session write locks before restarting.
+    // Without this, in-process restarts (SIGUSR1) leave on-disk .lock files
+    // owned by PID 1, which appear valid to the new server iteration because
+    // isAlive(1) returns true (same process). This blocks session access for
+    // up to staleMs (30 min) until the lock expires.
+    try {
+      await releaseAllSessionWriteLocks();
+    } catch {
+      // Best effort — don't let lock cleanup failure prevent shutdown.
+      // The instance nonce mechanism will detect surviving stale locks
+      // on the next server iteration.
+    }
+
     for (const c of params.clients) {
       try {
         c.socket.close(1012, "service restart");
