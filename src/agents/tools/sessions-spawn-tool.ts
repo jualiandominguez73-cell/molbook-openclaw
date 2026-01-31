@@ -235,6 +235,8 @@ export function createSessionsSpawnTool(opts?: {
             timeout: runTimeoutSeconds > 0 ? runTimeoutSeconds : undefined,
             label: label || undefined,
             spawnedBy: spawnedByKey,
+            threadId: opts?.agentThreadId != null ? String(opts.agentThreadId) : undefined,
+            accountId: opts?.agentAccountId ?? undefined,
             groupId: opts?.agentGroupId ?? undefined,
             groupChannel: opts?.agentGroupChannel ?? undefined,
             groupSpace: opts?.agentGroupSpace ?? undefined,
