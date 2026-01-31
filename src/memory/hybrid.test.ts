@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { bm25RankToScore, buildFtsQuery, calculateRecencyWeight, mergeHybridResults } from "./hybrid.js";
+import {
+  bm25RankToScore,
+  buildFtsQuery,
+  calculateRecencyWeight,
+  mergeHybridResults,
+} from "./hybrid.js";
 
 describe("memory hybrid helpers", () => {
   it("buildFtsQuery tokenizes and AND-joins", () => {

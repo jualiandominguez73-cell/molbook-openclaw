@@ -267,6 +267,16 @@ describe("exec tool backgrounding", () => {
 });
 
 describe("exec notifyOnExit", () => {
+  const originalShell = process.env.SHELL;
+
+  beforeEach(() => {
+    if (!isWin && defaultShell) process.env.SHELL = defaultShell;
+  });
+
+  afterEach(() => {
+    if (!isWin) process.env.SHELL = originalShell;
+  });
+
   it("enqueues a system event when a backgrounded exec exits", async () => {
     const tool = createExecTool({
       allowBackground: true,

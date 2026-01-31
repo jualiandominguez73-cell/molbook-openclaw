@@ -34,7 +34,7 @@ export type HybridKeywordResult = {
 export function calculateRecencyWeight(
   createdAtMs: number | undefined,
   halfLifeDays: number = 30,
-  floor: number = 0.1
+  floor: number = 0.1,
 ): number {
   if (!createdAtMs || createdAtMs <= 0) return 1.0; // No timestamp = full weight
   const ageMs = Date.now() - createdAtMs;
@@ -131,7 +131,8 @@ export function mergeHybridResults(params: {
   const recencyEnabled = halfLife > 0;
 
   const merged = Array.from(byId.values()).map((entry) => {
-    const hybridScore = params.vectorWeight * entry.vectorScore + params.textWeight * entry.textScore;
+    const hybridScore =
+      params.vectorWeight * entry.vectorScore + params.textWeight * entry.textScore;
     const recencyWeight = recencyEnabled
       ? calculateRecencyWeight(entry.createdAt, halfLife, floor)
       : 1.0;
