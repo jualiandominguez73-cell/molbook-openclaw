@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-
 import { CONFIG_DIR } from "../../utils.js";
 import { base64UrlEncode } from "./base64url.js";
 
@@ -10,6 +9,7 @@ export type ObaKeyFile = {
   publicKeyPem: string;
   privateKeyPem: string;
   owner?: string;
+  agentId?: string;
   createdAt: string;
 };
 

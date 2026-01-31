@@ -3,7 +3,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { base64UrlEncode } from "./base64url.js";
 import { preparePayloadForSigning } from "./canonicalize.js";
 import {
@@ -15,6 +14,7 @@ import {
   saveObaKey,
   signPayload,
 } from "./keys.js";
+import { isPrivateHost, validateOwnerUrl } from "./owner-url.js";
 import { parseSkillMetadataObject, signPluginManifest, signSkillMetadata } from "./sign.js";
 import { clearJwksCache, verifyObaContainer } from "./verify.js";
 
@@ -355,5 +355,216 @@ This is a test skill.
     const result = await verifyObaContainer(tampered);
     expect(result.status).toBe("invalid");
     expect(result.reason).toBe("signature mismatch");
+  });
+});
+
+describe("validateOwnerUrl", () => {
+  const origPrivate = process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+  const origInsecure = process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER;
+
+  afterEach(() => {
+    if (origPrivate !== undefined) {
+      process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER = origPrivate;
+    } else {
+      delete process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+    }
+    if (origInsecure !== undefined) {
+      process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER = origInsecure;
+    } else {
+      delete process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER;
+    }
+  });
+
+  it("accepts valid HTTPS URLs", () => {
+    const result = validateOwnerUrl("https://example.com/jwks.json");
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects non-HTTPS URLs", () => {
+    const result = validateOwnerUrl("http://example.com/jwks.json");
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("HTTPS");
+  });
+
+  it("rejects invalid URLs", () => {
+    const result = validateOwnerUrl("not-a-url");
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("not a valid URL");
+  });
+
+  it("rejects empty string", () => {
+    const result = validateOwnerUrl("");
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects URLs with credentials", () => {
+    const result = validateOwnerUrl("https://user:pass@example.com/jwks.json");
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("credentials");
+  });
+
+  it("rejects URLs with fragments", () => {
+    const result = validateOwnerUrl("https://example.com/jwks.json#section");
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("fragment");
+  });
+
+  it("rejects private hosts by default", () => {
+    delete process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+    const result = validateOwnerUrl("https://localhost/jwks.json");
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("private");
+  });
+
+  it("allows private hosts with OPENCLAW_OBA_ALLOW_PRIVATE_OWNER=1", () => {
+    process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER = "1";
+    const result = validateOwnerUrl("https://localhost/jwks.json");
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows private hosts with allowPrivate option", () => {
+    delete process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+    const result = validateOwnerUrl("https://localhost/jwks.json", { allowPrivate: true });
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows http://localhost with OPENCLAW_OBA_ALLOW_INSECURE_OWNER=1", () => {
+    process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER = "1";
+    process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER = "1";
+    const result = validateOwnerUrl("http://localhost:3000/jwks.json");
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows http://127.0.0.1 with OPENCLAW_OBA_ALLOW_INSECURE_OWNER=1", () => {
+    process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER = "1";
+    process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER = "1";
+    const result = validateOwnerUrl("http://127.0.0.1:3000/jwks.json");
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects http://evil.com even with OPENCLAW_OBA_ALLOW_INSECURE_OWNER=1", () => {
+    process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER = "1";
+    const result = validateOwnerUrl("http://evil.com/jwks.json");
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("HTTPS");
+  });
+});
+
+describe("isPrivateHost", () => {
+  it("detects localhost", () => {
+    expect(isPrivateHost("localhost")).toBe(true);
+  });
+
+  it("detects 127.x.x.x", () => {
+    expect(isPrivateHost("127.0.0.1")).toBe(true);
+    expect(isPrivateHost("127.255.0.1")).toBe(true);
+  });
+
+  it("detects 10.x.x.x", () => {
+    expect(isPrivateHost("10.0.0.1")).toBe(true);
+  });
+
+  it("detects 172.16-31.x.x", () => {
+    expect(isPrivateHost("172.16.0.1")).toBe(true);
+    expect(isPrivateHost("172.31.255.255")).toBe(true);
+    expect(isPrivateHost("172.15.0.1")).toBe(false);
+    expect(isPrivateHost("172.32.0.1")).toBe(false);
+  });
+
+  it("detects 192.168.x.x", () => {
+    expect(isPrivateHost("192.168.1.1")).toBe(true);
+  });
+
+  it("detects link-local 169.254.x.x", () => {
+    expect(isPrivateHost("169.254.1.1")).toBe(true);
+  });
+
+  it("detects CGNAT 100.64-127.x.x", () => {
+    expect(isPrivateHost("100.64.0.1")).toBe(true);
+    expect(isPrivateHost("100.127.255.255")).toBe(true);
+    expect(isPrivateHost("100.63.0.1")).toBe(false);
+    expect(isPrivateHost("100.128.0.1")).toBe(false);
+  });
+
+  it("detects IPv6 loopback/unspecified", () => {
+    expect(isPrivateHost("::1")).toBe(true);
+    expect(isPrivateHost("::")).toBe(true);
+    expect(isPrivateHost("::0")).toBe(true);
+  });
+
+  it("detects .local suffix", () => {
+    expect(isPrivateHost("myhost.local")).toBe(true);
+  });
+
+  it("detects 0.0.0.0", () => {
+    expect(isPrivateHost("0.0.0.0")).toBe(true);
+  });
+
+  it("allows public hosts", () => {
+    expect(isPrivateHost("example.com")).toBe(false);
+    expect(isPrivateHost("8.8.8.8")).toBe(false);
+    expect(isPrivateHost("api.openbotauth.org")).toBe(false);
+  });
+
+  it("normalizes trailing dot", () => {
+    expect(isPrivateHost("localhost.")).toBe(true);
+  });
+});
+
+describe("Owner validation on signing", () => {
+  let tmpDir: string;
+  const origPrivate = process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+  const origInsecure = process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "oba-owner-val-"));
+    delete process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+    delete process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (origPrivate !== undefined) {
+      process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER = origPrivate;
+    } else {
+      delete process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER;
+    }
+    if (origInsecure !== undefined) {
+      process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER = origInsecure;
+    } else {
+      delete process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER;
+    }
+  });
+
+  it("signing rejects non-HTTPS owner", () => {
+    const manifest = { id: "test-plugin" };
+    const manifestPath = path.join(tmpDir, "openclaw.plugin.json");
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const key = generateObaKeyPair("http://example.com/jwks.json");
+    expect(() => signPluginManifest({ manifestPath, key })).toThrow("Invalid owner URL");
+  });
+
+  it("signing rejects private host owner", () => {
+    const manifest = { id: "test-plugin" };
+    const manifestPath = path.join(tmpDir, "openclaw.plugin.json");
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const key = generateObaKeyPair("https://localhost/jwks.json");
+    expect(() => signPluginManifest({ manifestPath, key })).toThrow("Invalid owner URL");
+  });
+
+  it("signing allows http://localhost with env overrides", () => {
+    process.env.OPENCLAW_OBA_ALLOW_INSECURE_OWNER = "1";
+    process.env.OPENCLAW_OBA_ALLOW_PRIVATE_OWNER = "1";
+
+    const manifest = { id: "test-plugin" };
+    const manifestPath = path.join(tmpDir, "openclaw.plugin.json");
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const key = generateObaKeyPair("http://localhost:3000/jwks.json");
+    const { kid, sig } = signPluginManifest({ manifestPath, key });
+    expect(kid).toBe(key.kid);
+    expect(sig).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 });

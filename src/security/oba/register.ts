@@ -1,19 +1,158 @@
+import { publicKeyToJwkX } from "./keys.js";
+
 const DEFAULT_API_URL = "https://api.openbotauth.org";
 const REGISTER_TIMEOUT_MS = 10_000;
 
-export async function registerPublicKey(params: {
+export type RegisterAgentResult = {
+  ok: boolean;
+  agentId?: string;
+  ownerUrl?: string;
+  error?: string;
+};
+
+/**
+ * Register (or update) an agent with the OpenBotAuth registry.
+ *
+ * Idempotent:
+ * - If `agentId` is provided → PUT /agents/:id (key rotation, minimal body).
+ *   - 404 from PUT → fallback to POST /agents (re-create).
+ *   - 401/403 from PUT → surface auth error immediately, no fallback.
+ * - Otherwise → POST /agents (new registration).
+ */
+export async function registerAgent(params: {
+  kid: string;
   publicKeyPem: string;
+  name?: string;
+  agentType?: string;
+  agentId?: string;
   token: string;
   apiUrl?: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<RegisterAgentResult> {
   const apiUrl = (params.apiUrl ?? DEFAULT_API_URL).replace(/\/+$/, "");
-  const url = `${apiUrl}/keys`;
+  const x = publicKeyToJwkX(params.publicKeyPem);
+  const jwk = {
+    kty: "OKP",
+    crv: "Ed25519",
+    kid: params.kid,
+    x,
+    use: "sig",
+    alg: "EdDSA",
+  };
 
-  // Convert PEM to base64 (strip headers/whitespace) for the registry API.
-  const base64Key = params.publicKeyPem
-    .replace(/-----BEGIN PUBLIC KEY-----/g, "")
-    .replace(/-----END PUBLIC KEY-----/g, "")
-    .replace(/\s/g, "");
+  // Try PUT if we have an existing agentId.
+  if (params.agentId) {
+    const putResult = await putAgent({
+      apiUrl,
+      agentId: params.agentId,
+      jwk,
+      name: params.name,
+      agentType: params.agentType,
+      token: params.token,
+    });
+
+    // 401/403 → auth error, don't retry.
+    if (!putResult.ok && putResult.authError) {
+      return { ok: false, error: putResult.error };
+    }
+
+    // Success → return.
+    if (putResult.ok) {
+      return {
+        ok: true,
+        agentId: params.agentId,
+        ownerUrl: `${apiUrl}/agent-jwks/${params.agentId}`,
+      };
+    }
+
+    // 404 or other error → fall through to POST.
+  }
+
+  return postAgent({
+    apiUrl,
+    jwk,
+    name: params.name ?? params.kid,
+    agentType: params.agentType ?? "publisher",
+    token: params.token,
+  });
+}
+
+// --- internal helpers ---
+
+type JwkPayload = {
+  kty: string;
+  crv: string;
+  kid: string;
+  x: string;
+  use: string;
+  alg: string;
+};
+
+async function putAgent(params: {
+  apiUrl: string;
+  agentId: string;
+  jwk: JwkPayload;
+  name?: string;
+  agentType?: string;
+  token: string;
+}): Promise<{ ok: boolean; authError?: boolean; error?: string }> {
+  const url = `${params.apiUrl}/agents/${params.agentId}`;
+
+  // Minimal PUT body: only public_key by default.
+  const body: Record<string, unknown> = { public_key: params.jwk };
+  if (params.name !== undefined) {
+    body.name = params.name;
+  }
+  if (params.agentType !== undefined) {
+    body.agent_type = params.agentType;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REGISTER_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${params.token}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      const text = await res.text().catch(() => "");
+      return { ok: false, authError: true, error: `HTTP ${res.status}: ${text}` };
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: detail };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function postAgent(params: {
+  apiUrl: string;
+  jwk: JwkPayload;
+  name: string;
+  agentType: string;
+  token: string;
+}): Promise<RegisterAgentResult> {
+  const url = `${params.apiUrl}/agents`;
+
+  const body = {
+    name: params.name,
+    agent_type: params.agentType,
+    public_key: params.jwk,
+  };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REGISTER_TIMEOUT_MS);
@@ -25,16 +164,26 @@ export async function registerPublicKey(params: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${params.token}`,
       },
-      body: JSON.stringify({ public_key: base64Key }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return { ok: false, error: `HTTP ${res.status}: ${body}` };
+      const text = await res.text().catch(() => "");
+      return { ok: false, error: `HTTP ${res.status}: ${text}` };
     }
 
-    return { ok: true };
+    const data = (await res.json()) as { id?: string };
+    const agentId = data.id;
+    if (!agentId) {
+      return { ok: false, error: "registry did not return agent id" };
+    }
+
+    return {
+      ok: true,
+      agentId,
+      ownerUrl: `${params.apiUrl}/agent-jwks/${agentId}`,
+    };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     return { ok: false, error: detail };

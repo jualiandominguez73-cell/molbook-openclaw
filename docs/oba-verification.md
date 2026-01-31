@@ -28,15 +28,15 @@ The `oba` block is a JSON object with the following fields:
 
 ```json
 {
-  "owner": "https://api.openbotauth.org/jwks/hammadtq.json",
-  "kid": "key-id-from-registry",
+  "owner": "https://api.openbotauth.org/agent-jwks/<agent_id>",
+  "kid": "derived-key-id",
   "alg": "EdDSA",
   "sig": "base64url-encoded-ed25519-signature"
 }
 ```
 
-- **owner**: JWKS URL for the publisher (may be hosted on the OpenBotAuth registry or any HTTPS JWKS endpoint)
-- **kid**: Key ID matching a key in the JWKS
+- **owner**: JWKS URL for the publisher. After running `openclaw oba register`, this is set automatically to the agent JWKS endpoint (e.g. `https://api.openbotauth.org/agent-jwks/<agent_id>`)
+- **kid**: Key ID derived from the public key (SHA-256 hash, base64url, first 16 chars)
 - **alg**: Algorithm, must be `EdDSA` (Ed25519)
 - **sig**: Base64url-encoded Ed25519 signature over the canonicalized container
 
@@ -49,8 +49,8 @@ For plugins, the `oba` block is placed at the root of `openclaw.plugin.json`, as
   "id": "my-plugin",
   "configSchema": { ... },
   "oba": {
-    "owner": "https://api.openbotauth.org/jwks/example-publisher.json",
-    "kid": "my-key-id",
+    "owner": "https://api.openbotauth.org/agent-jwks/<agent_id>",
+    "kid": "derived-key-id",
     "alg": "EdDSA",
     "sig": "..."
   }
@@ -84,8 +84,8 @@ metadata:
     openclaw: { emoji: "...", requires: { ... } },
     oba:
       {
-        owner: "https://api.openbotauth.org/jwks/example-publisher.json",
-        kid: "my-key-id",
+        owner: "https://api.openbotauth.org/agent-jwks/<agent_id>",
+        kid: "derived-key-id",
         alg: "EdDSA",
         sig: "...",
       },
@@ -109,6 +109,36 @@ openclaw skills info my-skill --verify
 openclaw skills list --json --verify
 ```
 
+## Publisher Registration
+
+Before signing, generate a key pair and register it with OpenBotAuth:
+
+```bash
+# Generate a new Ed25519 key pair
+openclaw oba keygen
+
+# Register the key as an agent (sets owner URL automatically)
+openclaw oba register --token <your-pat>
+
+# Sign a plugin manifest (uses the registered owner URL)
+openclaw oba sign plugin path/to/openclaw.plugin.json
+
+# Sign a skill
+openclaw oba sign skill path/to/SKILL.md
+```
+
+The `register` command creates an agent on the OpenBotAuth registry and stores the agent ID and JWKS owner URL in the local key file. Subsequent runs of `register` with the same key will update the existing agent (idempotent).
+
+### Registration Options
+
+| Flag                  | Description           | Default                                            |
+| --------------------- | --------------------- | -------------------------------------------------- |
+| `--kid <id>`          | Key ID to register    | Most recent key                                    |
+| `--name <name>`       | Agent name            | Key ID                                             |
+| `--agent-type <type>` | Agent type            | `publisher`                                        |
+| `--token <pat>`       | OpenBotAuth API token | `OPENBOTAUTH_TOKEN` env or `~/.openclaw/oba/token` |
+| `--api-url <url>`     | API base URL          | `https://api.openbotauth.org`                      |
+
 ## Signing Process
 
 The signature covers the entire container (plugin manifest JSON or skill metadata JSON5 object) with only the `sig` field removed from the `oba` block. The `owner`, `kid`, and `alg` fields remain in the signed payload, binding the publisher identity to the content.
@@ -129,3 +159,14 @@ Before signing, the container is canonicalized using deterministic JSON serializ
 - Fetch requests have a 3-second timeout via `AbortController`
 - Only Ed25519 (`EdDSA`) signatures are supported
 - Verification is **display-only** and does not affect plugin/skill loading behavior
+- Owner URLs must be HTTPS with no credentials or fragments
+- Private/local hosts (localhost, RFC1918, link-local, CGNAT) are rejected by default (best-effort IP literal check; does not cover DNS-resolved private IPs)
+
+### Development Overrides
+
+For local OpenBotAuth development:
+
+| Environment Variable                  | Effect                                                        |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `OPENCLAW_OBA_ALLOW_INSECURE_OWNER=1` | Allow `http://localhost` and `http://127.0.0.1` as owner URLs |
+| `OPENCLAW_OBA_ALLOW_PRIVATE_OWNER=1`  | Allow private/local host owner URLs                           |

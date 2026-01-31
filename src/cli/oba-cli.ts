@@ -1,7 +1,6 @@
+import type { Command } from "commander";
 import fs from "node:fs";
 import path from "node:path";
-import type { Command } from "commander";
-
 import { defaultRuntime } from "../runtime.js";
 import { getObaKeysDir } from "../security/oba/keys.js";
 import {
@@ -13,7 +12,8 @@ import {
   saveObaKey,
   type ObaKeyFile,
 } from "../security/oba/keys.js";
-import { registerPublicKey } from "../security/oba/register.js";
+import { validateOwnerUrl } from "../security/oba/owner-url.js";
+import { registerAgent } from "../security/oba/register.js";
 import {
   parseSkillMetadataObject,
   signPluginManifest,
@@ -35,9 +35,13 @@ function resolveKey(kid?: string): ObaKeyFile {
 }
 
 function resolveToken(tokenOpt?: string): string {
-  if (tokenOpt) return tokenOpt;
+  if (tokenOpt) {
+    return tokenOpt;
+  }
   const envToken = process.env.OPENBOTAUTH_TOKEN?.trim();
-  if (envToken) return envToken;
+  if (envToken) {
+    return envToken;
+  }
   // Fallback: read from ~/.openclaw/oba/token (respects OPENCLAW_STATE_DIR).
   try {
     const tokenFile = path.join(path.dirname(getObaKeysDir()), "token");
@@ -69,6 +73,15 @@ export function registerObaCli(program: Command): void {
     .option("--owner <url>", "JWKS URL where the public key will be served")
     .option("--json", "Output as JSON", false)
     .action((opts: { owner?: string; json?: boolean }) => {
+      if (opts.owner) {
+        const urlResult = validateOwnerUrl(opts.owner);
+        if (!urlResult.ok) {
+          defaultRuntime.log(`Error: ${urlResult.error}`);
+          process.exitCode = 1;
+          return;
+        }
+      }
+
       const key = generateObaKeyPair(opts.owner);
       saveObaKey(key);
 
@@ -263,30 +276,59 @@ export function registerObaCli(program: Command): void {
   // --- register ---
   oba
     .command("register")
-    .description("Register public key with OpenBotAuth registry")
+    .description("Register key as an agent with OpenBotAuth registry")
     .option("--kid <id>", "Key ID to register (default: most recent)")
+    .option("--name <name>", "Agent name (default: key kid)")
+    .option("--agent-type <type>", "Agent type (default: publisher)")
     .option("--token <pat>", "OpenBotAuth API token")
     .option("--api-url <url>", "API base URL", "https://api.openbotauth.org")
-    .action(async (opts: { kid?: string; token?: string; apiUrl?: string }) => {
-      const key = resolveKey(opts.kid);
-      const token = resolveToken(opts.token);
+    .action(
+      async (opts: {
+        kid?: string;
+        name?: string;
+        agentType?: string;
+        token?: string;
+        apiUrl?: string;
+      }) => {
+        const key = resolveKey(opts.kid);
+        const token = resolveToken(opts.token);
 
-      defaultRuntime.log(`Registering key ${key.kid}...`);
-      const result = await registerPublicKey({
-        publicKeyPem: key.publicKeyPem,
-        token,
-        apiUrl: opts.apiUrl,
-      });
+        const action = key.agentId ? "Updating" : "Registering";
+        defaultRuntime.log(`${action} agent for key ${key.kid}...`);
 
-      if (!result.ok) {
-        defaultRuntime.log(`Error: ${result.error}`);
-        process.exitCode = 1;
-        return;
-      }
+        const result = await registerAgent({
+          kid: key.kid,
+          publicKeyPem: key.publicKeyPem,
+          name: opts.name,
+          agentType: opts.agentType,
+          agentId: key.agentId,
+          token,
+          apiUrl: opts.apiUrl,
+        });
 
-      defaultRuntime.log(`Key ${key.kid} registered successfully.`);
-      if (key.owner) {
-        defaultRuntime.log(`Public key will be served at: ${key.owner}`);
-      }
-    });
+        if (!result.ok) {
+          defaultRuntime.log(`Error: ${result.error}`);
+          process.exitCode = 1;
+          return;
+        }
+
+        // Update key file with agentId + owner URL.
+        if (result.agentId) {
+          key.agentId = result.agentId;
+        }
+        if (result.ownerUrl) {
+          key.owner = result.ownerUrl;
+        }
+        saveObaKey(key);
+
+        defaultRuntime.log(`Agent registered successfully.`);
+        defaultRuntime.log(`  kid:   ${key.kid}`);
+        if (key.agentId) {
+          defaultRuntime.log(`  agent: ${key.agentId}`);
+        }
+        if (key.owner) {
+          defaultRuntime.log(`  owner: ${key.owner}`);
+        }
+      },
+    );
 }

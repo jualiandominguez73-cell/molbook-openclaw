@@ -1,17 +1,20 @@
-import fs from "node:fs";
-
 import JSON5 from "json5";
-
+import fs from "node:fs";
+import type { ObaKeyFile } from "./keys.js";
+import type { ObaBlock } from "./types.js";
 import { base64UrlEncode } from "./base64url.js";
 import { preparePayloadForSigning } from "./canonicalize.js";
-import type { ObaKeyFile } from "./keys.js";
 import { signPayload } from "./keys.js";
-import type { ObaBlock } from "./types.js";
+import { validateOwnerUrl } from "./owner-url.js";
 
 function buildObaBlock(key: ObaKeyFile, ownerOverride?: string): Omit<ObaBlock, "sig"> {
   const owner = ownerOverride ?? key.owner;
   if (!owner) {
     throw new Error("No owner URL. Provide --owner or set it during keygen.");
+  }
+  const urlResult = validateOwnerUrl(owner);
+  if (!urlResult.ok) {
+    throw new Error(`Invalid owner URL: ${urlResult.error}`);
   }
   return { owner, kid: key.kid, alg: "EdDSA" };
 }
