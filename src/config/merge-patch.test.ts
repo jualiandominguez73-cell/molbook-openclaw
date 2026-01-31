@@ -119,5 +119,23 @@ describe("applyMergePatch", () => {
       // Empty array is not id-based, so it replaces
       expect(applyMergePatch(base, patch)).toEqual({ agents: [] });
     });
+
+    it("merges top-level id-based arrays", () => {
+      const base = [
+        { id: "a", value: 1 },
+        { id: "b", value: 2 },
+      ];
+      const patch = [{ id: "a", value: 10 }];
+      expect(applyMergePatch(base, patch)).toEqual([
+        { id: "a", value: 10 },
+        { id: "b", value: 2 },
+      ]);
+    });
+
+    it("replaces top-level array if base is not id-based", () => {
+      const base = [1, 2, 3];
+      const patch = [{ id: "a", name: "A" }];
+      expect(applyMergePatch(base, patch)).toEqual([{ id: "a", name: "A" }]);
+    });
   });
 });

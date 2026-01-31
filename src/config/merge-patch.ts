@@ -41,6 +41,14 @@ function mergeArraysById(
 }
 
 export function applyMergePatch(base: unknown, patch: unknown): unknown {
+  // Handle top-level id-based arrays
+  if (Array.isArray(patch) && isIdBasedArray(patch)) {
+    if (Array.isArray(base) && isIdBasedArray(base)) {
+      return mergeArraysById(base, patch);
+    }
+    return patch;
+  }
+
   if (!isPlainObject(patch)) {
     return patch;
   }
