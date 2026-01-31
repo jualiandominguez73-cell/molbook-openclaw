@@ -1,9 +1,12 @@
 import type { Command } from "commander";
+import * as qr from "qrcode-terminal";
+import { intro, outro, text, confirm, spinner } from "@clack/prompts";
 
-import { loadConfig } from "../config/config.js";
+import { loadConfig, writeConfigFile } from "../config/config.js";
 import { defaultRuntime } from "../runtime.js";
 import { runSecurityAudit } from "../security/audit.js";
 import { fixSecurityFootguns } from "../security/fix.js";
+import { TotpManager } from "../security/totp.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { isRich, theme } from "../terminal/theme.js";
 import { shortenHomeInString, shortenHomePath } from "../utils.js";
@@ -34,7 +37,7 @@ export function registerSecurityCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/security", "docs.openclaw.ai/cli/security")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/security", "docs.molt.bot/cli/security")}\n`,
     );
 
   security
@@ -66,12 +69,12 @@ export function registerSecurityCli(program: Command) {
       const muted = (text: string) => (rich ? theme.muted(text) : text);
 
       const lines: string[] = [];
-      lines.push(heading("OpenClaw security audit"));
+      lines.push(heading("Moltbot security audit"));
       lines.push(muted(`Summary: ${formatSummary(report.summary)}`));
-      lines.push(muted(`Run deeper: ${formatCliCommand("openclaw security audit --deep")}`));
+      lines.push(muted(`Run deeper: ${formatCliCommand("moltbot security audit --deep")}`));
 
       if (opts.fix) {
-        lines.push(muted(`Fix: ${formatCliCommand("openclaw security audit --fix")}`));
+        lines.push(muted(`Fix: ${formatCliCommand("moltbot security audit --fix")}`));
         if (!fixResult) {
           lines.push(muted("Fixes: failed to apply (unexpected error)"));
         } else if (
@@ -145,5 +148,201 @@ export function registerSecurityCli(program: Command) {
       render("info");
 
       defaultRuntime.log(lines.join("\n"));
+    });
+
+  // OTP setup command
+  security
+    .command("otp")
+    .description("Set up OTP (One-Time Password) verification")
+    .action(async () => {
+      const rich = isRich();
+
+      intro(rich ? theme.heading("🔒 OTP Setup") : "OTP Setup");
+
+      try {
+        // Check if OTP is already configured
+        const cfg = loadConfig();
+        const currentSecret = cfg.security?.otpVerification?.secret;
+
+        if (currentSecret) {
+          const overwrite = await confirm({
+            message: "OTP is already configured. Do you want to replace it?",
+            initialValue: false,
+          });
+
+          if (!overwrite) {
+            outro("Setup cancelled. Your existing OTP configuration is unchanged.");
+            return;
+          }
+        }
+
+        // Get user details for TOTP generation
+        const accountName = await text({
+          message: "Enter account identifier (email/username):",
+          placeholder: "user@example.com",
+          validate: (value) => {
+            if (!value?.trim()) return "Account identifier is required";
+            return;
+          },
+        });
+
+        if (typeof accountName === "symbol") {
+          outro("Setup cancelled");
+          return;
+        }
+
+        // Generate TOTP secret
+        const setupSpinner = spinner();
+        setupSpinner.start("Generating TOTP secret...");
+
+        const totpSecret = TotpManager.generateSecret(accountName as string, "Moltbot");
+
+        setupSpinner.stop("Secret generated successfully");
+
+        // Display QR code
+        defaultRuntime.log(
+          rich
+            ? theme.heading("\n📱 Scan this QR code with your authenticator app:")
+            : "\nScan this QR code with your authenticator app:",
+        );
+        defaultRuntime.log("");
+
+        // Generate ASCII QR code
+        qr.generate(totpSecret.uri, { small: true }, (qrString) => {
+          defaultRuntime.log(qrString);
+        });
+
+        defaultRuntime.log("");
+        defaultRuntime.log(
+          rich
+            ? theme.muted("Manual entry (if QR code doesn't work):")
+            : "Manual entry (if QR code doesn't work):",
+        );
+        defaultRuntime.log(
+          rich ? theme.muted(`Secret: ${totpSecret.secret}`) : `Secret: ${totpSecret.secret}`,
+        );
+        defaultRuntime.log(
+          rich
+            ? theme.muted(`Account: ${totpSecret.accountName}`)
+            : `Account: ${totpSecret.accountName}`,
+        );
+        defaultRuntime.log(
+          rich ? theme.muted(`Issuer: ${totpSecret.issuer}`) : `Issuer: ${totpSecret.issuer}`,
+        );
+        defaultRuntime.log("");
+
+        // Get test code to verify setup
+        const testCode = await text({
+          message: "Enter the 6-digit code from your authenticator app to verify setup:",
+          placeholder: "123456",
+          validate: (value) => {
+            if (!value?.trim()) return "Verification code is required";
+            if (!/^\d{6}$/.test(value.replace(/\D/g, ""))) {
+              return "Code must be exactly 6 digits";
+            }
+            return;
+          },
+        });
+
+        if (typeof testCode === "symbol") {
+          outro("Setup cancelled");
+          return;
+        }
+
+        // Validate the test code
+        const verifySpinner = spinner();
+        verifySpinner.start("Verifying code...");
+
+        const isValid = TotpManager.validateCode(totpSecret.secret, testCode as string);
+
+        if (!isValid) {
+          verifySpinner.stop("❌ Verification failed");
+          defaultRuntime.log("");
+          defaultRuntime.log(
+            rich
+              ? theme.error("The code you entered is incorrect.")
+              : "The code you entered is incorrect.",
+          );
+          defaultRuntime.log(rich ? theme.muted("Please check that:") : "Please check that:");
+          defaultRuntime.log(
+            rich
+              ? theme.muted("• Your phone's time is synchronized")
+              : "• Your phone's time is synchronized",
+          );
+          defaultRuntime.log(
+            rich
+              ? theme.muted("• You entered the current 6-digit code")
+              : "• You entered the current 6-digit code",
+          );
+          defaultRuntime.log(
+            rich
+              ? theme.muted("• Your authenticator app is properly configured")
+              : "• Your authenticator app is properly configured",
+          );
+          outro("Setup failed. Please try again.");
+          return;
+        }
+
+        verifySpinner.stop("✅ Code verified successfully");
+
+        // Save to config
+        const saveSpinner = spinner();
+        saveSpinner.start("Saving OTP configuration...");
+
+        const updatedConfig = {
+          ...cfg,
+          security: {
+            ...cfg.security,
+            otpVerification: {
+              enabled: true,
+              secret: totpSecret.secret,
+              accountName: totpSecret.accountName,
+              issuer: totpSecret.issuer,
+              intervalHours: 24,
+              strictMode: false,
+              gracePeriodMinutes: 15,
+            },
+          },
+        };
+
+        await writeConfigFile(updatedConfig);
+        saveSpinner.stop("Configuration saved");
+
+        defaultRuntime.log("");
+        defaultRuntime.log(
+          rich
+            ? theme.success("🎉 OTP setup completed successfully!")
+            : "OTP setup completed successfully!",
+        );
+        defaultRuntime.log("");
+        defaultRuntime.log(rich ? theme.muted("Configuration:") : "Configuration:");
+        defaultRuntime.log(
+          rich
+            ? theme.muted(`• Verification interval: 24 hours`)
+            : "• Verification interval: 24 hours",
+        );
+        defaultRuntime.log(
+          rich ? theme.muted(`• Grace period: 15 minutes`) : "• Grace period: 15 minutes",
+        );
+        defaultRuntime.log(
+          rich ? theme.muted(`• Strict mode: disabled`) : "• Strict mode: disabled",
+        );
+        defaultRuntime.log("");
+        defaultRuntime.log(
+          rich
+            ? theme.muted("Your authenticator app is now configured and ready to use.")
+            : "Your authenticator app is now configured and ready to use.",
+        );
+
+        outro("Setup complete! 🔒");
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        defaultRuntime.log("");
+        defaultRuntime.log(
+          rich ? theme.error(`Setup failed: ${errorMessage}`) : `Setup failed: ${errorMessage}`,
+        );
+        outro("Setup cancelled due to error");
+        process.exit(1);
+      }
     });
 }

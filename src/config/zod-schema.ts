@@ -446,6 +446,42 @@ export const OpenClawSchema = z
       })
       .strict()
       .optional(),
+    security: z
+      .object({
+        otpVerification: z
+          .object({
+            enabled: z.boolean().optional(),
+            secret: z.string().optional(), // Base32-encoded TOTP secret
+            accountName: z.string().optional(), // User's account identifier
+            issuer: z.string().optional(), // Service name (e.g., "OpenClaw")
+            intervalHours: z.number().positive().min(1).max(168).optional(), // 1 hour to 1 week
+            strictMode: z.boolean().optional(),
+            gracePeriodMinutes: z.number().positive().min(5).max(60).optional(), // 5 min to 1 hour
+            channels: z
+              .object({
+                slack: z.boolean().optional(),
+                discord: z.boolean().optional(),
+                telegram: z.boolean().optional(),
+                whatsapp: z.boolean().optional(),
+              })
+              .strict()
+              .optional(),
+            settings: z
+              .object({
+                vaultPath: z.string().optional(),
+                itemReference: z.string().optional(),
+                verifyBeforeCommands: z.array(z.string()).optional(),
+                timeWindow: z.number().positive().min(15).max(60).optional(), // 15-60 seconds
+                validWindow: z.number().nonnegative().max(3).optional(), // 0-3 time windows
+              })
+              .strict()
+              .optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
     skills: z
       .object({
         allowBundled: z.array(z.string()).optional(),
