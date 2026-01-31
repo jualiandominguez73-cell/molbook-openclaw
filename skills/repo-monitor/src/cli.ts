@@ -99,16 +99,37 @@ async function runMonitor(repo: string, options: { json?: boolean; hours?: numbe
   const config = getConfig({ repo, intervalHours: options.hours });
   const state = loadState(config.stateFile);
   
-  const windowHours = config.intervalHours;
-  const since = getDateHoursAgo(windowHours);
-  const sinceDate = since.split("T")[0];
+  // Calculate window based on time since last run (or use configured hours for first run)
+  let windowHours = config.intervalHours;
+  let windowSource = "configured";
   
-  console.error(`🔍 Analyzing ${repo} (last ${windowHours}h)...`);
+  if (state.lastRunAt) {
+    const lastRunMs = new Date(state.lastRunAt).getTime();
+    const nowMs = Date.now();
+    const hoursSinceLastRun = (nowMs - lastRunMs) / (1000 * 60 * 60);
+    
+    // Use actual time since last run, with bounds:
+    // - Min: 0.5h (30 min) to avoid too-small windows
+    // - Max: 168h (1 week) to avoid API timeouts on huge queries
+    windowHours = Math.max(0.5, Math.min(168, hoursSinceLastRun));
+    windowSource = "since last run";
+  }
+  
+  // Use full ISO timestamp for precise queries (GitHub search API supports it)
+  const sinceTimestamp = getDateHoursAgo(windowHours);
+  // For some modules that only accept date, use date portion
+  const sinceDate = sinceTimestamp.split("T")[0];
+  
+  const windowLabel = windowHours < 1 
+    ? `${Math.round(windowHours * 60)}m` 
+    : `${windowHours.toFixed(1).replace(/\.0$/, "")}h`;
+  console.error(`🔍 Analyzing ${repo} (${windowSource}: ${windowLabel})...`);
   
   // Run all modules in parallel where possible
+  // Use full timestamp for vital signs (counts), date for others that don't need precision
   const [vitalSigns, hotZones, contributorPulse, interventions, quickWins, attentionNeeded] = 
     await Promise.all([
-      getVitalSigns(repo, sinceDate, windowHours, state),
+      getVitalSigns(repo, sinceTimestamp, windowHours, windowSource as "since last run" | "configured", state),
       getHotZones(repo, sinceDate),
       getContributorPulse(repo, sinceDate, state),
       getInterventionOpportunities(repo),
@@ -192,13 +213,14 @@ async function runVitals(repo: string, hours: number) {
   
   console.error(`📈 Getting vital signs for ${repo} (last ${hours}h)...`);
   
-  const vitals = await getVitalSigns(repo, since, hours, state);
+  const vitals = await getVitalSigns(repo, since, hours, "manual", state);
   
-  console.log(`\n📈 VITAL SIGNS - ${repo} (${hours}h)\n`);
+  const windowLabel = hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`;
+  console.log(`\n📈 VITAL SIGNS - ${repo} (${windowLabel})\n`);
   console.log(`PRs:    +${vitals.prs.created} created | -${vitals.prs.closed} closed | ✅${vitals.prs.merged} merged`);
-  console.log(`        Open: ${vitals.prs.openNow} (${vitals.prs.netDelta >= 0 ? "+" : ""}${vitals.prs.netDelta})`);
+  console.log(`        Net: ${vitals.prs.netDelta >= 0 ? "+" : ""}${vitals.prs.netDelta} | Backlog: ${vitals.prs.openNow}`);
   console.log(`Issues: +${vitals.issues.created} created | -${vitals.issues.closed} closed`);
-  console.log(`        Open: ${vitals.issues.openNow} (${vitals.issues.netDelta >= 0 ? "+" : ""}${vitals.issues.netDelta})`);
+  console.log(`        Net: ${vitals.issues.netDelta >= 0 ? "+" : ""}${vitals.issues.netDelta} | Backlog: ${vitals.issues.openNow}`);
   console.log(`\nMerge Rate: ${vitals.mergeRate}%`);
   console.log(`Health: ${vitals.health}`);
 }

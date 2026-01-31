@@ -26,7 +26,15 @@ export function formatTelegram(report: MonitorReport, reportPath: string): strin
   const prDelta = vs.prs.netDelta >= 0 ? `+${vs.prs.netDelta}` : `${vs.prs.netDelta}`;
   const issueDelta = vs.issues.netDelta >= 0 ? `+${vs.issues.netDelta}` : `${vs.issues.netDelta}`;
   
-  lines.push(`📈 VITAL SIGNS (${vs.windowHours}h)`);
+  // Format window label (e.g., "30m" or "4.5h")
+  const windowLabel = vs.windowHours < 1 
+    ? `${Math.round(vs.windowHours * 60)}m` 
+    : `${vs.windowHours.toFixed(1).replace(/\.0$/, "")}h`;
+  const windowInfo = vs.windowSource === "since last run" 
+    ? `last ${windowLabel}` 
+    : `${windowLabel} window`;
+  
+  lines.push(`📈 VITAL SIGNS (${windowInfo})`);
   lines.push(`• PRs: +${vs.prs.created} created | -${vs.prs.closed} closed | ✅${vs.prs.merged} merged`);
   lines.push(`• Issues: +${vs.issues.created} created | -${vs.issues.closed} closed`);
   lines.push(`• Merge Rate: ${vs.mergeRate}% ${vs.mergeRate < 15 ? "⚠️" : ""}`);

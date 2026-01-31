@@ -11,7 +11,8 @@ export async function getVitalSigns(
   repo: string,
   since: string,
   windowHours: number,
-  _prevState: MonitorState // kept for API compatibility but no longer used for delta
+  windowSource: VitalSigns["windowSource"] = "configured",
+  _prevState?: MonitorState // kept for API compatibility but no longer used for delta
 ): Promise<VitalSigns> {
   const counts = await getCounts(repo, since);
   
@@ -36,6 +37,7 @@ export async function getVitalSigns(
   
   return {
     windowHours,
+    windowSource,
     prs: {
       created: counts.createdPRs,
       closed: counts.closedPRs,
