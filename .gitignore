@@ -71,3 +71,13 @@ USER.md
 
 # local tooling
 .serena/
+
+# Agent-specific documentation (keep local, never push)
+CLAUDE.md
+**/CLAUDE.md
+GEMINI.md
+**/GEMINI.md
+*.agent.md
+**/*.agent.md
+AGENTS.md
+**/AGENTS.md
