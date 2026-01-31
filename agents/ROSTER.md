@@ -131,6 +131,21 @@ This document defines all sub-agents available for DBH Ventures incubation proje
 
 ---
 
+### ⚙️ Ops
+- **Role:** Infrastructure setup, DNS, email, environment configuration
+- **Location:** `/agents/ops/AGENT.md`
+- **Spawnable:** Yes
+- **Label:** `ops`
+- **Outputs:** DNS records, email accounts, env var documentation
+- **Used for:**
+  - Domain DNS configuration
+  - PurelyMail email setup
+  - Environment variable management
+  - 1Password credential storage
+  - SSL/security verification
+
+---
+
 ### 🧪 Tester
 - **Role:** QA, UI/UX testing, mobile responsiveness
 - **Location:** `/agents/tester/AGENT.md`
