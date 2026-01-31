@@ -25,15 +25,25 @@ function runNode(
 }
 
 async function writeFakePnpm(binDir: string, logPath: string): Promise<void> {
-  const pnpmPath = path.join(binDir, "pnpm");
-  // This repo is ESM (`type: "module"`), and we write the fake binary under the
-  // repo root so Node treats it as ESM too.
-  const script = `#!/usr/bin/env node
-import fs from "node:fs";
+  // `scripts/ui.js` resolves `pnpm` differently on Windows (PATHEXT + .cmd), and
+  // uses `shell: true` there. Create a fake pnpm that works cross-platform.
+  const implPath = path.join(binDir, "pnpm.mjs");
+  const impl = `import fs from "node:fs";
 fs.appendFileSync(${JSON.stringify(logPath)}, JSON.stringify({ argv: process.argv.slice(2) }) + "\\n");
 process.exit(0);
 `;
-  await fs.writeFile(pnpmPath, script, { encoding: "utf8", mode: 0o755 });
+  await fs.writeFile(implPath, impl, { encoding: "utf8" });
+
+  if (process.platform === "win32") {
+    const cmdPath = path.join(binDir, "pnpm.cmd");
+    const cmd = `@echo off\r\n"${process.execPath}" "%~dp0\\pnpm.mjs" %*\r\n`;
+    await fs.writeFile(cmdPath, cmd, { encoding: "utf8" });
+    return;
+  }
+
+  const pnpmPath = path.join(binDir, "pnpm");
+  const shim = `#!/usr/bin/env sh\n"${process.execPath}" "${implPath}" "$@"\n`;
+  await fs.writeFile(pnpmPath, shim, { encoding: "utf8", mode: 0o755 });
 }
 
 async function readJsonl(pathname: string): Promise<Array<{ argv: string[] }>> {
