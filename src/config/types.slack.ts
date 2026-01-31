@@ -73,6 +73,8 @@ export type SlackThreadConfig = {
   historyScope?: "thread" | "channel";
   /** If true, thread sessions inherit the parent channel transcript. Default: false. */
   inheritParent?: boolean;
+  /** If false, skip mention gating for thread replies. Default: true (inherit parent channel). */
+  requireMention?: boolean;
 };
 
 export type SlackAccountConfig = {
