@@ -174,10 +174,7 @@ export class RealtimeMediaStreamHandler {
     };
 
     // Create and connect the voice session
-    const voiceSession = this.config.voiceProvider.createSession(
-      events,
-      this.config.voiceConfig,
-    );
+    const voiceSession = this.config.voiceProvider.createSession(events, this.config.voiceConfig);
 
     const session: RealtimeStreamSession = {
       callId: callSid,
@@ -215,7 +212,9 @@ export class RealtimeMediaStreamHandler {
    */
   private sendAudioToTwilio(streamSid: string, audio: Buffer): void {
     const session = this.sessions.get(streamSid);
-    if (!session || session.ws.readyState !== WebSocket.OPEN) return;
+    if (!session || session.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
 
     session.ws.send(
       JSON.stringify({
@@ -233,7 +232,9 @@ export class RealtimeMediaStreamHandler {
    */
   clearAudio(streamSid: string): void {
     const session = this.sessions.get(streamSid);
-    if (!session || session.ws.readyState !== WebSocket.OPEN) return;
+    if (!session || session.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
 
     session.ws.send(
       JSON.stringify({
@@ -248,7 +249,9 @@ export class RealtimeMediaStreamHandler {
    */
   sendMark(streamSid: string, name: string): void {
     const session = this.sessions.get(streamSid);
-    if (!session || session.ws.readyState !== WebSocket.OPEN) return;
+    if (!session || session.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
 
     session.ws.send(
       JSON.stringify({

@@ -135,7 +135,9 @@ export class VoiceCallWebhookServer {
    */
   private isRealtimeCall(callId: string): boolean {
     const call = this.manager.getCallByProviderCallId(callId);
-    if (!call) return false;
+    if (!call) {
+      return false;
+    }
     return call.metadata?.mode === "realtime";
   }
 
@@ -274,7 +276,9 @@ export class VoiceCallWebhookServer {
           console.log(`[voice-call] Media stream WebSocket on ws://${bind}:${port}${streamPath}`);
         }
         if (this.realtimeMediaStreamHandler) {
-          console.log(`[voice-call] Realtime stream WebSocket on ws://${bind}:${port}${realtimeStreamPath}`);
+          console.log(
+            `[voice-call] Realtime stream WebSocket on ws://${bind}:${port}${realtimeStreamPath}`,
+          );
         }
         resolve(url);
       });

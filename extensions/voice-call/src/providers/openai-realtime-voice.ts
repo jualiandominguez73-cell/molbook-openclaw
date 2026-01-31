@@ -92,7 +92,9 @@ export class OpenAIRealtimeVoiceSession {
    * Connect to OpenAI Realtime API.
    */
   async connect(): Promise<void> {
-    if (this.connected) return;
+    if (this.connected) {
+      return;
+    }
 
     return new Promise((resolve, reject) => {
       const url = `wss://api.openai.com/v1/realtime?model=${this.config.model}`;
@@ -289,7 +291,9 @@ export class OpenAIRealtimeVoiceSession {
    * @param audio - mu-law encoded audio (8kHz mono)
    */
   sendAudio(audio: Buffer): void {
-    if (!this.connected) return;
+    if (!this.connected) {
+      return;
+    }
 
     this.sendEvent({
       type: "input_audio_buffer.append",
@@ -301,7 +305,9 @@ export class OpenAIRealtimeVoiceSession {
    * Commit the audio buffer (signal end of audio input).
    */
   commitAudio(): void {
-    if (!this.connected) return;
+    if (!this.connected) {
+      return;
+    }
 
     this.sendEvent({
       type: "input_audio_buffer.commit",
@@ -312,7 +318,9 @@ export class OpenAIRealtimeVoiceSession {
    * Cancel current response (for interruption/barge-in).
    */
   cancelResponse(): void {
-    if (!this.connected || !this.currentResponseId) return;
+    if (!this.connected || !this.currentResponseId) {
+      return;
+    }
 
     console.log(`[RealtimeVoice] Cancelling response: ${this.currentResponseId}`);
     this.sendEvent({
@@ -326,7 +334,9 @@ export class OpenAIRealtimeVoiceSession {
    * Send a text message to inject into the conversation.
    */
   sendTextMessage(text: string, role: "user" | "assistant" = "user"): void {
-    if (!this.connected) return;
+    if (!this.connected) {
+      return;
+    }
 
     this.sendEvent({
       type: "conversation.item.create",

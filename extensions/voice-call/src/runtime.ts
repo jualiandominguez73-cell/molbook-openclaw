@@ -153,9 +153,7 @@ export async function createVoiceCallRuntime(params: {
   // Initialize OpenAI Realtime Voice provider if realtime mode is configured
   let realtimeVoiceProvider: OpenAIRealtimeVoiceProvider | null = null;
   const realtimeApiKey =
-    config.realtime?.openaiApiKey ||
-    config.streaming?.openaiApiKey ||
-    process.env.OPENAI_API_KEY;
+    config.realtime?.openaiApiKey || config.streaming?.openaiApiKey || process.env.OPENAI_API_KEY;
 
   if (realtimeApiKey) {
     try {
