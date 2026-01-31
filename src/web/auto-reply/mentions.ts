@@ -23,17 +23,6 @@ export function buildMentionConfig(
   return { mentionRegexes, allowFrom: cfg.channels?.whatsapp?.allowFrom };
 }
 
-export function resolveMentionTargets(msg: WebInboundMsg, authDir?: string): MentionTargets {
-  const jidOptions = authDir ? { authDir } : undefined;
-  const normalizedMentions = msg.mentionedJids?.length
-    ? msg.mentionedJids.map((jid) => jidToE164(jid, jidOptions) ?? jid).filter(Boolean)
-    : [];
-  const selfE164 = msg.selfE164 ?? (msg.selfJid ? jidToE164(msg.selfJid, jidOptions) : null);
-  const selfJid = msg.selfJid ? msg.selfJid.replace(/:\d+/, "") : null;
-  const selfLid = msg.selfLid ? msg.selfLid.replace(/:\d+/, "") : null;
-  return { normalizedMentions, selfE164, selfJid, selfLid };
-}
-
 /**
  * Normalize a JID/LID by removing the device suffix (e.g., `:5`).
  * Example: `98157853687950:5@lid` -> `98157853687950@lid`
@@ -43,6 +32,17 @@ function normalizeBareId(jid: string | null | undefined): string | null {
     return null;
   }
   return jid.replace(/:\d+(@)/, "$1");
+}
+
+export function resolveMentionTargets(msg: WebInboundMsg, authDir?: string): MentionTargets {
+  const jidOptions = authDir ? { authDir } : undefined;
+  const normalizedMentions = msg.mentionedJids?.length
+    ? msg.mentionedJids.map((jid) => jidToE164(jid, jidOptions) ?? jid).filter(Boolean)
+    : [];
+  const selfE164 = msg.selfE164 ?? (msg.selfJid ? jidToE164(msg.selfJid, jidOptions) : null);
+  const selfJid = normalizeBareId(msg.selfJid);
+  const selfLid = normalizeBareId(msg.selfLid);
+  return { normalizedMentions, selfE164, selfJid, selfLid };
 }
 
 /**
@@ -67,7 +67,8 @@ function isReplyToBot(msg: WebInboundMsg, targets: MentionTargets): boolean {
 
   // Check if replying to bot's LID (Linked ID format)
   // WhatsApp uses LIDs in some contexts instead of traditional JIDs
-  if (replyToJid.endsWith("@lid") && targets.selfLid) {
+  // Use replyToJidBare to handle device suffixes like `:5@lid`
+  if (replyToJidBare?.endsWith("@lid") && targets.selfLid) {
     const selfLidBare = normalizeBareId(targets.selfLid);
     if (replyToJidBare === selfLidBare) {
       return true;
