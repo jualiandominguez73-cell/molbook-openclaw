@@ -4,6 +4,10 @@
     "sag": {
       "version": "1.0.0",
       "installedAt": 1769695938719
+    },
+    "clawdbot-logs": {
+      "version": "1.0.0",
+      "installedAt": 1769830654183
     }
   }
 }
