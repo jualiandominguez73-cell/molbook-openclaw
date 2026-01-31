@@ -1,0 +1,96 @@
+diff --git a/ui/src/styles/components.css b/ui/src/styles/components.css
+index 27dfe62d1..3b90f491b 100644
+--- a/ui/src/styles/components.css
++++ b/ui/src/styles/components.css
+@@ -1369,6 +1369,26 @@
+   }
+ }
+ 
++@media (max-width: 480px) {
++  .chat-compose__row {
++    flex-direction: column;
++  }
++
++  .chat-compose__actions {
++    gap: 4px;
++    justify-content: flex-end;
++  }
++
++  .chat-compose__actions .btn {
++    padding: 4px 8px;
++    font-size: 13px;
++  }
++
++  .chat-compose__actions .btn-kbd {
++    display: none;
++  }
++}
++
+ /* ===========================================
+    QR Code
+    =========================================== */
+diff --git a/ui/src/ui/app-render.ts b/ui/src/ui/app-render.ts
+index 422af6863..a1be2b22e 100644
+--- a/ui/src/ui/app-render.ts
++++ b/ui/src/ui/app-render.ts
+@@ -497,6 +497,23 @@ export function renderApp(state: AppViewState) {
+               onSplitRatioChange: (ratio: number) => state.handleSplitRatioChange(ratio),
+               assistantName: state.assistantName,
+               assistantAvatar: state.assistantAvatar,
++              // Delete session (disabled for main session)
++              isMainSession:
++                state.sessionKey === "main" ||
++                parseAgentSessionKey(state.sessionKey)?.rest === "main",
++              onDelete: async () => {
++                const { deleteSession } = await import("./controllers/sessions");
++                await deleteSession(state as Parameters<typeof deleteSession>[0], state.sessionKey);
++                // Switch to main session after deletion
++                const mainKey = state.sessionsResult?.mainSessionKey ?? "main";
++                state.sessionKey = mainKey;
++                state.applySettings({
++                  ...state.settings,
++                  sessionKey: mainKey,
++                  lastActiveSessionKey: mainKey,
++                });
++                void loadChatHistory(state);
++              },
+             })
+           : nothing}
+ 
+diff --git a/ui/src/ui/views/chat.ts b/ui/src/ui/views/chat.ts
+index f5fb6e80b..d92ac2ce5 100644
+--- a/ui/src/ui/views/chat.ts
++++ b/ui/src/ui/views/chat.ts
+@@ -68,6 +68,9 @@ export type ChatProps = {
+   onCloseSidebar?: () => void;
+   onSplitRatioChange?: (ratio: number) => void;
+   onChatScroll?: (event: Event) => void;
++  // Delete session
++  isMainSession?: boolean;
++  onDelete?: () => void;
+ };
+ 
+ const COMPACTION_TOAST_DURATION_MS = 5000;
+@@ -361,6 +364,22 @@ export function renderChat(props: ChatProps) {
+             >
+               ${canAbort ? "Stop" : "New session"}
+             </button>
++            ${props.onDelete
++              ? html`
++                  <button
++                    class="btn"
++                    ?disabled=${!props.connected || isBusy || props.isMainSession}
++                    @click=${() => {
++                      if (confirm(`Delete session "${props.sessionKey}"?`)) {
++                        props.onDelete!();
++                      }
++                    }}
++                    title=${props.isMainSession ? "Cannot delete main session" : "Delete this session"}
++                  >
++                    🗑
++                  </button>
++                `
++              : nothing}
+             <button
+               class="btn primary"
+               ?disabled=${!props.connected}

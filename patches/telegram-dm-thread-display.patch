@@ -1,0 +1,106 @@
+diff --git a/src/telegram/bot-message-context.dm-threads.test.ts b/src/telegram/bot-message-context.dm-threads.test.ts
+index d710e0b1b..23dd92f21 100644
+--- a/src/telegram/bot-message-context.dm-threads.test.ts
++++ b/src/telegram/bot-message-context.dm-threads.test.ts
+@@ -56,6 +56,33 @@ describe("buildTelegramMessageContext dm thread sessions", () => {
+     expect(ctx?.ctxPayload?.SessionKey).toBe("agent:main:main:thread:42");
+   });
+ 
++  it("sets ThreadLabel for dm topics for display in Sessions tab", async () => {
++    const ctx = await buildContext({
++      message_id: 1,
++      chat: { id: 1234, type: "private" },
++      date: 1700000000,
++      text: "hello",
++      message_thread_id: 42,
++      from: { id: 42, first_name: "Alice" },
++    });
++
++    expect(ctx).not.toBeNull();
++    expect(ctx?.ctxPayload?.ThreadLabel).toBe("Thread: 42");
++  });
++
++  it("does not set ThreadLabel for dm without thread id", async () => {
++    const ctx = await buildContext({
++      message_id: 1,
++      chat: { id: 1234, type: "private" },
++      date: 1700000000,
++      text: "hello",
++      from: { id: 42, first_name: "Alice" },
++    });
++
++    expect(ctx).not.toBeNull();
++    expect(ctx?.ctxPayload?.ThreadLabel).toBeUndefined();
++  });
++
+   it("keeps legacy dm session key when no thread id", async () => {
+     const ctx = await buildContext({
+       message_id: 2,
+diff --git a/src/telegram/bot-message-context.ts b/src/telegram/bot-message-context.ts
+index abd06cdef..bf4d6baaa 100644
+--- a/src/telegram/bot-message-context.ts
++++ b/src/telegram/bot-message-context.ts
+@@ -161,6 +161,9 @@ export const buildTelegramMessageContext = async ({
+     isForum,
+     messageThreadId,
+   });
++  // Effective thread ID for outbound delivery: groups use forum-resolved; DMs use raw messageThreadId
++  // (private chats never set is_forum=true per Telegram Bot API, so resolvedThreadId is always undefined for DMs)
++  const effectiveThreadId = isGroup ? resolvedThreadId : messageThreadId;
+   const { groupConfig, topicConfig } = resolveTelegramGroupConfig(chatId, resolvedThreadId);
+   const peerId = isGroup ? buildTelegramGroupPeerId(chatId, resolvedThreadId) : String(chatId);
+   const route = resolveAgentRoute({
+@@ -203,7 +206,8 @@ export const buildTelegramMessageContext = async ({
+   const sendTyping = async () => {
+     await withTelegramApiErrorLogging({
+       operation: "sendChatAction",
+-      fn: () => bot.api.sendChatAction(chatId, "typing", buildTypingThreadParams(resolvedThreadId)),
++      fn: () =>
++        bot.api.sendChatAction(chatId, "typing", buildTypingThreadParams(effectiveThreadId)),
+     });
+   };
+ 
+@@ -212,7 +216,11 @@ export const buildTelegramMessageContext = async ({
+       await withTelegramApiErrorLogging({
+         operation: "sendChatAction",
+         fn: () =>
+-          bot.api.sendChatAction(chatId, "record_voice", buildTypingThreadParams(resolvedThreadId)),
++          bot.api.sendChatAction(
++            chatId,
++            "record_voice",
++            buildTypingThreadParams(effectiveThreadId),
++          ),
+       });
+     } catch (err) {
+       logVerbose(`telegram record_voice cue failed for chat ${chatId}: ${String(err)}`);
+@@ -606,6 +614,8 @@ export const buildTelegramMessageContext = async ({
+     // For groups: use resolvedThreadId (forum topics only); for DMs: use raw messageThreadId
+     MessageThreadId: isGroup ? resolvedThreadId : messageThreadId,
+     IsForum: isForum,
++    // DM thread label for display in Sessions tab (e.g., "Sender Name (Thread: 42)")
++    ThreadLabel: !isGroup && messageThreadId != null ? `Thread: ${messageThreadId}` : undefined,
+     // Originating channel for reply routing.
+     OriginatingChannel: "telegram" as const,
+     OriginatingTo: `telegram:${chatId}`,
+@@ -656,7 +666,7 @@ export const buildTelegramMessageContext = async ({
+     msg,
+     chatId,
+     isGroup,
+-    resolvedThreadId,
++    resolvedThreadId: effectiveThreadId,
+     isForum,
+     historyKey,
+     historyLimit,
+diff --git a/ui/src/ui/app-lifecycle.ts b/ui/src/ui/app-lifecycle.ts
+index cf5214250..40c6f0b1f 100644
+--- a/ui/src/ui/app-lifecycle.ts
++++ b/ui/src/ui/app-lifecycle.ts
+@@ -35,6 +35,8 @@ type LifecycleHost = {
+ 
+ export function handleConnected(host: LifecycleHost) {
+   host.basePath = inferBasePath();
++  // Apply URL settings FIRST so sessionKey is read before syncTabWithLocation
++  // overwrites it with the localStorage value
+   applySettingsFromUrl(
+     host as unknown as Parameters<typeof applySettingsFromUrl>[0],
+   );

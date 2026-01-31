@@ -1,0 +1,13 @@
+diff --git a/src/agents/tools/sessions-spawn-tool.ts b/src/agents/tools/sessions-spawn-tool.ts
+index c9bf851f3..b6d27f6df 100644
+--- a/src/agents/tools/sessions-spawn-tool.ts
++++ b/src/agents/tools/sessions-spawn-tool.ts
+@@ -235,6 +235,8 @@ export function createSessionsSpawnTool(opts?: {
+             timeout: runTimeoutSeconds > 0 ? runTimeoutSeconds : undefined,
+             label: label || undefined,
+             spawnedBy: spawnedByKey,
++            threadId: opts?.agentThreadId != null ? String(opts.agentThreadId) : undefined,
++            accountId: opts?.agentAccountId ?? undefined,
+             groupId: opts?.agentGroupId ?? undefined,
+             groupChannel: opts?.agentGroupChannel ?? undefined,
+             groupSpace: opts?.agentGroupSpace ?? undefined,
