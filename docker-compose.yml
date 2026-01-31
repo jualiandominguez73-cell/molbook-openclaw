@@ -5,15 +5,23 @@ services:
       HOME: /home/node
       TERM: xterm-256color
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      # Model provider keys (optional if you use auth profiles, but useful for some SDKs/configs).
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # Optional: Cloudflare AI Gateway auth (only needed if you enable "Authenticated Gateway").
+      CLOUDFLARE_AIG_TOKEN: ${CLOUDFLARE_AIG_TOKEN:-}
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE}
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      # Persist brew installs (skills) across container recreates and image rebuilds.
+      - openclaw_linuxbrew:/home/linuxbrew/.linuxbrew
     ports:
-      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
-      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+      # Keep the Gateway loopback-only on the VPS; access via Tailscale SSH port-forwarding
+      # (or configure Tailscale Serve on the host).
+      - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "127.0.0.1:${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     init: true
     restart: unless-stopped
     command:
@@ -33,13 +41,23 @@ services:
       HOME: /home/node
       TERM: xterm-256color
       BROWSER: echo
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      CLOUDFLARE_AIG_TOKEN: ${CLOUDFLARE_AIG_TOKEN:-}
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE}
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      - openclaw_linuxbrew:/home/linuxbrew/.linuxbrew
+    # The CLI defaults to ws://127.0.0.1:<port> for local gateways.
+    # In Docker, 127.0.0.1 is the container, so use host networking so it can
+    # reach the gateway via the host's loopback-only published port.
+    network_mode: host
     stdin_open: true
     tty: true
     init: true
     entrypoint: ["node", "dist/index.js"]
+
+volumes:
+  openclaw_linuxbrew:

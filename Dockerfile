@@ -16,12 +16,47 @@ RUN if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
       rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
     fi
 
+# Optional: install Homebrew (Linuxbrew). This is mainly to support skill dependency
+# installation flows that use brew (e.g. steipete/tap/* tools).
+ARG OPENCLAW_DOCKER_INSTALL_BREW="0"
+ARG OPENCLAW_DOCKER_BREW_FORMULAS=""
+ENV HOMEBREW_NO_ANALYTICS=1 \
+    HOMEBREW_NO_ENV_HINTS=1
+RUN if [ "$OPENCLAW_DOCKER_INSTALL_BREW" = "1" ]; then \
+      apt-get update && \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        file \
+        git \
+        procps && \
+      rm -rf /var/lib/apt/lists/*; \
+      mkdir -p /home/linuxbrew/.linuxbrew && \
+      chown -R node:node /home/linuxbrew; \
+    fi
+
+# Homebrew refuses to install as root; install it as the runtime user.
+USER node
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+RUN if [ "$OPENCLAW_DOCKER_INSTALL_BREW" = "1" ]; then \
+      NONINTERACTIVE=1 /bin/bash -lc "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
+      brew --version; \
+      if [ -n "$OPENCLAW_DOCKER_BREW_FORMULAS" ]; then \
+        brew install $OPENCLAW_DOCKER_BREW_FORMULAS; \
+      fi; \
+      brew cleanup; \
+    fi
+
+# Build as root (matches current setup + avoids permission pitfalls for node_modules).
+USER root
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY ui/package.json ./ui/package.json
 COPY patches ./patches
 COPY scripts ./scripts
 
-RUN pnpm install --frozen-lockfile
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN pnpm install --frozen-lockfile --child-concurrency 1
 
 COPY . .
 RUN OPENCLAW_A2UI_SKIP_MISSING=1 pnpm build
