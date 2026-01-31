@@ -250,7 +250,18 @@
       "@sinclair/typebox": "0.34.47",
       "hono": "4.11.4",
       "tar": "7.5.4"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@lydell/node-pty",
+      "@matrix-org/matrix-sdk-crypto-nodejs",
+      "@whiskeysockets/baileys",
+      "authenticate-pam",
+      "core-js",
+      "esbuild",
+      "node-llama-cpp",
+      "protobufjs",
+      "sharp"
+    ]
   },
   "vitest": {
     "coverage": {
