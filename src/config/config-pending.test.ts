@@ -313,6 +313,103 @@ describe("config-pending", () => {
     });
   });
 
-  // NOTE: backupDist/restoreDist not tested directly - restoreDist deletes target dir first,
-  // which would destroy actual source code if DIST_DIR points to real clawdbot-source.
+  describe("backupDist", () => {
+    it("copies source directory to backup location", async () => {
+      await withTempHome(async (home) => {
+        const sourceDir = path.join(home, "fake-dist");
+        const backupDir = path.join(home, "dist-backup");
+
+        // Create source with files
+        await fs.mkdir(sourceDir, { recursive: true });
+        await fs.writeFile(path.join(sourceDir, "index.js"), "console.log('hello');", "utf-8");
+        await fs.mkdir(path.join(sourceDir, "lib"), { recursive: true });
+        await fs.writeFile(path.join(sourceDir, "lib", "utils.js"), "export {};", "utf-8");
+
+        const { backupDist } = await import("./config-pending.js");
+        const result = await backupDist(sourceDir, backupDir);
+
+        expect(result).toBe(backupDir);
+
+        // Verify backup contains files
+        const indexContent = await fs.readFile(path.join(backupDir, "index.js"), "utf-8");
+        expect(indexContent).toBe("console.log('hello');");
+        const utilsContent = await fs.readFile(path.join(backupDir, "lib", "utils.js"), "utf-8");
+        expect(utilsContent).toBe("export {};");
+      });
+    });
+
+    it("removes old backup before creating new one", async () => {
+      await withTempHome(async (home) => {
+        const sourceDir = path.join(home, "fake-dist");
+        const backupDir = path.join(home, "dist-backup");
+
+        // Create old backup with different content
+        await fs.mkdir(backupDir, { recursive: true });
+        await fs.writeFile(path.join(backupDir, "old-file.js"), "old content", "utf-8");
+
+        // Create new source
+        await fs.mkdir(sourceDir, { recursive: true });
+        await fs.writeFile(path.join(sourceDir, "new-file.js"), "new content", "utf-8");
+
+        const { backupDist } = await import("./config-pending.js");
+        await backupDist(sourceDir, backupDir);
+
+        // Old file should be gone
+        await expect(fs.access(path.join(backupDir, "old-file.js"))).rejects.toThrow();
+        // New file should exist
+        const newContent = await fs.readFile(path.join(backupDir, "new-file.js"), "utf-8");
+        expect(newContent).toBe("new content");
+      });
+    });
+
+    it("returns null if source does not exist", async () => {
+      await withTempHome(async (home) => {
+        const { backupDist } = await import("./config-pending.js");
+        const result = await backupDist(
+          path.join(home, "nonexistent"),
+          path.join(home, "backup"),
+        );
+        expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe("restoreDist", () => {
+    it("copies backup to target directory", async () => {
+      await withTempHome(async (home) => {
+        const backupDir = path.join(home, "backup");
+        const targetDir = path.join(home, "restored");
+
+        // Create backup
+        await fs.mkdir(backupDir, { recursive: true });
+        await fs.writeFile(path.join(backupDir, "restored.js"), "restored content", "utf-8");
+
+        // Create target with different content (will be replaced)
+        await fs.mkdir(targetDir, { recursive: true });
+        await fs.writeFile(path.join(targetDir, "old.js"), "old content", "utf-8");
+
+        const { restoreDist } = await import("./config-pending.js");
+        const result = await restoreDist(backupDir, targetDir);
+
+        expect(result).toBe(true);
+
+        // Old file should be gone
+        await expect(fs.access(path.join(targetDir, "old.js"))).rejects.toThrow();
+        // Restored file should exist
+        const content = await fs.readFile(path.join(targetDir, "restored.js"), "utf-8");
+        expect(content).toBe("restored content");
+      });
+    });
+
+    it("returns false if backup does not exist", async () => {
+      await withTempHome(async (home) => {
+        const { restoreDist } = await import("./config-pending.js");
+        const result = await restoreDist(
+          path.join(home, "nonexistent"),
+          path.join(home, "target"),
+        );
+        expect(result).toBe(false);
+      });
+    });
+  });
 });

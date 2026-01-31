@@ -71,14 +71,20 @@ async function copyDir(src: string, dest: string): Promise<void> {
 /**
  * Backup the dist/ directory for code rollback.
  * Call this before building new code.
+ *
+ * @param sourceDir - Directory to backup (default: DIST_DIR)
+ * @param destDir - Where to save backup (default: DIST_BACKUP_DIR)
  */
-export async function backupDist(): Promise<string | null> {
+export async function backupDist(
+  sourceDir: string = DIST_DIR,
+  destDir: string = DIST_BACKUP_DIR,
+): Promise<string | null> {
   try {
     // Remove old backup if exists
-    await fs.rm(DIST_BACKUP_DIR, { recursive: true, force: true });
-    await copyDir(DIST_DIR, DIST_BACKUP_DIR);
-    log.info(`config-pending: backed up dist to ${DIST_BACKUP_DIR}`);
-    return DIST_BACKUP_DIR;
+    await fs.rm(destDir, { recursive: true, force: true });
+    await copyDir(sourceDir, destDir);
+    log.info(`config-pending: backed up dist to ${destDir}`);
+    return destDir;
   } catch (err) {
     log.warn(`config-pending: failed to backup dist: ${err}`);
     return null;
@@ -87,12 +93,18 @@ export async function backupDist(): Promise<string | null> {
 
 /**
  * Restore dist/ from backup.
+ *
+ * @param backupPath - Directory to restore from
+ * @param targetDir - Where to restore to (default: DIST_DIR)
  */
-async function restoreDist(backupPath: string): Promise<boolean> {
+export async function restoreDist(
+  backupPath: string,
+  targetDir: string = DIST_DIR,
+): Promise<boolean> {
   try {
-    await fs.rm(DIST_DIR, { recursive: true, force: true });
-    await copyDir(backupPath, DIST_DIR);
-    log.info(`config-pending: restored dist from ${backupPath}`);
+    await fs.rm(targetDir, { recursive: true, force: true });
+    await copyDir(backupPath, targetDir);
+    log.info(`config-pending: restored dist from ${backupPath} to ${targetDir}`);
     return true;
   } catch (err) {
     log.error(`config-pending: failed to restore dist: ${err}`);
