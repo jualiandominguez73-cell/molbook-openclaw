@@ -2,6 +2,7 @@
  * Cron Scheduled Task Content Component
  */
 import { html, nothing } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { t } from "../i18n";
 import type { CronJob } from "../../ui/types";
 import type { CronFormState } from "../../ui/ui-types";
@@ -323,7 +324,7 @@ function renderCreateModal(props: CronContentProps) {
                 ${(props.agents ?? []).map(
                   (agent) =>
                     html`<option value=${agent.id}>
-                      ${agent.name ?? agent.identity?.name ?? agent.id}${agent.default ? " (默认)" : ""}
+                      ${agent.name ?? agent.identity?.name ?? agent.id}${agent.default ? t('label.defaultSuffix') : ""}
                     </option>`,
                 )}
               </select>
@@ -400,7 +401,7 @@ function renderCreateModal(props: CronContentProps) {
             >
               <option value="systemEvent">${t('cron.payload.systemEvent')}</option>
               <option value="agentTurn" ?disabled=${form.sessionTarget === "main"}>
-                ${t('cron.payload.agentTurn')}${form.sessionTarget === "main" ? " (仅限隔离会话)" : ""}
+                ${t('cron.payload.agentTurn')}${form.sessionTarget === "main" ? t('cron.agentTurn.isolatedOnly') : ""}
               </option>
             </select>
           </div>
@@ -530,7 +531,7 @@ function renderCreateModal(props: CronContentProps) {
  */
 function renderJobBadge(job: CronJob) {
   if (job.state?.runningAtMs) {
-    return html`<span class="cron-job-card__badge cron-job-card__badge--running">运行中</span>`;
+    return html`<span class="cron-job-card__badge cron-job-card__badge--running">${t('cron.statusRunning')}</span>`;
   }
   if (job.enabled) {
     return html`<span class="cron-job-card__badge cron-job-card__badge--enabled">${t('cron.statusEnabled')}</span>`;
@@ -868,32 +869,32 @@ export function renderCronContent(props: CronContentProps) {
 
       <!-- 使用提示 -->
       <div class="cron-tip-card">
-        <div class="cron-tip-card__title">${icons.alertCircle} 字段说明</div>
+        <div class="cron-tip-card__title">${icons.alertCircle} ${t('cron.tips.title')}</div>
         <table class="cron-tip-card__table">
           <tbody>
             <tr>
-              <td class="cron-tip-card__term">会话类型</td>
-              <td class="cron-tip-card__def"><b>主会话</b> 在 Agent 主对话中执行，仅支持系统事件；<b>隔离会话</b> 在独立临时会话中执行，支持 Agent 执行</td>
+              <td class="cron-tip-card__term">${t('cron.tips.sessionType')}</td>
+              <td class="cron-tip-card__def">${unsafeHTML(t('cron.tips.sessionType.desc'))}</td>
             </tr>
             <tr>
-              <td class="cron-tip-card__term">唤醒方式</td>
-              <td class="cron-tip-card__def"><b>下次心跳</b> 等待下一个调度周期执行；<b>立即执行</b> 触发后马上运行</td>
+              <td class="cron-tip-card__term">${t('cron.tips.wakeMode')}</td>
+              <td class="cron-tip-card__def">${unsafeHTML(t('cron.tips.wakeMode.desc'))}</td>
             </tr>
             <tr>
-              <td class="cron-tip-card__term">任务类型</td>
-              <td class="cron-tip-card__def"><b>系统事件</b> 发送系统级消息；<b>Agent 执行</b> 让 Agent 处理并可投递到通道（仅隔离会话可用）</td>
+              <td class="cron-tip-card__term">${t('cron.tips.payloadKind')}</td>
+              <td class="cron-tip-card__def">${unsafeHTML(t('cron.tips.payloadKind.desc'))}</td>
             </tr>
             <tr>
-              <td class="cron-tip-card__term">投递消息</td>
-              <td class="cron-tip-card__def">开启后 Agent 回复将发送到选定的通道和接收者</td>
+              <td class="cron-tip-card__term">${t('cron.tips.deliver')}</td>
+              <td class="cron-tip-card__def">${t('cron.tips.deliver.desc')}</td>
             </tr>
             <tr>
-              <td class="cron-tip-card__term">回写前缀</td>
-              <td class="cron-tip-card__def">隔离会话完成后将结果写回主会话时添加的前缀文本</td>
+              <td class="cron-tip-card__term">${t('cron.tips.postToMain')}</td>
+              <td class="cron-tip-card__def">${t('cron.tips.postToMain.desc')}</td>
             </tr>
             <tr>
-              <td class="cron-tip-card__term">调度方式</td>
-              <td class="cron-tip-card__def"><b>循环间隔</b> 按固定间隔重复；<b>指定时间</b> 某时间点执行一次；<b>Cron</b> 用 cron 语法灵活定义</td>
+              <td class="cron-tip-card__term">${t('cron.tips.schedule')}</td>
+              <td class="cron-tip-card__def">${unsafeHTML(t('cron.tips.schedule.desc'))}</td>
             </tr>
           </tbody>
         </table>

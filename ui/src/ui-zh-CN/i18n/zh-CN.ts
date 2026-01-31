@@ -44,6 +44,7 @@ export const zhCN: Record<string, string> = {
   'action.saving': '保存中...',
   'action.applying': '应用中...',
   'action.test': '测试',
+  'action.applyTooltip': '保存配置并重启相关服务',
   
   // Common labels
   'label.name': '名称',
@@ -62,6 +63,8 @@ export const zhCN: Record<string, string> = {
   'label.success': '成功',
   'label.warning': '警告',
   'label.info': '信息',
+  'label.select': '-- 选择 --',
+  'label.defaultSuffix': ' (默认)',
   
   // Providers section
   'providers.title': '模型供应商',
@@ -252,9 +255,13 @@ export const zhCN: Record<string, string> = {
   'workspace.desc': '编辑工作区启动和配置文件',
   'workspace.files': '文件',
   'workspace.editor': '编辑器',
+  'workspace.editor.inputPlaceholder': '在此输入内容...',
+  'workspace.createTodayLog': '创建今日日志',
+  'workspace.folderFiles': '{{count}} 个文件',
   'workspace.preview': '预览',
   'workspace.split': '分屏视图',
   'workspace.unsaved': '未保存的更改',
+  'workspace.newBadge': '新建',
   'workspace.saveSuccess': '文件保存成功',
   'workspace.saveError': '文件保存失败',
   'workspace.loadError': '文件加载失败',
@@ -319,6 +326,8 @@ export const zhCN: Record<string, string> = {
   'skills.installSuccess': '技能安装成功',
   'skills.installError': '技能安装失败',
   'skills.configSaved': '配置已保存',
+  'skills.viewSkillMd': '查看 SKILL.md',
+  'skills.documentation': '文档:',
   'skills.priority.title': '技能加载优先级',
   'skills.priority.desc': '当多个来源存在同名技能时，高优先级来源会覆盖低优先级来源的技能定义：',
   'skills.priority.extraDirs': '额外目录',
@@ -482,6 +491,23 @@ export const zhCN: Record<string, string> = {
   'cron.testRun': '测试执行',
   'cron.runSuccess': '任务执行成功',
   'cron.runError': '任务执行失败',
+  'cron.statusRunning': '运行中',
+  'cron.agentTurn.isolatedOnly': ' (仅限隔离会话)',
+  
+  // Cron tips section
+  'cron.tips.title': '字段说明',
+  'cron.tips.sessionType': '会话类型',
+  'cron.tips.sessionType.desc': '<b>主会话</b> 在 Agent 主对话中执行，仅支持系统事件；<b>隔离会话</b> 在独立临时会话中执行，支持 Agent 执行',
+  'cron.tips.wakeMode': '唤醒方式',
+  'cron.tips.wakeMode.desc': '<b>下次心跳</b> 等待下一个调度周期执行；<b>立即执行</b> 触发后马上运行',
+  'cron.tips.payloadKind': '任务类型',
+  'cron.tips.payloadKind.desc': '<b>系统事件</b> 发送系统级消息；<b>Agent 执行</b> 让 Agent 处理并可投递到通道（仅隔离会话可用）',
+  'cron.tips.deliver': '投递消息',
+  'cron.tips.deliver.desc': '开启后 Agent 回复将发送到选定的通道和接收者',
+  'cron.tips.postToMain': '回写前缀',
+  'cron.tips.postToMain.desc': '隔离会话完成后将结果写回主会话时添加的前缀文本',
+  'cron.tips.schedule': '调度方式',
+  'cron.tips.schedule.desc': '<b>循环间隔</b> 按固定间隔重复；<b>指定时间</b> 某时间点执行一次；<b>Cron</b> 用 cron 语法灵活定义',
   
   // Status messages
   'status.connected': '已连接',
@@ -572,6 +598,10 @@ export const zhCN: Record<string, string> = {
   'channels.zalo.desc': 'Zalo OA 消息通道 (扩展)',
   'channels.nextcloud-talk.desc': 'Nextcloud Talk 消息通道 (扩展)',
   'channels.tlon.desc': 'Tlon/Urbit 消息通道 (扩展)',
+  'channels.wechat.namePlaceholder': '我的微信',
+  'channels.wechat.allowFromDesc': '每行一个微信 ID',
+  'channels.wechat.pollContactIdsDesc': '每行一个联系人/群聊 ID',
+  'channels.wechat.pollContactIdsPlaceholder': 'wxid_xxx 或 123@chatroom',
   'permissions.toolCount': '{{count}} 个工具',
   
   // Tool descriptions

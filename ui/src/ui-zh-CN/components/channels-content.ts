@@ -297,7 +297,7 @@ export const CHANNEL_METADATA: ChannelMeta[] = [
     docsUrl: "https://docs.molt.bot/channels/wechat",
     configFields: [
       { key: "enabled", label: t('channels.enabled'), type: "toggle", section: "basic" },
-      { key: "name", label: t('channels.accountName'), type: "text", placeholder: "我的微信", section: "basic" },
+      { key: "name", label: t('channels.accountName'), type: "text", placeholder: t('channels.wechat.namePlaceholder'), section: "basic" },
       { key: "baseUrl", label: t('channels.apiUrl'), type: "text", placeholder: "https://wechat-robot.example.com", required: true, section: "api" },
       { key: "apiToken", label: "API Token", type: "password", placeholder: "ae3d7737-6eeb-48d0-...", section: "api" },
       { key: "tokenFile", label: t('channels.tokenFile'), type: "text", placeholder: "/path/to/token", section: "api" },
@@ -305,10 +305,10 @@ export const CHANNEL_METADATA: ChannelMeta[] = [
       { key: "defaultAccount", label: t('channels.defaultAccount'), type: "text", placeholder: "account-id", section: "basic" },
       { key: "dmPolicy", label: t('channels.dmPolicy'), type: "select", options: getDmPolicyOptions(), section: "access" },
       { key: "requireMention", label: t('channels.requireMention'), type: "toggle", section: "access" },
-      { key: "allowFrom", label: t('channels.allowedUsers'), type: "array", placeholder: "wxid_xxx", description: "每行一个微信 ID", section: "access" },
+      { key: "allowFrom", label: t('channels.allowedUsers'), type: "array", placeholder: "wxid_xxx", description: t('channels.wechat.allowFromDesc'), section: "access" },
       { key: "mediaMaxMb", label: t('channels.mediaMaxMb'), type: "number", placeholder: "25", section: "messaging" },
       { key: "polling.pollingIntervalMs", label: t('channels.pollInterval'), type: "number", placeholder: "3000", section: "polling" },
-      { key: "polling.pollContactIds", label: t('channels.pollContactIds'), type: "array", placeholder: "wxid_xxx 或 123@chatroom", description: "每行一个联系人/群聊 ID", section: "polling" },
+      { key: "polling.pollContactIds", label: t('channels.pollContactIds'), type: "array", placeholder: t('channels.wechat.pollContactIdsPlaceholder'), description: t('channels.wechat.pollContactIdsDesc'), section: "polling" },
       { key: "polling.pollAllContacts", label: t('channels.pollAllContacts'), type: "toggle", section: "polling" },
       { key: "polling.maxPollContacts", label: t('channels.maxPollContacts'), type: "number", placeholder: "100", section: "polling" },
     ],
@@ -592,7 +592,7 @@ function renderConfigField(
             class="mc-select"
             @change=${(e: Event) => handleChange((e.target as HTMLSelectElement).value)}
           >
-            <option value="" ?selected=${!value}>-- 选择 --</option>
+            <option value="" ?selected=${!value}>${t('label.select')}</option>
             ${field.options?.map(
               (opt) => html`<option value=${opt.value} ?selected=${String(value) === opt.value}>${opt.label}</option>`,
             )}

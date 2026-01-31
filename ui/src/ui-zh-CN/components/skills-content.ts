@@ -785,9 +785,9 @@ function renderSkillDocsLink(filePath: string) {
 
   return html`
     <div class="skills-detail-row">
-      <span class="skills-detail-label">文档:</span>
+      <span class="skills-detail-label">${t('skills.documentation')}</span>
       <span class="skills-detail-value">
-        <a class="skills-docs-preview__link" href="file://${skillMdPath}" target="_blank" rel="noreferrer" title=t('skills.viewSkillMd')>
+        <a class="skills-docs-preview__link" href="file://${skillMdPath}" target="_blank" rel="noreferrer" title=${t('skills.viewSkillMd')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>

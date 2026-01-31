@@ -291,7 +291,7 @@ function renderFileItem(
         <span class="ws-file-item__name">
           ${displayName}
           ${!file.exists
-            ? html`<span class="ws-file-item__badge ws-file-item__badge--new">新建</span>`
+            ? html`<span class="ws-file-item__badge ws-file-item__badge--new">${t('workspace.newBadge')}</span>`
             : nothing}
           ${isSelected && hasChanges
             ? html`<span class="ws-file-item__badge ws-file-item__badge--unsaved">${t('workspace.unsaved')}</span>`
@@ -329,7 +329,7 @@ function renderFileList(props: WorkspaceContentProps) {
             const dd = String(today.getDate()).padStart(2, "0");
             props.onFileCreate(`memory/${yyyy}-${mm}-${dd}.md`);
           }}
-          title="创建今日日志"
+          title=${t('workspace.createTodayLog')}
         >
           ${icons.plus}
         </button>
@@ -364,7 +364,7 @@ function renderFileList(props: WorkspaceContentProps) {
             <button
               class="ws-folder-item ${hasSelectedChild ? "ws-folder-item--has-active" : ""}"
               @click=${() => props.onFolderToggle?.(folderName)}
-              title="${folderName}/ (${fileCount} 个文件)"
+              title="${folderName}/ (${t('workspace.folderFiles', { count: fileCount })})"
             >
               <span class="ws-folder-item__chevron">
                 ${isExpanded ? icons.chevronDown : icons.chevronRight}
@@ -474,7 +474,7 @@ function renderEditor(props: WorkspaceContentProps) {
                   props.onContentChange(
                     (e.target as HTMLTextAreaElement).value,
                   )}
-                placeholder="在此输入内容..."
+                placeholder=${t('workspace.editor.inputPlaceholder')}
                 spellcheck="false"
               ></textarea>
             </div>

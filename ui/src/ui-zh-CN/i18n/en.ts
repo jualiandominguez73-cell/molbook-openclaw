@@ -45,6 +45,7 @@ export const en: Record<string, string> = {
   'action.test': 'Test',
   'action.expand': 'Expand',
   'action.collapse': 'Collapse',
+  'action.applyTooltip': 'Save config and restart related services',
   
   // Common labels
   'label.name': 'Name',
@@ -63,6 +64,8 @@ export const en: Record<string, string> = {
   'label.success': 'Success',
   'label.warning': 'Warning',
   'label.info': 'Info',
+  'label.select': '-- Select --',
+  'label.defaultSuffix': ' (default)',
   
   // Providers section
   'providers.title': 'Model Providers',
@@ -289,6 +292,10 @@ export const en: Record<string, string> = {
   'channels.defaultAccount': 'Default Account',
   'channels.privateKey': 'Private Key (hex/nsec)',
   'channels.shipName': 'Ship Name',
+  'channels.wechat.namePlaceholder': 'My WeChat',
+  'channels.wechat.allowFromDesc': 'One WeChat ID per line',
+  'channels.wechat.pollContactIdsDesc': 'One contact/group ID per line',
+  'channels.wechat.pollContactIdsPlaceholder': 'wxid_xxx or 123@chatroom',
   
   // Permissions section
   'permissions.title': 'Permissions',
@@ -450,9 +457,13 @@ export const en: Record<string, string> = {
   'workspace.desc': 'Edit workspace startup and configuration files',
   'workspace.files': 'Files',
   'workspace.editor': 'Editor',
+  'workspace.editor.inputPlaceholder': 'Enter content here...',
+  'workspace.createTodayLog': 'Create today\'s log',
+  'workspace.folderFiles': '{{count}} files',
   'workspace.preview': 'Preview',
   'workspace.split': 'Split View',
   'workspace.unsaved': 'Unsaved changes',
+  'workspace.newBadge': 'New',
   'workspace.saveSuccess': 'File saved successfully',
   'workspace.saveError': 'Failed to save file',
   'workspace.loadError': 'Failed to load file',
@@ -525,6 +536,7 @@ export const en: Record<string, string> = {
   'skills.expandDetails': 'Expand Details',
   'skills.collapseDetails': 'Collapse Details',
   'skills.viewSkillMd': 'View SKILL.md',
+  'skills.documentation': 'Docs:',
   'skills.confirmDelete': 'Confirm Delete',
   'skills.blockedByAllowlist': 'Blocked by Allowlist',
   'skills.enterApiKey': 'Enter API Key',
@@ -734,6 +746,23 @@ export const en: Record<string, string> = {
   'cron.testRun': 'Test Run',
   'cron.runSuccess': 'Job executed successfully',
   'cron.runError': 'Job execution failed',
+  'cron.statusRunning': 'Running',
+  'cron.agentTurn.isolatedOnly': ' (isolated session only)',
+  
+  // Cron tips section
+  'cron.tips.title': 'Field Descriptions',
+  'cron.tips.sessionType': 'Session Type',
+  'cron.tips.sessionType.desc': '<b>Main Session</b> executes in Agent\'s main conversation, system events only; <b>Isolated Session</b> executes in an independent temporary session, supports Agent execution',
+  'cron.tips.wakeMode': 'Wake Mode',
+  'cron.tips.wakeMode.desc': '<b>Next Heartbeat</b> waits for the next schedule cycle to execute; <b>Execute Immediately</b> runs right after trigger',
+  'cron.tips.payloadKind': 'Task Type',
+  'cron.tips.payloadKind.desc': '<b>System Event</b> sends system-level messages; <b>Agent Turn</b> lets Agent process and can deliver to channel (isolated session only)',
+  'cron.tips.deliver': 'Deliver Message',
+  'cron.tips.deliver.desc': 'When enabled, Agent responses will be sent to the selected channel and recipient',
+  'cron.tips.postToMain': 'Post-back Prefix',
+  'cron.tips.postToMain.desc': 'Prefix text added when writing isolated session results back to main session',
+  'cron.tips.schedule': 'Schedule Type',
+  'cron.tips.schedule.desc': '<b>Interval</b> repeats at fixed intervals; <b>At Time</b> executes once at a specific time; <b>Cron</b> flexible definition using cron syntax',
   
   // Status messages
   'status.connected': 'Connected',

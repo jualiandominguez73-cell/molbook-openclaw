@@ -582,7 +582,7 @@ function renderProviderCard(
                             type="password"
                             class="mc-input"
                             .value=${provider.apiKey ?? ""}
-                            placeholder="sk-... 或 ${`\${ENV_VAR}`}"
+                            placeholder=${t('providers.apiKeyPlaceholder')}
                             @input=${(e: Event) =>
                               props.onProviderUpdate(key, "apiKey", (e.target as HTMLInputElement).value)}
                           />

@@ -623,7 +623,7 @@ export function renderModelConfig(props: ModelConfigProps) {
               class="btn btn--sm primary"
               ?disabled=${!props.hasChanges || props.saving || props.applying || !props.connected}
               @click=${props.onApply}
-              title="保存配置并重启相关服务"
+              title=${t('action.applyTooltip')}
             >
               ${props.applying ? t('action.applying') : t('action.apply')}
             </button>
