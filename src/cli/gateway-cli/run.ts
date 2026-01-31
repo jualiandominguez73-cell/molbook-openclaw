@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 
 import type { Command } from "commander";
@@ -7,6 +8,7 @@ import {
   loadConfig,
   readConfigFileSnapshot,
   resolveGatewayPort,
+  writeConfigFile,
 } from "../../config/config.js";
 import { resolveGatewayAuth } from "../../gateway/auth.js";
 import { startGatewayServer } from "../../gateway/server.js";
@@ -189,12 +191,40 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   }
 
   const miskeys = extractGatewayMiskeys(snapshot?.parsed);
-  const authConfig = {
+  let authConfig = {
     ...cfg.gateway?.auth,
     ...(authMode ? { mode: authMode } : {}),
     ...(passwordRaw ? { password: passwordRaw } : {}),
     ...(tokenRaw ? { token: tokenRaw } : {}),
   };
+  const hasExplicitToken =
+    tokenRaw ||
+    (process.env.CLAWDBOT_GATEWAY_TOKEN ?? "").trim() ||
+    (cfg.gateway?.auth?.token ?? "").trim();
+  const hasLegacyPasswordOnly =
+    !hasExplicitToken &&
+    (cfg.gateway?.auth?.mode === "password" ||
+      (cfg.gateway?.auth?.password && !cfg.gateway?.auth?.token));
+  // Generate token when: no token configured, or legacy password-only (e.g. "dev") so Control UI can auto-connect via ?token=.
+  if (!hasExplicitToken || hasLegacyPasswordOnly) {
+    const generatedToken = randomBytes(32).toString("hex");
+    process.env.CLAWDBOT_GATEWAY_TOKEN = generatedToken;
+    authConfig = { mode: "token", token: generatedToken };
+    const nextCfg = {
+      ...cfg,
+      gateway: { ...cfg.gateway, auth: { mode: "token" as const, token: generatedToken } },
+    };
+    await writeConfigFile(nextCfg).catch((err) => {
+      gatewayLog.warn(
+        `Could not persist gateway token to config: ${(err as Error)?.message ?? err}`,
+      );
+    });
+    gatewayLog.info(
+      hasLegacyPasswordOnly
+        ? "Migrated gateway auth to token and saved to config; Control UI will auto-connect when you open the dashboard URL."
+        : "Generated gateway token and saved to config; Control UI will auto-connect when you open the dashboard URL.",
+    );
+  }
   const resolvedAuth = resolveGatewayAuth({
     authConfig,
     env: process.env,
@@ -262,14 +292,12 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       start: async () =>
         await startGatewayServer(port, {
           bind,
-          auth:
-            authMode || passwordRaw || tokenRaw || authModeRaw
-              ? {
-                  mode: authMode ?? undefined,
-                  token: tokenRaw,
-                  password: passwordRaw,
-                }
-              : undefined,
+          // Always pass resolved auth so the server uses the same auth we computed (including after migration).
+          auth: {
+            mode: resolvedAuthMode,
+            token: tokenValue ?? undefined,
+            password: passwordValue ?? undefined,
+          },
           tailscale:
             tailscaleMode || opts.tailscaleResetOnExit
               ? {

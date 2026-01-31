@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -7,6 +7,9 @@ import process from "node:process";
 const args = process.argv.slice(2);
 const env = { ...process.env };
 const cwd = process.cwd();
+const isGateway = args.includes("gateway");
+const shouldBuildControlUi = () =>
+  isGateway && !fs.existsSync(path.join(cwd, "dist", "control-ui", "index.html"));
 const compiler = env.CLAWDBOT_TS_COMPILER === "tsc" ? "tsc" : "tsgo";
 const projectArgs = ["--project", "tsconfig.json"];
 
@@ -85,6 +88,21 @@ const logRunner = (message) => {
   process.stderr.write(`[moltbot] ${message}\n`);
 };
 
+function ensureControlUiBuilt() {
+  if (!shouldBuildControlUi()) return;
+  const uiScript = path.join(cwd, "scripts", "ui.js");
+  if (!fs.existsSync(uiScript)) return;
+  logRunner("Control UI assets missing; building (ui:build)…");
+  const result = spawnSync(process.execPath, [uiScript, "build"], {
+    cwd,
+    env,
+    stdio: "inherit",
+  });
+  if (result.signal || result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+}
+
 const runNode = () => {
   const nodeProcess = spawn(process.execPath, ["moltbot.mjs", ...args], {
     cwd,
@@ -109,6 +127,8 @@ const writeBuildStamp = () => {
     logRunner(`Failed to write build stamp: ${error?.message ?? "unknown error"}`);
   }
 };
+
+ensureControlUiBuilt();
 
 if (!shouldBuild()) {
   runNode();

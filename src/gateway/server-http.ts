@@ -283,6 +283,8 @@ export function createGatewayHttpServer(opts: {
           handleControlUiHttpRequest(req, res, {
             basePath: controlUiBasePath,
             config: configSnapshot,
+            autoConnectToken:
+              resolvedAuth.mode === "token" && resolvedAuth.token ? resolvedAuth.token : undefined,
           })
         )
           return;

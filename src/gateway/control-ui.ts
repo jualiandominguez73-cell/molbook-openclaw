@@ -18,6 +18,8 @@ export type ControlUiRequestOptions = {
   basePath?: string;
   config?: MoltbotConfig;
   agentId?: string;
+  /** When set, redirect root requests without token to ?token=<value> so the UI auto-connects. */
+  autoConnectToken?: string;
 };
 
 function resolveControlUiRoot(): string | null {
@@ -251,6 +253,23 @@ export function handleControlUiHttpRequest(
   const url = new URL(urlRaw, "http://localhost");
   const basePath = normalizeControlUiBasePath(opts?.basePath);
   const pathname = url.pathname;
+
+  // Auto-connect: on root, always redirect to ?token=<autoConnectToken> so the UI gets the current token (overwrites stale token in URL or missing token).
+  if (opts?.autoConnectToken) {
+    const isRoot =
+      pathname === "/" ||
+      pathname === "" ||
+      (basePath ? pathname === basePath || pathname === `${basePath}/` : false);
+    if (isRoot) {
+      const params = new URLSearchParams(url.searchParams);
+      params.set("token", opts.autoConnectToken);
+      const query = params.toString();
+      res.statusCode = 302;
+      res.setHeader("Location", `${url.pathname}${query ? `?${query}` : ""}`);
+      res.end();
+      return true;
+    }
+  }
 
   if (!basePath) {
     if (pathname === "/ui" || pathname.startsWith("/ui/")) {

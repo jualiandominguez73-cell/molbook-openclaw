@@ -23,7 +23,12 @@ export async function dashboardCommand(
   const bind = cfg.gateway?.bind ?? "loopback";
   const basePath = cfg.gateway?.controlUi?.basePath;
   const customBindHost = cfg.gateway?.customBindHost;
-  const token = cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN ?? "";
+  const token = (cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN ?? "").trim();
+  const password = (
+    cfg.gateway?.auth?.password ??
+    process.env.CLAWDBOT_GATEWAY_PASSWORD ??
+    (process.env.CLAWDBOT_PROFILE?.trim().toLowerCase() === "dev" ? "dev" : "")
+  ).trim();
 
   const links = resolveControlUiLinks({
     port,
@@ -31,7 +36,10 @@ export async function dashboardCommand(
     customBindHost,
     basePath,
   });
-  const authedUrl = token ? `${links.httpUrl}?token=${encodeURIComponent(token)}` : links.httpUrl;
+  const params = new URLSearchParams();
+  if (token) params.set("token", token);
+  if (password) params.set("password", password);
+  const authedUrl = params.toString() ? `${links.httpUrl}?${params.toString()}` : links.httpUrl;
 
   runtime.log(`Dashboard URL: ${authedUrl}`);
 
