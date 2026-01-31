@@ -26,7 +26,7 @@ The best way to help the project right now is by sending PRs.
 
 For threat model + hardening guidance (including `openclaw security audit --deep` and `--fix`), see:
 
-- `https://docs.openclaw.ai/gateway/security`
+- `docs/gateway/security/index.md` (published in the docs site at `/gateway/security`)
 
 ### Quick hardening checklist
 
