@@ -102,7 +102,7 @@ describe("sendPoll channel normalization", () => {
           source: "test",
           plugin: createMSTeamsPlugin({
             aliases: ["teams"],
-            outbound: createMSTeamsOutbound({ includePoll: true }),
+            outbound: createMSTeamsOutbound({ includePoll: true, deliveryMode: "gateway" }),
           }),
         },
       ]),
@@ -126,8 +126,11 @@ describe("sendPoll channel normalization", () => {
 
 const emptyRegistry = createTestRegistry([]);
 
-const createMSTeamsOutbound = (opts?: { includePoll?: boolean }): ChannelOutboundAdapter => ({
-  deliveryMode: "direct",
+const createMSTeamsOutbound = (opts?: {
+  includePoll?: boolean;
+  deliveryMode?: "direct" | "gateway";
+}): ChannelOutboundAdapter => ({
+  deliveryMode: opts?.deliveryMode ?? "direct",
   sendText: async ({ deps, to, text }) => {
     const send = deps?.sendMSTeams;
     if (!send) {
