@@ -36,8 +36,8 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import { MemoryAPIClient } from "@redis/agent-memory-client";
-import type { MemoryMessage } from "@redis/agent-memory-client";
+import { MemoryAPIClient } from "agent-memory-client";
+import type { MemoryMessage } from "agent-memory-client";
 import { randomUUID } from "node:crypto";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { stringEnum } from "openclaw/plugin-sdk";

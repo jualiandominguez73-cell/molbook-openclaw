@@ -4,7 +4,7 @@
   "type": "module",
   "description": "OpenClaw Redis-backed long-term memory plugin using agent-memory-server",
   "dependencies": {
-    "@redis/agent-memory-client": "file:/Users/andrew.brookins/src/redis-memory-server/agent-memory-client/agent-memory-client-js",
+    "agent-memory-client": "^0.2.0",
     "@sinclair/typebox": "0.34.47"
   },
   "openclaw": {
