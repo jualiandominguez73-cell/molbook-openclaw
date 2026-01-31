@@ -107,7 +107,7 @@ async function sendFeishuMedia(params: {
   accountId?: string | null;
   replyToId?: string | null;
 }) {
-  const { cfg, to, text, mediaUrl, accountId, replyToId } = params;
+  const { cfg, to, text, mediaUrl, accountId } = params;
   const core = getFeishuRuntime();
   const { client, feishu } = await resolveFeishuClient(cfg, accountId);
   const maxMb = resolveFeishuAccount(cfg, accountId).config.mediaMaxMb ?? 10;
