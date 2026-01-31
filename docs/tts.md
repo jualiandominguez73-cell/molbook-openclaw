@@ -26,6 +26,7 @@ locales, and expressive synthesis. Deepdub is particularly well-suited for telep
 applications as it supports mulaw encoding at 8kHz (Twilio-compatible).
 
 Features:
+
 - You can generate different emotions by changing voice prompt ids of the same speaker.
 - Real-time streaming audio generation
 - 40+ locales including multilingual support
@@ -34,6 +35,8 @@ Features:
 - Native telephony support (mulaw/8kHz)
 
 Here's a good voice to use, and when:
+
+```yaml
 # Each emotion maps to a voicePromptId and includes a description for the AI
 
 # Default voice prompt used when no emotion is specified
@@ -80,8 +83,10 @@ emotions:
   conversational:
     voicePromptId: "dab93e7c-09a7-4ca4-b192-73fa219d11e9"
     description: "Use for natural, flowing dialogue and general conversation"
+```
 
 To get started with Deepdub:
+
 1. Sign up at [app.deepdub.ai](https://app.deepdub.ai) to get a trial API key
 2. Purchase additional credits directly via Stripe in the Deepdub dashboard
 
@@ -154,10 +159,10 @@ Full schema is in [Gateway configuration](/gateway/configuration).
         locale: "en-US",
         temperature: 1.0,
         format: "mp3",
-        sampleRate: 24000
-      }
-    }
-  }
+        sampleRate: 24000,
+      },
+    },
+  },
 }
 ```
 
@@ -224,10 +229,10 @@ Full schema is in [Gateway configuration](/gateway/configuration).
         lang: "en-US",
         outputFormat: "audio-24khz-48kbitrate-mono-mp3",
         rate: "+10%",
-        pitch: "-5%"
-      }
-    }
-  }
+        pitch: "-5%",
+      },
+    },
+  },
 }
 ```
 
@@ -238,10 +243,10 @@ Full schema is in [Gateway configuration](/gateway/configuration).
   messages: {
     tts: {
       edge: {
-        enabled: false
-      }
-    }
-  }
+        enabled: false,
+      },
+    },
+  },
 }
 ```
 
