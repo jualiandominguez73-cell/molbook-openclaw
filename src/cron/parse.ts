@@ -111,6 +111,9 @@ export function parseAbsoluteTimeMs(input: string, tz?: string): number | null {
     const inTz = parseLocalTimeInZone(raw, tz);
     return inTz;
   }
+  if (tz && ISO_DATE_RE.test(raw)) {
+    return null;
+  }
   const parsed = Date.parse(normalizeUtcIso(raw));
   return Number.isFinite(parsed) ? parsed : null;
 }

@@ -51,4 +51,8 @@ describe("parseAbsoluteTimeMs", () => {
   it("returns null for invalid timezone", () => {
     expect(parseAbsoluteTimeMs("2026-02-01 23:00:00", "Invalid/Zone")).toBeNull();
   });
+
+  it("returns null for date-only when tz provided (avoid silent UTC midnight)", () => {
+    expect(parseAbsoluteTimeMs("2026-02-01", "Asia/Shanghai")).toBeNull();
+  });
 });
