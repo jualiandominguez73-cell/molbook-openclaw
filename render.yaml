@@ -18,6 +18,8 @@ services:
         generateValue: true
       - key: OPENCLAW_GATEWAY_PAIRING
         value: "off"
+      - key: SETUP_PASSWORD
+        generateValue: true
     disk:
       name: openclaw-data
       mountPath: /data

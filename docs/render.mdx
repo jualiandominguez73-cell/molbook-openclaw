@@ -163,3 +163,29 @@ Render expects a 200 response from `/health` within 30 seconds. If builds succee
 
 - Build logs for errors
 - Whether the container runs locally with `docker build && docker run`
+
+### "Pairing required" when connecting to the gateway
+
+When a client (app, Pi node, CLI) connects to your Render gateway and gets **"pairing required"**, the device must be approved. Because the gateway runs in the cloud, run the device commands **from your local machine** and point them at the Render gateway:
+
+1. **List pending device requests** (use your Render service host and auth):
+
+   ```bash
+   openclaw devices list --url wss://<your-service>.onrender.com --password <SETUP_PASSWORD>
+   ```
+
+   Or use the gateway token from **Dashboard → your service → Environment** (`OPENCLAW_GATEWAY_TOKEN`):
+
+   ```bash
+   openclaw devices list --url wss://<your-service>.onrender.com --token <OPENCLAW_GATEWAY_TOKEN>
+   ```
+
+2. **Approve the device** using the `requestId` from the list:
+
+   ```bash
+   openclaw devices approve <requestId> --url wss://<your-service>.onrender.com --password <SETUP_PASSWORD>
+   ```
+
+3. Reconnect from the client; it should connect after approval.
+
+To avoid typing the URL every time, set `gateway.mode=remote` and `gateway.remote.url` in your local config to `wss://<your-service>.onrender.com`; then `openclaw devices list` and `openclaw devices approve <requestId>` use that URL by default (you still need `--password` or `--token` unless you store them in config).
