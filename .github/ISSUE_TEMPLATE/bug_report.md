@@ -28,7 +28,7 @@ What actually happened?
 - OpenClaw version (or commit SHA):
 - OS:
 - Install method (pnpm/npx/docker/etc):
-- Messaging channel (if relevant: telegram/discord/slack/signal/imessage/web/…):
+- Messaging channel (if relevant: telegram/discord/slack/signal/imessage/web/...):
 
 ## Logs or screenshots
 
