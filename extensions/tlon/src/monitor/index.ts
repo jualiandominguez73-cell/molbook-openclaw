@@ -1,6 +1,6 @@
 import { format } from "node:util";
 
-import type { RuntimeEnv, ReplyPayload, OpenClawConfig } from "openclaw/plugin-sdk";
+import type { RuntimeEnv, ReplyPayload, MoltbotConfig } from "clawdbot/plugin-sdk";
 
 import { getTlonRuntime } from "../runtime.js";
 import { resolveTlonAccount } from "../types.js";
@@ -8,7 +8,7 @@ import { normalizeShip, parseChannelNest } from "../targets.js";
 import { authenticate } from "../urbit/auth.js";
 import { UrbitSSEClient } from "../urbit/sse-client.js";
 import { sendDm, sendGroupMessage } from "../urbit/send.js";
-import { cacheMessage, getChannelHistory } from "./history.js";
+import { cacheMessage, getChannelHistory, fetchThreadHistory } from "./history.js";
 import { createProcessedMessageTracker } from "./processed-messages.js";
 import {
   extractMessageText,
@@ -19,8 +19,9 @@ import {
   isSummarizationRequest,
   type ParsedCite,
 } from "./utils.js";
-import { fetchAllChannels } from "./discovery.js";
+import { fetchAllChannels, fetchInitData } from "./discovery.js";
 import { createSettingsManager, type TlonSettingsStore } from "../settings.js";
+import type { Foreigns, DmInvite } from "../urbit/foreigns.js";
 
 export type MonitorTlonOpts = {
   runtime?: RuntimeEnv;
@@ -38,7 +39,7 @@ type ChannelAuthorization = {
  * Settings store takes precedence for fields it defines.
  */
 function resolveChannelAuthorization(
-  cfg: OpenClawConfig,
+  cfg: MoltbotConfig,
   channelNest: string,
   settings?: TlonSettingsStore,
 ): { mode: "restricted" | "open"; allowedShips: string[] } {
@@ -66,7 +67,7 @@ function resolveChannelAuthorization(
 
 export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<void> {
   const core = getTlonRuntime();
-  const cfg = core.config.loadConfig() as OpenClawConfig;
+  const cfg = core.config.loadConfig() as MoltbotConfig;
   if (cfg.channels?.tlon?.enabled === false) return;
 
   const logger = core.logging.getChildLogger({ module: "tlon-auto-reply" });
@@ -121,7 +122,13 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
   // Reactive state that can be updated via settings store
   let effectiveDmAllowlist: string[] = account.dmAllowlist;
   let effectiveShowModelSig: boolean = account.showModelSignature ?? false;
+  let effectiveAutoAcceptDmInvites: boolean = account.autoAcceptDmInvites ?? false;
+  let effectiveAutoAcceptGroupInvites: boolean = account.autoAcceptGroupInvites ?? false;
+  let effectiveGroupInviteAllowlist: string[] = account.groupInviteAllowlist;
   let currentSettings: TlonSettingsStore = {};
+
+  // Track threads we've participated in (by parentId) - respond without mention requirement
+  const participatedThreads = new Set<string>();
 
   // Fetch bot's nickname from contacts
   try {
@@ -137,20 +144,29 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     runtime.log?.(`[tlon] Could not fetch nickname: ${error?.message ?? String(error)}`);
   }
 
+  // Store init foreigns for processing after settings are loaded
+  let initForeigns: Foreigns | null = null;
+
   if (account.autoDiscoverChannels !== false) {
     try {
-      const discoveredChannels = await fetchAllChannels(api, runtime);
-      if (discoveredChannels.length > 0) {
-        groupChannels = discoveredChannels;
+      const initData = await fetchInitData(api, runtime);
+      if (initData.channels.length > 0) {
+        groupChannels = initData.channels;
       }
+      initForeigns = initData.foreigns;
     } catch (error: any) {
       runtime.error?.(`[tlon] Auto-discovery failed: ${error?.message ?? String(error)}`);
     }
   }
 
-  if (groupChannels.length === 0 && account.groupChannels.length > 0) {
-    groupChannels = account.groupChannels;
-    runtime.log?.(`[tlon] Using manual groupChannels config: ${groupChannels.join(", ")}`);
+  // Merge manual config with auto-discovered channels
+  if (account.groupChannels.length > 0) {
+    for (const ch of account.groupChannels) {
+      if (!groupChannels.includes(ch)) {
+        groupChannels.push(ch);
+      }
+    }
+    runtime.log?.(`[tlon] Added ${account.groupChannels.length} manual groupChannels to monitoring`);
   }
 
   if (groupChannels.length > 0) {
@@ -161,9 +177,50 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     runtime.log?.("[tlon] No group channels to monitor (DMs only)");
   }
 
+  // Migrate file config to settings store (seed on first run)
+  async function migrateConfigToSettings() {
+    const migrations: Array<{ key: string; fileValue: unknown; settingsValue: unknown }> = [
+      { key: "dmAllowlist", fileValue: account.dmAllowlist, settingsValue: currentSettings.dmAllowlist },
+      { key: "groupInviteAllowlist", fileValue: account.groupInviteAllowlist, settingsValue: currentSettings.groupInviteAllowlist },
+      { key: "groupChannels", fileValue: account.groupChannels, settingsValue: currentSettings.groupChannels },
+      { key: "autoAcceptDmInvites", fileValue: account.autoAcceptDmInvites, settingsValue: currentSettings.autoAcceptDmInvites },
+      { key: "autoAcceptGroupInvites", fileValue: account.autoAcceptGroupInvites, settingsValue: currentSettings.autoAcceptGroupInvites },
+      { key: "showModelSig", fileValue: account.showModelSignature, settingsValue: currentSettings.showModelSig },
+    ];
+
+    for (const { key, fileValue, settingsValue } of migrations) {
+      // Only migrate if file has a value and settings store doesn't
+      const hasFileValue = Array.isArray(fileValue) ? fileValue.length > 0 : fileValue != null;
+      const hasSettingsValue = Array.isArray(settingsValue) ? settingsValue.length > 0 : settingsValue != null;
+      
+      if (hasFileValue && !hasSettingsValue) {
+        try {
+          await api!.poke({
+            app: "settings",
+            mark: "settings-event",
+            json: {
+              "put-entry": {
+                "bucket-key": "tlon",
+                "entry-key": key,
+                "value": fileValue,
+                "desk": "moltbot"
+              }
+            }
+          });
+          runtime.log?.(`[tlon] Migrated ${key} from config to settings store`);
+        } catch (err) {
+          runtime.log?.(`[tlon] Failed to migrate ${key}: ${String(err)}`);
+        }
+      }
+    }
+  }
+
   // Load settings from settings store (hot-reloadable config)
   try {
     currentSettings = await settingsManager.load();
+    
+    // Migrate file config to settings store if not already present
+    await migrateConfigToSettings();
     
     // Apply settings overrides
     if (currentSettings.groupChannels?.length) {
@@ -176,6 +233,18 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     }
     if (currentSettings.showModelSig !== undefined) {
       effectiveShowModelSig = currentSettings.showModelSig;
+    }
+    if (currentSettings.autoAcceptDmInvites !== undefined) {
+      effectiveAutoAcceptDmInvites = currentSettings.autoAcceptDmInvites;
+      runtime.log?.(`[tlon] Using autoAcceptDmInvites from settings store: ${effectiveAutoAcceptDmInvites}`);
+    }
+    if (currentSettings.autoAcceptGroupInvites !== undefined) {
+      effectiveAutoAcceptGroupInvites = currentSettings.autoAcceptGroupInvites;
+      runtime.log?.(`[tlon] Using autoAcceptGroupInvites from settings store: ${effectiveAutoAcceptGroupInvites}`);
+    }
+    if (currentSettings.groupInviteAllowlist?.length) {
+      effectiveGroupInviteAllowlist = currentSettings.groupInviteAllowlist;
+      runtime.log?.(`[tlon] Using groupInviteAllowlist from settings store: ${effectiveGroupInviteAllowlist.join(", ")}`);
     }
   } catch (err) {
     runtime.log?.(`[tlon] Settings store not available, using file config: ${String(err)}`);
@@ -237,6 +306,28 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     const { messageId, senderShip, isGroup, channelNest, hostShip, channelName, timestamp, parentId, isThreadReply } = params;
     const groupChannel = channelNest; // For compatibility
     let messageText = params.messageText;
+
+    // Fetch thread context when entering a thread for the first time
+    if (isThreadReply && parentId && groupChannel) {
+      try {
+        const threadHistory = await fetchThreadHistory(api!, groupChannel, parentId, 20, runtime);
+        if (threadHistory.length > 0) {
+          const threadContext = threadHistory
+            .slice(-10) // Last 10 messages for context
+            .map((msg) => `${msg.author}: ${msg.content}`)
+            .join("\n");
+          
+          // Prepend thread context to the message
+          // Include note about ongoing conversation for agent judgment
+          const contextNote = `[Thread conversation - ${threadHistory.length} previous replies. You are participating in this thread. Only respond if relevant or helpful - you don't need to reply to every message.]`;
+          messageText = `${contextNote}\n\n[Previous messages]\n${threadContext}\n\n[Current message]\n${messageText}`;
+          runtime?.log?.(`[tlon] Added thread context (${threadHistory.length} replies) to message`);
+        }
+      } catch (error: any) {
+        runtime?.log?.(`[tlon] Could not fetch thread context: ${error?.message ?? String(error)}`);
+        // Continue without thread context - not critical
+      }
+    }
 
     if (isGroup && groupChannel && isSummarizationRequest(messageText)) {
       try {
@@ -364,6 +455,11 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
               text: replyText,
               replyToId: parentId ?? undefined,
             });
+            // Track thread participation for future replies without mention
+            if (parentId) {
+              participatedThreads.add(String(parentId));
+              runtime.log?.(`[tlon] Now tracking thread for future replies: ${parentId}`);
+            }
           } else {
             await sendDm({ api: api!, fromShip: botShipName, toShip: senderShip, text: replyText });
           }
@@ -423,8 +519,26 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         id: messageId,
       });
 
+      // Get thread info early for participation check
+      const seal = isThreadReply
+        ? response?.post?.["r-post"]?.reply?.["r-reply"]?.set?.seal
+        : response?.post?.["r-post"]?.set?.seal;
+      const parentId = seal?.["parent-id"] || seal?.parent || null;
+
+      // Check if we should respond:
+      // 1. Direct mention always triggers response
+      // 2. Thread replies where we've participated - respond if relevant (let agent decide)
       const mentioned = isBotMentioned(messageText, botShipName, botNickname ?? undefined);
-      if (!mentioned) return;
+      const inParticipatedThread = isThreadReply && parentId && participatedThreads.has(String(parentId));
+      
+      if (!mentioned && !inParticipatedThread) {
+        return;
+      }
+      
+      // Log why we're responding
+      if (inParticipatedThread && !mentioned) {
+        runtime.log?.(`[tlon] Responding to thread we participated in (no mention): ${parentId}`);
+      }
 
       const { mode, allowedShips } = resolveChannelAuthorization(cfg, nest, currentSettings);
       if (mode === "restricted") {
@@ -438,11 +552,6 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
           return;
         }
       }
-
-      const seal = isThreadReply
-        ? response?.post?.["r-post"]?.reply?.["r-reply"]?.set?.seal
-        : response?.post?.["r-post"]?.set?.seal;
-      const parentId = seal?.["parent-id"] || seal?.parent || null;
 
       const parsed = parseChannelNest(nest);
       await processMessage({
@@ -463,10 +572,36 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
   };
 
   // Firehose handler for all DM messages (/v3)
+  // Track which DM invites we've already processed to avoid duplicate accepts
+  const processedDmInvites = new Set<string>();
+
   const handleChatFirehose = async (event: any) => {
     try {
-      // Skip non-message events (arrays are DM invite lists, etc.)
-      if (Array.isArray(event)) return;
+      // Handle DM invite lists (arrays)
+      if (Array.isArray(event)) {
+        if (effectiveAutoAcceptDmInvites) {
+          for (const invite of event as DmInvite[]) {
+            const ship = normalizeShip(invite.ship || "");
+            if (!ship || processedDmInvites.has(ship)) continue;
+            
+            // Only auto-accept from ships in the allowlist
+            if (isDmAllowed(ship, effectiveDmAllowlist)) {
+              try {
+                await api!.poke({
+                  app: "chat",
+                  mark: "chat-dm-rsvp",
+                  json: { ship, ok: true },
+                });
+                processedDmInvites.add(ship);
+                runtime.log?.(`[tlon] Auto-accepted DM invite from ${ship}`);
+              } catch (err) {
+                runtime.error?.(`[tlon] Failed to auto-accept DM from ${ship}: ${String(err)}`);
+              }
+            }
+          }
+        }
+        return;
+      }
       if (!("whom" in event) || !("response" in event)) return;
 
       const whom = event.whom; // DM partner ship or club ID
@@ -597,6 +732,26 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         effectiveShowModelSig = newSettings.showModelSig;
         runtime.log?.(`[tlon] Settings: showModelSig = ${effectiveShowModelSig}`);
       }
+      
+      // Update auto-accept DM invites setting
+      if (newSettings.autoAcceptDmInvites !== undefined) {
+        effectiveAutoAcceptDmInvites = newSettings.autoAcceptDmInvites;
+        runtime.log?.(`[tlon] Settings: autoAcceptDmInvites = ${effectiveAutoAcceptDmInvites}`);
+      }
+      
+      // Update auto-accept group invites setting
+      if (newSettings.autoAcceptGroupInvites !== undefined) {
+        effectiveAutoAcceptGroupInvites = newSettings.autoAcceptGroupInvites;
+        runtime.log?.(`[tlon] Settings: autoAcceptGroupInvites = ${effectiveAutoAcceptGroupInvites}`);
+      }
+      
+      // Update group invite allowlist
+      if (newSettings.groupInviteAllowlist !== undefined) {
+        effectiveGroupInviteAllowlist = newSettings.groupInviteAllowlist.length > 0 
+          ? newSettings.groupInviteAllowlist 
+          : account.groupInviteAllowlist;
+        runtime.log?.(`[tlon] Settings: groupInviteAllowlist updated to ${effectiveGroupInviteAllowlist.join(", ")}`);
+      }
     });
     
     try {
@@ -604,6 +759,197 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     } catch (err) {
       // Settings subscription is optional - don't fail if it doesn't work
       runtime.log?.(`[tlon] Settings subscription not available: ${String(err)}`);
+    }
+
+    // Subscribe to groups-ui for real-time channel additions (when invites are accepted)
+    try {
+      await api!.subscribe({
+        app: "groups",
+        path: "/groups/ui",
+        event: async (event: any) => {
+          try {
+            // Handle group/channel join events
+            // Event structure: { group: { flag: "~host/group-name", ... }, channels: { ... } }
+            if (event && typeof event === "object") {
+              // Check for new channels being added to groups
+              if (event.channels && typeof event.channels === "object") {
+                const channels = event.channels as Record<string, any>;
+                for (const [channelNest, channelData] of Object.entries(channels)) {
+                  // Only monitor chat channels
+                  if (!channelNest.startsWith("chat/")) continue;
+                  
+                  // If this is a new channel we're not watching yet, add it
+                  if (!watchedChannels.has(channelNest)) {
+                    watchedChannels.add(channelNest);
+                    runtime.log?.(`[tlon] Auto-detected new channel (invite accepted): ${channelNest}`);
+                    
+                    // Persist to settings store so it survives restarts
+                    if (effectiveAutoAcceptGroupInvites) {
+                      try {
+                        const currentChannels = currentSettings.groupChannels || [];
+                        if (!currentChannels.includes(channelNest)) {
+                          const updatedChannels = [...currentChannels, channelNest];
+                          // Poke settings store to persist
+                          await api!.poke({
+                            app: "settings",
+                            mark: "settings-event",
+                            json: {
+                              "put-entry": {
+                                "bucket-key": "tlon",
+                                "entry-key": "groupChannels",
+                                "value": updatedChannels,
+                                "desk": "moltbot"
+                              }
+                            }
+                          });
+                          runtime.log?.(`[tlon] Persisted ${channelNest} to settings store`);
+                        }
+                      } catch (err) {
+                        runtime.error?.(`[tlon] Failed to persist channel to settings: ${String(err)}`);
+                      }
+                    }
+                  }
+                }
+              }
+              
+              // Also check for the "join" event structure
+              if (event.join && typeof event.join === "object") {
+                const join = event.join as { group?: string; channels?: string[] };
+                if (join.channels) {
+                  for (const channelNest of join.channels) {
+                    if (!channelNest.startsWith("chat/")) continue;
+                    if (!watchedChannels.has(channelNest)) {
+                      watchedChannels.add(channelNest);
+                      runtime.log?.(`[tlon] Auto-detected joined channel: ${channelNest}`);
+                      
+                      // Persist to settings store
+                      if (effectiveAutoAcceptGroupInvites) {
+                        try {
+                          const currentChannels = currentSettings.groupChannels || [];
+                          if (!currentChannels.includes(channelNest)) {
+                            const updatedChannels = [...currentChannels, channelNest];
+                            await api!.poke({
+                              app: "settings",
+                              mark: "settings-event",
+                              json: {
+                                "put-entry": {
+                                  "bucket-key": "tlon",
+                                  "entry-key": "groupChannels",
+                                  "value": updatedChannels,
+                                  "desk": "moltbot"
+                                }
+                              }
+                            });
+                            runtime.log?.(`[tlon] Persisted ${channelNest} to settings store`);
+                          }
+                        } catch (err) {
+                          runtime.error?.(`[tlon] Failed to persist channel to settings: ${String(err)}`);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch (error: any) {
+            runtime.error?.(`[tlon] Error handling groups-ui event: ${error?.message ?? String(error)}`);
+          }
+        },
+        err: (error) => {
+          runtime.error?.(`[tlon] Groups-ui subscription error: ${String(error)}`);
+        },
+        quit: () => {
+          runtime.log?.("[tlon] Groups-ui subscription ended");
+        },
+      });
+      runtime.log?.("[tlon] Subscribed to groups-ui for real-time channel detection");
+    } catch (err) {
+      // Groups-ui subscription is optional - channel discovery will still work via polling
+      runtime.log?.(`[tlon] Groups-ui subscription failed (will rely on polling): ${String(err)}`);
+    }
+
+    // Subscribe to foreigns for auto-accepting group invites
+    // Always subscribe so we can hot-reload the setting via settings store
+    {
+      const processedGroupInvites = new Set<string>();
+      
+      // Helper to process pending invites
+      const processPendingInvites = async (foreigns: Foreigns) => {
+        if (!effectiveAutoAcceptGroupInvites) return;
+        if (!foreigns || typeof foreigns !== "object") return;
+        
+        for (const [groupFlag, foreign] of Object.entries(foreigns)) {
+          if (processedGroupInvites.has(groupFlag)) continue;
+          if (!foreign.invites || foreign.invites.length === 0) continue;
+          
+          const validInvite = foreign.invites.find(inv => inv.valid);
+          if (!validInvite) continue;
+          
+          // SECURITY: Check if inviter is on allowlist
+          // If allowlist is empty, accept all (backward-compatible, but logged as warning)
+          const inviterShip = validInvite.from;
+          if (effectiveGroupInviteAllowlist.length > 0) {
+            const normalizedInviter = normalizeShip(inviterShip);
+            const isAllowed = effectiveGroupInviteAllowlist
+              .map(s => normalizeShip(s))
+              .some(s => s === normalizedInviter);
+            
+            if (!isAllowed) {
+              runtime.log?.(`[tlon] Rejected group invite from ${inviterShip} (not in groupInviteAllowlist): ${groupFlag}`);
+              processedGroupInvites.add(groupFlag); // Mark as processed to avoid spam
+              continue;
+            }
+          } else {
+            // SECURITY: Fail-safe to deny - require explicit allowlist
+            runtime.log?.(`[tlon] Skipping group invite from ${inviterShip} - no groupInviteAllowlist configured (fail-safe)`);
+            processedGroupInvites.add(groupFlag);
+            continue;
+          }
+          
+          try {
+            await api!.poke({
+              app: "groups",
+              mark: "group-join",
+              json: {
+                flag: groupFlag,
+                "join-all": true,
+              },
+            });
+            processedGroupInvites.add(groupFlag);
+            runtime.log?.(`[tlon] Auto-accepted group invite: ${groupFlag} (from ${validInvite.from})`);
+          } catch (err) {
+            runtime.error?.(`[tlon] Failed to auto-accept group ${groupFlag}: ${String(err)}`);
+          }
+        }
+      };
+      
+      // Process existing pending invites from init data
+      if (initForeigns) {
+        await processPendingInvites(initForeigns);
+      }
+      
+      try {
+        await api!.subscribe({
+          app: "groups",
+          path: "/v1/foreigns",
+          event: async (event: Foreigns) => {
+            try {
+              await processPendingInvites(event);
+            } catch (error: any) {
+              runtime.error?.(`[tlon] Error handling foreigns event: ${error?.message ?? String(error)}`);
+            }
+          },
+          err: (error) => {
+            runtime.error?.(`[tlon] Foreigns subscription error: ${String(error)}`);
+          },
+          quit: () => {
+            runtime.log?.("[tlon] Foreigns subscription ended");
+          },
+        });
+        runtime.log?.("[tlon] Subscribed to foreigns (/v1/foreigns) for auto-accepting group invites");
+      } catch (err) {
+        runtime.log?.(`[tlon] Foreigns subscription failed: ${String(err)}`);
+      }
     }
 
     // Discover channels to watch

@@ -16,6 +16,10 @@ export type TlonSettingsStore = {
   dmAllowlist?: string[];
   autoDiscover?: boolean;
   showModelSig?: boolean;
+  autoAcceptDmInvites?: boolean;
+  autoAcceptGroupInvites?: boolean;
+  /** Ships allowed to invite us to groups (when autoAcceptGroupInvites is true) */
+  groupInviteAllowlist?: string[];
   channelRules?: Record<string, {
     mode?: "restricted" | "open";
     allowedShips?: string[];
@@ -81,6 +85,15 @@ function parseSettingsResponse(raw: unknown): TlonSettingsStore {
       : undefined,
     showModelSig: typeof settings.showModelSig === "boolean"
       ? settings.showModelSig
+      : undefined,
+    autoAcceptDmInvites: typeof settings.autoAcceptDmInvites === "boolean"
+      ? settings.autoAcceptDmInvites
+      : undefined,
+    autoAcceptGroupInvites: typeof settings.autoAcceptGroupInvites === "boolean"
+      ? settings.autoAcceptGroupInvites
+      : undefined,
+    groupInviteAllowlist: Array.isArray(settings.groupInviteAllowlist)
+      ? settings.groupInviteAllowlist.filter((x): x is string => typeof x === "string")
       : undefined,
     channelRules: parseChannelRules(settings.channelRules),
     defaultAuthorizedShips: Array.isArray(settings.defaultAuthorizedShips)
@@ -160,6 +173,17 @@ function applySettingsUpdate(
       break;
     case "showModelSig":
       next.showModelSig = typeof value === "boolean" ? value : undefined;
+      break;
+    case "autoAcceptDmInvites":
+      next.autoAcceptDmInvites = typeof value === "boolean" ? value : undefined;
+      break;
+    case "autoAcceptGroupInvites":
+      next.autoAcceptGroupInvites = typeof value === "boolean" ? value : undefined;
+      break;
+    case "groupInviteAllowlist":
+      next.groupInviteAllowlist = Array.isArray(value)
+        ? value.filter((x): x is string => typeof x === "string")
+        : undefined;
       break;
     case "channelRules":
       next.channelRules = parseChannelRules(value);
