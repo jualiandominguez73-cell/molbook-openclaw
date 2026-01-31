@@ -22,6 +22,8 @@ services:
         value: "setup123"
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
     disk:
       name: openclaw-data
       mountPath: /data
