@@ -60,17 +60,19 @@ Note: Some references to "moltbot" or "clawdbot" may remain in older code/config
 
 ## DBH Ventures Project Tracking (Vikunja)
 
-- **URL**: https://projects.timespent.xyz
+- **URL**: https://projects.timespent.xyz (Mission Control uses this)
+- **Alt URL**: https://projects.mollified.app (skill config, sometimes 502s)
 - **Droplet**: dbh-ventures (DO ID: 547817710, nyc1, $6/mo)
 - **Your login**: dbhurley / DBHVentures2026!
 - **My login**: steve / SteveAgent2026!
 - **Rule**: Always create projects under David's account (dbhurley), not steve
 - **Projects**:
-  - ID 2: 📥 Inbox (ideas to evaluate)
+  - ID 1: 📥 Inbox (ideas to evaluate) — NOTE: was ID 2 in old notes
   - ID 3: 🚀 DBH Ventures - Incubation Template (standard playbook)
-  - ID 4: 🛡️ MeshGuard (launched)
+  - ID 4: 🛡️ MeshGuard (production-ready: gateway, dashboard, Stripe, SDKs, docs all live)
   - ID 5: 💾 SaveState (launched Jan 27, 2026)
   - ID 7: 🎨 NotHockney (paused - foundation complete)
+  - ID 8: 🎛️ Agent Ops Console (incubating - Jan 30, 2026)
   - Omega Foundation: 🎓 AI-powered homeschool (in Inbox, researching)
 - **Incubation phases**: Idea → Foundation → MVP → Launch → Growth
 - **Idea workflow**: 
@@ -92,6 +94,25 @@ Note: Some references to "moltbot" or "clawdbot" may remain in older code/config
 - **Opportunity**: Middle tier ($50-200/mo) is wide open — Alpha charges $10K-$75K/year
 - **Recommended pricing**: $149/mo family subscription
 - **Research**: `memory/omega-foundation-research.md`
+
+## Agent Console — Incubation (Jan 30, 2026)
+
+- **What**: Real-time operations dashboard for AI agents
+- **Name**: Agent Console
+- **Domain**: agentconsole.app (Vercel)
+- **Vikunja project**: ID 8
+- **Status**: Incubating - dogfood for DBH Ventures first, then productize
+- **Problem**: Existing tools (LangSmith, Arize, etc.) are observability/debugging focused. Missing: real-time ops console for running agent fleets.
+- **Key differentiators**:
+  - Real-time agent status (running/paused/idle) — not retrospective traces
+  - Task ↔ session linking (why is the agent doing this?)
+  - Intervention capabilities (pause, inject, redirect)
+  - Multi-framework from day 1 (OpenTelemetry-native)
+- **Competitive landscape**: AgentOps.ai ($2.6M), LangSmith ($260M), Arize ($131M), but all "observability" not "operations"
+- **Tech stack**: Next.js, WebSocket for real-time, OpenClaw integration first
+- **Replaces**: Vikunja + Mission Control for internal DBH Ventures use
+- **Bear doc**: "Agent Ops Console — Project Document"
+- **Spec**: `/Users/steve/clawd/memory/agent-ops-console-spec.md`
 
 ## NotHockney — Incubation (Jan 2026)
 

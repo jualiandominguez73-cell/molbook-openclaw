@@ -71,13 +71,23 @@ class VikunjaClient:
         return resp.json()
     
     def create_project(self, title: str, description: str = ""):
-        """Create a new project."""
+        """Create a new project and share with DBH Ventures team."""
         resp = requests.put(
             f"{self.base_url}/api/v1/projects",
             headers=self._headers(),
             json={"title": title, "description": description}
         )
-        return resp.json()
+        project = resp.json()
+        
+        # Auto-share with DBH Ventures team (ID 1) with admin permission
+        DBH_VENTURES_TEAM_ID = 1
+        requests.put(
+            f"{self.base_url}/api/v1/projects/{project['id']}/teams",
+            headers=self._headers(),
+            json={"team_id": DBH_VENTURES_TEAM_ID, "permission": 2}  # 2 = admin
+        )
+        
+        return project
     
     def get_tasks(self, project_id: Optional[int] = None):
         """List tasks, optionally filtered by project."""
