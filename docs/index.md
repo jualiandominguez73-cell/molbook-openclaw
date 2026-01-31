@@ -3,12 +3,16 @@ summary: "Top-level overview of OpenClaw, features, and purpose"
 read_when:
   - Introducing OpenClaw to newcomers
 ---
+
 # OpenClaw 🦞
 
-> *"EXFOLIATE! EXFOLIATE!"* — A space lobster, probably
+> _"EXFOLIATE! EXFOLIATE!"_ — A space lobster, probably
 
 <p align="center">
-  <img src="whatsapp-openclaw.jpg" alt="OpenClaw" width="420" />
+    <picture>
+        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text-dark.png" />
+        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" width="500" />
+    </picture>
 </p>
 
 <p align="center">
@@ -41,6 +45,10 @@ immediately. If it fails, start the Gateway first: `openclaw gateway`.
 The dashboard is the browser Control UI for chat, config, nodes, sessions, and more.
 Local default: http://127.0.0.1:18789/
 Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
+
+<p align="center">
+  <img src="whatsapp-openclaw.jpg" alt="OpenClaw" width="420" />
+</p>
 
 ## How it works
 
@@ -158,10 +166,10 @@ Example:
   channels: {
     whatsapp: {
       allowFrom: ["+15555550123"],
-      groups: { "*": { requireMention: true } }
-    }
+      groups: { "*": { requireMention: true } },
+    },
   },
-  messages: { groupChat: { mentionPatterns: ["@openclaw"] } }
+  messages: { groupChat: { mentionPatterns: ["@openclaw"] } },
 }
 ```
 
@@ -169,7 +177,7 @@ Example:
 
 - Start here:
   - [Docs hubs (all pages linked)](/start/hubs)
-  - [Help](/help) ← *common fixes + troubleshooting*
+  - [Help](/help) ← _common fixes + troubleshooting_
   - [Configuration](/gateway/configuration)
   - [Configuration examples](/gateway/configuration-examples)
   - [Slash commands](/tools/slash-commands)
@@ -218,7 +226,7 @@ Example:
 
 ---
 
-*"We're all just playing with our own prompts."* — an AI, probably high on tokens
+_"We're all just playing with our own prompts."_ — an AI, probably high on tokens
 
 ## Credits
 
@@ -237,4 +245,4 @@ MIT — Free as a lobster in the ocean 🦞
 
 ---
 
-*"We're all just playing with our own prompts."* — An AI, probably high on tokens
+_"We're all just playing with our own prompts."_ — An AI, probably high on tokens

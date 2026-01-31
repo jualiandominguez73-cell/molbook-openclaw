@@ -61,7 +61,11 @@ export function renderLogs(props: LogsProps) {
           <button
             class="btn"
             ?disabled=${filtered.length === 0}
-            @click=${() => props.onExport(filtered.map((entry) => entry.raw), exportLabel)}
+            @click=${() =>
+              props.onExport(
+                filtered.map((entry) => entry.raw),
+                exportLabel,
+              )}
           >
             Export ${exportLabel}
           </button>
@@ -73,8 +77,7 @@ export function renderLogs(props: LogsProps) {
           <span>Filter</span>
           <input
             .value=${props.filterText}
-            @input=${(e: Event) =>
-              props.onFilterTextChange((e.target as HTMLInputElement).value)}
+            @input=${(e: Event) => props.onFilterTextChange((e.target as HTMLInputElement).value)}
             placeholder="Search logs"
           />
         </label>
@@ -105,21 +108,30 @@ export function renderLogs(props: LogsProps) {
         )}
       </div>
 
-      ${props.file
-        ? html`<div class="muted" style="margin-top: 10px;">File: ${props.file}</div>`
-        : nothing}
-      ${props.truncated
-        ? html`<div class="callout" style="margin-top: 10px;">
-            Log output truncated; showing latest chunk.
-          </div>`
-        : nothing}
+      ${
+        props.file
+          ? html`<div class="muted" style="margin-top: 10px;">File: ${props.file}</div>`
+          : nothing
+      }
+      ${
+        props.truncated
+          ? html`
+              <div class="callout" style="margin-top: 10px">
+                Log output truncated; showing latest chunk.
+              </div>
+            `
+          : nothing
+      }
       ${renderErrorCallout(props.error, { style: "margin-top: 10px;" })}
 
       <div class="log-stream" style="margin-top: 12px;" @scroll=${props.onScroll}>
-        ${filtered.length === 0
-          ? html`<div class="muted" style="padding: 12px;">No log entries.</div>`
-          : filtered.map(
-              (entry) => html`
+        ${
+          filtered.length === 0
+            ? html`
+                <div class="muted" style="padding: 12px">No log entries.</div>
+              `
+            : filtered.map(
+                (entry) => html`
                 <div class="log-row">
                   <div class="log-time mono">${formatTime(entry.time)}</div>
                   <div class="log-level ${entry.level ?? ""}">${entry.level ?? ""}</div>
@@ -127,7 +139,8 @@ export function renderLogs(props: LogsProps) {
                   <div class="log-message mono">${entry.message ?? entry.raw}</div>
                 </div>
               `,
-            )}
+              )
+        }
       </div>
     </section>
   `;
