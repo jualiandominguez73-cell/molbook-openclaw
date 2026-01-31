@@ -24,7 +24,6 @@ import {
 } from "./embeddings.js";
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
 import { DEFAULT_OPENAI_EMBEDDING_MODEL } from "./embeddings-openai.js";
-import { DEFAULT_VOYAGEAI_EMBEDDING_MODEL } from "./embeddings-voyageai.js";
 import {
   OPENAI_BATCH_ENDPOINT,
   type OpenAiBatchRequest,

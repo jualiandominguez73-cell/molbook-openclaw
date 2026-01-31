@@ -166,6 +166,7 @@ agents: {
 ```
 
 Notes:
+
 - Supported models: `voyage-4` (default), `voyage-4-lite` (cost-optimized), `voyage-4-large` (best quality).
 - All voyage-4 models return 1024-dimensional embeddings by default.
 - Set `VOYAGE_API_KEY` environment variable or use `remote.apiKey`.

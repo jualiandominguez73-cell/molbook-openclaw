@@ -33,9 +33,15 @@ export function isVoyageAiModel(model: string): boolean {
 
 export function normalizeVoyageAiModel(model: string): string {
   const trimmed = model.trim();
-  if (!trimmed) return DEFAULT_VOYAGEAI_EMBEDDING_MODEL;
-  if (trimmed.startsWith("voyageai/")) return trimmed.slice("voyageai/".length);
-  if (trimmed.startsWith("voyage/")) return trimmed.slice("voyage/".length);
+  if (!trimmed) {
+    return DEFAULT_VOYAGEAI_EMBEDDING_MODEL;
+  }
+  if (trimmed.startsWith("voyageai/")) {
+    return trimmed.slice("voyageai/".length);
+  }
+  if (trimmed.startsWith("voyage/")) {
+    return trimmed.slice("voyage/".length);
+  }
   return trimmed;
 }
 
@@ -45,7 +51,9 @@ export async function createVoyageAiEmbeddingProvider(
   const client = await resolveVoyageAiEmbeddingClient(options);
 
   const embedQuery = async (text: string): Promise<number[]> => {
-    if (!text.trim()) return [];
+    if (!text.trim()) {
+      return [];
+    }
     const result = await client.client.embed({
       model: client.model,
       input: [text],
@@ -55,7 +63,9 @@ export async function createVoyageAiEmbeddingProvider(
   };
 
   const embedBatch = async (texts: string[]): Promise<number[][]> => {
-    if (texts.length === 0) return [];
+    if (texts.length === 0) {
+      return [];
+    }
     const result = await client.client.embed({
       model: client.model,
       input: texts,
@@ -77,7 +87,9 @@ export async function createVoyageAiEmbeddingProvider(
 
 function resolveRemoteApiKey(remoteApiKey?: string): string | undefined {
   const trimmed = remoteApiKey?.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
   if (trimmed === "VOYAGE_API_KEY") {
     return process.env.VOYAGE_API_KEY?.trim();
   }
