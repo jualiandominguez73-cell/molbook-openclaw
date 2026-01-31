@@ -160,6 +160,8 @@ export type GroupToolPolicyConfig = {
 
 export type GroupToolPolicyBySenderConfig = Record<string, GroupToolPolicyConfig>;
 
+export type FileToolSecurity = "deny" | "allowlist" | "full";
+
 export type ExecToolConfig = {
   /** Exec host routing (default: sandbox). */
   host?: "sandbox" | "gateway" | "node";
@@ -204,6 +206,27 @@ export type AgentToolsConfig = {
   deny?: string[];
   /** Optional tool policy overrides keyed by provider id or "provider/model". */
   byProvider?: Record<string, ToolPolicyConfig>;
+  /** Read tool configuration. */
+  read?: {
+    /** Read security mode (default: full). */
+    security?: FileToolSecurity;
+    /** Restrict reads to these directories. */
+    allowPaths?: string[];
+  };
+  /** Write tool configuration. */
+  write?: {
+    /** Write security mode (default: full). */
+    security?: FileToolSecurity;
+    /** Restrict writes to these directories. */
+    allowPaths?: string[];
+  };
+  /** Edit tool configuration. */
+  edit?: {
+    /** Edit security mode (default: full). */
+    security?: FileToolSecurity;
+    /** Restrict edits to these directories. */
+    allowPaths?: string[];
+  };
   /** Per-agent elevated exec gate (can only further restrict global tools.elevated). */
   elevated?: {
     /** Enable or disable elevated mode for this agent (default: true). */
@@ -332,6 +355,27 @@ export type ToolsConfig = {
   deny?: string[];
   /** Optional tool policy overrides keyed by provider id or "provider/model". */
   byProvider?: Record<string, ToolPolicyConfig>;
+  /** Read tool configuration. */
+  read?: {
+    /** Read security mode (default: full). */
+    security?: FileToolSecurity;
+    /** Restrict reads to these directories. */
+    allowPaths?: string[];
+  };
+  /** Write tool configuration. */
+  write?: {
+    /** Write security mode (default: full). */
+    security?: FileToolSecurity;
+    /** Restrict writes to these directories. */
+    allowPaths?: string[];
+  };
+  /** Edit tool configuration. */
+  edit?: {
+    /** Edit security mode (default: full). */
+    security?: FileToolSecurity;
+    /** Restrict edits to these directories. */
+    allowPaths?: string[];
+  };
   web?: {
     search?: {
       /** Enable web search tool (default: true when API key is present). */
