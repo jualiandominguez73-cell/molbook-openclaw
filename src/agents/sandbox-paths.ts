@@ -21,7 +21,9 @@ function expandPath(filePath: string): string {
 
 function resolveToCwd(filePath: string, cwd: string): string {
   const expanded = expandPath(filePath);
-  if (path.isAbsolute(expanded)) return expanded;
+  if (path.isAbsolute(expanded)) {
+    return expanded;
+  }
   return path.resolve(cwd, expanded);
 }
 
@@ -79,7 +81,9 @@ export async function assertSandboxPathInRoots(params: {
 // this given the threat model (no concurrent local attacker with write access to
 // allowed dirs). A proper fix would require O_NOFOLLOW/openat at the fd level.
 async function assertNoSymlink(relative: string, root: string) {
-  if (!relative) return;
+  if (!relative) {
+    return;
+  }
   const parts = relative.split(path.sep).filter(Boolean);
   let current = root;
   for (const part of parts) {

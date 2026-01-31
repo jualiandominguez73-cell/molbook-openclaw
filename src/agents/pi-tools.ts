@@ -68,9 +68,13 @@ function isApplyPatchAllowedForModel(params: {
   allowModels?: string[];
 }) {
   const allowModels = Array.isArray(params.allowModels) ? params.allowModels : [];
-  if (allowModels.length === 0) return true;
+  if (allowModels.length === 0) {
+    return true;
+  }
   const modelId = params.modelId?.trim();
-  if (!modelId) return false;
+  if (!modelId) {
+    return false;
+  }
   const normalizedModelId = modelId.toLowerCase();
   const provider = params.modelProvider?.trim().toLowerCase();
   const normalizedFull =
@@ -79,7 +83,9 @@ function isApplyPatchAllowedForModel(params: {
       : normalizedModelId;
   return allowModels.some((entry) => {
     const normalized = entry.trim().toLowerCase();
-    if (!normalized) return false;
+    if (!normalized) {
+      return false;
+    }
     return normalized === normalizedModelId || normalized === normalizedFull;
   });
 }
@@ -270,7 +276,9 @@ export function createOpenClawCodingTools(options?: {
   const providerProfilePolicy = resolveToolProfilePolicy(providerProfile);
 
   const mergeAlsoAllow = (policy: typeof profilePolicy, alsoAllow?: string[]) => {
-    if (!policy?.allow || !Array.isArray(alsoAllow) || alsoAllow.length === 0) return policy;
+    if (!policy?.allow || !Array.isArray(alsoAllow) || alsoAllow.length === 0) {
+      return policy;
+    }
     return { ...policy, allow: Array.from(new Set([...policy.allow, ...alsoAllow])) };
   };
 
@@ -329,7 +337,9 @@ export function createOpenClawCodingTools(options?: {
         ),
       ];
     }
-    if (tool.name === "bash" || tool.name === execToolName) return [];
+    if (tool.name === "bash" || tool.name === execToolName) {
+      return [];
+    }
     if (tool.name === "write") {
       if (writeSecurity === "deny") return [];
       if (sandboxRoot) return [];
@@ -364,7 +374,7 @@ export function createOpenClawCodingTools(options?: {
         ),
       ];
     }
-    return [tool as AnyAgentTool];
+    return [tool];
   });
   const { cleanupMs: cleanupMsOverride, ...execDefaults } = options?.exec ?? {};
   const execTool = createExecTool({
@@ -471,13 +481,13 @@ export function createOpenClawCodingTools(options?: {
   ];
   const coreToolNames = new Set(
     tools
-      .filter((tool) => !getPluginToolMeta(tool as AnyAgentTool))
+      .filter((tool) => !getPluginToolMeta(tool))
       .map((tool) => normalizeToolName(tool.name))
       .filter(Boolean),
   );
   const pluginGroups = buildPluginToolGroups({
     tools,
-    toolMeta: (tool) => getPluginToolMeta(tool as AnyAgentTool),
+    toolMeta: (tool) => getPluginToolMeta(tool),
   });
   const resolvePolicy = (policy: typeof profilePolicy, label: string) => {
     const resolved = stripPluginOnlyAllowlist(policy, pluginGroups, coreToolNames);
