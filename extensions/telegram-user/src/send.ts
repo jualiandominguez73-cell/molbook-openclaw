@@ -29,11 +29,6 @@ type NormalizedPollInput = {
   maxSelections: number;
 };
 
-function isDestroyedClientError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /client is destroyed/i.test(message);
-}
-
 export type TelegramUserSendOpts = {
   client?: TelegramClient;
   accountId?: string;
@@ -178,15 +173,10 @@ export async function sendMessageTelegramUser(
   try {
     const resolved = resolveTargetAndThread(to, opts.threadId);
     const target = resolveTelegramUserPeer(resolved.target);
-    let message: Awaited<ReturnType<TelegramClient["sendText"]>> | null = null;
-    try {
-      message = await client.sendText(target, text, {
-        ...(opts.replyToId ? { replyTo: opts.replyToId } : {}),
-        ...(resolved.threadId ? { threadId: resolved.threadId } : {}),
-      });
-    } catch (err) {
-      if (!isDestroyedClientError(err)) throw err;
-    }
+    const message = await client.sendText(target, text, {
+      ...(opts.replyToId ? { replyTo: opts.replyToId } : {}),
+      ...(resolved.threadId ? { threadId: resolved.threadId } : {}),
+    });
     if (!message) {
       return { messageId: "", chatId: String(target) };
     }
@@ -244,7 +234,7 @@ export async function sendMediaTelegramUser(
           ...(opts.replyToId ? { replyTo: opts.replyToId } : {}),
           ...(resolved.threadId ? { threadId: resolved.threadId } : {}),
         });
-      } else if (!isDestroyedClientError(err)) {
+      } else {
         throw err;
       }
     }
@@ -280,15 +270,10 @@ export async function sendPollTelegramUser(
       answers: normalized.options,
       multiple: normalized.maxSelections > 1,
     });
-    let message: Awaited<ReturnType<TelegramClient["sendMedia"]>> | null = null;
-    try {
-      message = await client.sendMedia(target, input, {
-        ...(opts.replyToId ? { replyTo: opts.replyToId } : {}),
-        ...(resolved.threadId ? { threadId: resolved.threadId } : {}),
-      });
-    } catch (err) {
-      if (!isDestroyedClientError(err)) throw err;
-    }
+    const message = await client.sendMedia(target, input, {
+      ...(opts.replyToId ? { replyTo: opts.replyToId } : {}),
+      ...(resolved.threadId ? { threadId: resolved.threadId } : {}),
+    });
     if (!message) {
       return { messageId: "", chatId: String(target) };
     }
