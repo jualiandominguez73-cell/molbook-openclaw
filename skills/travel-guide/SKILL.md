@@ -2,14 +2,7 @@
 name: travel-guide
 description: "Worldwide travel assistant: find hotels, transportation, attractions, restaurants, cafes, pubs, clubs, and get directions anywhere in the world."
 homepage: https://github.com/openclaw/openclaw
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🌍",
-        "requires": { "bins": ["curl", "jq"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "🌍", "requires": { "bins": ["curl", "jq"] } } }
 ---
 
 # 🌍 Travel Guide
@@ -18,13 +11,13 @@ Your personal worldwide travel assistant. Find hotels, transportation, attractio
 
 ## Quick Reference
 
-| Feature | Command |
-|---------|---------|
-| Hotels | Search hotels/hostels nearby |
-| Transport | Find airports, bus/train stations |
-| Attractions | Museums, landmarks, parks, beaches |
-| Dining | Restaurants, cafes, bars, pubs, clubs |
-| Directions | Walking/driving routes between places |
+| Feature     | Command                               |
+| ----------- | ------------------------------------- |
+| Hotels      | Search hotels/hostels nearby          |
+| Transport   | Find airports, bus/train stations     |
+| Attractions | Museums, landmarks, parks, beaches    |
+| Dining      | Restaurants, cafes, bars, pubs, clubs |
+| Directions  | Walking/driving routes between places |
 
 ---
 
@@ -38,8 +31,9 @@ curl -s "https://nominatim.openstreetmap.org/search?q=Paris,France&format=json&l
 ```
 
 Example output:
+
 ```json
-{"lat": "48.8588897", "lon": "2.3200410", "display_name": "Paris, Île-de-France, France"}
+{ "lat": "48.8588897", "lon": "2.3200410", "display_name": "Paris, Île-de-France, France" }
 ```
 
 ---
@@ -61,6 +55,7 @@ curl -s "https://overpass-api.de/api/interpreter" \
 ```
 
 **Parameters:**
+
 - Replace `48.8589,2.3200` with lat,lon from step 1
 - Adjust `5000` for search radius in meters
 - Change `20` for more/fewer results
@@ -206,6 +201,7 @@ curl -s "https://api.openrouteservice.org/v2/directions/foot-walking?api_key=$OP
 ```
 
 **Without API key** - use Google Maps link:
+
 ```bash
 echo "https://www.google.com/maps/dir/48.8584,2.2945/48.8606,2.3376"
 ```
@@ -250,6 +246,7 @@ curl -s "https://en.wikipedia.org/api/rest_v1/page/summary/Eiffel_Tower" | jq '{
 This skill works for **any location in the world** - just change the coordinates!
 
 Examples:
+
 - New York: `40.7128,-74.0060`
 - London: `51.5074,-0.1278`
 - Tokyo: `35.6762,139.6503`

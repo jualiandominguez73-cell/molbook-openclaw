@@ -2,14 +2,7 @@
 name: market-watch
 description: "Live financial markets: crypto prices, forex rates, stock market data, and financial news from worldwide exchanges."
 homepage: https://github.com/openclaw/openclaw
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📈",
-        "requires": { "bins": ["curl", "jq"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "📈", "requires": { "bins": ["curl", "jq"] } } }
 ---
 
 # 📈 Market Watch
@@ -18,12 +11,12 @@ Live financial market data for crypto, forex, and stocks. All APIs are **FREE** 
 
 ## Quick Reference
 
-| Market | Data Available |
-|--------|----------------|
+| Market    | Data Available                     |
+| --------- | ---------------------------------- |
 | 🪙 Crypto | Bitcoin, Ethereum, all major coins |
-| 💱 Forex | USD, EUR, GBP, INR, all currencies |
-| 📊 Stocks | US, India, Europe, Asia markets |
-| 📰 News | Financial news & market updates |
+| 💱 Forex  | USD, EUR, GBP, INR, all currencies |
+| 📊 Stocks | US, India, Europe, Asia markets    |
+| 📰 News   | Financial news & market updates    |
 
 ---
 
@@ -206,35 +199,38 @@ fi
 ## Popular Symbol Reference
 
 ### Crypto (CoinGecko IDs)
-| Coin | ID |
-|------|-----|
-| Bitcoin | `bitcoin` |
-| Ethereum | `ethereum` |
-| BNB | `binancecoin` |
-| XRP | `ripple` |
-| Cardano | `cardano` |
-| Solana | `solana` |
-| Dogecoin | `dogecoin` |
+
+| Coin     | ID            |
+| -------- | ------------- |
+| Bitcoin  | `bitcoin`     |
+| Ethereum | `ethereum`    |
+| BNB      | `binancecoin` |
+| XRP      | `ripple`      |
+| Cardano  | `cardano`     |
+| Solana   | `solana`      |
+| Dogecoin | `dogecoin`    |
 
 ### Forex Codes
-| Currency | Code |
-|----------|------|
-| US Dollar | `USD` |
-| Euro | `EUR` |
+
+| Currency      | Code  |
+| ------------- | ----- |
+| US Dollar     | `USD` |
+| Euro          | `EUR` |
 | British Pound | `GBP` |
-| Indian Rupee | `INR` |
-| Japanese Yen | `JPY` |
-| Chinese Yuan | `CNY` |
+| Indian Rupee  | `INR` |
+| Japanese Yen  | `JPY` |
+| Chinese Yuan  | `CNY` |
 
 ### Stock Symbols
-| Company | Symbol |
-|---------|--------|
-| Apple | `AAPL` |
-| Microsoft | `MSFT` |
-| Google | `GOOGL` |
-| Tesla | `TSLA` |
+
+| Company          | Symbol        |
+| ---------------- | ------------- |
+| Apple            | `AAPL`        |
+| Microsoft        | `MSFT`        |
+| Google           | `GOOGL`       |
+| Tesla            | `TSLA`        |
 | Reliance (India) | `RELIANCE.NS` |
-| TCS (India) | `TCS.NS` |
+| TCS (India)      | `TCS.NS`      |
 
 ---
 
