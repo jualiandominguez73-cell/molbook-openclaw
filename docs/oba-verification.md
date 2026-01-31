@@ -1,6 +1,6 @@
 # OpenBotAuth (OBA) Publisher Verification
 
-OpenClaw supports optional publisher identity verification for plugins and skills using the [OpenBotAuth](https://github.com/openbotauth/openbotauth) specification. Publishers can cryptographically sign their plugin manifests and skill metadata, allowing users to verify authenticity.
+OpenClaw supports optional publisher identity verification for plugins and skills using the [OpenBotAuth](https://github.com/OpenBotAuth/openbotauth) specification. Publishers can cryptographically sign their plugin manifests and skill metadata, allowing users to verify authenticity.
 
 ## How It Works
 
