@@ -94,7 +94,7 @@ export type TtsConfig = {
   /** Optional path for local TTS user preferences JSON. */
   prefsPath?: string;
   /** Hard cap for text sent to TTS (chars). */
-  maxTextLength: number;
+  maxTextLength?: number;
   /** API request timeout (ms). */
   timeoutMs?: number;
 };

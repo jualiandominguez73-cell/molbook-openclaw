@@ -671,8 +671,13 @@ function parseTtsDirectives(
             if (!policy.allowProvider) {
               break;
             }
-            if (rawValue === "openai" || rawValue === "elevenlabs" || rawValue === "edge") {
-              overrides.provider = rawValue;
+            if (
+              rawValue === "openai" ||
+              rawValue === "elevenlabs" ||
+              rawValue === "deepdub" ||
+              rawValue === "edge"
+            ) {
+              overrides.provider = rawValue as TtsProvider;
             } else {
               warnings.push(`unsupported provider "${rawValue}"`);
             }
