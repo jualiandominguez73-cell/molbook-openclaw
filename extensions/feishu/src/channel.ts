@@ -66,14 +66,14 @@ async function resolveFeishuClient(cfg: OpenClawConfig, accountId?: string | nul
 function resolveFileType(
   contentType?: string,
 ): "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream" {
-  if (!contentType) return "stream";
+  if (!contentType) { return "stream"; }
   const lower = contentType.toLowerCase();
-  if (lower.includes("pdf")) return "pdf";
-  if (lower.includes("word")) return "doc";
-  if (lower.includes("excel") || lower.includes("spreadsheet")) return "xls";
-  if (lower.includes("powerpoint") || lower.includes("presentation")) return "ppt";
-  if (lower.startsWith("video/")) return "mp4";
-  if (lower.startsWith("audio/")) return "opus";
+  if (lower.includes("pdf")) { return "pdf"; }
+  if (lower.includes("word")) { return "doc"; }
+  if (lower.includes("excel") || lower.includes("spreadsheet")) { return "xls"; }
+  if (lower.includes("powerpoint") || lower.includes("presentation")) { return "ppt"; }
+  if (lower.startsWith("video/")) { return "mp4"; }
+  if (lower.startsWith("audio/")) { return "opus"; }
   return "stream";
 }
 
