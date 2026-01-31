@@ -204,7 +204,9 @@ export async function monitorFeishuProvider(
 
   const probeAll = async () => {
     for (const [accountId, account] of resolvedAccounts) {
-      if (!account.enabled) {continue;}
+      if (!account.enabled) {
+        continue;
+      }
 
       try {
         const result = await probeFeishuBot(account);

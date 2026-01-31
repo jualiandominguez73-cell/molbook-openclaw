@@ -43,7 +43,9 @@ export const feishuMessageActions: ChannelMessageActionAdapter = {
    */
   listActions: ({ cfg }) => {
     const accounts = listEnabledFeishuAccounts(cfg);
-    if (accounts.length === 0) {return [];}
+    if (accounts.length === 0) {
+      return [];
+    }
 
     const gate = createActionGate(cfg.channels?.feishu?.actions);
     const actions = new Set<ChannelMessageActionName>(["send"]);
@@ -60,7 +62,9 @@ export const feishuMessageActions: ChannelMessageActionAdapter = {
    */
   supportsButtons: ({ cfg }) => {
     const accounts = listEnabledFeishuAccounts(cfg);
-    if (accounts.length === 0) {return false;}
+    if (accounts.length === 0) {
+      return false;
+    }
     // Feishu supports card buttons
     const gate = createActionGate(cfg.channels?.feishu?.actions);
     return gate("cards", true);
@@ -71,9 +75,13 @@ export const feishuMessageActions: ChannelMessageActionAdapter = {
    */
   extractToolSend: ({ args }) => {
     const action = typeof args.action === "string" ? args.action.trim() : "";
-    if (action !== "sendMessage") {return null;}
+    if (action !== "sendMessage") {
+      return null;
+    }
     const to = typeof args.to === "string" ? args.to : undefined;
-    if (!to) {return null;}
+    if (!to) {
+      return null;
+    }
     const accountId = typeof args.accountId === "string" ? args.accountId.trim() : undefined;
     return { to, accountId };
   },
