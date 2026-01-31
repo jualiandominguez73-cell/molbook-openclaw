@@ -50,7 +50,9 @@ function getCacheKey(latitude: number, longitude: number): string {
 function getCached(latitude: number, longitude: number): GeocodingResult | null {
   const key = getCacheKey(latitude, longitude);
   const entry = cache.get(key);
-  if (!entry) return null;
+  if (!entry) {
+    return null;
+  }
   if (Date.now() > entry.expiresAt) {
     cache.delete(key);
     return null;
@@ -73,7 +75,9 @@ function setCache(
   if (cache.size > 1000) {
     const now = Date.now();
     for (const [k, v] of cache) {
-      if (now > v.expiresAt) cache.delete(k);
+      if (now > v.expiresAt) {
+        cache.delete(k);
+      }
     }
   }
 }
