@@ -6,6 +6,8 @@ import { resolveSessionAgentId } from "../agent-scope.js";
 import { optionalStringEnum, stringEnum } from "../schema/typebox.js";
 import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
 import { callGatewayTool, type GatewayCallOptions } from "./gateway.js";
+import { getInProcessServices } from "../../gateway/in-process.js";
+import { readCronRunLogEntries, resolveCronRunLogPath } from "../../cron/run-log.js";
 import { resolveInternalSessionKey, resolveMainSessionAlias } from "./sessions-helpers.js";
 
 // NOTE: We use Type.Object({}, { additionalProperties: true }) for job/patch
@@ -153,6 +155,17 @@ async function buildReminderContextLines(params: {
   }
 }
 
+/**
+ * Check if we should use the in-process fast path.
+ * Only when no custom gateway URL/token is provided (i.e., targeting our own gateway).
+ */
+function shouldUseInProcess(gatewayOpts: GatewayCallOptions): boolean {
+  if (gatewayOpts.gatewayUrl || gatewayOpts.gatewayToken) {
+    return false; // Targeting a remote gateway — use WebSocket.
+  }
+  return !!getInProcessServices();
+}
+
 export function createCronTool(opts?: CronToolOptions): AnyAgentTool {
   return {
     label: "Cron",
@@ -212,14 +225,24 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
       };
 
       switch (action) {
-        case "status":
+        case "status": {
+          const ipc = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipc) {
+            return jsonResult(await ipc.cron.status());
+          }
           return jsonResult(await callGatewayTool("cron.status", gatewayOpts, {}));
-        case "list":
+        }
+        case "list": {
+          const ipc = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipc) {
+            return jsonResult(await ipc.cron.list({ includeDisabled: Boolean(params.includeDisabled) }));
+          }
           return jsonResult(
             await callGatewayTool("cron.list", gatewayOpts, {
               includeDisabled: Boolean(params.includeDisabled),
             }),
           );
+        }
         case "add": {
           if (!params.job || typeof params.job !== "object") {
             throw new Error("job required");
@@ -257,6 +280,11 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
               }
             }
           }
+          const ipcAdd = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipcAdd) {
+            const result = await ipcAdd.cron.add(job as any);
+            return jsonResult(result);
+          }
           return jsonResult(await callGatewayTool("cron.add", gatewayOpts, job));
         }
         case "update": {
@@ -268,6 +296,11 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
             throw new Error("patch required");
           }
           const patch = normalizeCronJobPatch(params.patch) ?? params.patch;
+          const ipcUpdate = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipcUpdate) {
+            const result = await ipcUpdate.cron.update(id, patch as any);
+            return jsonResult(result);
+          }
           return jsonResult(
             await callGatewayTool("cron.update", gatewayOpts, {
               id,
@@ -280,6 +313,11 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
           if (!id) {
             throw new Error("jobId required (id accepted for backward compatibility)");
           }
+          const ipcRemove = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipcRemove) {
+            const result = await ipcRemove.cron.remove(id);
+            return jsonResult(result);
+          }
           return jsonResult(await callGatewayTool("cron.remove", gatewayOpts, { id }));
         }
         case "run": {
@@ -287,12 +325,22 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
           if (!id) {
             throw new Error("jobId required (id accepted for backward compatibility)");
           }
+          const ipcRun = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipcRun) {
+            const result = await ipcRun.cron.run(id);
+            return jsonResult(result);
+          }
           return jsonResult(await callGatewayTool("cron.run", gatewayOpts, { id }));
         }
         case "runs": {
           const id = readStringParam(params, "jobId") ?? readStringParam(params, "id");
           if (!id) {
             throw new Error("jobId required (id accepted for backward compatibility)");
+          }
+          const ipcRuns = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipcRuns) {
+            const entries = readCronRunLogEntries(resolveCronRunLogPath(ipcRuns.cronStorePath, id));
+            return jsonResult({ jobId: id, runs: entries });
           }
           return jsonResult(await callGatewayTool("cron.runs", gatewayOpts, { id }));
         }
@@ -302,6 +350,11 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
             params.mode === "now" || params.mode === "next-heartbeat"
               ? params.mode
               : "next-heartbeat";
+          const ipcWake = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
+          if (ipcWake) {
+            const result = ipcWake.cron.wake({ mode, text });
+            return jsonResult(result);
+          }
           return jsonResult(
             await callGatewayTool("wake", gatewayOpts, { mode, text }, { expectFinal: false }),
           );
