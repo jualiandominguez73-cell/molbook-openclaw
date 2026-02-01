@@ -1,16 +1,25 @@
-# OpenClaw + Nebius (via LiteLLM) — Zero‑BS Setup
+---
+summary: "Run Nebius models (GLM-4.7, Qwen3) via LiteLLM proxy"
+read_when:
+  - You want to use Nebius Token Factory models with OpenClaw
+  - You need an OpenAI-compatible proxy for Nebius API
+  - You want to avoid proprietary API rate limits and costs
+title: "LiteLLM + Nebius"
+---
 
-This is the fastest, least painful way to run Nebius models (e.g. GLM‑4.7) inside OpenClaw using LiteLLM as the OpenAI‑compatible proxy.
+# OpenClaw + Nebius (via LiteLLM) - Zero-BS Setup
+
+This is the fastest, least painful way to run Nebius models (e.g. GLM-4.7) inside OpenClaw using LiteLLM as the OpenAI-compatible proxy.
 
 ---
 
 ## Architecture (don't overthink it)
 
 ```
-OpenClaw → LiteLLM (localhost:4000) → Nebius API
+OpenClaw -> LiteLLM (localhost:4000) -> Nebius API
 ```
 
-OpenClaw only ever talks OpenAI‑style JSON. LiteLLM translates that to Nebius.
+OpenClaw only ever talks OpenAI-style JSON. LiteLLM translates that to Nebius.
 
 ---
 
@@ -51,7 +60,7 @@ You must see: `{"id":"glm-4.7"}`
 
 ## 2) Configure OpenClaw to use LiteLLM
 
-### /root/.openclaw/openclaw.json
+### ~/.openclaw/openclaw.json
 ```json
 {
   "agents": {
@@ -70,7 +79,7 @@ You must see: `{"id":"glm-4.7"}`
         "models": [
           {
             "id": "glm-4.7",
-            "name": "GLM‑4.7 (Nebius via LiteLLM)",
+            "name": "GLM-4.7 (Nebius via LiteLLM)",
             "contextWindow": 128000,
             "maxTokens": 8192
           }
@@ -83,7 +92,9 @@ You must see: `{"id":"glm-4.7"}`
 
 ### Validate JSON
 ```bash
-python3 -m json.tool /root/.openclaw/openclaw.json >/dev/null && echo OK
+jq . ~/.openclaw/openclaw.json >/dev/null && echo OK
+# or if jq is not available, try:
+node -e 'require("fs").readFileSync(process.argv[1], "utf8"); console.log("OK")' ~/.openclaw/openclaw.json
 ```
 
 ---
@@ -117,25 +128,25 @@ If this works, Telegram/UI will work.
 
 ## 5) Common failure causes (read once)
 
-### ❌ content: null
-**Cause:** streaming / reasoning-only responses  
+### content: null
+**Cause:** streaming / reasoning-only responses
 **Fix:** `disable_streaming: true`
 
-### ❌ UnsupportedParamsError: store
-**Cause:** OpenAI-only params  
+### UnsupportedParamsError: store
+**Cause:** OpenAI-only params
 **Fix:** `drop_params: true`
 
-### ❌ Model shows but doesn't reply
-**Cause:** gateway not restarted  
+### Model shows but doesn't reply
+**Cause:** gateway not restarted
 **Fix:** `systemctl restart openclaw-gateway`
 
-### ❌ JSON "Extra data" error
-**Cause:** stray `}` or trailing commas  
-**Fix:** `python3 -m json.tool openclaw.json`
+### JSON "Extra data" error
+**Cause:** stray `}` or trailing commas
+**Fix:** `jq . openclaw.json` or `node -e 'JSON.parse(require("fs").readFileSync("openclaw.json", "utf8"))'`
 
 ---
 
-## 6) Known‑good test curl
+## 6) Known-good test curl
 
 ```bash
 curl -s http://127.0.0.1:4000/v1/chat/completions \
@@ -159,4 +170,4 @@ curl -s http://127.0.0.1:4000/v1/chat/completions \
 * Restart both LiteLLM and OpenClaw gateway
 * Validate JSON every time
 
-If it passes curl → it will work in OpenClaw.
+If it passes curl -> it will work in OpenClaw.
