@@ -8,7 +8,7 @@ The Smart Model Routing Protocol (SMRP) is a strategy designed to optimize AI Ag
 
 ### Tier 1: Edge Gateway (Flash)
 
-- **Target Models**: `gemini-3-flash`, `gpt-4o-mini`, `haiku`
+- **Example Models**: `Gemini 3 Flash`, `GPT-4o mini`, `Claude 3.5 Haiku`
 - **Use Cases**:
   - Real-time chat interaction
   - Simple file CRUD operations
@@ -18,7 +18,7 @@ The Smart Model Routing Protocol (SMRP) is a strategy designed to optimize AI Ag
 
 ### Tier 2: Logic Core (Pro)
 
-- **Target Models**: `gemini-3-pro`, `gpt-4o`, `sonnet`
+- **Example Models**: `Gemini 3 Pro`, `GPT-4o`, `Claude 3.5 Sonnet`
 - **Use Cases**:
   - Complex coding and multi-file debugging
   - Planning and orchestration of sub-tasks
@@ -27,7 +27,7 @@ The Smart Model Routing Protocol (SMRP) is a strategy designed to optimize AI Ag
 
 ### Tier 3: Creative & Audit (Opus)
 
-- **Target Models**: `claude-opus-4-5`, `o1`
+- **Example Models**: `Claude 4.5 Opus`, `OpenAI o1`
 - **Use Cases**:
   - High-stakes creative writing (e.g., long-form articles)
   - Security audits and architectural reviews
