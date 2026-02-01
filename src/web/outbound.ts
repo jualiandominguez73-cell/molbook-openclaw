@@ -44,11 +44,13 @@ export async function sendMessageWhatsApp(
     const jid = toWhatsappJid(to);
     let mediaBuffer: Buffer | undefined;
     let mediaType: string | undefined;
+    let mediaFileName: string | undefined;
     if (options.mediaUrl) {
       const media = await loadWebMedia(options.mediaUrl);
       const caption = text || undefined;
       mediaBuffer = media.buffer;
       mediaType = media.contentType;
+      mediaFileName = media.fileName;
       if (media.kind === "audio") {
         // WhatsApp expects explicit opus codec for PTT voice notes.
         mediaType =
@@ -69,9 +71,10 @@ export async function sendMessageWhatsApp(
     const hasExplicitAccountId = Boolean(options.accountId?.trim());
     const accountId = hasExplicitAccountId ? resolvedAccountId : undefined;
     const sendOptions: ActiveWebSendOptions | undefined =
-      options.gifPlayback || accountId
+      options.gifPlayback || accountId || mediaFileName
         ? {
             ...(options.gifPlayback ? { gifPlayback: true } : {}),
+            ...(mediaFileName ? { fileName: mediaFileName } : {}),
             accountId,
           }
         : undefined;
