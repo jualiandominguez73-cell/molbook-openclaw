@@ -14,10 +14,23 @@ function extractToolCallsFromAssistant(
   const toolCalls: ToolCallLike[] = [];
   for (const block of content) {
     if (!block || typeof block !== "object") continue;
-    const rec = block as { type?: unknown; id?: unknown; name?: unknown };
+    const rec = block as {
+      type?: unknown;
+      id?: unknown;
+      name?: unknown;
+      arguments?: unknown;
+      partialJson?: unknown;
+    };
     if (typeof rec.id !== "string" || !rec.id) continue;
 
     if (rec.type === "toolCall" || rec.type === "toolUse" || rec.type === "functionCall") {
+      // Skip incomplete tool calls (have partialJson but no arguments)
+      // These occur when streaming is aborted mid-tool-call and would cause
+      // API validation errors if we create synthetic results for them
+      const hasPartialJson = typeof rec.partialJson === "string";
+      const hasArguments = rec.arguments !== undefined;
+      if (hasPartialJson && !hasArguments) continue;
+
       toolCalls.push({
         id: rec.id,
         name: typeof rec.name === "string" ? rec.name : undefined,
