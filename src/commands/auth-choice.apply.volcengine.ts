@@ -23,9 +23,6 @@ export async function applyAuthChoiceVolcengine(
 
   // 1. Get API Key
   let apiKey = resolveEnvApiKey("volcengine")?.apiKey;
-  if (process.env.VOLCENGINE_API_KEY) {
-    apiKey = process.env.VOLCENGINE_API_KEY;
-  }
 
   if (params.opts?.tokenProvider === "volcengine" && params.opts?.token) {
     apiKey = params.opts.token;
