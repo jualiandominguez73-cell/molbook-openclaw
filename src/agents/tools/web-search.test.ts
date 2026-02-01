@@ -78,9 +78,7 @@ describe("web_search brave baseUrl resolution", () => {
   });
 
   it("uses config baseUrl when set", () => {
-    expect(resolveBraveBaseUrl({ baseUrl: "http://localhost:3015" })).toBe(
-      "http://localhost:3015",
-    );
+    expect(resolveBraveBaseUrl({ baseUrl: "http://localhost:3015" })).toBe("http://localhost:3015");
   });
 
   it("strips trailing slashes from config baseUrl", () => {
