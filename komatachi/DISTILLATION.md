@@ -164,6 +164,24 @@ Graceful degradation hides problems. When something goes wrong, it should be obv
 - Default values that hide missing data
 - "Best effort" operations that sometimes work
 
+### 8. Respect Layer Boundaries
+
+Each component should do one thing and trust other layers to do theirs. When a component takes on responsibilities that belong elsewhere, it becomes entangled with constraints it shouldn't know about.
+
+**The discipline**:
+- A summarizer summarizes. It doesn't chunk inputs to fit context limits—that's the caller's job.
+- A storage layer stores. It doesn't retry on network failure—that's the caller's job.
+- A parser parses. It doesn't validate business rules—that's another layer's job.
+- Define clear inputs and outputs. Reject invalid inputs; don't silently fix them.
+
+**Indicators of violated boundaries**:
+- Components that "helpfully" handle constraints from other layers
+- Defensive code that compensates for callers who might pass bad data
+- Functions that do setup/teardown for resources they don't own
+- Logic that exists because "the caller might forget to..."
+
+**The insight**: When you find a component handling edge cases that seem unrelated to its core purpose, ask: "Whose responsibility is this really?" Often the answer is: not this component's. Push the responsibility to where it belongs, and let this component fail if given invalid input.
+
 ---
 
 ## Applying Distillation
