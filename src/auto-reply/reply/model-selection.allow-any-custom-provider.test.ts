@@ -31,7 +31,7 @@ describe("createModelSelectionState: allowAny with custom providers (#2144)", ()
       providers: {
         deepseek: {
           baseUrl: "https://api.deepseek.com/v1",
-          apiKey: "sk-test",
+          apiKey: "FAKE",
           api: "openai-completions",
           models: [{ id: "deepseek-chat", name: "DeepSeek Chat" }],
         },
