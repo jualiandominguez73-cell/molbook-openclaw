@@ -1,315 +1,236 @@
-# Distillation: Simplifying Core Components
+# Distillation
 
-## Overview
+## What is Distillation?
 
-This document defines what it means to "distill" the four core functional areas into a simpler, more elegant architecture. The goal is to maintain functional equivalence while dramatically reducing complexity, improving auditability, and making the system more maintainable.
+Distillation is the process of reducing a system to its essential form while preserving its core functionality. Like distilling a spirit, we remove impurities and concentrate what matters—leaving behind something purer, more potent, and more valuable.
 
-### Current State
+Distillation is **not**:
+- Rewriting for the sake of rewriting
+- Removing features users depend on
+- Premature optimization
+- Making code "clever" or terse
 
-| Component | LOC | Files | Complexity |
-|-----------|-----|-------|------------|
-| Context Management | 2,630 | 15 | HIGH |
-| Long-term Memory & Search | 5,713 | 25 | HIGH |
-| Agent Alignment | 4,261 | 18 | HIGH |
-| Session Management | 7,319 | 35+ | HIGH |
-| **Total** | **~20,000** | **93+** | **ALL HIGH** |
-
-### Target State
-
-A distilled architecture should aim for:
-- **~5,000-7,000 LOC total** (65-75% reduction)
-- **~20-30 files** (70% reduction)
-- **LOW-MEDIUM complexity** per component
+Distillation **is**:
+- Identifying what a system truly does vs. what it accumulated
+- Removing accidental complexity while preserving essential complexity
+- Making behavior understandable, predictable, and auditable
+- Creating something a new developer can understand in hours, not days
 
 ---
 
-## Distillation Principles
+## The Distillation Test
 
-### 1. Essence Over Accretion
+A component is ready for distillation when you can answer "yes" to:
 
-**Problem**: Components have grown through accretion—features added incrementally without reconsidering the whole. Each addition solved an immediate problem but increased overall complexity.
+1. **Accretion**: Has this component grown through incremental additions without holistic redesign?
+2. **Opacity**: Is it hard to explain what this component does in one paragraph?
+3. **Fragility**: Do changes in one place cause unexpected breakage elsewhere?
+4. **Over-generalization**: Does it handle cases that never actually occur?
+5. **Configuration sprawl**: Are there options no one understands or uses?
 
-**Distillation**: Identify the essential capabilities vs. accumulated cruft. Ask: "If we were building this today with full knowledge, what would we build?"
+A distillation is successful when:
 
-### 2. Explicit Over Implicit
-
-**Problem**: Hidden state in WeakMaps, caches with TTLs, file locks with timeouts, magic configuration merging. Behavior becomes unpredictable and hard to debug.
-
-**Distillation**: Make all data flow explicit. No hidden state. Dependencies passed as parameters. State transitions logged and traceable.
-
-### 3. Composition Over Configuration
-
-**Problem**: Deep nested configuration objects with dozens of options. Users don't know what to configure; developers don't know what combinations to test.
-
-**Distillation**: Good defaults that work for 90% of cases. Composition of simple behaviors rather than configuration of complex ones.
-
-### 4. Single Responsibility, Clear Boundaries
-
-**Problem**: Components reach into each other. Session management touches 35+ files across 11 directories. Context management is entangled with session state, agent lifecycle, and error handling.
-
-**Distillation**: Each component owns its domain completely. Clear interfaces between components. No reaching across boundaries for internal state.
-
-### 5. Auditable by Design
-
-**Problem**: Hard to answer "why did the agent do X?" without deep debugging. Multiple interacting policies, fallbacks, and edge case handlers obscure causality.
-
-**Distillation**: Every decision logged with reasoning. State machines with named states. Behavior traceable from input to output.
+1. **Functional equivalence**: All essential behaviors are preserved
+2. **Reduced surface area**: Fewer files, fewer lines, fewer concepts
+3. **Increased clarity**: A new developer can understand it quickly
+4. **Improved testability**: Fewer tests needed for equivalent confidence
+5. **Enhanced auditability**: Behavior can be traced from input to output
 
 ---
 
-## Component Distillation Plans
+## Core Principles
 
-### Context Management → `ContextWindow`
+### 1. Preserve the Essential, Remove the Accidental
 
-**Current Complexity Sources**:
-- Multiple subsystems (guards, compaction, pruning, history limiting)
-- WeakMap-based session registries
-- Complex multi-stage summarization with fallbacks
-- Provider-specific error detection patterns
+Every system has two types of complexity:
 
-**Distilled Design**:
+- **Essential complexity**: Inherent to the problem being solved. A session manager must track conversations. A memory store must persist and retrieve data. This cannot be removed.
 
-```
-ContextWindow {
-  maxTokens: number
-  messages: Message[]
+- **Accidental complexity**: Artifacts of how the solution evolved. Multiple provider fallbacks added when one failed. Configuration options added for edge cases. Defensive code for scenarios that never materialized.
 
-  // Core operations
-  add(message: Message): void
-  compact(): Message[]  // Returns summarized history
+**The discipline**: For every piece of code, ask: "Is this essential to what users need, or is it an artifact of how we got here?"
 
-  // Single source of truth for token counting
-  tokenCount(): number
-  isNearLimit(): boolean
-}
-```
+**Indicators of accidental complexity**:
+- Code paths that logs show are never executed
+- Configuration options with only one value ever used
+- Abstractions with a single implementation
+- Error handling for errors that cannot occur
+- Compatibility code for deprecated features
 
-**Key Simplifications**:
-1. **One compaction strategy**: Single-pass summarization with clear truncation rules
-2. **No pruning subsystem**: Messages are either kept or compacted, not partially trimmed
-3. **No provider-specific error handling**: Let errors propagate; handle at call site
-4. **Stateless operations**: No WeakMap registries; state lives in ContextWindow instance
+### 2. Make State Explicit and Localized
 
-**Estimated LOC**: 300-400 (vs. 2,630 current)
+Hidden state is the enemy of understanding. When state is scattered across WeakMaps, closures, module-level variables, and caches, behavior becomes unpredictable.
 
----
+**The discipline**: State should be:
+- **Visible**: Defined in one place, not hidden in closures or registries
+- **Owned**: One component owns each piece of state
+- **Passed**: Dependencies injected, not reached for
+- **Logged**: State transitions recorded for debugging
 
-### Long-term Memory & Search → `MemoryStore`
+**Indicators of hidden state**:
+- WeakMap or Map used as a "registry"
+- Module-level `let` variables
+- Caches without clear invalidation rules
+- "Manager" classes that hold state for other components
+- Singletons accessed globally
 
-**Current Complexity Sources**:
-- Three embedding providers with fallback logic
-- Batch APIs with polling and timeouts
-- Hybrid search (vector + BM25)
-- File watching with debouncing
-- SQLite with vector extension
-- 2,200+ line manager class
+### 3. Prefer Depth over Breadth
 
-**Distilled Design**:
+A system with 10 concepts each 100 lines deep is easier to understand than one with 100 concepts each 10 lines deep. Breadth creates surface area; depth creates understanding.
 
-```
-MemoryStore {
-  // Simple key-value with semantic search
-  store(key: string, content: string, metadata?: object): void
-  search(query: string, limit?: number): SearchResult[]
-  get(key: string): string | null
-  delete(key: string): void
+**The discipline**:
+- Fewer files with complete implementations
+- Fewer abstractions with clear purposes
+- Fewer options with good defaults
+- Fewer extension points with documented contracts
 
-  // Bulk operations
-  index(files: string[]): void
-  clear(): void
-}
-```
+**Indicators of excessive breadth**:
+- Many small files that each do one tiny thing
+- Abstraction layers that just pass through
+- Configuration objects with dozens of optional fields
+- Plugin systems for functionality used once
 
-**Key Simplifications**:
-1. **One embedding provider**: Pick the best one (likely OpenAI), remove fallback complexity
-2. **No batch API complexity**: Simple sequential embedding, rely on provider's rate limiting
-3. **Vector-only search**: Drop BM25 hybrid; modern embeddings are good enough
-4. **No file watching**: Explicit `index()` calls; user controls when to re-index
-5. **SQLite without extensions**: Use simple JSON storage or basic SQLite; vector math in JS
+### 4. Design for Auditability
 
-**Estimated LOC**: 500-700 (vs. 5,713 current)
+A system is auditable when you can answer "why did it do X?" without a debugger. Every decision should be traceable from input to output.
 
----
+**The discipline**:
+- Log decisions, not just actions
+- Use explicit state machines over implicit transitions
+- Name states and transitions clearly
+- Make conditionals self-documenting
 
-### Agent Alignment → `AgentConfig`
+**Indicators of poor auditability**:
+- Debugging requires adding console.log statements
+- Behavior depends on timing or order of operations
+- Multiple code paths that could have been taken
+- "It works but I don't know why"
 
-**Current Complexity Sources**:
-- 20+ system prompt sections with conditional logic
-- 14 plugin hooks with priority ordering
-- Multiple tool policy layers (profiles, allow/deny, plugins)
-- 7+ workspace bootstrap files
-- Prompt injection detection
+### 5. Embrace Constraints
 
-**Distilled Design**:
+Flexibility is expensive. Every option doubles the test matrix. Every extension point is a maintenance burden. Every configuration toggle is a decision pushed to the user.
 
-```
-AgentConfig {
-  // Identity
-  name: string
-  persona: string  // Single SOUL.md content
+**The discipline**:
+- Make decisions instead of adding options
+- Pick one way and commit to it
+- Say "no" to features that add complexity without proportional value
+- Trust that constraints clarify, not limit
 
-  // Capabilities
-  tools: string[]  // Explicit list, no profiles/expansion
+**Indicators of over-flexibility**:
+- Multiple implementations of the same concept
+- Provider abstraction layers with fallback logic
+- Configuration that users copy-paste without understanding
+- Features that exist "just in case"
 
-  // Behavior
-  systemPrompt(): string  // Deterministic, no conditionals
-}
-```
+### 6. Interfaces Over Implementations
 
-**Key Simplifications**:
-1. **One bootstrap file**: Merge AGENTS.md, SOUL.md, etc. into single `agent.md`
-2. **No plugin hooks for alignment**: Alignment is static config, not runtime hooks
-3. **Explicit tool list**: No profiles, no expansion, no groups—list the tools
-4. **Template-based prompts**: Simple string interpolation, no conditional sections
-5. **No prompt injection detection**: Trust boundaries at input, not in prompt construction
+The interface is the contract; the implementation is a detail. A well-designed interface hides complexity; a poor one leaks it.
 
-**Estimated LOC**: 400-500 (vs. 4,261 current)
+**The discipline**:
+- Define interfaces before implementations
+- Keep interfaces minimal—every method is a promise
+- Hide implementation choices behind stable interfaces
+- Allow swapping implementations without changing callers
 
----
+**Indicators of poor interfaces**:
+- Callers need to know implementation details
+- Interface changes ripple through the codebase
+- Methods that expose internal data structures
+- "Convenience" methods that duplicate functionality
 
-### Session Management → `Session`
+### 7. Fail Clearly, Not Gracefully
 
-**Current Complexity Sources**:
-- 50+ fields per session entry
-- File locking with stale detection
-- Complex key resolution (agent, group, thread, peer)
-- Transcript repair for tool use/result pairing
-- Multiple reset policies
-- Cross-agent access control
+Graceful degradation hides problems. When something goes wrong, it should be obvious. Silent failures and fallbacks mask issues until they become crises.
 
-**Distilled Design**:
+**The discipline**:
+- Fail fast with clear error messages
+- Don't catch errors you can't handle meaningfully
+- Let problems surface rather than papering over them
+- Prefer crashes to silent corruption
 
-```
-Session {
-  id: string
-  agentId: string
-  messages: Message[]
-  createdAt: Date
-  lastActiveAt: Date
-
-  // Core operations
-  append(message: Message): void
-  reset(): void
-
-  // Persistence
-  save(): void
-  static load(id: string): Session | null
-}
-```
-
-**Key Simplifications**:
-1. **10 fields max**: id, agentId, messages, timestamps, model, maybe 5 more
-2. **No file locking**: Single-writer assumption; use atomic writes
-3. **Simple key scheme**: `{agentId}:{recipientId}` only
-4. **No transcript repair**: Well-formed messages only; reject malformed on write
-5. **One reset policy**: Time-based only, no per-channel complexity
-6. **No cross-agent access**: Each agent owns its sessions exclusively
-
-**Estimated LOC**: 400-600 (vs. 7,319 current)
+**Indicators of over-graceful failure**:
+- Fallback logic that masks real problems
+- Empty catch blocks or catches that just log
+- Default values that hide missing data
+- "Best effort" operations that sometimes work
 
 ---
 
-## What We Preserve
+## Applying Distillation
 
-Distillation is not about removing functionality. These capabilities must remain:
+### Before Starting
 
-### Context Management
-- Token limit enforcement
-- Automatic summarization when limits approached
-- Conversation continuity across compactions
+1. **Understand the current system**: Read all the code. Trace the key flows. Identify what it actually does vs. what it appears to do.
 
-### Long-term Memory
-- Semantic search over stored content
-- Persistence across sessions
-- Agent ability to store and recall information
+2. **Enumerate the essential behaviors**: What must this component do? Write it as a list of user-facing capabilities.
 
-### Agent Alignment
-- System prompt defining agent behavior
-- Tool access control
-- User-customizable persona
+3. **Identify the accidental complexity**: What exists because of history, not necessity?
 
-### Session Management
-- Conversation persistence
-- Session isolation between users
-- Session reset capability
+4. **Define the target interface**: What would the minimal interface look like that still provides the essential behaviors?
 
----
+### During Distillation
 
-## What We Remove
+1. **Start from the interface, not the implementation**: Define what the component should do before deciding how.
 
-### Unnecessary Abstractions
-- Multiple embedding providers with fallback
-- Tool policy profiles and expansion
-- Plugin hook system for core behavior
-- Hybrid search algorithms
+2. **Build the new alongside the old**: Don't rewrite in place. Create the distilled version separately so you can compare.
 
-### Hidden Complexity
-- WeakMap session registries
-- File watching with debouncing
-- Batch APIs with polling
-- Multi-layer caching with TTLs
+3. **Test behavioral equivalence**: Write tests that verify the distilled version produces the same results for the essential behaviors.
 
-### Over-Configuration
-- 50+ session fields
-- 20+ prompt sections
-- Deep nested config objects
-- Per-channel/per-type policies
+4. **Accept that some things will change**: Edge cases that were handled may not be. Features that were possible may not be. This is intentional.
 
-### Defensive Code
-- Transcript repair for malformed data
-- Provider-specific error detection
-- Lock timeout and stale detection
-- Graceful degradation paths
+### After Distillation
+
+1. **Verify with real usage**: Run the distilled version in real scenarios. Watch for surprises.
+
+2. **Document the decisions**: Record what was removed and why. Future maintainers will ask.
+
+3. **Delete the old code**: Don't keep it "just in case." Version control exists. Dead code is a maintenance burden.
 
 ---
 
-## Migration Strategy
+## What Distillation is Not
 
-### Phase 1: Interface Definition
-Define the distilled interfaces without implementation. Validate they cover all essential use cases.
+### Not Refactoring
 
-### Phase 2: Parallel Implementation
-Build distilled components alongside existing ones. Both run simultaneously.
+Refactoring improves code structure without changing behavior. Distillation may change behavior—removing edge case handling, eliminating configuration options, dropping support for unused features.
 
-### Phase 3: Verification
-Comprehensive testing that distilled components produce equivalent results for all core scenarios.
+### Not Optimization
 
-### Phase 4: Cutover
-Switch to distilled components. Keep old code available for rollback.
+Optimization makes code faster or more efficient. Distillation makes code simpler and more understandable. Sometimes these align; often they don't.
 
-### Phase 5: Removal
-Delete old implementations once distilled versions are proven stable.
+### Not Minimalism for Its Own Sake
 
----
+The goal is not the smallest possible code. The goal is the simplest code that provides the essential functionality. Sometimes that requires more lines, not fewer.
 
-## Success Metrics
+### Not One-Size-Fits-All
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Total LOC | ~20,000 | ~5,000-7,000 |
-| Total Files | 93+ | 20-30 |
-| Avg Complexity per Component | HIGH | LOW-MEDIUM |
-| Config Options | 100+ | <30 |
-| Time to Understand (new dev) | Days | Hours |
-| Test Count Needed | 600+ | 150-200 |
+Some components are genuinely complex because the problem is complex. Distillation acknowledges essential complexity. The discipline is distinguishing essential from accidental.
 
 ---
 
-## Open Questions
+## Design Decisions
 
-1. **Provider lock-in**: Is committing to one embedding provider acceptable?
-2. **File watching**: Is explicit re-indexing sufficient, or is auto-sync essential?
-3. **Plugin hooks**: Can we remove them entirely, or are some extension points required?
-4. **Cross-agent sessions**: Is this a core feature or can it be removed?
-5. **Hybrid search**: Is vector-only search sufficient for memory recall quality?
+Based on applying these principles to our core components, we have made the following decisions:
+
+1. **Single embedding provider**: One provider behind a clean interface, not multiple with fallback logic
+2. **No plugin hooks for core behavior**: Core behavior is static and predictable, not dynamically modifiable
+3. **Vector-only search**: Modern embeddings are sufficient; hybrid search adds complexity without proportional value
+4. **Cross-agent session access preserved**: This is essential functionality that serves real user needs
 
 ---
 
 ## Next Steps
 
-1. Review this document and challenge assumptions
-2. Identify any distillation that would break critical functionality
-3. Prioritize which component to distill first
-4. Define detailed interface specs for the first component
-5. Build a prototype and validate with real usage
+With these principles established, we can apply them systematically to each component:
+
+1. Context Management
+2. Long-term Memory and Search
+3. Agent Alignment
+4. Session Management
+
+For each component, we will:
+1. Identify the essential behaviors
+2. Catalog the accidental complexity
+3. Define the distilled interface
+4. Plan the implementation
 
