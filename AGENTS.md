@@ -1,4 +1,7 @@
 # Repository Guidelines
+
+> **Note**: `CLAUDE.md` symlinks to this file (`AGENTS.md`). This is the file Claude agents read.
+
 - Repo: https://github.com/openclaw/openclaw
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
 
