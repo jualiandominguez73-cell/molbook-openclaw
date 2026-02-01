@@ -25,7 +25,7 @@ vi.mock("../../agents/model-auth.js", () => ({
 }));
 
 vi.mock("../../agents/models-config.js", () => ({
-  ensureMoltbotModelsJson: vi.fn(async () => {}),
+  ensureOpenClawModelsJson: vi.fn(async () => {}),
 }));
 
 vi.mock("../../agents/agent-scope.js", () => ({
@@ -41,10 +41,10 @@ vi.mock("../../globals.js", () => ({
   logVerbose: vi.fn(),
 }));
 
-import { evaluateChimeIn } from "./chime-in-eval.js";
-import type { ChimeInConfig } from "../../config/types.discord.js";
-import type { MoltbotConfig } from "../../config/config.js";
 import type { HistoryEntry } from "../../auto-reply/reply/history.js";
+import type { ChimeInConfig } from "../../config/types.discord.js";
+import type { OpenClawConfig } from "../../config/types.openclaw.js";
+import { evaluateChimeIn } from "./chime-in-eval.js";
 
 function makeAssistantMessage(text: string) {
   return {
@@ -64,7 +64,7 @@ function makeHistory(entries: Array<{ sender: string; body: string }>): HistoryE
 }
 
 const baseChimeInConfig: ChimeInConfig = { every: 5 };
-const baseCfg = {} as MoltbotConfig;
+const baseCfg = {} as OpenClawConfig;
 
 function callEvaluate(overrides?: { history?: HistoryEntry[]; chimeInConfig?: ChimeInConfig }) {
   return evaluateChimeIn({
