@@ -111,9 +111,17 @@ benchmark_commands() {
 
   for cmd in "${COMMANDS[@]}"; do
     log "Benchmarking: openclaw $cmd"
-    # Use /usr/bin/time to measure elapsed time
-    # Redirect stderr to capture time output, stdout to /dev/null
-    if time_output=$({ /usr/bin/time -f "%e" ./openclaw.mjs $cmd >/dev/null 2>&1; } 2>&1); then
+    # Use Node.js to measure elapsed time cross-platform
+    if time_output=$(node -e "
+      const { execSync } = require('child_process');
+      const start = process.hrtime.bigint();
+      try {
+        execSync('./openclaw.mjs $cmd', { stdio: 'pipe' });
+      } catch (e) {}
+      const end = process.hrtime.bigint();
+      const elapsed = Number(end - start) / 1e9;
+      console.log(elapsed.toFixed(3));
+    " 2>/dev/null); then
       echo "| \`$cmd\` | $time_output |" >>"$output_file"
     else
       warn "Command failed: openclaw $cmd"
