@@ -102,7 +102,7 @@ export async function createThreadDiscord(
 ) {
   const rest = resolveDiscordRest(opts);
   const body: Record<string, unknown> = { name: payload.name };
-  if (payload.autoArchiveMinutes) {
+  if (typeof payload.autoArchiveMinutes === "number") {
     body.auto_archive_duration = payload.autoArchiveMinutes;
   }
 

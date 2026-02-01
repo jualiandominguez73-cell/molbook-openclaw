@@ -282,7 +282,10 @@ export async function handleDiscordMessagingAction(
       const name = readStringParam(params, "name", { required: true });
       const messageId = readStringParam(params, "messageId");
       const message =
-        params.message && typeof params.message === "object" && "content" in params.message
+        params.message &&
+        typeof params.message === "object" &&
+        "content" in params.message &&
+        typeof (params.message as { content: unknown }).content === "string"
           ? (params.message as { content: string })
           : undefined;
       const autoArchiveMinutesRaw = params.autoArchiveMinutes;
