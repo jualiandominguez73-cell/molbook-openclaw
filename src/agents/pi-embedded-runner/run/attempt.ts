@@ -61,6 +61,7 @@ import {
 } from "../../skills.js";
 import { buildSystemPromptParams } from "../../system-prompt-params.js";
 import { buildSystemPromptReport } from "../../system-prompt-report.js";
+import { filterToolsByCategories, detectToolCategoriesFromMessage } from "../../tool-categories.js";
 import { resolveTranscriptPolicy } from "../../transcript-policy.js";
 import { DEFAULT_BOOTSTRAP_FILENAME } from "../../workspace.js";
 import { isAbortError } from "../abort.js";
@@ -241,6 +242,9 @@ export async function runEmbeddedAttempt(
         });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
     logToolSchemasForGoogle({ tools, provider: params.provider });
+
+    // Will be filtered after hooks run (based on effective prompt)
+    let effectiveTools = tools;
 
     const machineName = await getMachineDisplayName();
     const runtimeChannel = normalizeMessageChannel(params.messageChannel ?? params.messageProvider);
@@ -441,7 +445,7 @@ export async function runEmbeddedAttempt(
       });
 
       const { builtInTools, customTools } = splitSdkTools({
-        tools,
+        tools: effectiveTools,
         sandboxEnabled: !!sandbox?.enabled,
       });
 
@@ -729,6 +733,13 @@ export async function runEmbeddedAttempt(
             log.warn(`before_agent_start hook failed: ${String(hookErr)}`);
           }
         }
+
+        // Apply lazy loading: filter tools based on effective user message to reduce token usage
+        // This is done after hooks to account for any context they may have added
+        effectiveTools =
+          effectivePrompt && tools.length > 0
+            ? filterToolsByCategories(tools, detectToolCategoriesFromMessage(effectivePrompt))
+            : tools;
 
         log.debug(`embedded run prompt start: runId=${params.runId} sessionId=${params.sessionId}`);
         cacheTrace?.recordStage("prompt:before", {
