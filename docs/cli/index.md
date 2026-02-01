@@ -351,6 +351,8 @@ Subcommands:
 - `config get <path>`: print a config value (dot/bracket path).
 - `config set <path> <value>`: set a value (JSON5 or raw string).
 - `config unset <path>`: remove a value.
+- `config secrets plan`: list sensitive config values and suggested env vars.
+- `config secrets apply`: replace sensitive config values with `${ENV_VAR}`.
 
 ### `doctor`
 
