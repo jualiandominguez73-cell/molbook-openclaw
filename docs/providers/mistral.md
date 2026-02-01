@@ -18,7 +18,7 @@ If you have an API key from the [Mistral Console](https://console.mistral.ai/api
 
 ```bash
 openclaw models auth paste-token --provider mistral
-# Paste your MISTRAL_API_KEY when prompted
+# Paste your Mistral API key when prompted
 ```
 
 ### Option B: Environment variable
@@ -52,13 +52,13 @@ Or add it to your `openclaw.json`:
 
 Mistral offers several model tiers:
 
-| Model ID | Description | Use case |
-|----------|-------------|----------|
-| `mistral-large-latest` | Most capable model | Complex reasoning, coding |
-| `mistral-medium-latest` | Balanced performance | General tasks |
-| `mistral-small-latest` | Fast and efficient | Simple tasks, high throughput |
-| `codestral-latest` | Code-specialized | Code generation, completion |
-| `mistral-embed` | Embeddings | Semantic search, RAG |
+| Model ID                | Description          | Use case                      |
+| ----------------------- | -------------------- | ----------------------------- |
+| `mistral-large-latest`  | Most capable model   | Complex reasoning, coding     |
+| `mistral-medium-latest` | Balanced performance | General tasks                 |
+| `mistral-small-latest`  | Fast and efficient   | Simple tasks, high throughput |
+| `codestral-latest`      | Code-specialized     | Code generation, completion   |
+| `mistral-embed`         | Embeddings           | Semantic search, RAG          |
 
 Example with a specific model:
 
