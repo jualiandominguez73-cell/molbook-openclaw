@@ -48,7 +48,8 @@ export async function noteSecurityWarnings(cfg: OpenClawConfig) {
     const publicIPs = getPublicIPs();
     const hasPublicIP = publicIPs.length > 0;
     const isBindingToPublicIP =
-      resolvedBindHost === "0.0.0.0" || !isPrivateIP(resolvedBindHost);
+      resolvedBindHost === "0.0.0.0" ||
+      (resolvedBindHost !== "::" && !isPrivateIP(resolvedBindHost));
 
     if (!hasSharedSecret) {
       const authFixLines =
