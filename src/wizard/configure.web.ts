@@ -8,7 +8,13 @@ import { readConfigFileSnapshot, writeConfigFile, resolveGatewayPort } from "../
 import { logConfigUpdated } from "../config/logging.js";
 import { defaultRuntime } from "../runtime.js";
 
-type WebConfigureSection = "gateway" | "web-tools" | "model-keys" | "channels" | "skills";
+type WebConfigureSection =
+  | "gateway"
+  | "web-tools"
+  | "model-keys"
+  | "channels"
+  | "skills"
+  | "agent-runtime";
 
 type WizardRunOpts = OnboardOptions & { wizard?: "onboarding" | "configure" };
 
@@ -63,8 +69,13 @@ export async function runConfigureWizardWeb(
         label: "Skills",
         hint: "Install skill dependencies + API keys",
       },
+      {
+        value: "agent-runtime",
+        label: "Agent runtime",
+        hint: "Default model, fallbacks, thinking, concurrency",
+      },
     ],
-    initialValues: ["gateway", "web-tools", "model-keys", "channels", "skills"],
+    initialValues: ["gateway", "web-tools", "model-keys", "channels", "skills", "agent-runtime"],
   });
 
   let next = structuredClone(baseConfig);
@@ -369,6 +380,82 @@ export async function runConfigureWizardWeb(
     const agentId = resolveDefaultAgentId(next);
     const wsDir = resolveAgentWorkspaceDir(next, agentId);
     next = await setupSkills(next, wsDir, runtime, prompter);
+  }
+
+  if (sections.includes("agent-runtime")) {
+    await prompter.note(
+      [
+        "Set defaults for the main agent.",
+        "You can override per-session later using /status or config edits.",
+      ].join("\n"),
+      "Agent runtime",
+    );
+
+    const primaryModel = await prompter.text({
+      message: "Default primary model (e.g. openai/gpt-5.2)",
+      initialValue: String(next.agents?.defaults?.model?.primary ?? ""),
+      placeholder: "openai/gpt-5.2",
+      validate: (v) => (v.trim() ? undefined : "Required"),
+    });
+
+    const fallbacksRaw = await prompter.text({
+      message: "Fallback models (comma separated, optional)",
+      initialValue: Array.isArray(next.agents?.defaults?.model?.fallbacks)
+        ? next.agents?.defaults?.model?.fallbacks?.join(", ")
+        : "",
+      placeholder: "openai/gpt-5-mini, google/gemini-3-flash-preview",
+    });
+
+    const thinkingDefault = await prompter.select({
+      message: "Default thinking level",
+      options: [
+        { value: "off", label: "off" },
+        { value: "minimal", label: "minimal" },
+        { value: "low", label: "low" },
+        { value: "medium", label: "medium" },
+        { value: "high", label: "high" },
+        { value: "xhigh", label: "xhigh" },
+      ],
+      initialValue: (next.agents?.defaults?.thinkingDefault ?? "low") as any,
+    });
+
+    const maxConcurrentStr = await prompter.text({
+      message: "Max concurrent runs (main agent)",
+      initialValue: String(next.agents?.defaults?.maxConcurrent ?? 2),
+      validate: (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? undefined : "Invalid"),
+    });
+
+    const subMaxConcurrentStr = await prompter.text({
+      message: "Max concurrent subagents",
+      initialValue: String(next.agents?.defaults?.subagents?.maxConcurrent ?? 2),
+      validate: (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? undefined : "Invalid"),
+    });
+
+    const fallbacks = (fallbacksRaw || "")
+      .split(/[,\n]/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    next = {
+      ...next,
+      agents: {
+        ...next.agents,
+        defaults: {
+          ...next.agents?.defaults,
+          model: {
+            ...next.agents?.defaults?.model,
+            primary: primaryModel.trim(),
+            ...(fallbacks.length ? { fallbacks } : {}),
+          },
+          thinkingDefault: thinkingDefault as any,
+          maxConcurrent: Math.floor(Number(maxConcurrentStr)),
+          subagents: {
+            ...next.agents?.defaults?.subagents,
+            maxConcurrent: Math.floor(Number(subMaxConcurrentStr)),
+          },
+        },
+      },
+    };
   }
 
   await writeConfigFile(next);
