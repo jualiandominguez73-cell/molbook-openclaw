@@ -23,6 +23,25 @@ type LaneState = {
   draining: boolean;
 };
 
+function shouldAutoRemoveLane(lane: string) {
+  // Dynamic lanes derived from session keys should not live forever.
+  // Main lane is process-wide and intentionally persistent.
+  return lane !== CommandLane.Main && lane.startsWith("session:");
+}
+
+function maybeRemoveIdleLane(state: LaneState) {
+  if (!shouldAutoRemoveLane(state.lane)) {
+    return;
+  }
+  if (state.active !== 0) {
+    return;
+  }
+  if (state.queue.length !== 0) {
+    return;
+  }
+  lanes.delete(state.lane);
+}
+
 const lanes = new Map<string, LaneState>();
 
 function getLaneState(lane: string): LaneState {
@@ -84,6 +103,7 @@ function drainLane(lane: string) {
       })();
     }
     state.draining = false;
+    maybeRemoveIdleLane(state);
   };
 
   pump();
@@ -156,5 +176,10 @@ export function clearCommandLane(lane: string = CommandLane.Main) {
   }
   const removed = state.queue.length;
   state.queue.length = 0;
+  maybeRemoveIdleLane(state);
   return removed;
+}
+
+export function getLaneCount() {
+  return lanes.size;
 }
