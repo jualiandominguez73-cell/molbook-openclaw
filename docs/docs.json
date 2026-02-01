@@ -146,6 +146,14 @@
       "destination": "/providers/glm"
     },
     {
+      "source": "/mistral",
+      "destination": "/providers/mistral"
+    },
+    {
+      "source": "/mistral/",
+      "destination": "/providers/mistral"
+    },
+    {
       "source": "/zai",
       "destination": "/providers/zai"
     },
@@ -1034,7 +1042,8 @@
           "providers/synthetic",
           "providers/opencode",
           "providers/glm",
-          "providers/zai"
+          "providers/zai",
+          "providers/mistral"
         ]
       },
       {
