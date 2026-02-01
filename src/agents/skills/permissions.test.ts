@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
+import type { SkillPermissionManifest } from "./types.js";
 import {
   validatePermissionManifest,
   formatPermissionManifest,
   formatValidationResult,
 } from "./permissions.js";
-import type { SkillPermissionManifest } from "./types.js";
 
 describe("validatePermissionManifest", () => {
   it("returns high risk for missing manifest", () => {

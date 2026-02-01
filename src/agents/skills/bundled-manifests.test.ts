@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
 import path from "node:path";
-import { loadWorkspaceSkillEntries } from "./workspace.js";
-import { validatePermissionManifest } from "./permissions.js";
+import { describe, it, expect } from "vitest";
 import type { SkillEntryWithPermissions } from "./types.js";
+import { validatePermissionManifest } from "./permissions.js";
+import { loadWorkspaceSkillEntries } from "./workspace.js";
 
 /**
  * Integration tests for bundled skill permission manifests.

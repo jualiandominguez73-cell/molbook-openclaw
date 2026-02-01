@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
+import type { SkillsSecurityConfig } from "../../config/types.skills.js";
 import type { SkillPermissionManifest } from "./types.js";
 import { validatePermissionManifest } from "./permissions.js";
-import type { SkillsSecurityConfig } from "../../config/types.skills.js";
 
 describe("Security Policy - Risk Assessment Integration", () => {
   describe("validatePermissionManifest risk levels", () => {
