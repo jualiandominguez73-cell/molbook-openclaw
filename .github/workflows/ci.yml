@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   install-check:
+    name: Install Check
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
@@ -76,6 +77,7 @@ jobs:
           pnpm install --frozen-lockfile --ignore-scripts=false --config.engine-strict=false --config.enable-pre-post-scripts=true
 
   checks:
+    name: Linux / ${{ matrix.runtime }} / ${{ matrix.task }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
       fail-fast: false
@@ -170,6 +172,7 @@ jobs:
         run: ${{ matrix.command }}
 
   secrets:
+    name: Secrets Scan
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
@@ -195,6 +198,7 @@ jobs:
           fi
 
   checks-windows:
+    name: Windows / ${{ matrix.runtime }} / ${{ matrix.task }}
     runs-on: blacksmith-4vcpu-windows-2025
     env:
       NODE_OPTIONS: --max-old-space-size=4096
@@ -286,6 +290,7 @@ jobs:
         run: ${{ matrix.command }}
 
   checks-macos:
+    name: macOS / node / ${{ matrix.task }}
     if: github.event_name == 'pull_request'
     runs-on: macos-latest
     strategy:
@@ -358,6 +363,7 @@ jobs:
         run: ${{ matrix.command }}
 
   macos-app:
+    name: macOS App / ${{ matrix.task }}
     if: github.event_name == 'pull_request'
     runs-on: macos-latest
     strategy:
@@ -427,6 +433,7 @@ jobs:
       - name: Run ${{ matrix.task }}
         run: ${{ matrix.command }}
   ios:
+    name: iOS
     if: false # ignore iOS in CI for now
     runs-on: macos-latest
     steps:
@@ -600,6 +607,7 @@ jobs:
           PY
 
   android:
+    name: Android / ${{ matrix.task }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
       fail-fast: false
