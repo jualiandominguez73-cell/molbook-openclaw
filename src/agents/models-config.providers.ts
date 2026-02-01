@@ -91,13 +91,14 @@ interface OllamaTagsResponse {
   models: OllamaModel[];
 }
 
-async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
+async function discoverOllamaModels(apiBaseUrl?: string): Promise<ModelDefinitionConfig[]> {
   // Skip Ollama discovery in test environments
   if (process.env.VITEST || process.env.NODE_ENV === "test") {
     return [];
   }
+  const baseUrl = apiBaseUrl ?? OLLAMA_API_BASE_URL;
   try {
-    const response = await fetch(`${OLLAMA_API_BASE_URL}/api/tags`, {
+    const response = await fetch(`${baseUrl}/api/tags`, {
       signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) {
@@ -385,10 +386,11 @@ async function buildVeniceProvider(): Promise<ProviderConfig> {
   };
 }
 
-async function buildOllamaProvider(): Promise<ProviderConfig> {
-  const models = await discoverOllamaModels();
+async function buildOllamaProvider(apiBaseUrl?: string): Promise<ProviderConfig> {
+  const models = await discoverOllamaModels(apiBaseUrl);
+  const baseUrl = apiBaseUrl ? `${apiBaseUrl.replace(/\/+$/, "")}/v1` : OLLAMA_BASE_URL;
   return {
-    baseUrl: OLLAMA_BASE_URL,
+    baseUrl,
     api: "openai-completions",
     models,
   };
@@ -396,6 +398,7 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
 
 export async function resolveImplicitProviders(params: {
   agentDir: string;
+  explicitProviders?: Record<string, ProviderConfig>;
 }): Promise<ModelsConfig["providers"]> {
   const providers: Record<string, ProviderConfig> = {};
   const authStore = ensureAuthProfileStore(params.agentDir, {
@@ -458,7 +461,12 @@ export async function resolveImplicitProviders(params: {
     resolveEnvApiKeyVarName("ollama") ??
     resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
   if (ollamaKey) {
-    providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
+    // Use the explicit config's base URL for discovery if available
+    const explicitOllama = params.explicitProviders?.ollama;
+    const ollamaApiBaseUrl = explicitOllama?.baseUrl
+      ? explicitOllama.baseUrl.replace(/\/v1\/?$/, "")
+      : undefined;
+    providers.ollama = { ...(await buildOllamaProvider(ollamaApiBaseUrl)), apiKey: ollamaKey };
   }
 
   return providers;
