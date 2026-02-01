@@ -10,6 +10,7 @@ title: "Telegram"
 Status: production-ready for bot DMs + groups via grammY. Long-polling by default; webhook optional.
 
 ## Quick setup (beginner)
+
 1. Create a bot with **@BotFather** ([direct link](https://t.me/BotFather)). Confirm the handle is exactly `@BotFather`, then copy the token.
 2. Set the token:
    - Env: `TELEGRAM_BOT_TOKEN=...`
@@ -41,6 +42,7 @@ Minimal config:
 ## Setup (fast path)
 
 ### 1) Create a bot token (BotFather)
+
 1. Open Telegram and chat with **@BotFather** ([direct link](https://t.me/BotFather)). Confirm the handle is exactly `@BotFather`.
 2. Run `/newbot`, then follow the prompts (name + username ending in `bot`).
 3. Copy the token and store it safely.
@@ -73,7 +75,9 @@ If both env and config are set, config takes precedence.
 Multi-account support: use `channels.telegram.accounts` with per-account tokens and optional `name`. See [`gateway/configuration`](/gateway/configuration#telegramaccounts--discordaccounts--slackaccounts--signalaccounts--imessageaccounts) for the shared pattern.
 
 3. Start the gateway. Telegram starts when a token is resolved (config first, env fallback).
+
 4. DM access defaults to pairing. Approve the code when the bot is first contacted.
+
 5. For groups: add the bot, decide privacy/admin behavior (below), then set `channels.telegram.groups` to control mention gating + allowlists.
 
 ## Token + privacy + permissions (Telegram side)
@@ -746,3 +750,4 @@ Related global options:
 - `messages.groupChat.mentionPatterns` (global fallback).
 - `commands.native` (defaults to `"auto"` → on for Telegram/Discord, off for Slack), `commands.text`, `commands.useAccessGroups` (command behavior). Override with `channels.telegram.commands.native`.
 - `messages.responsePrefix`, `messages.ackReaction`, `messages.ackReactionScope`, `messages.removeAckAfterReply`.
+

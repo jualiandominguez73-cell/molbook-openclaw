@@ -27,6 +27,7 @@ Auth is supplied during the WebSocket handshake via:
 
 - `connect.params.auth.token`
 - `connect.params.auth.password`
+
   The dashboard settings panel lets you store a token; passwords are not persisted.
   The onboarding wizard generates a gateway token by default, so paste it here on first connect.
 
@@ -198,3 +199,4 @@ Notes:
 - Use `wss://` when the Gateway is behind TLS (Tailscale Serve, HTTPS proxy, etc.).
 
 Remote access setup details: [Remote access](/gateway/remote).
+

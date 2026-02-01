@@ -195,3 +195,4 @@ The `/__openclaw__/canvas/` prefix is defined by `CANVAS_HOST_PATH` constant.
 - The canvas persists until you `hide` it or navigate away
 - Live reload makes development fast - just save and it updates!
 - A2UI JSON push is WIP - use HTML files for now
+
