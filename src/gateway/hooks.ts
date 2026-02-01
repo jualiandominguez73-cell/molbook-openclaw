@@ -84,7 +84,6 @@ export async function readJsonBody(
     const timeout = setTimeout(() => {
       if (done) return;
       done = true;
-      clearTimeout(timeout);
       req.destroy();
       resolve({ ok: false, error: "body read timeout" });
     }, timeoutMs);
