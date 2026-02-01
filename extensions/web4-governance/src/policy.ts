@@ -28,7 +28,7 @@ export class PolicyEngine {
     this.defaultPolicy = merged.defaultPolicy;
     this.enforce = merged.enforce;
     // Sort by priority ascending (lower = higher priority)
-    this.rules = [...merged.rules].sort((a, b) => a.priority - b.priority);
+    this.rules = [...merged.rules].toSorted((a, b) => a.priority - b.priority);
     this.rateLimiter = rateLimiter;
   }
 
@@ -37,7 +37,9 @@ export class PolicyEngine {
     for (const rule of this.rules) {
       // Check standard matchers
       const matchesStandard = matchesRule(toolName, category, target, rule.match);
-      if (!matchesStandard) continue;
+      if (!matchesStandard) {
+        continue;
+      }
 
       // If rule has rateLimit, also check the rate limiter
       if (rule.match.rateLimit && this.rateLimiter) {
@@ -48,7 +50,9 @@ export class PolicyEngine {
           rule.match.rateLimit.windowMs,
         );
         // Rate limit rule only "matches" when the limit is exceeded
-        if (allowed) continue;
+        if (allowed) {
+          continue;
+        }
       } else if (rule.match.rateLimit && !this.rateLimiter) {
         // No rate limiter available — skip rate limit criterion
         continue;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdirSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { rmSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AuditChain } from "./audit.js";
 import { createR6Request } from "./r6.js";

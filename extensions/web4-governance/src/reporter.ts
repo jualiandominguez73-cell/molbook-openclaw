@@ -72,13 +72,20 @@ export class AuditReporter {
   }
 
   private computeTimeRange(): { from: string; to: string } | null {
-    if (this.records.length === 0) return null;
-    const sorted = [...this.records].sort(
+    if (this.records.length === 0) {
+      return null;
+    }
+    const sorted = [...this.records].toSorted(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    if (!first || !last) {
+      return null;
+    }
     return {
-      from: sorted[0]!.timestamp,
-      to: sorted[sorted.length - 1]!.timestamp,
+      from: first.timestamp,
+      to: last.timestamp,
     };
   }
 
@@ -94,10 +101,16 @@ export class AuditReporter {
         entry = { success: 0, error: 0, blocked: 0, durations: [] };
         map.set(r.tool, entry);
       }
-      if (r.result.status === "success") entry.success++;
-      else if (r.result.status === "error") entry.error++;
-      else if (r.result.status === "blocked") entry.blocked++;
-      if (r.result.durationMs !== undefined) entry.durations.push(r.result.durationMs);
+      if (r.result.status === "success") {
+        entry.success++;
+      } else if (r.result.status === "error") {
+        entry.error++;
+      } else if (r.result.status === "blocked") {
+        entry.blocked++;
+      }
+      if (r.result.durationMs !== undefined) {
+        entry.durations.push(r.result.durationMs);
+      }
     }
 
     return Array.from(map.entries())
@@ -116,7 +129,7 @@ export class AuditReporter {
               : null,
         };
       })
-      .sort((a, b) => b.invocations - a.invocations);
+      .toSorted((a, b) => b.invocations - a.invocations);
   }
 
   private computeCategoryBreakdown(): CategoryBreakdown[] {
@@ -131,7 +144,7 @@ export class AuditReporter {
         count,
         percentage: total > 0 ? (count / total) * 100 : 0,
       }))
-      .sort((a, b) => b.count - a.count);
+      .toSorted((a, b) => b.count - a.count);
   }
 
   private computePolicyStats(): PolicyStats {
@@ -163,7 +176,9 @@ export class AuditReporter {
     const map = new Map<string, { count: number; messages: Map<string, number> }>();
 
     for (const r of this.records) {
-      if (r.result.status !== "error") continue;
+      if (r.result.status !== "error") {
+        continue;
+      }
       let entry = map.get(r.tool);
       if (!entry) {
         entry = { count: 0, messages: new Map() };
@@ -181,11 +196,11 @@ export class AuditReporter {
         tool,
         count: data.count,
         topMessages: Array.from(data.messages.entries())
-          .sort((a, b) => b[1] - a[1])
+          .toSorted((a, b) => b[1] - a[1])
           .slice(0, 5)
           .map(([msg]) => msg),
       }))
-      .sort((a, b) => b.count - a.count);
+      .toSorted((a, b) => b.count - a.count);
   }
 
   private computeTimeline(): TimelineBucket[] {
@@ -200,7 +215,7 @@ export class AuditReporter {
 
     return Array.from(buckets.entries())
       .map(([minute, count]) => ({ minute, count }))
-      .sort((a, b) => a.minute.localeCompare(b.minute));
+      .toSorted((a, b) => a.minute.localeCompare(b.minute));
   }
 
   /** Format report as structured text. */

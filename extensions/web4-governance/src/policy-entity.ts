@@ -65,7 +65,7 @@ export class PolicyEntity {
     this.config = data.config;
 
     // Sort rules by priority (lower = evaluated first)
-    this.sortedRules = [...data.config.rules].sort((a, b) => a.priority - b.priority);
+    this.sortedRules = [...data.config.rules].toSorted((a, b) => a.priority - b.priority);
   }
 
   /**
@@ -242,7 +242,7 @@ export class PolicyRegistry {
         .slice(0, 14);
 
     // Compute content hash
-    const contentStr = JSON.stringify(config, Object.keys(config).sort());
+    const contentStr = JSON.stringify(config, Object.keys(config).toSorted());
     const contentHash = createHash("sha256").update(contentStr).digest("hex").slice(0, 16);
 
     // Build entity ID
@@ -357,6 +357,6 @@ export class PolicyRegistry {
  * Compute a policy content hash.
  */
 export function computePolicyHash(config: PolicyConfig): string {
-  const contentStr = JSON.stringify(config, Object.keys(config).sort());
+  const contentStr = JSON.stringify(config, Object.keys(config).toSorted());
   return createHash("sha256").update(contentStr).digest("hex").slice(0, 16);
 }

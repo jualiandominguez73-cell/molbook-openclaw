@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { PolicyEngine } from "./policy.js";
 import type { PolicyConfig, PolicyRule } from "./policy-types.js";
 import { RateLimiter } from "./rate-limiter.js";

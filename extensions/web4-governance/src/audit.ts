@@ -48,9 +48,9 @@ function parseSince(since: string): Date | undefined {
   // Try relative durations first
   const relMatch = since.match(/^(\d+)\s*(s|m|h|d)$/);
   if (relMatch) {
-    const amount = parseInt(relMatch[1]!, 10);
-    const unit = relMatch[2]!;
-    const ms = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit]!;
+    const amount = parseInt(relMatch[1] ?? "0", 10);
+    const unit = relMatch[2] ?? "m";
+    const ms = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit] ?? 60_000;
     return new Date(Date.now() - amount * ms);
   }
   // Try ISO date
@@ -76,10 +76,14 @@ export class AuditChain {
   }
 
   private loadExisting(): void {
-    if (!existsSync(this.filePath)) return;
+    if (!existsSync(this.filePath)) {
+      return;
+    }
     try {
       const content = readFileSync(this.filePath, "utf-8").trim();
-      if (!content) return;
+      if (!content) {
+        return;
+      }
       const lines = content.split("\n");
       this.recordCount = lines.length;
       const lastLine = lines[lines.length - 1];
@@ -122,21 +126,27 @@ export class AuditChain {
     }
 
     const content = readFileSync(this.filePath, "utf-8").trim();
-    if (!content) return { valid: true, recordCount: 0, errors: [] };
+    if (!content) {
+      return { valid: true, recordCount: 0, errors: [] };
+    }
 
     const lines = content.split("\n");
     let prevHash = "genesis";
 
     for (let i = 0; i < lines.length; i++) {
+      const lineContent = lines[i];
+      if (!lineContent) {
+        continue;
+      }
       try {
-        const record: AuditRecord = JSON.parse(lines[i]!);
+        const record: AuditRecord = JSON.parse(lineContent);
         if (record.provenance.prevRecordHash !== prevHash) {
           errors.push(
             `Record ${i}: hash mismatch (expected ${prevHash}, got ${record.provenance.prevRecordHash})`,
           );
         }
-        prevHash = createHash("sha256").update(lines[i]!).digest("hex").slice(0, 16);
-      } catch (e) {
+        prevHash = createHash("sha256").update(lineContent).digest("hex").slice(0, 16);
+      } catch {
         errors.push(`Record ${i}: parse error`);
       }
     }
@@ -149,9 +159,13 @@ export class AuditChain {
   }
 
   getLast(n: number): AuditRecord[] {
-    if (!existsSync(this.filePath)) return [];
+    if (!existsSync(this.filePath)) {
+      return [];
+    }
     const content = readFileSync(this.filePath, "utf-8").trim();
-    if (!content) return [];
+    if (!content) {
+      return [];
+    }
     const lines = content.split("\n");
     return lines
       .slice(-n)
@@ -167,9 +181,13 @@ export class AuditChain {
 
   /** Load all records from the JSONL file. */
   getAll(): AuditRecord[] {
-    if (!existsSync(this.filePath)) return [];
+    if (!existsSync(this.filePath)) {
+      return [];
+    }
     const content = readFileSync(this.filePath, "utf-8").trim();
-    if (!content) return [];
+    if (!content) {
+      return [];
+    }
     return content
       .split("\n")
       .map((line) => {

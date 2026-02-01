@@ -16,13 +16,15 @@ export function globToRegex(pattern: string): RegExp {
   let re = "";
   let i = 0;
   while (i < pattern.length) {
-    const ch = pattern[i]!;
+    const ch = pattern[i];
     if (ch === "*") {
       if (pattern[i + 1] === "*") {
         re += ".*";
         i += 2;
         // Skip trailing slash after **
-        if (pattern[i] === "/") i++;
+        if (pattern[i] === "/") {
+          i++;
+        }
       } else {
         re += "[^/]*";
         i++;
@@ -30,7 +32,7 @@ export function globToRegex(pattern: string): RegExp {
     } else if (ch === "?") {
       re += "[^/]";
       i++;
-    } else if (".+^${}()|[]\\".includes(ch)) {
+    } else if (ch && ".+^${}()|[]\\".includes(ch)) {
       re += "\\" + ch;
       i++;
     } else {
@@ -52,17 +54,23 @@ export function matchesTarget(
   patterns: string[],
   useRegex: boolean,
 ): boolean {
-  if (target === undefined) return false;
+  if (target === undefined) {
+    return false;
+  }
   for (const pattern of patterns) {
     if (useRegex) {
       try {
-        if (new RegExp(pattern).test(target)) return true;
+        if (new RegExp(pattern).test(target)) {
+          return true;
+        }
       } catch {
         // Invalid regex pattern - skip it (logged at config load time)
         continue;
       }
     } else {
-      if (globToRegex(pattern).test(target)) return true;
+      if (globToRegex(pattern).test(target)) {
+        return true;
+      }
     }
   }
   return false;
@@ -80,8 +88,12 @@ export function matchesRule(
   match: PolicyMatch,
 ): boolean {
   // Each specified criterion must match (AND logic)
-  if (match.tools && !matchesList(toolName, match.tools)) return false;
-  if (match.categories && !matchesList(category, match.categories)) return false;
+  if (match.tools && !matchesList(toolName, match.tools)) {
+    return false;
+  }
+  if (match.categories && !matchesList(category, match.categories)) {
+    return false;
+  }
   if (match.targetPatterns) {
     if (!matchesTarget(target, match.targetPatterns, match.targetPatternsAreRegex ?? false)) {
       return false;
