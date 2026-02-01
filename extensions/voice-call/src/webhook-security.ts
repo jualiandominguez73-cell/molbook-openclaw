@@ -200,7 +200,12 @@ export function verifyTwilioWebhook(
     // checks for is whether the signature matches when omitting the port from the URL.  We'll do the same
     // hack here.
     // Try again with the URL without the port
-    isValid = validateTwilioSignature(authToken, signature, verificationUrl.replace(/:\d+$/, ""), params);
+    isValid = validateTwilioSignature(
+      authToken,
+      signature,
+      verificationUrl.replace(/:\d+$/, ""),
+      params,
+    );
   }
 
   if (isValid) {
