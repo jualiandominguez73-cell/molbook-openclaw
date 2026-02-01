@@ -199,11 +199,13 @@ export function verifyTwilioWebhook(
     // backend that is not compatible with the new signature algorithm.  One of the things their library
     // checks for is whether the signature matches when omitting the port from the URL.  We'll do the same
     // hack here.
-    // Try again with the URL without the port
+    // Try again with the URL without the authority port (path/query preserved)
+    const urlWithoutPort = new URL(verificationUrl);
+    urlWithoutPort.port = "";
     isValid = validateTwilioSignature(
       authToken,
       signature,
-      verificationUrl.replace(/:\d+$/, ""),
+      urlWithoutPort.toString(),
       params,
     );
   }
