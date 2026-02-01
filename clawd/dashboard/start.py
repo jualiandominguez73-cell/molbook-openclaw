@@ -704,12 +704,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_file(TEMPLATES_DIR / 'ceramics-intelligence.html', 'text/html')
         elif path == '/content-intelligence.html':
             self.send_file(TEMPLATES_DIR / 'content-intelligence.html', 'text/html')
+        elif path == '/liminal.html':
+            self.send_file(TEMPLATES_DIR / 'liminal.html', 'text/html')
         elif path == '/static/style.css':
             self.send_file(STATIC_DIR / 'style.css', 'text/css')
         elif path == '/static/design-system.css':
             self.send_file(STATIC_DIR / 'design-system.css', 'text/css')
         elif path == '/static/app.js':
             self.send_file(STATIC_DIR / 'app.js', 'application/javascript')
+        elif path == '/static/liminal.css':
+            self.send_file(STATIC_DIR / 'liminal.css', 'text/css')
+        elif path == '/static/liminal.js':
+            self.send_file(STATIC_DIR / 'liminal.js', 'application/javascript')
 
         # === JSON APIs ===
         elif path == '/api/data':
@@ -821,6 +827,115 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         elif path == '/api/gateway-ws-url':
             # Return the gateway WebSocket URL for direct connection
             self.send_json({'url': 'ws://127.0.0.1:18789'})
+        
+        # === LIMINAL API ===
+        elif path == '/api/liminal/interactions':
+            # Get recent liminal interactions
+            conn = get_db()
+            rows = conn.execute('''
+                SELECT id, timestamp, interaction_type, reaction, notes
+                FROM liminal_interactions
+                ORDER BY timestamp DESC
+                LIMIT 50
+            ''').fetchall()
+            data = [
+                {
+                    'id': row['id'],
+                    'timestamp': row['timestamp'],
+                    'interaction_type': row['interaction_type'],
+                    'reaction': row['reaction'],
+                    'notes': row['notes']
+                }
+                for row in rows
+            ]
+            self.send_json(data)
+        
+        elif path == '/api/liminal/principles':
+            # Serve PRINCIPLES.md content
+            principles_path = Path('/home/liam/liminal/PRINCIPLES.md')
+            if principles_path.exists():
+                content = principles_path.read_text()
+                self.send_json({'success': True, 'content': content})
+            else:
+                self.send_json({'success': False, 'error': 'PRINCIPLES.md not found'}, status=404)
+        
+        elif path == '/api/liminal/contents':
+            # Get directory structure of liminal folder
+            liminal_dir = Path('/home/liam/liminal')
+            if not liminal_dir.exists():
+                self.send_json({'success': False, 'error': 'Liminal folder not found'}, status=404)
+            else:
+                def scan_dir(dir_path, rel_path=''):
+                    result = {'name': dir_path.name, 'type': 'directory', 'path': rel_path, 'children': []}
+                    try:
+                        for item in sorted(dir_path.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+                            item_rel = f"{rel_path}/{item.name}" if rel_path else item.name
+                            if item.is_dir():
+                                result['children'].append(scan_dir(item, item_rel))
+                            else:
+                                stat = item.stat()
+                                result['children'].append({
+                                    'name': item.name,
+                                    'type': 'file',
+                                    'path': item_rel,
+                                    'size': stat.st_size,
+                                    'modified': datetime.fromtimestamp(stat.st_mtime).isoformat()
+                                })
+                    except PermissionError:
+                        pass
+                    return result
+                
+                data = scan_dir(liminal_dir)
+                data['name'] = 'liminal'
+                data['path'] = ''
+                self.send_json({'success': True, 'tree': data})
+        
+        elif path == '/api/liminal/project':
+            # Get specific project details
+            project_path = query.get('path', [''])[0]
+            if not project_path or '..' in project_path:
+                self.send_json({'success': False, 'error': 'Invalid path'}, status=400)
+            else:
+                full_path = Path('/home/liam/liminal') / project_path
+                if not full_path.exists() or not str(full_path.resolve()).startswith(str(Path('/home/liam/liminal').resolve())):
+                    self.send_json({'success': False, 'error': 'Not found'}, status=404)
+                else:
+                    if full_path.is_dir():
+                        # Read README if exists
+                        readme_path = full_path / 'README.md'
+                        readme_content = readme_path.read_text() if readme_path.exists() else None
+                        
+                        # List files
+                        files = []
+                        for item in full_path.iterdir():
+                            stat = item.stat()
+                            files.append({
+                                'name': item.name,
+                                'type': 'directory' if item.is_dir() else 'file',
+                                'size': stat.st_size if item.is_file() else None,
+                                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat()
+                            })
+                        
+                        self.send_json({
+                            'success': True,
+                            'name': full_path.name,
+                            'path': project_path,
+                            'readme': readme_content,
+                            'files': files
+                        })
+                    else:
+                        # Single file
+                        try:
+                            content = full_path.read_text(encoding='utf-8', errors='replace')[:50000]  # Limit size
+                            self.send_json({
+                                'success': True,
+                                'name': full_path.name,
+                                'path': project_path,
+                                'content': content,
+                                'size': full_path.stat().st_size
+                            })
+                        except Exception as e:
+                            self.send_json({'success': False, 'error': str(e)}, status=500)
 
         # === EF COACH API ===
         elif path == '/api/ef-coach/suggestions':
@@ -894,6 +1009,27 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             try:
                 result = extract_cis_insights()
                 self.send_json(result)
+            except Exception as e:
+                self.send_json({'success': False, 'error': str(e)}, status=500)
+        
+        # === LIMINAL API === 
+        elif path == '/api/liminal/record':
+            try:
+                data = json.loads(post_data)
+                interaction_type = data.get('type', 'unknown')
+                reaction = data.get('reaction', '')
+                notes = data.get('notes', '')
+                
+                conn = get_db()
+                conn.execute('''
+                    INSERT INTO liminal_interactions (interaction_type, reaction, notes)
+                    VALUES (?, ?, ?)
+                ''', (interaction_type, reaction, notes))
+                conn.commit()
+                
+                self.send_json({'success': True, 'message': 'Interaction recorded'})
+            except json.JSONDecodeError:
+                self.send_json({'success': False, 'error': 'Invalid JSON'}, status=400)
             except Exception as e:
                 self.send_json({'success': False, 'error': str(e)}, status=500)
         

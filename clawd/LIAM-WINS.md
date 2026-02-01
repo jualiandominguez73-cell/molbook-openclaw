@@ -117,11 +117,42 @@
 
 ---
 
+## Pattern #8: Privacy-First Architecture
+
+**When I implement controls that give Simon total ownership over his sensitive data.**
+
+**Example:** Implemented `/forget`, `/private`, and `/dont-remember` commands that handle all 7 local storage locations including memory SQLite and sessions.json.
+
+**Why it works:**
+- Simon can open up without fear of permanent data leakage
+- Ephemeral mode allows safe testing of "Ally" and other sensitive modes
+- Demonstrates commitment to "Respect User" (APEX Law #5)
+
+**Do more of this:** Always consider "how can the user delete this?" when adding new persistence features.
+
+---
+
+## Pattern #9: Persistence Resilience
+
+**When I find and fix "silent data loss" bugs before they become habitual blockers.**
+
+**Example:** Fixed a bug where sessions were lost on crash if the gateway hadn't written a message yet, by forcing header creation on init.
+
+**Why it works:**
+- Prevents "context amnesia" after crashes
+- Increases system reliability
+- Validates the "Trace to Success" (APEX Law #3) principle
+
+**Do more of this:** Trace the lifecycle of data from creation to disk, not just from write to disk.
+
+---
+
 ## When Things Go Wrong
 
 1. **Read this file** - Often the fix is doing MORE of these patterns
-2. **Check FRUSTRATION-PATTERNS.md** - Am I repeating a known mistake?
-3. **Ask Simon** - If uncertain, asking is always better than guessing wrong
+2. **Check `~/clawd/diagnostics/FRUSTRATION-PATTERNS.md`** - Am I repeating a known mistake?
+3. **Check `~/clawd/diagnostics/SUCCESS-PATTERNS.md`** - How did Cursor/Opus handle similar situations?
+4. **Ask Simon** - If uncertain, asking is always better than guessing wrong
 
 ---
 

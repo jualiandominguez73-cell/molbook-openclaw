@@ -1,0 +1,202 @@
+/* Liminal — Dashboard Theme Extension */
+/* Uses design-system.css as base, adds liminal-specific styles */
+
+/* Accent color for liminal */
+.accent-liminal {
+    --accent: #9b59b6;  /* Purple for creative/liminal */
+    --accent-light: rgba(155, 89, 182, 0.15);
+}
+
+/* File Tree Styling */
+.file-tree {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.tree-item:hover {
+    background: var(--bg-2);
+}
+
+.tree-icon {
+    width: 1.2rem;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.tree-children {
+    margin-left: 1.5rem;
+    border-left: 1px solid var(--border);
+    padding-left: 0.5rem;
+}
+
+.tree-meta {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Project Detail Readme */
+.readme-content {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    line-height: 1.7;
+}
+
+.readme-content h1,
+.readme-content h2,
+.readme-content h3 {
+    margin-top: 0;
+    color: var(--accent);
+}
+
+.readme-content code {
+    background: var(--bg-2);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+}
+
+.readme-content pre {
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+.readme-content pre code {
+    background: none;
+    padding: 0;
+}
+
+/* File Grid */
+.file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.file-item {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+}
+
+.file-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.file-item-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-item-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Recent List */
+.recent-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.recent-item:last-child {
+    border-bottom: none;
+}
+
+.recent-item:hover {
+    background: var(--bg-1);
+}
+
+.recent-item-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+}
+
+.recent-item-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Principles Text */
+.principles-text {
+    line-height: 1.8;
+    max-width: 70ch;
+}
+
+.principles-text h1 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.principles-text h2 {
+    font-size: 1.1rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--accent);
+}
+
+.principles-text h3 {
+    font-size: 0.95rem;
+    margin-top: 1rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+
+/* Grid layouts */
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+}

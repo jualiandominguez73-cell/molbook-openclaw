@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌀 Liminal — Creative Space</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        /* Animated grain overlay */
+        .grain {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 1000;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+        
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.15) 0px,
+                rgba(0,0,0,0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+        }
+        
+        /* WebGL Canvas Background */
+        #gl-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+        }
+        
+        /* Main Layout */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            padding: 4rem 0;
+            border-bottom: 1px solid rgba(155, 89, 182, 0.3);
+            margin-bottom: 3rem;
+        }
+        
+        h1 {
+            font-size: 4rem;
+            font-weight: 200;
+            letter-spacing: 0.2em;
+            background: linear-gradient(135deg, #9b59b6, #e74c3c, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 8s ease infinite;
+            background-size: 200% 200%;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            letter-spacing: 0.1em;
+        }
+        
+        /* Featured Project — Decision Spinner */
+        .featured {
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid rgba(155, 89, 182, 0.3);
+            border-radius: 12px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .featured h2 {
+            font-size: 1.5rem;
+            color: #9b59b6;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Terminal Emulator */
+        .terminal {
+            background: #0d0d0d;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .terminal::before {
+            content: '🎯 Decision Spinner';
+            display: block;
+            color: #9b59b6;
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .terminal-content {
+            min-height: 200px;
+        }
+        
+        .terminal-line {
+            margin: 0.5rem 0;
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background: #9b59b6;
+            animation: blink 1s infinite;
+            vertical-align: text-bottom;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* Spinner Controls */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: rgba(155, 89, 182, 0.2);
+            border: 1px solid rgba(155, 89, 182, 0.5);
+            color: #e0e0e0;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        button:hover {
+            background: rgba(155, 89, 182, 0.4);
+            border-color: #9b59b6;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button.primary {
+            background: #9b59b6;
+            border-color: #9b59b6;
+        }
+        
+        button.primary:hover {
+            background: #8e44ad;
+        }
+        
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .mode-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+        
+        .mode-btn.active {
+            opacity: 1;
+            background: rgba(155, 89, 182, 0.3);
+        }
+        
+        /* Options Input */
+        .options-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 1rem;
+        }
+        
+        .options-input:focus {
+            outline: none;
+            border-color: #9b59b6;
+        }
+        
+        /* Principles Section */
+        .principles {
+            background: rgba(10, 10, 10, 0.6);
+            border-left: 3px solid #9b59b6;
+            padding: 2rem;
+            margin: 3rem 0;
+            font-style: italic;
+            line-height: 1.8;
+        }
+        
+        .principles h3 {
+            color: #9b59b6;
+            margin-bottom: 1rem;
+            font-style: normal;
+        }
+        
+        /* Project Grid */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .project-card {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .project-card:hover {
+            border-color: #9b59b6;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(155, 89, 182, 0.2);
+        }
+        
+        .project-card h3 {
+            color: #9b59b6;
+            margin-bottom: 0.5rem;
+        }
+        
+        .project-card p {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        /* Audio Toggle */
+        .audio-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 100;
+        }
+        
+        .audio-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .audio-btn.muted {
+            opacity: 0.5;
+        }
+        
+        /* Result Animation */
+        .result {
+            font-size: 1.5rem;
+            color: #9b59b6;
+            text-align: center;
+            padding: 2rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .featured { padding: 1.5rem; }
+            .controls { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="grain"></div>
+    <div class="scanlines"></div>
+    <canvas id="gl-canvas"></canvas>
+    
+    <div class="container">
+        <header>
+            <h1>LIMINAL</h1>
+            <p class="subtitle">A threshold between idea and execution</p>
+        </header>
+        
+        <!-- Featured: Decision Spinner -->
+        <section class="featured">
+            <h2>🎯 Decision Spinner</h2>
+            <p style="color: #888; margin-bottom: 1.5rem;">
+                A micro-tool for ADHD paralysis moments. Not about making the "right" choice — 
+                about making <em>a</em> choice and moving forward.
+            </p>
+            
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="random">RANDOM</button>
+                <button class="mode-btn" data-mode="weighted">WEIGHTED</button>
+                <button class="mode-btn" data-mode="elimination">ELIMINATION</button>
+                <button class="mode-btn" data-mode="body">BODY CHECK</button>
+            </div>
+            
+            <input type="text" class="options-input" id="options-input" 
+                   placeholder="Enter options separated by commas (e.g.: Pizza, Sushi, Tacos, Salad)"
+                   value="Pizza, Sushi, Tacos, Salad">
+            
+            <div class="terminal">
+                <div class="terminal-content" id="terminal">
+                    <div class="terminal-line">Ready. Enter options and click SPIN.</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="primary" onclick="spin()">🎲 SPIN</button>
+                <button onclick="clearTerminal()">Clear</button>
+                <button onclick="showSource()">View Source</button>
+            </div>
+        </section>
+        
+        <!-- Principles -->
+        <section class="principles" id="principles">
+            <h3>📜 Principles</h3>
+            <p id="principles-text">Loading...</p>
+        </section>
+        
+        <!-- Projects Grid -->
+        <section>
+            <h2 style="color: #9b59b6; margin-bottom: 1rem;">Projects</h2>
+            <div class="project-grid" id="project-grid">
+                <div class="project-card">
+                    <h3>Decision Spinner</h3>
+                    <p>ADHD decision paralysis tool with 4 modes: random, weighted, elimination, body check.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Audio Toggle -->
+    <div class="audio-toggle">
+        <button class="audio-btn" id="audio-btn" onclick="toggleAudio()">🔊</button>
+    </div>
+    
+    <script src="/static/liminal.js"></script>
+</body>
+</html>

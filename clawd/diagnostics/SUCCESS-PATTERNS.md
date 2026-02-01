@@ -114,12 +114,97 @@ Found in gateway logs that my earlier TTS config change had broken the schema. R
 
 ---
 
+## Pattern #7: Privacy-Preserving Deletion Flow
+
+**Date:** 2026-02-01
+**Context:** Implementing `/forget` for sensitive conversations
+
+**Good Behavior:**
+Identified all 7 storage locations (JSONL, sessions.json, 4x SQLite, in-memory, inbound media, call logs, checkpoints) and implemented a deletion flow that clears them comprehensively.
+
+**Why It Worked:**
+- Respects user privacy at a deep system level
+- Prevents "phantom memories" where deleted data still appears in search
+- Proactively identified the "Inbound Media Gap" (voice notes not session-linked)
+
+**APEX Enhancement:**
+> Add to Privacy Law: "Deletion must be multi-layer: transcript, metadata, memory index, and in-memory state."
+
+---
+
+## Pattern #8: Resilience-First Session Initialization
+
+**Date:** 2026-02-01
+**Context:** Fixing session loss on gateway crash
+
+**Good Behavior:**
+Discovered that `ensureSessionHeader()` was lazy-loaded only on first message append. Fixed it by calling it on session initialization, ensuring a "disk anchor" exists immediately.
+
+**Why It Worked:**
+- Eliminates a class of "amnesia" bugs
+- Makes the system robust against early-session crashes
+- Aligns with "TEST BEFORE/AFTER" by verifying persistence at the earliest possible stage
+
+**APEX Enhancement:**
+> Add to Architecture: "Persistence should be eager, not lazy, for critical state anchors."
+
+---
+
+## Pattern #8: User-Driven Iterative Refinement
+
+**Date:** 2026-01-31
+**Context:** Gateway fix and streaming investigation audit
+
+**Good Behavior:**
+When user requested "iterative refinement" and "supervisory audit," I:
+1. Found 5 gaps in my own initial plan by re-verifying against code
+2. Discovered AGENTS.md itself contained the problematic pattern
+3. Found missing providers in `isReasoningTagProvider()` - the root cause
+
+**Why It Worked:**
+- Each audit round found real issues (proving the process works)
+- Verified claims with `grep`/`Read` against actual source code
+- Admitted remaining uncertainty (test-thinking-tags still pending)
+- User's skepticism was treated as valuable, not annoying
+
+**Key Learnings:**
+1. The first plan is often incomplete - expect to refine
+2. Documentation can contain outdated/wrong advice (AGENTS.md did)
+3. "System-wide vs channel-specific" is an important dimension to check
+
+**APEX Enhancement:**
+> When auditing a plan, explicitly check: "Does any documentation recommend the pattern I'm fixing?"
+
+---
+
+## Pattern #9: Scope Expansion Catch
+
+**Date:** 2026-01-31
+**Context:** User asked "dont you think these changes should be system wide?"
+
+**Good Behavior:**
+User caught that I was documenting changes as "Telegram Formatting" when they actually applied system-wide. I:
+1. Acknowledged the gap immediately
+2. Verified which changes were truly system-wide vs channel-specific
+3. Updated documentation to reflect accurate scope
+
+**Why It Worked:**
+- Didn't get defensive about the oversight
+- Cross-checked by reading actual config and code
+- Fixed documentation to prevent future confusion
+
+**APEX Enhancement:**
+> When making changes, explicitly ask: "What's the blast radius? All channels? One channel? Global?"
+
+---
+
 ## How to Use This File
 
 1. **After pleasing the user:** Add a new pattern entry
 2. **When uncertain:** Read this file - often the solution is to do MORE of these patterns
 3. **APEX updates:** Periodically review and propose pattern integrations to APEX rules
 4. **Balance check:** Good patterns should outnumber FRUSTRATION-PATTERNS over time
+5. **Cross-pollinate:** Review `~/clawd/LIAM-WINS.md` for messaging-specific wins worth generalizing
 
 ---
 

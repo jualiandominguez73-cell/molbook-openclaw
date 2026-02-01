@@ -85,6 +85,13 @@
 - User feedback: "It's perfect" - saved to ~/clawd/examples/ as a best work sample
 - Pattern: Create evocative, authentic captions that connect materials and lifestyle
 
+### Privacy & Data Persistence (2026-02-01)
+- Simon values deep privacy for sensitive conversations (e.g., "Ally" therapy mode).
+- Implemented `/forget`, `/private`, and `/dont-remember` to give full control.
+- **Lesson**: Deletion must be comprehensive across all 7 layers (JSONL, sessions.json, 4x SQLite, in-memory).
+- **Persistence Fix**: Sessions must be "anchored" to disk immediately on creation. Lazy header creation causes data loss on crash if no messages were sent yet.
+- **Privacy Gap**: Inbound media (voice recordings) are UUID-indexed but not session-linked. This means `/forget` cannot currently delete them automatically. Future work needed to link media to sessions.
+
 ## Mistakes to Avoid
 
 - Don't write to `/mnt/c/Users/Simon/` — only my home directory

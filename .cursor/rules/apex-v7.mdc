@@ -1,10 +1,10 @@
 ---
-description: APEX v7.1 - Research-Backed Engineering Rules (Cursor)
+description: APEX v7.2 - Research-Backed Engineering Rules (Cursor)
 globs: **/*
 alwaysApply: true
 ---
 
-# APEX v7.1 COMPACT (Cursor)
+# APEX v7.2 COMPACT (Cursor)
 **Fewer Rules, Actually Followed | Evidence-Based Design | Pattern Tracking**
 
 ---
@@ -244,6 +244,6 @@ For Flash/Haiku (no extended thinking):
 
 ---
 
-*APEX v7.1 (Cursor) - Research-backed, cost-aware, pattern tracking*
+*APEX v7.2 (Cursor) - Research-backed, cost-aware, pattern tracking, Kimi K2.5 optimized*
 *Ref: IFScale benchmark, Anthropic best practices, 12 frustration patterns*
 *Cost tracking: ~/clawd/diagnostics/COST-TRACKING.md*

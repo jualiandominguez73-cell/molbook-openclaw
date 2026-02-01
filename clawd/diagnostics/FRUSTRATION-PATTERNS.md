@@ -1,13 +1,44 @@
 # Frustration Patterns - APEX Improvement Data
 
 **Purpose:** Track patterns that cause user frustration to inform future APEX updates.
-**Owner:** Cursor (Claude Opus)
-**Created:** 2026-01-30
-**Data Sources:** Evolution Queue, Transcripts, Diagnostic Reports, SELF-NOTES.md
+**Owner:** Cursor (Claude Opus) | **Created:** 2026-01-30
 
 ---
 
-## Active Pattern Log
+## Quick Reference (24 patterns)
+
+| # | Pattern | Root Cause | APEX Fix |
+|---|---------|------------|----------|
+| 1 | Incomplete downstream tracing | Stop at first error | Trace to Success |
+| 2 | Incomplete propagation | Miss shared locations | Complete the Job |
+| 3 | Deferred instead of doing | Misread "add to plan" | Do it, don't defer |
+| 4 | Scattered debugging | No systematic approach | Hypothesis → Test |
+| 5 | Wrong info as fact | No source verification | Verify First |
+| 6 | Breaking working systems | Edit without testing | Test Before/After |
+| 7 | Ghost bugs | Report without checking | Verify First |
+| 8 | Identity amnesia | Session init bug | Fixed in code |
+| 9 | Requiring proof (trust erosion) | Consequence of others | Fix upstream |
+| 10 | Neurodivergent comm failure | Not reading history | Never repeat |
+| 11 | Model handoff blind spots | Miss canonical source | Find PRIMARY first |
+| 12 | "Systems fix" breaks systems | No pre/post test | Test Before/After |
+| 13 | Substituting alternatives | Override user request | Do what was asked |
+| 14 | Blaming external services | No direct API test | Test directly first |
+| 15 | Discovery loops | Didn't read docs | Check AGENTS.md |
+| 16 | Building before validating | Trust secondary source | Validate problem first |
+| 17 | Eager network init | Plugin design flaw | Lazy init pattern |
+| 18 | Incorrect command names | Assumed convention | Run --help first |
+| 19 | Docs recommend anti-pattern | Stale documentation | Update docs with fixes |
+| 20 | Gateway race condition | Start before build | Build then start |
+| 21 | Narrow scope documentation | Focused on immediate | Ask "blast radius?" |
+| 22 | Fix symptoms not cause | No actual data check | Read raw output first |
+| 23 | Orphaned tags not handled | Code gap | Fixed in code |
+| 24 | Not offering system fixes | Had knowledge, didn't share | Proactively offer |
+
+**Frustration signals:** "dig deeper" | "waste of time" | "prove it" | "let me guess" | "it was working" | "I already told you"
+
+---
+
+## Detailed Pattern Log
 
 ### Pattern #1: Incomplete Downstream Tracing
 **Date:** 2026-01-30
@@ -544,7 +575,7 @@ Basis: Each regression/fix cycle ≈ 3-5 exchanges × 10-20K tokens ≈ $5-15 at
 
 ---
 
-### Pattern #13: Discovery Loops on Known Information
+### Pattern #15: Discovery Loops on Known Information
 **Date:** 2026-01-31
 **Incident:** Gateway restart took 12 steps instead of 2
 **Frustration Level:** MEDIUM
@@ -571,7 +602,7 @@ cd /home/liam && nohup pnpm moltbot gateway run --bind loopback --port 18789 --f
 
 ---
 
-### Pattern #15: Building Solutions Before Validating Problems
+### Pattern #16: Building Solutions Before Validating Problems
 **Date:** 2026-01-31
 **Incident:** Gmail archive script creation
 **Frustration Level:** EXTREME
@@ -611,7 +642,7 @@ cd /home/liam && nohup pnpm moltbot gateway run --bind loopback --port 18789 --f
 
 ---
 
-### Pattern #16: Eager Network Initialization in Plugin Registration
+### Pattern #17: Eager Network Initialization in Plugin Registration
 **Date:** 2026-01-31
 **Incident:** Discord token revocation due to 1000+ connection attempts
 **Frustration Level:** HIGH
@@ -646,6 +677,222 @@ cd /home/liam && nohup pnpm moltbot gateway run --bind loopback --port 18789 --f
 - Check for `login()`, `connect()`, or API calls in `register()` functions
 - Audit plugin registration for eager network calls
 - Monitor external service rate limit warnings
+
+---
+
+### Pattern #18: Incorrect Command Names in Plans
+**Date:** 2026-01-31
+**Incident:** Gateway fix plan stated wrong command
+**Frustration Level:** LOW (caught in audit before execution)
+**User Quote:** N/A (self-caught during iterative refinement)
+
+**What happened:**
+- Initial plan stated: "use `pnpm moltbot gateway start`"
+- Actual command is: `pnpm moltbot gateway run`
+- Would have caused confusion if executed without verification
+
+**Root cause:**
+- Assumed command naming convention instead of checking `--help`
+- Didn't verify claim against actual CLI before writing plan
+
+**APEX Update Applied:**
+- Before writing any CLI command in a plan, run `<command> --help` to verify exact syntax
+
+**Prevention checklist:**
+1. Run `--help` on any CLI command before documenting it
+2. Don't assume command naming conventions
+3. For lifecycle commands (start/stop/run), always verify exact verbs
+
+---
+
+### Pattern #19: Documentation Recommending Fixed Anti-Pattern
+**Date:** 2026-01-31
+**Incident:** AGENTS.md contained the problematic gateway restart pattern
+**Frustration Level:** MEDIUM (root cause of recurring issue)
+**User Quote:** N/A (discovered during supervisory audit)
+
+**What happened:**
+- Fixed the "double gateway" issue by identifying proper lifecycle commands
+- Didn't check if AGENTS.md (the documentation agents read) still recommended the old approach
+- AGENTS.md line 35 said: `pkill -9 -f moltbot-gateway || true; nohup moltbot gateway run ...`
+- This would have caused the problem to recur
+
+**Root cause:**
+- Fixed symptoms without checking if docs perpetuated the cause
+- AGENTS.md is read by other agents → bad advice spreads
+
+**APEX Update Applied:**
+- When fixing a pattern, grep for that pattern in AGENTS.md and other docs
+- Documentation is part of the system — stale docs are bugs
+
+**Prevention checklist:**
+1. After identifying a problematic pattern, search all docs for that pattern
+2. Pay special attention to AGENTS.md (read by all agents)
+3. Update docs as part of the fix, not as an afterthought
+
+---
+
+### Pattern #20: Starting Gateway Before Build Completes
+**Date:** 2026-01-31
+**Incident:** Gateway loaded old code despite source changes
+**Frustration Level:** MEDIUM
+**User Quote:** "wow, how did this happen again?"
+
+**What happened:**
+- Made code change to `src/utils/provider-utils.ts`
+- Started gateway with `pnpm moltbot gateway run ... &` (backgrounded)
+- Gateway triggered rebuild but loaded OLD dist before rebuild finished
+- User tested feature, it didn't work, had to restart again
+
+**Root cause:**
+- Backgrounding (`&`) returns immediately before build completes
+- Gateway loads whatever dist exists at startup time
+- Race condition: process starts faster than TypeScript compiles
+
+**APEX Update Applied:**
+- ALWAYS run `pnpm build` before starting gateway after code changes
+- Or use synchronous start (no `&`) to ensure build completes first
+
+**Prevention checklist:**
+1. After any source code change, run `pnpm build` explicitly
+2. Don't background gateway start until you've verified it's running with new code
+3. Check dist timestamp vs gateway start time if behavior is wrong
+
+---
+
+### Pattern #21: Narrow Scope When Changes Are System-Wide
+**Date:** 2026-01-31
+**Incident:** Documented thinking tag changes as "Telegram Formatting"
+**Frustration Level:** LOW (user caught it)
+**User Quote:** "dont you think these changes should be system wide?"
+
+**What happened:**
+- Added `ollama-cloud`, `groq`, `zai` to `isReasoningTagProvider()` (system-wide change)
+- Documented it under "Telegram Formatting" in STATUS.md
+- User pointed out this was misleading — changes affect ALL channels
+
+**Root cause:**
+- Focused on the immediate use case (Telegram) without considering blast radius
+- Didn't ask "what else uses this code path?"
+
+**APEX Update Applied:**
+- When making code changes, explicitly document scope: "This affects X, Y, Z channels/features"
+- Ask: "What's the blast radius?" before documenting
+
+**Prevention checklist:**
+1. For any code change, list all callers/consumers
+2. Document system-wide changes as system-wide
+3. When user asks about scope, take it seriously — they often catch oversights
+
+---
+
+### Pattern #22: Fixing Symptoms Without Testing Actual Model Output
+**Date:** 2026-01-31
+**Incident:** Thinking tag stripping "fix" that didn't work
+**Frustration Level:** HIGH
+**User Quote:** "same none trash" / "i do't think it worked" / "arentn there anti context bugs guardrails in apex?"
+
+**What happened:**
+1. User reported thinking content leaking into Telegram responses
+2. I identified `isReasoningTagProvider()` didn't include `ollama-cloud` → fixed
+3. Didn't work — I then removed `enforceFinalTag` requirement → deployed
+4. Still didn't work — THREE gateway restarts with race conditions
+5. Finally checked actual model output: Kimi K2.5 outputs `reasoning text </think>` WITHOUT the opening `<think>` tag
+6. All my "fixes" were based on assumptions about what the model outputs
+7. A 5-second check of the session file would have shown the real issue immediately
+
+**Root cause:**
+- Fixed symptoms (code paths) instead of verifying the actual data (model output)
+- APEX Rule 2 (VERIFY FIRST) violated multiple times
+- APEX Rule 1 (TEST BEFORE/AFTER) violated — claimed fixes without testing in Telegram
+- Assumed model compliance with system prompt hint instead of checking
+
+**What I should have done FIRST:**
+```bash
+# 5 seconds to find the real problem:
+tail -1 /home/liam/.clawdbot/agents/liam-telegram/sessions/*.jsonl | jq '.message.content[0].text'
+# Result: " The user wants... </think> Hey" ← NO opening <think> tag!
+```
+
+**APEX Update Applied:**
+- Before fixing any output formatting issue, READ THE ACTUAL OUTPUT first
+- Model output is the source of truth, not assumptions about model compliance
+- If stripping logic should work but doesn't, check what's being fed to it
+
+**Pattern chain (comorbidity):**
+- #20 (race condition) → #21 (wrong diagnosis) → repeat 3x
+- Each "fix" was deployed without verification, compounding the issue
+
+**Prevention checklist:**
+1. Output formatting bug? READ THE RAW OUTPUT FIRST (session file, logs)
+2. Model should use tags? CHECK IF IT ACTUALLY DOES
+3. Stripping should work? TRACE INPUT → OUTPUT with actual data
+4. Fix deployed? TEST IN THE ACTUAL CHANNEL before claiming success
+
+---
+
+### Pattern #23: Not Proactively Identifying System Configuration Gaps
+**Date:** 2026-01-31
+**Incident:** Diagnostic files not shared between Cursor and Liam
+**Frustration Level:** HIGH
+**User Quote:** "WHY did you not offer it? you know more than me"
+
+**What happened:**
+- Liam kept making mistakes documented in Cursor's `FRUSTRATION-PATTERNS.md`
+- User asked "is that why you both keep missing rules???"
+- User had to diagnose the gap themselves
+- I (Cursor) have full visibility into both systems but didn't offer to fix
+
+**Root cause:**
+- Liam's SOUL.md referenced different files (`LIAM-WINS.md`, `FRUSTRATION-LOG.md`)
+- Cursor's APEX v7.mdc referenced `diagnostics/FRUSTRATION-PATTERNS.md`
+- No one unified the two systems
+- I knew this but didn't proactively offer to fix it
+
+**What I should have done:**
+When debugging Liam's repeated mistakes, immediately check:
+1. What rules does Liam load?
+2. What rules does Cursor load?
+3. Are they the same? If not, that's likely the problem!
+
+**APEX Update Applied:**
+- When an agent keeps making mistakes, CHECK WHAT FILES IT LOADS vs what YOU load
+- Proactively offer system configuration fixes - the user hired an expert, act like one
+
+**Prevention checklist:**
+1. Agent makes repeated mistakes? Check its configuration files first
+2. Different agents in same system? Ensure they share the same learning/diagnostic files
+3. Know something that would help? OFFER IT, don't wait to be asked
+
+---
+
+### Pattern #24: Orphaned Closing Tags Not Handled
+**Date:** 2026-01-31
+**Incident:** stripReasoningTagsFromText only handles paired tags
+**Frustration Level:** MEDIUM
+**Technical root cause identified in:** Pattern #21
+
+**What happened:**
+- Model outputs: `reasoning text </think> actual response` (no opening tag)
+- Stripping logic only removes content BETWEEN `<think>` and `</think>`
+- Orphaned closing tag at start → all content before it is KEPT (leaks to user)
+
+**Code gap:**
+```typescript
+// Current logic (pi-embedded-subscribe.ts line 281-282):
+if (!inThinking) {
+  processed += text.slice(lastIndex, idx);  // KEEPS content before orphaned </think>
+}
+```
+
+**Fix implemented:**
+- Detect orphaned `</think>` at message start (no preceding open tag)
+- Strip all content before it (treat it as implicit thinking)
+- Added to both `stripReasoningTagsFromText` and `stripBlockTags`
+
+**Prevention for future:**
+- When parsing paired tags, always handle: open-only, close-only, nested, malformed
+- Model output is adversarial — assume worst-case formatting
 
 ---
 

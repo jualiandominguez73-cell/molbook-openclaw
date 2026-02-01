@@ -31,9 +31,13 @@
 - Update: `sudo npm i -g moltbot@latest` (global install needs root on `/usr/lib/node_modules`).
 - Config: use `moltbot config set ...`; ensure `gateway.mode=local` is set.
 - Discord: store raw token only (no `DISCORD_BOT_TOKEN=` prefix).
-- Restart: stop old gateway and run:
-  `pkill -9 -f moltbot-gateway || true; nohup moltbot gateway run --bind loopback --port 18789 --force > /tmp/moltbot-gateway.log 2>&1 &`
-- Verify: `moltbot channels status --probe`, `ss -ltnp | rg 18789`, `tail -n 120 /tmp/moltbot-gateway.log`.
+- Restart: use proper lifecycle commands (avoid pkill/nohup which cause lock issues):
+  ```bash
+  pnpm moltbot gateway stop   # stop existing gateway
+  pnpm moltbot gateway run --bind loopback --port 18789 --force  # start (foreground)
+  ```
+  Or use the helper script: `~/scripts/restart-gateway.sh`
+- Verify: `pnpm moltbot gateway status`, `ss -ltnp | rg 18789`, `tail -n 120 /tmp/moltbot/moltbot-*.log`.
 
 ## Build, Test, and Development Commands
 - Runtime baseline: Node **22+** (keep Node + Bun paths working).

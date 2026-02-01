@@ -30,6 +30,15 @@ export function isReasoningTagProvider(provider: string | undefined | null): boo
     return true;
   }
 
+  // Note: ollama-cloud and groq removed - Kimi K2.5 has native reasoning
+  // that conflicts with our <think> tag hint. Let it use its own format.
+  // See: https://www.kimi.com/blog/kimi-k2-5.html
+
+  // Handle z.ai provider (still benefits from structured tags)
+  if (normalized === "zai" || normalized.startsWith("zai/")) {
+    return true;
+  }
+
   return false;
 }
 

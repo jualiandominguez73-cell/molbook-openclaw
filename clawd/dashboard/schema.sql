@@ -51,6 +51,15 @@ CREATE TABLE IF NOT EXISTS agent_activity (
     raw_data TEXT          -- JSON blob for full event data
 );
 
+-- Liminal interactions tracking
+CREATE TABLE IF NOT EXISTS liminal_interactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (datetime('now')),
+    interaction_type TEXT NOT NULL,  -- spinner, principles, reaction, etc.
+    reaction TEXT,                  -- 👍 ❤️ 🔥 💀 🤔
+    notes TEXT                      -- Additional context
+);
+
 -- Performance indices
 CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_queue_item_id ON queue_snapshots(queue_item_id);

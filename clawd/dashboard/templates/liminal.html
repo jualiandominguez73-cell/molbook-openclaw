@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liminal — File Browser & Status</title>
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="stylesheet" href="/static/liminal.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <div class="app-header-content">
+                <nav class="main-nav">
+                    <a href="/" class="nav-link" data-module="dashboard">🦞 Dashboard</a>
+                    <a href="/liminal.html" class="nav-link active" data-module="liminal">🌀 Liminal</a>
+                    <a href="/cis.html" class="nav-link" data-module="cis">Content Intelligence</a>
+                    <a href="/sticker-business.html" class="nav-link" data-module="sticker">Stickers</a>
+                    <a href="/ceramics-intelligence.html" class="nav-link" data-module="ceramics">Ceramics</a>
+                    <a href="/natural-capture.html" class="nav-link" data-module="capture">Capture</a>
+                    <a href="/cicd.html" class="nav-link" data-module="cicd">CI/CD</a>
+                </nav>
+                <h1 class="app-title">Liminal Space</h1>
+                <p class="app-subtitle">File Browser & Status Board</p>
+            </div>
+        </header>
+
+        <main class="app-body">
+            <div class="app-content">
+                <!-- File Browser Panel -->
+                <div class="card mb-xl">
+                    <div class="card-header">
+                        <div class="card-title">📁 File Browser</div>
+                        <button class="btn btn-sm btn-subtle" onclick="loadFileTree()">↻ Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="file-tree" class="file-tree">
+                            <div class="text-muted">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project Detail Panel (hidden by default) -->
+                <div class="card mb-xl" id="project-detail" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-title" id="detail-title">Project</div>
+                        <button class="btn btn-sm btn-subtle" onclick="closeDetail()">× Close</button>
+                    </div>
+                    <div class="card-body" id="detail-content">
+                        <div class="text-muted">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Status Board -->
+                <div class="grid-4 mb-xl">
+                    <div class="stat-card accent-liminal">
+                        <div class="stat-value" id="project-count">--</div>
+                        <div class="stat-label">Projects</div>
+                    </div>
+                    <div class="stat-card accent-liminal">
+                        <div class="stat-value" id="experiment-count">--</div>
+                        <div class="stat-label">Experiments</div>
+                    </div>
+                    <div class="stat-card accent-liminal">
+                        <div class="stat-value" id="sketch-count">--</div>
+                        <div class="stat-label">Sketches</div>
+                    </div>
+                    <div class="stat-card accent-liminal">
+                        <div class="stat-value" id="total-files">--</div>
+                        <div class="stat-label">Total Files</div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card mb-xl">
+                    <div class="card-header">
+                        <div class="card-title">Recent Activity</div>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div id="recent-files" class="recent-list">
+                            <div class="text-muted" style="padding: 1rem;">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Principles Panel -->
+                <div class="card">
+                    <div class="card-header" style="cursor: pointer;" onclick="togglePrinciples()">
+                        <div class="card-title">📜 Principles</div>
+                        <span id="principles-toggle">▼</span>
+                    </div>
+                    <div class="card-body" id="principles-content" style="display: none;">
+                        <div id="principles-text" class="principles-text">
+                            <div class="text-muted">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-xl" style="color: var(--text-muted); font-size: 0.8rem;">
+                    <p>Liminal Space — /home/liam/liminal</p>
+                    <p style="color: var(--text-subtle);">The creative showcase lives on port 8081 (coming soon)</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/liminal.js"></script>
+</body>
+</html>

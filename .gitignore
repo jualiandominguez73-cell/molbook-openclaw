@@ -178,3 +178,4 @@ clawd/skills/*/.venv/
 .kokoro-models/
 clawd/.staging/
 snap/chromium/
+liminal/server/target/

@@ -282,14 +282,9 @@ export function buildAgentSystemPrompt(params: {
       : undefined;
   const reasoningHint = params.reasoningTagHint
     ? [
-        "ALL internal reasoning MUST be inside <think>...</think>.",
-        "Do not output any analysis outside <think>.",
-        "Format every reply as <think>...</think> then <final>...</final>, with no other text.",
-        "Only the final user-visible reply may appear inside <final>.",
-        "Only text inside <final> is shown to the user; everything else is discarded and never seen by the user.",
-        "Example:",
-        "<think>Short internal reasoning.</think>",
-        "<final>Hey there! What would you like to do next?</final>",
+        "If you want to show your reasoning, put it inside <think>...</think> tags before your response.",
+        "Reasoning inside <think> tags will be formatted separately for the user.",
+        "Only use <think> tags when you have actual reasoning to share; do not output empty tags or placeholder text like 'None'.",
       ].join(" ")
     : undefined;
   const reasoningLevel = params.reasoningLevel ?? "off";

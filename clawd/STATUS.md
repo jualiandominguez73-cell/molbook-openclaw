@@ -2,7 +2,7 @@
 
 > **TRUST THIS FILE OVER YOUR MEMORY.** If you remember something different, this file is correct.
 
-**Last updated:** 2026-01-28 (upstream merge, session scope configured, session-memory enhanced)
+**Last updated:** 2026-01-31 (gateway management fix, reasoning tag providers expanded, streaming docs)
 
 ## AI Employee Mode
 
@@ -88,11 +88,14 @@ You are now operating as a **full-fledged AI Employee**, not just a chatbot.
 
 | Channel | Primary Model | Fallbacks | Thinking |
 |---------|---------------|-----------|----------|
-| **Telegram** | ollama/deepseek-v3.1:cloud | zai/glm-4.7, ollama/glm-4.7-flash | medium |
-| **Discord** | ollama/kimi-k2.5:cloud | ollama/glm-4.7-flash, zai/glm-4.7 | high |
-| **Supervisor** | zai/glm-4.7 | ollama/deepseek-v3.1:cloud | high |
-| **Subagents** | zai/glm-4.7 | — | medium |
-| **Cron Jobs** | Varies per job | See Cron Jobs section | — |
+| **Telegram** | ollama-cloud/kimi-k2.5:cloud | groq/kimi-k2, ollama/glm-4.7-flash | medium |
+| **Discord** | ollama-cloud/kimi-k2.5:cloud | groq/kimi-k2, ollama/glm-4.7-flash | high |
+| **Phone (voice-call)** | groq/moonshotai/kimi-k2-instruct-0905 | N/A | N/A (lightweight mode) |
+| **Supervisor** | zai/glm-4.7 | ollama-cloud/kimi-k2.5:cloud | high |
+| **Subagents** | ollama-cloud/devstral-2:123b-cloud | — | low (auto) |
+| **Cron Jobs** | Varies per job | See Cron Jobs section | low (auto) |
+
+**Note:** Thinking levels marked "(auto)" are automatically upgraded from "off" to "low" by the system for reasoning-capable models. Explicit levels (medium, high) are configured overrides.
 
 ### Available Models
 
@@ -106,6 +109,44 @@ You are now operating as a **full-fledged AI Employee**, not just a chatbot.
 | **Kimi OCR** | Ollama (local) | OCR | Text extraction from images/PDFs |
 
 **Cross-Validation Principle:** Same model reviewing itself has identical blind spots. Kimi drafts, GLM reviews.
+
+## Thinking Tag Behavior (System-Wide, Updated 2026-01-31)
+
+Models using these providers now receive a system prompt hint to use `<think>...</think>` tags:
+- **ollama-cloud** (Telegram, Discord primary model)
+- **groq** (fallback model, voice-call)
+- **zai** (supervisor model)
+
+**Commands (all channels):**
+- `/reasoning on` - Show thinking formatted as italics
+- `/reasoning stream` - Show thinking as it's generated
+- `/reasoning off` - Hide structured thinking (natural narration still shows)
+
+**Note:** If a model doesn't comply with the tag hint, its natural reasoning prose will still appear.
+
+## Channel-Specific Formatting
+
+### Telegram-Only Settings
+
+| Setting | Value | Effect |
+|---------|-------|--------|
+| **streamMode** | block | Live draft updates via editMessageText |
+| **chunkMode** | length | Split long messages by character count |
+| **markdown.tables** | code | Render tables as code blocks (explicit) |
+| **draftChunk** | 50-150 chars | Streaming chunk size |
+
+### Discord Settings
+
+| Setting | Value | Effect |
+|---------|-------|--------|
+| **maxLinesPerMessage** | 17 (default) | Keeps messages readable |
+| **markdown.tables** | code (default) | Already defaults to code blocks |
+
+### All Channels
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| **markdown.tables** | code | Except Signal/WhatsApp which default to bullets |
 
 ## Session Configuration
 

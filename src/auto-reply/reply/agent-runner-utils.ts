@@ -3,7 +3,6 @@ import { getChannelDock } from "../../channels/dock.js";
 import type { ChannelId, ChannelThreadingToolContext } from "../../channels/plugins/types.js";
 import { normalizeAnyChannelId, normalizeChannelId } from "../../channels/registry.js";
 import type { MoltbotConfig } from "../../config/config.js";
-import { isReasoningTagProvider } from "../../utils/provider-utils.js";
 import { estimateUsageCost, formatTokenCount, formatUsd } from "../../utils/usage-format.js";
 import type { TemplateContext } from "../templating.js";
 import type { ReplyPayload } from "../types.js";
@@ -122,5 +121,6 @@ export const appendUsageLine = (payloads: ReplyPayload[], line: string): ReplyPa
   return updated;
 };
 
-export const resolveEnforceFinalTag = (run: FollowupRun["run"], provider: string) =>
-  Boolean(run.enforceFinalTag || isReasoningTagProvider(provider));
+export const resolveEnforceFinalTag = (run: FollowupRun["run"], _provider: string) =>
+  // Note: No longer auto-enforcing final tags for reasoning providers since simplified hint only uses <think>
+  Boolean(run.enforceFinalTag);

@@ -275,20 +275,58 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
     THINKING_TAG_SCAN_RE.lastIndex = 0;
     let lastIndex = 0;
     let inThinking = state.thinking;
-    for (const match of text.matchAll(THINKING_TAG_SCAN_RE)) {
-      const idx = match.index ?? 0;
-      if (codeSpans.isInside(idx)) continue;
-      if (!inThinking) {
-        processed += text.slice(lastIndex, idx);
+
+    // Collect matches first to detect orphaned closing tags
+    const thinkMatches = [...text.matchAll(THINKING_TAG_SCAN_RE)].filter(
+      (m) => !codeSpans.isInside(m.index ?? 0),
+    );
+
+    // Check for orphaned closing tag at start (no preceding open tag, not already in thinking)
+    // This handles models that output "reasoning text </think> response" without opening tag
+    let handledOrphaned = false;
+    if (!state.thinking && thinkMatches.length > 0) {
+      const firstMatch = thinkMatches[0];
+      const firstIsClose = firstMatch[1] === "/";
+      const firstIdx = firstMatch.index ?? 0;
+      // If first tag is a closing tag near the start, treat everything before as thinking
+      if (firstIsClose && firstIdx < 500) {
+        handledOrphaned = true;
+        // Skip all content before the orphaned closing tag
+        lastIndex = firstIdx + firstMatch[0].length;
+        // Process remaining matches
+        for (let i = 1; i < thinkMatches.length; i++) {
+          const match = thinkMatches[i];
+          const idx = match.index ?? 0;
+          const isClose = match[1] === "/";
+          if (!inThinking) {
+            processed += text.slice(lastIndex, idx);
+          }
+          inThinking = !isClose;
+          lastIndex = idx + match[0].length;
+        }
+        if (!inThinking) {
+          processed += text.slice(lastIndex);
+        }
+        state.thinking = inThinking;
       }
-      const isClose = match[1] === "/";
-      inThinking = !isClose;
-      lastIndex = idx + match[0].length;
     }
-    if (!inThinking) {
-      processed += text.slice(lastIndex);
+
+    // Normal paired tag handling (only if we didn't handle orphaned case above)
+    if (!handledOrphaned) {
+      for (const match of thinkMatches) {
+        const idx = match.index ?? 0;
+        if (!inThinking) {
+          processed += text.slice(lastIndex, idx);
+        }
+        const isClose = match[1] === "/";
+        inThinking = !isClose;
+        lastIndex = idx + match[0].length;
+      }
+      if (!inThinking) {
+        processed += text.slice(lastIndex);
+      }
+      state.thinking = inThinking;
     }
-    state.thinking = inThinking;
 
     // 2. Handle <final> blocks (stateful, strip content OUTSIDE)
     // If enforcement is disabled, we still strip the tags themselves to prevent
