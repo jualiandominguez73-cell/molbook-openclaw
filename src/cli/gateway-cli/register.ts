@@ -1,17 +1,19 @@
 import type { Command } from "commander";
-import type { CostUsageSummary } from "../../infra/session-cost-usage.js";
-import type { GatewayDiscoverOpts } from "./discover.js";
 import { gatewayStatusCommand } from "../../commands/gateway-status.js";
 import { formatHealthChannelLines, type HealthSummary } from "../../commands/health.js";
 import { loadConfig } from "../../config/config.js";
 import { discoverGatewayBeacons } from "../../infra/bonjour-discovery.js";
+import type { CostUsageSummary } from "../../infra/session-cost-usage.js";
 import { resolveWideAreaDiscoveryDomain } from "../../infra/widearea-dns.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatDocsLink } from "../../terminal/links.js";
 import { colorize, isRich, theme } from "../../terminal/theme.js";
 import { formatTokenCount, formatUsd } from "../../utils/usage-format.js";
+import { withProgress } from "../progress.js";
 import { runCommandWithRuntime } from "../cli-utils.js";
 import {
+  DaemonInstallOptions,
+  DaemonStatusOptions,
   runDaemonInstall,
   runDaemonRestart,
   runDaemonStart,
@@ -19,8 +21,8 @@ import {
   runDaemonStop,
   runDaemonUninstall,
 } from "../daemon-cli.js";
-import { withProgress } from "../progress.js";
-import { callGatewayCli, gatewayCallOpts } from "./call.js";
+import { callGatewayCli, gatewayCallOpts, GatewayRpcOpts } from "./call.js";
+import type { GatewayDiscoverOpts } from "./discover.js";
 import {
   dedupeBeacons,
   parseDiscoverTimeoutMs,
@@ -29,6 +31,7 @@ import {
   renderBeaconLines,
 } from "./discover.js";
 import { addGatewayRunCommand } from "./run.js";
+import { DaemonLifecycleOptions } from "../daemon-cli/types.js";
 
 function styleHealthChannelLine(line: string, rich: boolean): string {
   if (!rich) {
@@ -144,7 +147,7 @@ export function registerGatewayCli(program: Command) {
     .option("--no-probe", "Skip RPC probe")
     .option("--deep", "Scan system-level services", false)
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
+    .action(async (opts : DaemonStatusOptions) => {
       await runDaemonStatus({
         rpc: opts,
         probe: Boolean(opts.probe),
@@ -161,7 +164,7 @@ export function registerGatewayCli(program: Command) {
     .option("--token <token>", "Gateway token (token auth)")
     .option("--force", "Reinstall/overwrite if already installed", false)
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
+    .action(async (opts: DaemonInstallOptions) => {
       await runDaemonInstall(opts);
     });
 
@@ -169,7 +172,7 @@ export function registerGatewayCli(program: Command) {
     .command("uninstall")
     .description("Uninstall the Gateway service (launchd/systemd/schtasks)")
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
+    .action(async (opts: DaemonLifecycleOptions) => {
       await runDaemonUninstall(opts);
     });
 
@@ -177,7 +180,7 @@ export function registerGatewayCli(program: Command) {
     .command("start")
     .description("Start the Gateway service (launchd/systemd/schtasks)")
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
+    .action(async (opts: DaemonLifecycleOptions) => {
       await runDaemonStart(opts);
     });
 
@@ -185,7 +188,7 @@ export function registerGatewayCli(program: Command) {
     .command("stop")
     .description("Stop the Gateway service (launchd/systemd/schtasks)")
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
+    .action(async (opts: DaemonLifecycleOptions) => {
       await runDaemonStop(opts);
     });
 
@@ -193,7 +196,7 @@ export function registerGatewayCli(program: Command) {
     .command("restart")
     .description("Restart the Gateway service (launchd/systemd/schtasks)")
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
+    .action(async (opts: DaemonLifecycleOptions | undefined) => {
       await runDaemonRestart(opts);
     });
 
@@ -246,7 +249,7 @@ export function registerGatewayCli(program: Command) {
     gateway
       .command("health")
       .description("Fetch Gateway health")
-      .action(async (opts) => {
+      .action(async (opts: GatewayRpcOpts) => {
         await runGatewayCommand(async () => {
           const result = await callGatewayCli("health", opts);
           if (opts.json) {
@@ -280,11 +283,22 @@ export function registerGatewayCli(program: Command) {
     .option("--password <password>", "Gateway password (applies to all probes)")
     .option("--timeout <ms>", "Overall probe budget in ms", "3000")
     .option("--json", "Output JSON", false)
-    .action(async (opts) => {
-      await runGatewayCommand(async () => {
-        await gatewayStatusCommand(opts, defaultRuntime);
-      });
-    });
+    .action(
+      async (opts: {
+        url?: string;
+        token?: string;
+        password?: string;
+        timeout?: unknown;
+        json?: boolean;
+        ssh?: string;
+        sshIdentity?: string;
+        sshAuto?: boolean;
+      }) => {
+        await runGatewayCommand(async () => {
+          await gatewayStatusCommand(opts, defaultRuntime);
+        });
+      },
+    );
 
   gateway
     .command("discover")
