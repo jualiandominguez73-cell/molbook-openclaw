@@ -53,7 +53,6 @@ export async function installCompletion(
   const home = process.env.HOME || os.homedir();
   let profilePath = "";
   let sourceLine = "";
-  let legacyLine = "";
   let completionPath = "";
   const completionDir = path.join(home, ".openclaw", "completions");
 
@@ -61,7 +60,6 @@ export async function installCompletion(
     profilePath = path.join(home, ".zshrc");
     completionPath = path.join(completionDir, `${binName}.zsh`);
     sourceLine = `source "${completionPath}"`;
-    legacyLine = `source <(${binName} completion --shell zsh)`;
   } else if (shell === "bash") {
     // Try .bashrc first, then .bash_profile
     profilePath = path.join(home, ".bashrc");
@@ -72,25 +70,38 @@ export async function installCompletion(
     }
     completionPath = path.join(completionDir, `${binName}.bash`);
     sourceLine = `source "${completionPath}"`;
-    legacyLine = `source <(${binName} completion --shell bash)`;
   } else if (shell === "fish") {
     profilePath = path.join(home, ".config", "fish", "config.fish");
     completionPath = path.join(completionDir, `${binName}.fish`);
     sourceLine = `source "${completionPath}"`;
-    legacyLine = `${binName} completion --shell fish | source`;
   } else {
     console.error(`Automated installation not supported for ${shell} yet.`);
     return;
   }
 
   try {
-    const completionScript = script ?? getCompletionScriptFromCli(shell, binName, resolveCliName());
-    if (!completionScript.trim()) {
-      console.error("Failed to generate completion script.");
-      return;
-    }
-    await fs.mkdir(completionDir, { recursive: true });
-    await fs.writeFile(completionPath, completionScript, "utf-8");
+    const cliName = resolveCliName();
+    let cachedScript: string | undefined;
+    const getScript = () => {
+      if (cachedScript !== undefined) {
+        return cachedScript;
+      }
+      cachedScript = script ?? getCompletionScriptFromCli(shell, binName, cliName);
+      return cachedScript;
+    };
+    const ensureCompletionFile = async (): Promise<boolean> => {
+      if (await pathExists(completionPath)) {
+        return true;
+      }
+      const completionScript = getScript();
+      if (!completionScript.trim()) {
+        console.error("Failed to generate completion script.");
+        return false;
+      }
+      await fs.mkdir(completionDir, { recursive: true });
+      await fs.writeFile(completionPath, completionScript, "utf-8");
+      return true;
+    };
 
     // Check if profile exists
     try {
@@ -105,6 +116,9 @@ export async function installCompletion(
 
     const content = await fs.readFile(profilePath, "utf-8");
     if (content.includes(sourceLine)) {
+      if (!(await ensureCompletionFile())) {
+        return;
+      }
       if (!yes) {
         console.log(`Completion already installed in ${profilePath}`);
       }
@@ -113,6 +127,9 @@ export async function installCompletion(
 
     const updatedContent = replaceLegacyCompletionLine(content, shell, binName, sourceLine);
     if (updatedContent !== content) {
+      if (!(await ensureCompletionFile())) {
+        return;
+      }
       await fs.writeFile(profilePath, updatedContent, "utf-8");
       console.log(`Completion updated in ${profilePath}`);
       return;
@@ -125,6 +142,9 @@ export async function installCompletion(
       console.log(`Installing completion to ${profilePath}...`);
     }
 
+    if (!(await ensureCompletionFile())) {
+      return;
+    }
     await fs.appendFile(profilePath, `\n# ${formatCompletionHeader(binName)}\n${sourceLine}\n`);
     console.log(`Completion installed. Restart your shell or run: source ${profilePath}`);
   } catch (err) {
@@ -150,22 +170,39 @@ function renderCompletionScript(shell: string, program: Command): string {
 }
 
 function getCompletionScriptFromCli(shell: string, binName: string, cliName: string): string {
-  const run = (name: string) =>
-    spawnSync(name, ["completion", "--shell", shell], { encoding: "utf-8", env: process.env });
-  const primary = run(binName);
-  const fallback = cliName !== binName ? run(cliName) : null;
-  const result = primary.status === 0 ? primary : fallback?.status === 0 ? fallback : primary;
-  if (result.status !== 0) {
-    const stderr = result.stderr?.toString().trim();
-    const exitCode = result.status ?? "unknown";
-    const name = result === primary ? binName : cliName;
-    console.error(`Failed to generate completion (${name}, exit ${exitCode}).`);
-    if (stderr) {
-      console.error(stderr);
-    }
-    return "";
+  const env = { ...process.env };
+  const args = ["completion", "--shell", shell];
+  const attempts: Array<{ label: string; result: ReturnType<typeof spawnSync> }> = [];
+  attempts.push({
+    label: binName,
+    result: spawnSync(binName, args, { encoding: "utf-8", env }),
+  });
+  const argv1 = process.argv[1];
+  if (argv1 && argv1 !== binName && argv1 !== cliName) {
+    attempts.push({
+      label: `${process.execPath} ${argv1}`,
+      result: spawnSync(process.execPath, [argv1, ...args], { encoding: "utf-8", env }),
+    });
   }
-  return result.stdout?.toString() ?? "";
+  if (cliName !== binName) {
+    attempts.push({
+      label: cliName,
+      result: spawnSync(cliName, args, { encoding: "utf-8", env }),
+    });
+  }
+  const success = attempts.find((entry) => entry.result.status === 0);
+  if (success) {
+    return success.result.stdout?.toString() ?? "";
+  }
+  const last = attempts.at(-1);
+  const stderr = last?.result.stderr?.toString().trim();
+  const exitCode = last?.result.status ?? "unknown";
+  const name = last?.label ?? binName;
+  console.error(`Failed to generate completion (${name}, exit ${exitCode}).`);
+  if (stderr) {
+    console.error(stderr);
+  }
+  return "";
 }
 
 function formatCompletionHeader(binName: string) {
@@ -195,6 +232,15 @@ function replaceLegacyCompletionLine(
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function pathExists(filePath: string) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function generateZshCompletion(program: Command): string {

@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { withTempHome } from "../../test/helpers/temp-home.js";
@@ -86,13 +85,14 @@ describe("completion install", () => {
       const profilePath = path.join(home, ".zshrc");
       const completionPath = path.join(home, ".openclaw", "completions", "openclaw.zsh");
       await fs.mkdir(path.dirname(completionPath), { recursive: true });
-      await fs.writeFile(completionPath, "# zsh completion\n", "utf-8");
+      await fs.writeFile(completionPath, "# custom completion\n", "utf-8");
       await fs.writeFile(profilePath, `source "${completionPath}"\n`, "utf-8");
 
-      await installCompletion("zsh", true, "openclaw", "# zsh completion\n");
+      await installCompletion("zsh", true, "openclaw", "# regenerated completion\n");
 
       const updated = await readFile(profilePath);
       expect(updated).toBe(`source "${completionPath}"\n`);
+      await expect(readFile(completionPath)).resolves.toBe("# custom completion\n");
     });
   });
 });
