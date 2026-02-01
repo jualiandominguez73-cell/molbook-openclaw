@@ -1,5 +1,10 @@
 import { html, nothing } from "lit";
-import type { CostUsageSummary, GatewaySessionRow, SessionsListResult } from "../types";
+import type {
+  CostUsageSummary,
+  GatewaySessionRow,
+  SecurityFinding,
+  SessionsListResult,
+} from "../types";
 import { formatAgo } from "../format";
 
 function formatTokenCount(value: number): string {
@@ -11,7 +16,6 @@ function formatTokenCount(value: number): string {
 
 function formatUsd(value: number): string {
   if (!Number.isFinite(value)) return "—";
-  if (value >= 1) return `$${value.toFixed(2)}`;
   if (value >= 0.01) return `$${value.toFixed(2)}`;
   return `$${value.toFixed(4)}`;
 }
@@ -23,12 +27,7 @@ export type ActivityProps = {
   days: number;
   sessionsResult: SessionsListResult | null;
   error: string | null;
-  securityFindings: Array<{
-    checkId: string;
-    severity: string;
-    title: string;
-    detail: string;
-  }> | null;
+  securityFindings: SecurityFinding[] | null;
   onDaysChange: (days: number) => void;
   onRefresh: () => void;
 };
@@ -64,7 +63,10 @@ export function renderActivity(props: ActivityProps) {
       <div class="row" style="justify-content: space-between; align-items: center;">
         <div>
           <div class="card-title">Date range</div>
-          <div class="card-sub">Last N days for tokens and usage.</div>
+          <div class="card-sub">
+            Last N days for token usage and cost. Sessions and channels show recent activity (not
+            filtered by range).
+          </div>
         </div>
         <div class="row" style="gap: 8px;">
           ${presetDays.map(

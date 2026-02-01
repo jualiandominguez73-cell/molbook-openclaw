@@ -1,5 +1,5 @@
 import type { GatewayBrowserClient } from "../gateway";
-import type { CostUsageSummary, SessionsListResult } from "../types";
+import type { CostUsageSummary, SecurityFinding, SessionsListResult } from "../types";
 
 export type ActivityState = {
   client: GatewayBrowserClient | null;
@@ -9,12 +9,7 @@ export type ActivityState = {
   activityDays: number;
   activitySessionsResult: SessionsListResult | null;
   activityError: string | null;
-  activitySecurityFindings: Array<{
-    checkId: string;
-    severity: string;
-    title: string;
-    detail: string;
-  }> | null;
+  activitySecurityFindings: SecurityFinding[] | null;
 };
 
 export async function loadActivity(state: ActivityState, overrides?: { days?: number }) {
@@ -41,10 +36,7 @@ export async function loadActivity(state: ActivityState, overrides?: { days?: nu
     // security.audit: call if available (may not exist yet)
     try {
       const auditRes = (await state.client.request("security.audit", {})) as
-        | {
-            ok: boolean;
-            findings?: Array<{ checkId: string; severity: string; title: string; detail: string }>;
-          }
+        | { ok: boolean; findings?: SecurityFinding[] }
         | undefined;
       if (auditRes?.ok && Array.isArray(auditRes.findings)) {
         state.activitySecurityFindings = auditRes.findings;

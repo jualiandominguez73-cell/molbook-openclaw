@@ -21,6 +21,7 @@ import type {
   LogLevel,
   NostrProfile,
   PresenceEntry,
+  SecurityFinding,
   SessionsListResult,
   SkillStatusReport,
   StatusSummary,
@@ -117,12 +118,7 @@ export type AppViewState = {
   activityDays: number;
   activitySessionsResult: SessionsListResult | null;
   activityError: string | null;
-  activitySecurityFindings: Array<{
-    checkId: string;
-    severity: string;
-    title: string;
-    detail: string;
-  }> | null;
+  activitySecurityFindings: SecurityFinding[] | null;
   cronLoading: boolean;
   cronJobs: CronJob[];
   cronStatus: CronStatus | null;

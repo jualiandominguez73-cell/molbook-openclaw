@@ -397,6 +397,16 @@ export type CostUsageSummary = {
   totals: CostUsageTotals;
 };
 
+/** Matches SecurityAuditSeverity in src/security/audit.ts */
+export type SecurityAuditSeverity = "info" | "warn" | "critical";
+
+export type SecurityFinding = {
+  checkId: string;
+  severity: SecurityAuditSeverity;
+  title: string;
+  detail: string;
+};
+
 export type SessionsPatchResult = {
   ok: true;
   path: string;

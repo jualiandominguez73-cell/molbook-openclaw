@@ -20,6 +20,7 @@ import type {
   LogLevel,
   PresenceEntry,
   ChannelsStatusSnapshot,
+  SecurityFinding,
   SessionsListResult,
   SkillStatusReport,
   StatusSummary,
@@ -207,12 +208,7 @@ export class OpenClawApp extends LitElement {
   @state() activityDays = 7;
   @state() activitySessionsResult: SessionsListResult | null = null;
   @state() activityError: string | null = null;
-  @state() activitySecurityFindings: Array<{
-    checkId: string;
-    severity: string;
-    title: string;
-    detail: string;
-  }> | null = null;
+  @state() activitySecurityFindings: SecurityFinding[] | null = null;
 
   @state() cronLoading = false;
   @state() cronJobs: CronJob[] = [];
