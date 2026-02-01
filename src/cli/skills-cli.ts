@@ -408,6 +408,7 @@ export function formatSkillsAudit(
       skills: sorted.map((s) => ({
         name: s.skill.name,
         riskLevel: s.permissionValidation?.risk_level ?? "high",
+        hasManifest: s.permissions !== undefined,
         permissions: s.permissions,
       })),
     };
