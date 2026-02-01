@@ -413,23 +413,22 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
 }
 
 /**
- * Build Azure OpenAI provider configuration for use with LiteLLM proxy.
+ * Build Azure OpenAI provider configuration using native pi-ai Azure support.
  *
- * Azure OpenAI requires a LiteLLM proxy because:
- * - Azure uses `api-key` header instead of `Authorization: Bearer`
- * - Azure URL format differs: https://<resource>.openai.azure.com/openai/deployments/<deployment>/chat/completions?api-version=<version>
- * - Azure doesn't support some OpenAI params (like `store`)
+ * This uses pi-ai's built-in `azure-openai-responses` API which handles:
+ * - Azure's `api-key` header authentication
+ * - Deployment name mapping
+ * - Azure-specific URL format
  *
- * This function generates config for connecting to LiteLLM proxy that handles Azure translation.
- *
- * @param config - LiteLLM proxy configuration
- * @returns Provider config for LiteLLM proxy
+ * @param config - Azure OpenAI configuration
+ * @returns Provider config for native Azure OpenAI
  *
  * @example
  * ```typescript
- * const provider = buildAzureOpenAILiteLLMProvider({
- *   litellmBaseUrl: "http://localhost:4000/v1",
- *   litellmApiKey: "your-litellm-key",
+ * const provider = buildAzureOpenAIProvider({
+ *   endpoint: "https://my-resource.openai.azure.com",
+ *   apiKey: "your-azure-api-key",
+ *   apiVersion: "2024-10-21",
  *   deployments: {
  *     "gpt-4o-mini": "my-gpt4o-mini-deployment",
  *     "gpt-5.2-codex": "my-gpt5-codex-deployment",
@@ -437,12 +436,54 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
  * });
  * ```
  */
+export function buildAzureOpenAIProvider(config: AzureOpenAIConfig): ProviderConfig {
+  const deployments = config.deployments ?? {};
+
+  const models: ModelDefinitionConfig[] = Object.entries(deployments).map(
+    ([modelId, deploymentName]) => {
+      const lowerModelId = modelId.toLowerCase();
+      const isGpt5 = lowerModelId.includes("gpt-5");
+      const isO1 = lowerModelId.startsWith("o1");
+      const isO3 = lowerModelId.startsWith("o3");
+      const isReasoning = isO1 || isO3;
+
+      return {
+        // Use deployment name as the model ID for Azure
+        id: deploymentName,
+        name: modelId,
+        reasoning: isReasoning,
+        input: ["text", "image"] as Array<"text" | "image">,
+        cost: AZURE_OPENAI_DEFAULT_COST,
+        contextWindow: isGpt5 || isO3 ? 200000 : AZURE_OPENAI_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: AZURE_OPENAI_DEFAULT_MAX_TOKENS,
+        compat: {
+          supportsStore: false,
+        },
+      };
+    },
+  );
+
+  // Azure endpoint format for pi-ai's azure-openai-responses
+  const baseUrl = `${config.endpoint.replace(/\/+$/, "")}/openai/v1`;
+
+  return {
+    baseUrl,
+    api: "azure-openai-responses",
+    apiKey: config.apiKey,
+    models,
+  };
+}
+
+/**
+ * Build Azure OpenAI provider configuration for use with LiteLLM proxy.
+ * Use this if you prefer the LiteLLM approach over native Azure support.
+ *
+ * @param config - LiteLLM proxy configuration
+ * @returns Provider config for LiteLLM proxy
+ */
 export function buildAzureOpenAILiteLLMProvider(config: {
-  /** LiteLLM proxy base URL (e.g., http://localhost:4000/v1) */
   litellmBaseUrl: string;
-  /** LiteLLM API key */
   litellmApiKey?: string;
-  /** Map of model names to Azure deployment names (for reference in LiteLLM config) */
   deployments: Record<string, string>;
 }): ProviderConfig {
   const models: ModelDefinitionConfig[] = Object.entries(config.deployments).map(

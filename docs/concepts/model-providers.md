@@ -260,12 +260,25 @@ Ollama is automatically detected when running locally at `http://127.0.0.1:11434
 
 Azure OpenAI provides enterprise-grade access to GPT models with Azure security and compliance.
 
-- Provider: `azure-openai` (via LiteLLM proxy)
-- Auth: Azure API key + LiteLLM proxy
-- Example model: `azure-openai/gpt-5.2-codex`
+- Provider: `azure-openai`
+- Auth: `AZURE_OPENAI_API_KEY`
+- API: `azure-openai-responses`
+- Example model: `azure-openai/your-deployment-name`
 
-Azure OpenAI requires a LiteLLM proxy because its API differs from standard OpenAI
-(different auth header, URL format, and unsupported params).
+```json5
+{
+  models: {
+    providers: {
+      "azure-openai": {
+        baseUrl: "https://your-resource.openai.azure.com/openai/v1",
+        apiKey: "${AZURE_OPENAI_API_KEY}",
+        api: "azure-openai-responses",
+        models: [{ id: "your-deployment-name", name: "GPT-5.2 Codex" }],
+      },
+    },
+  },
+}
+```
 
 See [/providers/azure-openai](/providers/azure-openai) for complete setup guide.
 
