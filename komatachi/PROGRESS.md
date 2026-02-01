@@ -12,9 +12,9 @@
 | **Blockers** | None |
 
 ### What Exists Now
-- ✅ Scouting reports for 4 core areas (~20k LOC analyzed)
-- ✅ Distillation principles documented (8 principles)
-- ✅ Trial distillation: `src/compaction/` working
+- [x] Scouting reports for 4 core areas (~20k LOC analyzed)
+- [x] Distillation principles documented (8 principles)
+- [x] Trial distillation: `src/compaction/` working
 
 ### Open Decision Needed
 **Which component to distill next?** Candidates ranked by isolation:
