@@ -20,6 +20,9 @@ COPY . .
 # ✅ Skip alle build commando's die falen
 RUN pnpm ui:install
 
+# Build the TypeScript source code
+RUN pnpm build
+
 # Data folder maken
 RUN mkdir -p /data/.clawdbot
 
