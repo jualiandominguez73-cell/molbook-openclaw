@@ -238,7 +238,7 @@ export function resolveUserPath(input: string): string {
   if (!trimmed) {
     return trimmed;
   }
-  if (trimmed[0] === "~") {
+  if (trimmed.startsWith("~")) {
     const expanded = trimmed.replace(/^~(?=$|[\\/])/, os.homedir());
     return path.resolve(expanded);
   }
