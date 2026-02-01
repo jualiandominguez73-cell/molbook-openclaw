@@ -259,6 +259,40 @@ Based on applying these principles to our core components, we have made the foll
 
 ---
 
+## Preserving the Distilled State
+
+A distilled system is only valuable if it stays distilled. Without guidance, future maintainers will make the same local decisions that caused the original system to accumulate complexity. The absence of guiding principles in the original codebase is itself a lesson: **complexity accumulates in the absence of forces that prevent it.**
+
+### Embed Cognitive Scaffolding
+
+As we build the distilled system, we must embed documentation that steers future maintainers in the right direction:
+
+1. **Document the principles, not just the code**: The principles in this document should live alongside the code, referenced in onboarding, code review, and decision-making.
+
+2. **Explain the "why" of constraints**: When a component rejects invalid input rather than fixing it, document why. When we chose one provider instead of abstracting over many, document the reasoning. Future maintainers will face pressure to "just add a fallback"—give them ammunition to resist.
+
+3. **Make the boundaries visible**: If a layer should not handle retries, state it explicitly in that layer's documentation. If a component should fail rather than degrade, say so where maintainers will see it.
+
+4. **Record what was intentionally omitted**: Document the features and edge cases we chose not to handle. Future maintainers will think "we should add X"—let them know it was considered and rejected, and why.
+
+### Guard Against Drift
+
+Every system tends toward complexity unless actively maintained. The distilled system needs:
+
+1. **Architectural decision records**: When non-obvious choices are made, document the alternatives considered and why this path was chosen.
+
+2. **Complexity budgets**: Set expectations for file sizes, interface sizes, configuration options. Not as hard limits, but as triggers for scrutiny.
+
+3. **Principles in code review**: The principles aren't just for initial design—they're criteria for evaluating changes. "Does this respect layer boundaries?" should be a review question.
+
+4. **Periodic audits**: Periodically ask: "Has this component grown? Why? Is the growth essential or accidental?"
+
+### The Meta-Lesson
+
+The original codebase taught us the problem. The distillation process teaches us the solution. But solutions don't persist automatically—they require ongoing commitment. The cognitive scaffolding we embed now is what keeps the distilled system from becoming the next system that needs distillation.
+
+---
+
 ## Next Steps
 
 With these principles established, we can apply them systematically to each component:
