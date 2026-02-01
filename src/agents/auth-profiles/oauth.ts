@@ -46,7 +46,7 @@ async function refreshOAuthTokenWithLock(params: {
       };
     }
 
-    const provider = cred.provider as OAuthProvider;
+    const provider = cred.provider;
     const oauthCreds: Partial<Record<OAuthProvider, OAuthCredentials>> = {
       [provider]: cred,
     };
