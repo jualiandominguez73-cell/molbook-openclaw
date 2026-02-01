@@ -2,9 +2,12 @@
 
 ## Objective
 
-Build and deploy a production x402 micropayment API that sells AI-powered sports betting intelligence.
+Build and deploy a production x402 micropayment API that sells AI-powered sports
+betting intelligence - a market inefficiency detector that finds where the line
+is wrong and sells that edge.
 
 **Success = First x402 payment received**
+**Long-term = Consistently positive CLV, >54% win rate, self-sustaining revenue**
 
 ## Scope IN
 
@@ -19,8 +22,13 @@ Build and deploy a production x402 micropayment API that sells AI-powered sports
   - `GET /full-analysis` - Complete multi-model consensus analysis (premium)
 - Data integration: The Odds API, ESPN public endpoints, Open-Meteo weather
 - Analysis engine with multi-model consensus
+- Edge detection: CLV tracking, reverse line movement, stale line identification
+- Weather impact scoring (Open-Meteo → point spread/total adjustments)
+- Injury context engine (role player impact, not just star players)
+- Confidence intervals and sample size context on every output
 - Caching layer for API call efficiency
 - Error handling and graceful degradation
+- Continuous learning: weekly accuracy review, model weight adjustments
 
 ## Scope OUT
 
@@ -36,7 +44,7 @@ Build and deploy a production x402 micropayment API that sells AI-powered sports
 
 1. Stay within free tiers for all external APIs
 2. Cache aggressively - The Odds API allows 500 calls/month on free tier
-3. Never guarantee outcomes - all analysis includes disclaimers
+3. Never guarantee outcomes - every output includes probability ranges, not certainties
 4. Track all costs - every API call and LLM invocation logged
 5. Test with small amounts before any real money flows
 6. No storing of user data beyond what x402 requires
@@ -56,6 +64,9 @@ Build and deploy a production x402 micropayment API that sells AI-powered sports
 - [ ] All 5 endpoints functional
 - [ ] x402 payment flow working end-to-end
 - [ ] First payment received
+- [ ] CLV tracking operational (measuring every pick against closing line)
+- [ ] Win rate tracked over rolling 100-pick window
+- [ ] Weekly accuracy review automated
 - [ ] $200/month revenue (breakeven)
 
 ## Risk Register
