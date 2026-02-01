@@ -1,5 +1,7 @@
 import type { BrowserContext } from "playwright-core";
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
+import { Readable, Writable } from "node:stream";
 import { firefox } from "playwright-core";
 import type { RunningBrowser } from "./browser-process.js";
 import type { ResolvedBrowserProfile } from "./config.js";
@@ -173,8 +175,7 @@ function extractPidFromContext(context: BrowserContext): number {
  * Playwright manages the process internally, so this wraps the context lifecycle.
  */
 function createProcShim(context: BrowserContext) {
-  const { EventEmitter } = require("node:events") as typeof import("node:events");
-  const { Readable, Writable } = require("node:stream") as typeof import("node:stream");
+  // EventEmitter, Readable, Writable imported at top level
 
   const emitter = new EventEmitter();
   let killed = false;

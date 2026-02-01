@@ -97,12 +97,71 @@ export function findFirefoxExecutableWindows(): BrowserExecutable | null {
 }
 
 /**
+ * Try to find Playwright's bundled (juggler-patched) Firefox.
+ * Stock Firefox doesn't support Playwright's juggler protocol,
+ * so we scan the Playwright browser cache for a compatible build.
+ */
+function findPlaywrightBundledFirefox(): BrowserExecutable | null {
+  // Scan the Playwright cache directory for a bundled Firefox
+  const cacheDir = playwrightCacheDir();
+  if (!cacheDir) return null;
+
+  try {
+    const entries = fs
+      .readdirSync(cacheDir)
+      .filter((e: string) => e.startsWith("firefox-"))
+      .sort()
+      .reverse(); // newest first
+    for (const entry of entries) {
+      const candidates = [
+        // macOS
+        path.join(cacheDir, entry, "firefox", "Nightly.app", "Contents", "MacOS", "firefox"),
+        // Linux
+        path.join(cacheDir, entry, "firefox", "firefox"),
+      ];
+      for (const candidate of candidates) {
+        if (exists(candidate)) {
+          return { kind: "firefox", path: candidate };
+        }
+      }
+    }
+  } catch {
+    // cache dir not readable
+  }
+  return null;
+}
+
+function playwrightCacheDir(): string | null {
+  if (process.env.PLAYWRIGHT_BROWSERS_PATH) {
+    return process.env.PLAYWRIGHT_BROWSERS_PATH;
+  }
+  const home = os.homedir();
+  const platform = process.platform;
+  if (platform === "darwin") {
+    return path.join(home, "Library", "Caches", "ms-playwright");
+  }
+  if (platform === "linux") {
+    return path.join(home, ".cache", "ms-playwright");
+  }
+  if (platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA ?? path.join(home, "AppData", "Local");
+    return path.join(localAppData, "ms-playwright");
+  }
+  return null;
+}
+
+/**
  * Resolve the Firefox executable for the given platform.
+ * Prefers Playwright's bundled (juggler-patched) Firefox over system installs.
  * Returns null if no Firefox installation is found.
  */
 export function resolveFirefoxExecutableForPlatform(
   platform: NodeJS.Platform,
 ): BrowserExecutable | null {
+  // Playwright's bundled Firefox has juggler support; prefer it
+  const pw = findPlaywrightBundledFirefox();
+  if (pw) return pw;
+
   if (platform === "darwin") {
     return findFirefoxExecutableMac();
   }
