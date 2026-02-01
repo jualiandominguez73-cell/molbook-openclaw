@@ -2,17 +2,27 @@
 
 ## What is Distillation?
 
-Distillation is the process of reducing a system to its essential form while preserving its core functionality. Like distilling a spirit, we remove impurities and concentrate what matters—leaving behind something purer, more potent, and more valuable.
+Distillation is the process of building a new system from the ground up that captures the essential functionality of an existing system while discarding its accumulated baggage. Like distilling a spirit, we extract what matters and leave the impurities behind—producing something purer, more potent, and more valuable.
 
-Distillation is **not**:
-- Rewriting for the sake of rewriting
+**Distillation is not refactoring.** We are not modifying existing files, cleaning up old code, or incrementally improving what exists. We are architecting and implementing a new system—potentially in a different language—that performs the same essential functions.
+
+The existing codebase is our teacher, not our starting point. We study it to understand:
+- What it actually does (not what it appears to do)
+- Why certain decisions were made
+- What hard-won lessons are embedded in its edge cases
+- What problems it solved that we must also solve
+
+Then we close that book and write something new.
+
+Distillation **is not**:
+- Editing or refactoring existing code
 - Removing features users depend on
-- Premature optimization
-- Making code "clever" or terse
+- Porting code line-by-line to a new language
+- Making existing code "clever" or terse
 
 Distillation **is**:
-- Identifying what a system truly does vs. what it accumulated
-- Removing accidental complexity while preserving essential complexity
+- Building a new system informed by lessons from the old
+- Capturing essential functionality while shedding historical accidents
 - Making behavior understandable, predictable, and auditable
 - Creating something a new developer can understand in hours, not days
 
@@ -158,33 +168,41 @@ Graceful degradation hides problems. When something goes wrong, it should be obv
 
 ## Applying Distillation
 
-### Before Starting
+### Phase 1: Study
 
-1. **Understand the current system**: Read all the code. Trace the key flows. Identify what it actually does vs. what it appears to do.
+1. **Read the existing system**: Trace the key flows. Understand what it actually does vs. what it appears to do. Note the edge cases—they often contain hard-won lessons.
 
-2. **Enumerate the essential behaviors**: What must this component do? Write it as a list of user-facing capabilities.
+2. **Enumerate the essential behaviors**: What must this component do? Write it as a list of user-facing capabilities, not implementation details.
 
-3. **Identify the accidental complexity**: What exists because of history, not necessity?
+3. **Identify the accidental complexity**: What exists because of history, not necessity? What would you not build if starting fresh?
 
-4. **Define the target interface**: What would the minimal interface look like that still provides the essential behaviors?
+4. **Extract the lessons**: What problems did the existing system encounter that the new system must also solve? What invariants must be maintained?
 
-### During Distillation
+### Phase 2: Design
 
-1. **Start from the interface, not the implementation**: Define what the component should do before deciding how.
+1. **Define the interface first**: What is the minimal interface that provides all essential behaviors? Every method is a commitment.
 
-2. **Build the new alongside the old**: Don't rewrite in place. Create the distilled version separately so you can compare.
+2. **Choose the technology**: The distilled system may use a different language, different storage, different architecture. Choose what's right for the problem, not what's familiar.
 
-3. **Test behavioral equivalence**: Write tests that verify the distilled version produces the same results for the essential behaviors.
+3. **Design for the principles**: Explicit state, clear boundaries, auditable behavior, minimal configuration.
 
-4. **Accept that some things will change**: Edge cases that were handled may not be. Features that were possible may not be. This is intentional.
+4. **Accept what will change**: Some edge cases won't be handled. Some features won't exist. Some behaviors will differ. This is intentional.
 
-### After Distillation
+### Phase 3: Build
 
-1. **Verify with real usage**: Run the distilled version in real scenarios. Watch for surprises.
+1. **Start fresh**: New repository, new files, new code. The old system is reference material, not a starting point.
 
-2. **Document the decisions**: Record what was removed and why. Future maintainers will ask.
+2. **Build incrementally**: One capability at a time. Test each before moving to the next.
 
-3. **Delete the old code**: Don't keep it "just in case." Version control exists. Dead code is a maintenance burden.
+3. **Resist the pull of the old**: When tempted to copy-paste, stop. Understand why that code exists, then write something new that solves the same problem more simply.
+
+### Phase 4: Validate
+
+1. **Test behavioral equivalence**: Verify the distilled system produces correct results for all essential behaviors.
+
+2. **Run in real scenarios**: Deploy alongside the old system. Compare outputs. Watch for surprises.
+
+3. **Document the decisions**: Record what was preserved, what was discarded, and why. Future maintainers will ask.
 
 ---
 
@@ -192,19 +210,23 @@ Graceful degradation hides problems. When something goes wrong, it should be obv
 
 ### Not Refactoring
 
-Refactoring improves code structure without changing behavior. Distillation may change behavior—removing edge case handling, eliminating configuration options, dropping support for unused features.
+Refactoring modifies existing code to improve structure without changing behavior. Distillation builds a new system from scratch. The old code is studied, not edited.
+
+### Not Porting
+
+Porting translates code from one language to another while preserving its structure. Distillation reimagines the solution. The new system may look nothing like the old—same essential behaviors, completely different implementation.
 
 ### Not Optimization
 
-Optimization makes code faster or more efficient. Distillation makes code simpler and more understandable. Sometimes these align; often they don't.
+Optimization makes code faster or more efficient. Distillation makes systems simpler and more understandable. Sometimes these align; often they don't.
 
 ### Not Minimalism for Its Own Sake
 
-The goal is not the smallest possible code. The goal is the simplest code that provides the essential functionality. Sometimes that requires more lines, not fewer.
+The goal is not the smallest possible code. The goal is the simplest system that provides the essential functionality. Sometimes that requires more code, not less—explicit is better than clever.
 
-### Not One-Size-Fits-All
+### Not Preserving Everything
 
-Some components are genuinely complex because the problem is complex. Distillation acknowledges essential complexity. The discipline is distinguishing essential from accidental.
+Distillation intentionally discards. Edge cases that were handled may not be. Configuration options that existed may not. Features that were possible may not be. The discipline is choosing what matters.
 
 ---
 
