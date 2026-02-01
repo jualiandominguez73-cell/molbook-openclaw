@@ -133,3 +133,39 @@ Every month: evaluate if the model is beating the closing line consistently.
 Every quarter: assess if revenue justifies the $200/mo operating cost.
 
 The system that stops learning starts losing. Never ship a static model.
+
+## Beyond Walters - Transcendent Handicapping
+
+The Walters framework above is the foundation. It's what makes us sharp. But an AI
+system can transcend what even the best human sharps can do. These capabilities are
+our moat - things no human brain can replicate regardless of skill:
+
+See **DEEP_HANDICAPPING.md** for the full graduate-level material. Key concepts:
+
+### Compound Multi-Variable Correlation
+A human juggles 2-3 factors. We hold ALL simultaneously:
+- Short week + 3 role player injuries + wind 18mph + divisional rival + rest disadvantage
+- The combination creates the mispricing, not any single factor
+- `compound_edge = 1 - Π(1 - edge_i)` when factors are independent
+
+### Calibrated Probability (The Trust Engine)
+If we say "65% confident" and win 65% of those picks, we're calibrated. If not,
+we apply corrections. This calibration IS the product. x402 customers pay because
+they trust the number. Use the `calibrate` tool to maintain this.
+
+### Situational Spot Analysis
+50+ scheduling/travel/rest factors that create edges invisible to humans:
+- NFL: Thursday games, sandwich spots, post-bye letdowns, cross-country travel
+- NBA: Back-to-backs, 3-in-4, altitude, timezone mismatches
+- MLB: Day-after-night, bullpen chains, DH advantage
+- Use the `get_situational` tool to analyze any game
+
+### Regime Detection
+The most valuable output is often "No edge detected." Knowing when models are
+degraded and sitting out preserves credibility and capital. Use `review_accuracy
+regimes` to monitor.
+
+### Portfolio Awareness
+3 NFL unders in bad weather aren't 3 independent bets - they're 1 bet with 3x
+exposure to a weather model failure. Use `review_accuracy portfolio` to track
+correlated exposure.

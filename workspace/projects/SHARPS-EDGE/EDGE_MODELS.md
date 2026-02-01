@@ -14,7 +14,7 @@ ESPN Public Endpoints      → Injuries, lineups, stats  → Context engine
 ESPN News/Headlines        → Team drama, coaching, motivation → Social intel engine
 Open-Meteo                → Wind, rain, temp, humidity → Weather impact engine
                                     ↓
-                          Edge Detection Models (6)
+                          Edge Detection Models (8)
                                     ↓
                      Confidence-weighted edge score
                                     ↓
@@ -134,6 +134,59 @@ because it's "soft" data. That's exactly why it's valuable.
 **Edge insight**: A team with 3+ negative social signals trading at a neutral
 line is likely overvalued. The public bets names and records, not chemistry.
 
+## Model 7: Situational Spots
+
+**Signal**: Scheduling, travel, rest, and situational factors that create hidden edges.
+
+**Logic**:
+- **Rest differential**: Team with 2+ day rest advantage has edge. Back-to-backs are
+  significant negative (-7 weight in NBA/NHL).
+- **Travel distance**: Cross-country travel (>1500mi) degrades performance. Timezone
+  mismatches compound the effect (West→East = circadian disadvantage).
+- **Schedule density**: 3 games in 4 nights (NBA/NHL) creates fatigue edges.
+- **Spot analysis** (NFL-specific):
+  - Thursday games after Sunday = short rest, both teams affected
+  - Letdown after blowout win (>17 pts)
+  - Sandwich spots (big game before AND after)
+  - Post-bye letdown (0.5-1 pt ATS historically)
+  - Divisional revenge (team lost first meeting by 10+)
+- **Altitude**: Denver home games favor the home team (1 mile elevation adjustment).
+- **Compound spots**: Multiple negatives stacking on one team amplify the edge.
+
+**Data needed**: ESPN team schedules, game dates, venue coordinates, timezone map.
+
+**Tool**: `get_situational` - returns spot analysis, compound score, and edge direction.
+
+**Weight**: Moderate (6). High when compound spots detected.
+
+**Edge insight**: No human can simultaneously track rest days, travel distance,
+timezone changes, schedule density, and historical spot performance for every team
+in every sport. This is pure AI advantage.
+
+## Model 8: Calibration Overlay
+
+**Signal**: Post-processing correction that adjusts raw edge score to match observed accuracy.
+
+**Logic**:
+- After aggregating Models 1-7 into a raw edge score, apply calibration correction.
+- Load `calibration.json` (populated by `calibrate correct` action).
+- Find the confidence bucket matching the raw score (e.g., 60-65%).
+- Apply `correction_factor`: `calibrated = raw × correction_factor`.
+- If no calibration data exists, raw score passes through unchanged.
+
+**Example**: If picks at 65% confidence actually win 55% of the time, the correction
+factor is 0.846. A raw 65% becomes calibrated 55%.
+
+**Data needed**: Historical pick tracking data, `calibrate correct` to compute factors.
+
+**Tool**: `calibrate` - manages the calibration lifecycle (check, report, correct, adjust).
+
+**Weight**: 0 (does not participate in model aggregation - applied as final correction).
+
+**Why this matters**: Calibrated probability IS the product. Every x402 endpoint
+returns a confidence number. If customers can't trust that number, we have no
+business. The calibration overlay is the trust engine.
+
 ## Combining Models → Edge Score
 
 Each model outputs:
@@ -163,7 +216,8 @@ edge_score = Σ (model_confidence × model_weight) / Σ weights_of_active_models
 |----------|---------------|---------------------|
 | `/quick-check` | Line Value + RLM | <2s |
 | `/line-check` | Line Value + RLM + Stale Line | <3s |
-| `/full-analysis` | All 6 models | <5s |
+| `/standard` | Models 1-4 (Lines, RLM, Weather, Injuries) | <4s |
+| `/full-analysis` | All 8 models (+ calibration overlay) | <5s |
 
 ## CLV Tracking
 
@@ -215,6 +269,10 @@ The brain. Analyzes stored picks and generates actionable insights:
 - **sport_breakdown**: Where are we sharp, where are we leaking
 - **lessons**: View accumulated lessons from past reviews
 - **weights**: Suggest and apply model weight adjustments (±5% max per cycle)
+- **calibration**: Predicted vs actual win rate by confidence bucket
+- **regimes**: Detect model degradation (losing streaks, CLV trend, high-confidence misses)
+- **compound**: Which model combinations produce best/worst results
+- **portfolio**: Correlated pick exposure and diversification analysis
 
 ### The Learning Loop
 

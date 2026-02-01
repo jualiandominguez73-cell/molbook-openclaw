@@ -17,13 +17,37 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 
 export const ReviewAccuracySchema = Type.Object(
   {
-    action: Type.Unsafe<"weekly" | "model_performance" | "sport_breakdown" | "lessons" | "weights">({
+    action: Type.Unsafe<
+      | "weekly"
+      | "model_performance"
+      | "sport_breakdown"
+      | "lessons"
+      | "weights"
+      | "calibration"
+      | "regimes"
+      | "compound"
+      | "portfolio"
+    >({
       type: "string",
-      enum: ["weekly", "model_performance", "sport_breakdown", "lessons", "weights"],
+      enum: [
+        "weekly",
+        "model_performance",
+        "sport_breakdown",
+        "lessons",
+        "weights",
+        "calibration",
+        "regimes",
+        "compound",
+        "portfolio",
+      ],
       description:
         "Action: 'weekly' full review, 'model_performance' per-model stats, " +
         "'sport_breakdown' by sport, 'lessons' view learned lessons, " +
-        "'weights' view/suggest model weight adjustments",
+        "'weights' view/suggest model weight adjustments, " +
+        "'calibration' predicted vs actual by confidence bucket, " +
+        "'regimes' detect model degradation signals, " +
+        "'compound' analyze which factor combos produce best results, " +
+        "'portfolio' correlated pick exposure analysis",
     }),
     period: Type.Optional(
       Type.String({
@@ -75,7 +99,7 @@ export function createReviewAccuracyTool(api: OpenClawPluginApi) {
   const lessonsDir = path.join(dataDir, "lessons");
   const weightsFile = path.join(dataDir, "model-weights.json");
 
-  // Default model weights
+  // Default model weights (Model 8 calibration has weight 0 - it's a post-processing step)
   const DEFAULT_WEIGHTS: Record<string, number> = {
     line_value: 6,
     reverse_line_movement: 8,
@@ -83,14 +107,18 @@ export function createReviewAccuracyTool(api: OpenClawPluginApi) {
     injury_context: 5,
     social_signals: 4,
     stale_line_detection: 9,
+    situational_spots: 6,
   };
+
+  const calibrationFile = path.join(dataDir, "calibration.json");
 
   return {
     name: "review_accuracy",
     label: "Review Accuracy",
     description:
       "Recursive learning engine. Analyzes past pick accuracy, CLV performance, " +
-      "and model effectiveness. Generates lessons learned and suggests model weight " +
+      "model effectiveness, probability calibration, regime detection, compound edges, " +
+      "and portfolio correlation. Generates lessons learned and suggests model weight " +
       "adjustments. Run 'weekly' every Sunday. The system gets smarter with every review.",
     parameters: ReviewAccuracySchema,
 
@@ -377,9 +405,419 @@ export function createReviewAccuracyTool(api: OpenClawPluginApi) {
             );
           }
 
+          case "calibration": {
+            // Probability calibration: predicted confidence vs actual win rate by bucket
+            if (filtered.length < 20) {
+              return ok(
+                { message: "Need 20+ resolved picks for calibration analysis." },
+                "Calibration - insufficient data",
+              );
+            }
+
+            const BUCKETS = [
+              { low: 30, high: 40 },
+              { low: 40, high: 50 },
+              { low: 50, high: 55 },
+              { low: 55, high: 60 },
+              { low: 60, high: 65 },
+              { low: 65, high: 70 },
+              { low: 70, high: 80 },
+              { low: 80, high: 100 },
+            ];
+
+            const bucketResults = BUCKETS.map((b) => {
+              const inBucket = filtered.filter(
+                (p) => p.edge_score >= b.low && p.edge_score < b.high,
+              );
+              const decided = inBucket.filter((p) => p.outcome !== "push");
+              const wins = decided.filter((p) => p.outcome === "win").length;
+              const total = decided.length;
+              const actualRate = total > 0 ? (wins / total) * 100 : 0;
+              const midpoint = (b.low + b.high) / 2;
+              const error = total >= 5 ? Math.abs(actualRate - midpoint) : 0;
+
+              return {
+                bucket: `${b.low}-${b.high}%`,
+                picks: inBucket.length,
+                decided: total,
+                wins,
+                predicted: midpoint,
+                actual: total > 0 ? Number(actualRate.toFixed(1)) : null,
+                error: total >= 5 ? Number(error.toFixed(1)) : null,
+                assessment:
+                  total < 5
+                    ? "insufficient"
+                    : error < 3
+                      ? "calibrated"
+                      : error < 5
+                        ? "acceptable"
+                        : actualRate > midpoint
+                          ? "UNDERCONFIDENT"
+                          : "OVERCONFIDENT",
+              };
+            });
+
+            const withData = bucketResults.filter((b) => b.decided >= 5);
+            const overallError =
+              withData.length > 0
+                ? withData.reduce((s, b) => s + (b.error ?? 0), 0) / withData.length
+                : 0;
+
+            const calLessons: string[] = [];
+            for (const b of bucketResults) {
+              if (b.assessment === "OVERCONFIDENT") {
+                calLessons.push(
+                  `${b.bucket}: Overconfident. Predicted ${b.predicted}%, actual ${b.actual}%. Customers seeing inflated numbers.`,
+                );
+              }
+              if (b.assessment === "UNDERCONFIDENT") {
+                calLessons.push(
+                  `${b.bucket}: Underconfident. Predicted ${b.predicted}%, actual ${b.actual}%. Leaving edge on the table.`,
+                );
+              }
+            }
+
+            if (calLessons.length > 0) {
+              await saveLessons(lessonsDir, calLessons, "calibration");
+            }
+
+            return ok(
+              {
+                period,
+                total_picks: filtered.length,
+                overall_error: Number(overallError.toFixed(2)),
+                status:
+                  overallError < 3
+                    ? "calibrated"
+                    : overallError < 5
+                      ? "acceptable"
+                      : overallError < 8
+                        ? "needs_work"
+                        : "miscalibrated",
+                buckets: bucketResults,
+                insights: calLessons.length > 0 ? calLessons : ["All buckets with sufficient data are well-calibrated."],
+                next_action:
+                  "Run `calibrate correct` to update correction factors based on this data.",
+              },
+              `Calibration analysis (error: ${overallError.toFixed(2)}%)`,
+            );
+          }
+
+          case "regimes": {
+            // Detect if current performance suggests model degradation
+            if (filtered.length < 10) {
+              return ok(
+                { message: "Need 10+ resolved picks for regime analysis." },
+                "Regime detection - insufficient data",
+              );
+            }
+
+            // Sort by timestamp, analyze recent streaks
+            const sorted = [...filtered].sort(
+              (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+            );
+
+            // Rolling window: last 10 picks
+            const recent10 = sorted.slice(-10);
+            const recentWins = recent10.filter((p) => p.outcome === "win").length;
+            const recentLosses = recent10.filter((p) => p.outcome === "loss").length;
+            const recentWinRate = recentWins / (recentWins + recentLosses) || 0;
+
+            // High-confidence misses (edge >= 60 that lost)
+            const highConfMisses = sorted
+              .filter((p) => p.edge_score >= 60 && p.outcome === "loss")
+              .slice(-5);
+
+            // Consecutive losses
+            let maxStreak = 0;
+            let currentStreak = 0;
+            for (const p of sorted) {
+              if (p.outcome === "loss") {
+                currentStreak++;
+                maxStreak = Math.max(maxStreak, currentStreak);
+              } else {
+                currentStreak = 0;
+              }
+            }
+
+            // CLV trend: are we getting worse?
+            const clvPicks = sorted.filter((p) => p.clv != null);
+            let clvTrend: "improving" | "stable" | "degrading" | "insufficient" = "insufficient";
+            if (clvPicks.length >= 10) {
+              const firstHalf = clvPicks.slice(0, Math.floor(clvPicks.length / 2));
+              const secondHalf = clvPicks.slice(Math.floor(clvPicks.length / 2));
+              const avgFirst = firstHalf.reduce((s, p) => s + (p.clv ?? 0), 0) / firstHalf.length;
+              const avgSecond = secondHalf.reduce((s, p) => s + (p.clv ?? 0), 0) / secondHalf.length;
+              clvTrend =
+                avgSecond > avgFirst + 0.2
+                  ? "improving"
+                  : avgSecond < avgFirst - 0.2
+                    ? "degrading"
+                    : "stable";
+            }
+
+            // Regime signals
+            const signals: string[] = [];
+            let severity: "green" | "yellow" | "orange" | "red" = "green";
+
+            if (recentWinRate < 0.4) {
+              signals.push(`Recent 10: ${recentWins}-${recentLosses} (${(recentWinRate * 100).toFixed(0)}%). Below breakeven.`);
+              severity = "yellow";
+            }
+            if (maxStreak >= 5) {
+              signals.push(`Max losing streak: ${maxStreak}. Consider volume reduction.`);
+              severity = severity === "green" ? "yellow" : "orange";
+            }
+            if (highConfMisses.length >= 3) {
+              signals.push(
+                `${highConfMisses.length} high-confidence (60+) losses recently. Edge scoring may be miscalibrated.`,
+              );
+              severity = "orange";
+            }
+            if (clvTrend === "degrading") {
+              signals.push("CLV trend is degrading. Market may be adjusting to our patterns.");
+              severity = "orange";
+            }
+            if (recentWinRate < 0.3 && maxStreak >= 5) {
+              signals.push("REGIME ALERT: Multiple degradation signals. Recommend reduced volume or model review.");
+              severity = "red";
+            }
+
+            if (signals.length === 0) {
+              signals.push("No regime degradation detected. Models performing within expected parameters.");
+            }
+
+            // Save regime lessons
+            if (severity !== "green") {
+              await saveLessons(lessonsDir, signals, "regime_detection");
+            }
+
+            return ok(
+              {
+                period,
+                total_picks: filtered.length,
+                regime_status: severity,
+                recent_10: `${recentWins}-${recentLosses}`,
+                max_losing_streak: maxStreak,
+                high_confidence_misses: highConfMisses.length,
+                clv_trend: clvTrend,
+                signals,
+                recommended_action:
+                  severity === "red"
+                    ? "STOP: Reduce volume to zero until root cause identified."
+                    : severity === "orange"
+                      ? "CAUTION: Reduce volume 50%. Run calibration analysis."
+                      : severity === "yellow"
+                        ? "MONITOR: Continue but watch closely. Run weekly review."
+                        : "CLEAR: Continue normal operations.",
+              },
+              `Regime detection: ${severity.toUpperCase()}`,
+            );
+          }
+
+          case "compound": {
+            // Which model combinations produce the best results?
+            if (filtered.length < 20) {
+              return ok(
+                { message: "Need 20+ resolved picks for compound analysis." },
+                "Compound analysis - insufficient data",
+              );
+            }
+
+            // Track performance by model combination
+            const combos: Record<string, { wins: number; losses: number; picks: string[] }> = {};
+
+            for (const pick of filtered) {
+              if (!pick.models_fired || pick.models_fired.length === 0) continue;
+              // Create sorted key from model combination
+              const key = [...pick.models_fired].sort().join("+");
+              if (!combos[key]) combos[key] = { wins: 0, losses: 0, picks: [] };
+              if (pick.outcome === "win") combos[key].wins++;
+              if (pick.outcome === "loss") combos[key].losses++;
+              combos[key].picks.push(pick.id);
+            }
+
+            // Also track pairwise model interactions
+            const pairs: Record<string, { wins: number; losses: number }> = {};
+            for (const pick of filtered) {
+              if (!pick.models_fired || pick.outcome === "push") continue;
+              for (let i = 0; i < pick.models_fired.length; i++) {
+                for (let j = i + 1; j < pick.models_fired.length; j++) {
+                  const key = [pick.models_fired[i], pick.models_fired[j]].sort().join("+");
+                  if (!pairs[key]) pairs[key] = { wins: 0, losses: 0 };
+                  if (pick.outcome === "win") pairs[key].wins++;
+                  if (pick.outcome === "loss") pairs[key].losses++;
+                }
+              }
+            }
+
+            // Sort by win rate (min 3 picks)
+            const comboResults = Object.entries(combos)
+              .filter(([, v]) => v.wins + v.losses >= 3)
+              .map(([combo, stats]) => ({
+                models: combo,
+                total: stats.wins + stats.losses,
+                wins: stats.wins,
+                win_rate: `${((stats.wins / (stats.wins + stats.losses)) * 100).toFixed(1)}%`,
+              }))
+              .sort((a, b) => b.wins / b.total - a.wins / a.total);
+
+            const pairResults = Object.entries(pairs)
+              .filter(([, v]) => v.wins + v.losses >= 5)
+              .map(([pair, stats]) => ({
+                pair,
+                total: stats.wins + stats.losses,
+                wins: stats.wins,
+                win_rate: `${((stats.wins / (stats.wins + stats.losses)) * 100).toFixed(1)}%`,
+              }))
+              .sort((a, b) => b.wins / b.total - a.wins / a.total);
+
+            const compoundLessons: string[] = [];
+            if (comboResults.length > 0) {
+              const best = comboResults[0];
+              compoundLessons.push(
+                `Best combo: ${best.models} (${best.win_rate} on ${best.total} picks). Lean into this combination.`,
+              );
+            }
+            if (comboResults.length > 1) {
+              const worst = comboResults[comboResults.length - 1];
+              if (worst.wins / worst.total < 0.5) {
+                compoundLessons.push(
+                  `Worst combo: ${worst.models} (${worst.win_rate} on ${worst.total} picks). Reduce confidence when these models fire together.`,
+                );
+              }
+            }
+
+            if (compoundLessons.length > 0) {
+              await saveLessons(lessonsDir, compoundLessons, "compound_analysis");
+            }
+
+            return ok(
+              {
+                period,
+                total_picks: filtered.length,
+                best_combinations: comboResults.slice(0, 10),
+                best_pairs: pairResults.slice(0, 10),
+                insights: compoundLessons.length > 0 ? compoundLessons : ["Insufficient data for compound insights."],
+              },
+              "Compound model analysis",
+            );
+          }
+
+          case "portfolio": {
+            // Correlated pick exposure analysis
+            if (filtered.length < 10) {
+              return ok(
+                { message: "Need 10+ picks for portfolio analysis." },
+                "Portfolio analysis - insufficient data",
+              );
+            }
+
+            // Group recent picks by date to find same-day correlated exposure
+            const byDate: Record<string, Pick[]> = {};
+            for (const pick of filtered) {
+              const date = pick.timestamp.slice(0, 10);
+              if (!byDate[date]) byDate[date] = [];
+              byDate[date].push(pick);
+            }
+
+            // Find days with multiple picks
+            const multiPickDays = Object.entries(byDate)
+              .filter(([, picks]) => picks.length >= 2)
+              .map(([date, picks]) => {
+                // Check for correlated directions (e.g., all unders = weather correlation)
+                const directions = picks.map((p) => p.direction);
+                const allUnder = directions.every((d) => d === "under");
+                const allOver = directions.every((d) => d === "over");
+                const allSameSide = directions.every((d) => d === directions[0]);
+
+                // Check for same sport (sport-specific model failure = correlated risk)
+                const sports = new Set(picks.map((p) => p.sport));
+                const singleSport = sports.size === 1;
+
+                // Check for common models (same model driving all = single point of failure)
+                const modelSets = picks.map((p) => new Set(p.models_fired ?? []));
+                const commonModels: string[] = [];
+                if (modelSets.length > 0) {
+                  for (const model of modelSets[0]) {
+                    if (modelSets.every((s) => s.has(model))) {
+                      commonModels.push(model);
+                    }
+                  }
+                }
+
+                const outcomes = picks.map((p) => p.outcome).filter(Boolean);
+                const allWon = outcomes.every((o) => o === "win");
+                const allLost = outcomes.every((o) => o === "loss");
+
+                return {
+                  date,
+                  picks: picks.length,
+                  sports: [...sports],
+                  directions: [...new Set(directions)],
+                  correlated: allUnder || allOver || allSameSide,
+                  correlation_type: allUnder
+                    ? "all_under"
+                    : allOver
+                      ? "all_over"
+                      : singleSport
+                        ? "single_sport"
+                        : allSameSide
+                          ? "same_direction"
+                          : "diversified",
+                  common_models: commonModels,
+                  outcome_correlated: allWon || allLost,
+                };
+              });
+
+            const correlatedDays = multiPickDays.filter((d) => d.correlated);
+
+            // Diversification score
+            const sportSet = new Set(filtered.map((p) => p.sport));
+            const typeSet = new Set(filtered.map((p) => p.pick_type));
+            const dirSet = new Set(filtered.map((p) => p.direction));
+            const diversificationScore = Math.min(
+              (sportSet.size / 4) * 33 + (typeSet.size / 3) * 33 + (dirSet.size / 4) * 34,
+              100,
+            );
+
+            const portLessons: string[] = [];
+            if (correlatedDays.length > 0) {
+              const pct = ((correlatedDays.length / multiPickDays.length) * 100).toFixed(0);
+              portLessons.push(
+                `${pct}% of multi-pick days had correlated exposure. These aren't independent bets - they're single bets with multiplied risk.`,
+              );
+            }
+            if (diversificationScore < 50) {
+              portLessons.push(
+                `Diversification score: ${diversificationScore.toFixed(0)}/100. Consider spreading across more sports, bet types, and directions.`,
+              );
+            }
+
+            if (portLessons.length > 0) {
+              await saveLessons(lessonsDir, portLessons, "portfolio_analysis");
+            }
+
+            return ok(
+              {
+                period,
+                total_picks: filtered.length,
+                sports: [...sportSet],
+                pick_types: [...typeSet],
+                directions: [...dirSet],
+                diversification_score: Number(diversificationScore.toFixed(0)),
+                multi_pick_days: multiPickDays.length,
+                correlated_days: correlatedDays.length,
+                day_details: multiPickDays.slice(0, 20),
+                insights: portLessons.length > 0 ? portLessons : ["Portfolio diversification looks healthy."],
+              },
+              `Portfolio analysis (diversification: ${diversificationScore.toFixed(0)}/100)`,
+            );
+          }
+
           default:
             return err(
-              `Unknown action '${action}'. Use: weekly, model_performance, sport_breakdown, lessons, weights`,
+              `Unknown action '${action}'. Use: weekly, model_performance, sport_breakdown, lessons, weights, calibration, regimes, compound, portfolio`,
             );
         }
       } catch (e) {

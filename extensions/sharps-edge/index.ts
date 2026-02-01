@@ -17,9 +17,11 @@
  *  - get_weather: Game-time weather + impact scoring
  *  - get_injuries: ESPN injury reports with role-player edge signals
  *  - get_social: Locker room / chemistry intel from public sources
- *  - check_edge: Combined edge analysis (all models)
+ *  - check_edge: Combined edge analysis (8 models)
  *  - track_pick: Record picks for CLV tracking
- *  - review_accuracy: Recursive learning engine
+ *  - review_accuracy: Recursive learning engine (9 analytics actions)
+ *  - get_situational: Scheduling spots + travel + rest analysis
+ *  - calibrate: Probability calibration engine (trust engine)
  *
  * CLI:
  *  - openclaw sharps status|tasks|costs|logs|conflicts
@@ -38,7 +40,9 @@ import { registerCostTracker } from "./src/cost-tracker.js";
 import { createSeverityRouter } from "./src/severity-router.js";
 import { createCheckEdgeTool } from "./src/tools/check-edge.js";
 import { createGetInjuriesTool } from "./src/tools/get-injuries.js";
+import { createCalibrateTool } from "./src/tools/calibrate.js";
 import { createGetOddsTool } from "./src/tools/get-odds.js";
+import { createGetSituationalTool } from "./src/tools/situational.js";
 import { createGetSocialTool } from "./src/tools/get-social.js";
 import { createGetWeatherTool } from "./src/tools/get-weather.js";
 import { createReviewAccuracyTool } from "./src/tools/review-accuracy.js";
@@ -98,9 +102,13 @@ const sharpsEdgePlugin = {
     api.registerTool(createTrackPickTool(api));
     api.registerTool(createReviewAccuracyTool(api));
 
+    // 10. Transcendent layer (situational spots + probability calibration)
+    api.registerTool(createGetSituationalTool());
+    api.registerTool(createCalibrateTool(api));
+
     api.logger.info?.(
       "sharps-edge: Builder Edition ready. Nine Laws active. " +
-        "7 handicapping tools registered. Recursive learning enabled.",
+        "9 handicapping tools registered. 8 edge models. Recursive learning enabled.",
     );
   },
 };

@@ -4,6 +4,10 @@
  * The core analysis tool. Combines all data sources and edge models
  * into a single confidence-weighted edge score for a game.
  *
+ * 8 models total:
+ *  1. Line Value     2. RLM          3. Weather      4. Injuries
+ *  5. Social         6. Stale Lines  7. Situational  8. Calibration
+ *
  * This is what the x402 endpoints will serve.
  */
 
@@ -55,6 +59,8 @@ type EdgeAnalysis = {
   models_run: number;
   models_fired: number;
   edge_score: number;
+  raw_edge_score?: number; // Before calibration overlay
+  calibration_applied?: boolean;
   direction: string;
   recommendation: string;
   confidence_tier: string;
@@ -69,9 +75,10 @@ export function createCheckEdgeTool(costTracker: CostTracker) {
     label: "Check Edge",
     description:
       "Run edge detection models against a specific game. Combines line analysis, " +
-      "reverse line movement, weather impact, injury context, and social signals " +
-      "into a confidence-weighted edge score. Use depth='quick' for fast checks, " +
-      "'full' for all models. Always includes confidence intervals and caveats.",
+      "reverse line movement, weather impact, injury context, social signals, " +
+      "situational spots, and probability calibration into a confidence-weighted " +
+      "edge score. 8 models total. Use depth='quick' for fast checks, 'standard' " +
+      "for 6 models, 'full' for all 8. Always includes confidence intervals and caveats.",
     parameters: CheckEdgeSchema,
 
     async execute(
@@ -110,6 +117,12 @@ export function createCheckEdgeTool(costTracker: CostTracker) {
 
           // Stale line detection
           models.push(analyzeStaleLines(game, sport));
+
+          // Model 7: Situational spots (scheduling, travel, rest)
+          models.push(analyzeSituationalSpots(game, sport));
+
+          // Model 8: Calibration overlay (adjusts raw score using tracked accuracy)
+          // Applied after aggregation as a post-processing step
         }
 
         // Aggregate
@@ -144,6 +157,35 @@ export function createCheckEdgeTool(costTracker: CostTracker) {
             dirCounts[m.direction] = (dirCounts[m.direction] ?? 0) + m.weight;
           }
           direction = Object.entries(dirCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "neutral";
+        }
+
+        // Model 8: Calibration overlay (post-aggregation correction)
+        let rawEdgeScore = edgeScore;
+        let calibrationApplied = false;
+        if (depth === "full" && edgeScore > 0) {
+          const calibration = applyCalibrationOverlay(edgeScore);
+          if (calibration.corrected) {
+            rawEdgeScore = edgeScore;
+            edgeScore = calibration.calibrated_score;
+            calibrationApplied = true;
+            models.push({
+              model: "calibration_overlay",
+              signal: true,
+              direction: direction as ModelResult["direction"],
+              confidence: edgeScore,
+              weight: 0, // Weight 0: doesn't participate in aggregation, only adjusts final score
+              reasoning: calibration.reasoning,
+            });
+          } else {
+            models.push({
+              model: "calibration_overlay",
+              signal: false,
+              direction: "neutral",
+              confidence: 0,
+              weight: 0,
+              reasoning: calibration.reasoning,
+            });
+          }
         }
 
         // Confidence tier
@@ -185,6 +227,7 @@ export function createCheckEdgeTool(costTracker: CostTracker) {
           models_run: modelsRun,
           models_fired: modelsFired,
           edge_score: edgeScore,
+          ...(calibrationApplied ? { raw_edge_score: rawEdgeScore, calibration_applied: true } : {}),
           direction,
           recommendation,
           confidence_tier: confidenceTier,
@@ -308,5 +351,50 @@ function analyzeStaleLines(_game: string, _sport: string): ModelResult {
     reasoning:
       "Stale line model requires multi-book odds comparison from get_odds. " +
       "When one book lags 2+ points after news = immediate opportunity.",
+  };
+}
+
+function analyzeSituationalSpots(_game: string, _sport: string): ModelResult {
+  return {
+    model: "situational_spots",
+    signal: false,
+    direction: "neutral",
+    confidence: 0,
+    weight: 6,
+    reasoning:
+      "Situational model requires get_situational data for game context. " +
+      "Analyzes rest differentials, travel distance, schedule density, " +
+      "trap/letdown/sandwich spots, and altitude effects. Compound spots " +
+      "(multiple negatives stacking) are the strongest signals. " +
+      "No human can track all scheduling angles simultaneously.",
+  };
+}
+
+// Calibration overlay reads persisted calibration state.
+// It adjusts the raw edge score based on historical accuracy per confidence bucket.
+function applyCalibrationOverlay(rawScore: number): {
+  corrected: boolean;
+  calibrated_score: number;
+  reasoning: string;
+} {
+  // In production, this reads ~/.openclaw/workspace/data/calibration.json
+  // populated by the `calibrate correct` action. For now, returns uncorrected.
+  //
+  // When wired:
+  //   1. Load calibration.json
+  //   2. Find the bucket matching rawScore
+  //   3. Apply correction_factor: calibrated = rawScore * correction
+  //   4. Return the adjusted score
+  //
+  // This is the trust engine. If we say 65% and win 65% of those, we're calibrated.
+  // If we win 55%, the correction factor pulls future 65% calls down to ~55%.
+  return {
+    corrected: false,
+    calibrated_score: rawScore,
+    reasoning:
+      "Calibration overlay requires calibration data from the `calibrate correct` action. " +
+      "Once 20+ resolved picks exist and corrections are calculated, this model will " +
+      "adjust the raw edge score to match observed accuracy per confidence bucket. " +
+      "Calibrated probability is the product - x402 customers pay for trustworthy numbers.",
   };
 }
