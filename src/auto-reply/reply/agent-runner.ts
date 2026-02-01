@@ -8,7 +8,11 @@ import { lookupContextTokens } from "../../agents/context.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../../agents/defaults.js";
 import { resolveModelAuthMode } from "../../agents/model-auth.js";
 import { isCliProvider } from "../../agents/model-selection.js";
-import { queueEmbeddedPiMessage } from "../../agents/pi-embedded.js";
+import {
+  getActiveRunThreadContext,
+  hasActiveRunThreadContext,
+  queueEmbeddedPiMessage,
+} from "../../agents/pi-embedded.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
 import {
   resolveAgentIdFromSessionKey,
@@ -158,7 +162,24 @@ export async function runReplyAgent(params: {
         })
       : null;
 
-  if (shouldSteer && isStreaming) {
+  // Only attempt fast steering when the incoming message is from the same thread
+  // as the active run. Cross-thread steering would route replies to the wrong thread.
+  // When thread contexts don't match, we fall through to enqueueFollowupRun which
+  // preserves per-message routing.
+  const hasThreadContext = hasActiveRunThreadContext(followupRun.run.sessionId);
+  const activeRunThread = getActiveRunThreadContext(followupRun.run.sessionId);
+  const incomingThread = followupRun.originatingThreadId;
+  // Allow fast steer when threads match. Normalize to strings for comparison since
+  // providers may use string or number IDs (Slack uses strings, Telegram uses numbers).
+  const isSameThread =
+    // Case 1: Both undefined - always safe (no thread context to mismatch)
+    (activeRunThread === undefined && incomingThread === undefined) ||
+    // Case 2: Both defined and match (requires registered context for safety)
+    (hasThreadContext &&
+      activeRunThread !== undefined &&
+      incomingThread !== undefined &&
+      String(activeRunThread) === String(incomingThread));
+  if (shouldSteer && isStreaming && isSameThread) {
     const steered = queueEmbeddedPiMessage(followupRun.run.sessionId, followupRun.prompt);
     if (steered && !shouldFollowup) {
       if (activeSessionEntry && activeSessionStore && sessionKey) {
