@@ -368,7 +368,69 @@ export async function runEmbeddedPiAgent(
             enforceFinalTag: params.enforceFinalTag,
           });
 
-          const { aborted, promptError, timedOut, sessionIdUsed, lastAssistant } = attempt;
+          const { aborted, promptError, timedOut, sessionIdUsed, lastAssistant, guardrailBlock } =
+            attempt;
+
+          if (guardrailBlock) {
+            const isBeforeRequest = guardrailBlock.stage === "before_request";
+            const payloads = buildEmbeddedRunPayloads({
+              assistantTexts: attempt.assistantTexts,
+              toolMetas: attempt.toolMetas,
+              lastAssistant: isBeforeRequest ? undefined : attempt.lastAssistant,
+              lastToolError: undefined,
+              config: params.config,
+              sessionKey: params.sessionKey ?? params.sessionId,
+              verboseLevel: params.verboseLevel,
+              reasoningLevel: "off",
+              toolResultFormat: resolvedToolResultFormat,
+              inlineToolResultsAllowed: false,
+            });
+            const usage = isBeforeRequest
+              ? undefined
+              : normalizeUsage(attempt.lastAssistant?.usage as UsageLike);
+            const agentMeta: EmbeddedPiAgentMeta = {
+              sessionId: sessionIdUsed,
+              provider: attempt.lastAssistant?.provider ?? provider,
+              model: attempt.lastAssistant?.model ?? model.id,
+              usage,
+            };
+
+            log.debug(
+              `embedded run guardrail: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - started} stage=${guardrailBlock.stage} guardrail=${guardrailBlock.guardrailId}`,
+            );
+
+            if (!isBeforeRequest && lastProfileId) {
+              await markAuthProfileGood({
+                store: authStore,
+                provider,
+                profileId: lastProfileId,
+                agentDir: params.agentDir,
+              });
+              await markAuthProfileUsed({
+                store: authStore,
+                profileId: lastProfileId,
+                agentDir: params.agentDir,
+              });
+            }
+
+            return {
+              payloads: payloads.length ? payloads : undefined,
+              meta: {
+                durationMs: Date.now() - started,
+                agentMeta,
+                aborted,
+                systemPromptReport: attempt.systemPromptReport,
+                guardrailBlock: {
+                  stage: guardrailBlock.stage,
+                  guardrailId: guardrailBlock.guardrailId,
+                  reason: guardrailBlock.reason,
+                },
+              },
+              didSendViaMessagingTool: attempt.didSendViaMessagingTool,
+              messagingToolSentTexts: attempt.messagingToolSentTexts,
+              messagingToolSentTargets: attempt.messagingToolSentTargets,
+            };
+          }
 
           if (promptError && !aborted) {
             const errorText = describeUnknownError(promptError);
@@ -668,6 +730,13 @@ export async function runEmbeddedPiAgent(
               agentMeta,
               aborted,
               systemPromptReport: attempt.systemPromptReport,
+              guardrailBlock: guardrailBlock
+                ? {
+                    stage: guardrailBlock.stage,
+                    guardrailId: guardrailBlock.guardrailId,
+                    reason: guardrailBlock.reason,
+                  }
+                : undefined,
               // Handle client tool calls (OpenResponses hosted tools)
               stopReason: attempt.clientToolCall ? "tool_calls" : undefined,
               pendingToolCalls: attempt.clientToolCall

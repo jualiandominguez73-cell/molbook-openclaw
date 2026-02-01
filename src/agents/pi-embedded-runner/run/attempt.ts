@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { ImageContent } from "@mariozechner/pi-ai";
+import type { AssistantMessage, ImageContent } from "@mariozechner/pi-ai";
 import { streamSimple } from "@mariozechner/pi-ai";
 import {
   createAgentSession,
@@ -88,6 +88,12 @@ import { buildTtsSystemPromptHint } from "../../../tts/tts.js";
 import { isTimeoutError } from "../../failover-error.js";
 import { getGlobalHookRunner } from "../../../plugins/hook-runner-global.js";
 import { MAX_IMAGE_BYTES } from "../../../media/constants.js";
+import {
+  applyOutputGuardrails,
+  applyPromptGuardrails,
+  type GuardrailBlock,
+  type GuardrailContext,
+} from "../../guardrails.js";
 import type { EmbeddedRunAttemptParams, EmbeddedRunAttemptResult } from "./types.js";
 import { detectAndLoadPromptImages } from "./images.js";
 
@@ -394,6 +400,19 @@ export async function runEmbeddedAttempt(
       tools,
     });
     const systemPrompt = createSystemPromptOverride(appendPrompt);
+    const guardrailContext: GuardrailContext = {
+      agentId: sessionAgentId,
+      sessionId: params.sessionId,
+      sessionKey: params.sessionKey,
+      runId: params.runId,
+      provider: params.provider,
+      modelId: params.modelId,
+      modelApi: params.model.api,
+      workspaceDir: effectiveWorkspace,
+      messageProvider: params.messageProvider,
+      messageChannel: params.messageChannel,
+      config: params.config,
+    };
 
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
@@ -443,17 +462,27 @@ export async function runEmbeddedAttempt(
         model: params.model,
       });
 
+      const guardrailTooling = {
+        context: guardrailContext,
+        getMessages: () => sessionManager?.buildSessionContext().messages ?? [],
+        systemPrompt: appendPrompt,
+      };
       const { builtInTools, customTools } = splitSdkTools({
         tools,
         sandboxEnabled: !!sandbox?.enabled,
+        guardrails: guardrailTooling,
       });
 
       // Add client tools (OpenResponses hosted tools) to customTools
       let clientToolCallDetected: { name: string; params: Record<string, unknown> } | null = null;
       const clientToolDefs = params.clientTools
-        ? toClientToolDefinitions(params.clientTools, (toolName, toolParams) => {
-            clientToolCallDetected = { name: toolName, params: toolParams };
-          })
+        ? toClientToolDefinitions(
+            params.clientTools,
+            (toolName, toolParams) => {
+              clientToolCallDetected = { name: toolName, params: toolParams };
+            },
+            { guardrails: guardrailTooling },
+          )
         : [];
 
       const allCustomTools = [...customTools, ...clientToolDefs];
@@ -683,6 +712,8 @@ export async function runEmbeddedAttempt(
       );
 
       let messagesSnapshot: AgentMessage[] = [];
+      let lastAssistant: AssistantMessage | undefined;
+      let guardrailBlock: GuardrailBlock | undefined;
       let sessionIdUsed = activeSession.sessionId;
       const onAbort = () => {
         const reason = params.abortSignal ? getAbortReason(params.abortSignal) : undefined;
@@ -733,12 +764,6 @@ export async function runEmbeddedAttempt(
           }
         }
 
-        log.debug(`embedded run prompt start: runId=${params.runId} sessionId=${params.sessionId}`);
-        cacheTrace?.recordStage("prompt:before", {
-          prompt: effectivePrompt,
-          messages: activeSession.messages,
-        });
-
         // Repair orphaned trailing user messages so new prompts don't violate role ordering.
         const leafEntry = sessionManager.getLeafEntry();
         if (leafEntry?.type === "message" && leafEntry.message.role === "user") {
@@ -755,62 +780,92 @@ export async function runEmbeddedAttempt(
           );
         }
 
-        try {
-          // Detect and load images referenced in the prompt for vision-capable models.
-          // This eliminates the need for an explicit "view" tool call by injecting
-          // images directly into the prompt when the model supports it.
-          // Also scans conversation history to enable follow-up questions about earlier images.
-          const imageResult = await detectAndLoadPromptImages({
-            prompt: effectivePrompt,
-            workspaceDir: effectiveWorkspace,
-            model: params.model,
-            existingImages: params.images,
-            historyMessages: activeSession.messages,
-            maxBytes: MAX_IMAGE_BYTES,
-            // Enforce sandbox path restrictions when sandbox is enabled
-            sandboxRoot: sandbox?.enabled ? sandbox.workspaceDir : undefined,
-          });
-
-          // Inject history images into their original message positions.
-          // This ensures the model sees images in context (e.g., "compare to the first image").
-          const didMutate = injectHistoryImagesIntoMessages(
-            activeSession.messages,
-            imageResult.historyImagesByIndex,
-          );
-          if (didMutate) {
-            // Persist message mutations (e.g., injected history images) so we don't re-scan/reload.
-            activeSession.agent.replaceMessages(activeSession.messages);
-          }
-
-          cacheTrace?.recordStage("prompt:images", {
+        const guardrailPromptOutcome = await applyPromptGuardrails({
+          input: {
             prompt: effectivePrompt,
             messages: activeSession.messages,
-            note: `images: prompt=${imageResult.images.length} history=${imageResult.historyImagesByIndex.size}`,
-          });
+            systemPrompt: appendPrompt,
+          },
+          context: guardrailContext,
+        });
+        if (guardrailPromptOutcome.blocked) {
+          guardrailBlock = guardrailPromptOutcome;
+        } else {
+          effectivePrompt = guardrailPromptOutcome.prompt;
+          activeSession.agent.replaceMessages(guardrailPromptOutcome.messages);
+        }
 
-          const shouldTrackCacheTtl =
-            params.config?.agents?.defaults?.contextPruning?.mode === "cache-ttl" &&
-            isCacheTtlEligibleProvider(params.provider, params.modelId);
-          if (shouldTrackCacheTtl) {
-            appendCacheTtlTimestamp(sessionManager, {
-              timestamp: Date.now(),
-              provider: params.provider,
-              modelId: params.modelId,
+        log.debug(`embedded run prompt start: runId=${params.runId} sessionId=${params.sessionId}`);
+        cacheTrace?.recordStage("prompt:before", {
+          prompt: effectivePrompt,
+          messages: activeSession.messages,
+          guardrailBlocked: guardrailBlock?.guardrailId,
+        });
+
+        if (!guardrailBlock) {
+          try {
+            // Detect and load images referenced in the prompt for vision-capable models.
+            // This eliminates the need for an explicit "view" tool call by injecting
+            // images directly into the prompt when the model supports it.
+            // Also scans conversation history to enable follow-up questions about earlier images.
+            const imageResult = await detectAndLoadPromptImages({
+              prompt: effectivePrompt,
+              workspaceDir: effectiveWorkspace,
+              model: params.model,
+              existingImages: params.images,
+              historyMessages: activeSession.messages,
+              maxBytes: MAX_IMAGE_BYTES,
+              // Enforce sandbox path restrictions when sandbox is enabled
+              sandboxRoot: sandbox?.enabled ? sandbox.workspaceDir : undefined,
             });
-          }
 
-          // Only pass images option if there are actually images to pass
-          // This avoids potential issues with models that don't expect the images parameter
-          if (imageResult.images.length > 0) {
-            await abortable(activeSession.prompt(effectivePrompt, { images: imageResult.images }));
-          } else {
-            await abortable(activeSession.prompt(effectivePrompt));
+            // Inject history images into their original message positions.
+            // This ensures the model sees images in context (e.g., "compare to the first image").
+            const didMutate = injectHistoryImagesIntoMessages(
+              activeSession.messages,
+              imageResult.historyImagesByIndex,
+            );
+            if (didMutate) {
+              // Persist message mutations (e.g., injected history images) so we don't re-scan/reload.
+              activeSession.agent.replaceMessages(activeSession.messages);
+            }
+
+            cacheTrace?.recordStage("prompt:images", {
+              prompt: effectivePrompt,
+              messages: activeSession.messages,
+              note: `images: prompt=${imageResult.images.length} history=${imageResult.historyImagesByIndex.size}`,
+            });
+
+            const shouldTrackCacheTtl =
+              params.config?.agents?.defaults?.contextPruning?.mode === "cache-ttl" &&
+              isCacheTtlEligibleProvider(params.provider, params.modelId);
+            if (shouldTrackCacheTtl) {
+              appendCacheTtlTimestamp(sessionManager, {
+                timestamp: Date.now(),
+                provider: params.provider,
+                modelId: params.modelId,
+              });
+            }
+
+            // Only pass images option if there are actually images to pass
+            // This avoids potential issues with models that don't expect the images parameter
+            if (imageResult.images.length > 0) {
+              await abortable(
+                activeSession.prompt(effectivePrompt, { images: imageResult.images }),
+              );
+            } else {
+              await abortable(activeSession.prompt(effectivePrompt));
+            }
+          } catch (err) {
+            promptError = err;
+          } finally {
+            log.debug(
+              `embedded run prompt end: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - promptStartedAt}`,
+            );
           }
-        } catch (err) {
-          promptError = err;
-        } finally {
+        } else {
           log.debug(
-            `embedded run prompt end: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - promptStartedAt}`,
+            `embedded run guardrail blocked: runId=${params.runId} sessionId=${params.sessionId} guardrail=${guardrailBlock.guardrailId}`,
           );
         }
 
@@ -832,7 +887,35 @@ export async function runEmbeddedAttempt(
           messages: messagesSnapshot,
           note: promptError ? "prompt error" : undefined,
         });
-        anthropicPayloadLogger?.recordUsage(messagesSnapshot, promptError);
+        if (guardrailBlock?.stage !== "before_request") {
+          anthropicPayloadLogger?.recordUsage(messagesSnapshot, promptError);
+        }
+        lastAssistant = messagesSnapshot
+          .slice()
+          .toReversed()
+          .find((m) => m.role === "assistant") as AssistantMessage | undefined;
+
+        if (!guardrailBlock) {
+          const outputGuardrailOutcome = await applyOutputGuardrails({
+            input: {
+              assistantTexts,
+              messages: messagesSnapshot,
+              lastAssistant,
+            },
+            context: guardrailContext,
+          });
+          if (outputGuardrailOutcome.blocked) {
+            guardrailBlock = outputGuardrailOutcome;
+          } else {
+            if (outputGuardrailOutcome.assistantTexts !== assistantTexts) {
+              assistantTexts.splice(
+                0,
+                assistantTexts.length,
+                ...outputGuardrailOutcome.assistantTexts,
+              );
+            }
+          }
+        }
 
         // Run agent_end hooks to allow plugins to analyze the conversation
         // This is fire-and-forget, so we don't await
@@ -841,7 +924,7 @@ export async function runEmbeddedAttempt(
             .runAgentEnd(
               {
                 messages: messagesSnapshot,
-                success: !aborted && !promptError,
+                success: !aborted && !promptError && !guardrailBlock,
                 error: promptError ? describeUnknownError(promptError) : undefined,
                 durationMs: Date.now() - promptStartedAt,
               },
@@ -866,17 +949,21 @@ export async function runEmbeddedAttempt(
         params.abortSignal?.removeEventListener?.("abort", onAbort);
       }
 
-      const lastAssistant = messagesSnapshot
-        .slice()
-        .toReversed()
-        .find((m) => m.role === "assistant");
-
       const toolMetasNormalized = toolMetas
         .filter(
           (entry): entry is { toolName: string; meta?: string } =>
             typeof entry.toolName === "string" && entry.toolName.trim().length > 0,
         )
         .map((entry) => ({ toolName: entry.toolName, meta: entry.meta }));
+
+      if (guardrailBlock) {
+        const fallback =
+          guardrailBlock.stage === "after_response"
+            ? "Response blocked by guardrail policy."
+            : "Request blocked by guardrail policy.";
+        const response = guardrailBlock.response?.trim() ? guardrailBlock.response : fallback;
+        assistantTexts.splice(0, assistantTexts.length, response);
+      }
 
       return {
         aborted,
@@ -897,6 +984,7 @@ export async function runEmbeddedAttempt(
         ),
         // Client tool call detected (OpenResponses hosted tools)
         clientToolCall: clientToolCallDetected ?? undefined,
+        guardrailBlock,
       };
     } finally {
       // Always tear down the session (and release the lock) before we leave this attempt.
