@@ -9,7 +9,6 @@ import {
   resolveEffectiveMessagesConfig,
   resolveIdentityName,
 } from "../../agents/identity.js";
-import { injectTimestamp, timestampOptsFromConfig } from "./agent-timestamp.js";
 import { resolveThinkingDefault } from "../../agents/model-selection.js";
 import { resolveAgentTimeoutMs } from "../../agents/timeout.js";
 import { dispatchInboundMessage } from "../../auto-reply/dispatch.js";
