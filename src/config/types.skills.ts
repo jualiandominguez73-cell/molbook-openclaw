@@ -16,10 +16,7 @@ export type SkillsSecurityConfig = {
    * - "allow": Load normally (legacy behavior)
    * - "warn": Load with warning in logs (default)
    * - "prompt": Require user confirmation (CLI only)
-   * - "deny": Refuse to load
-   *
-   * Note: Default will change to "prompt" in a future major version.
-   * Run `openclaw skill audit` to review your skills.
+   * Run `openclaw skills audit` to review your skills.
    */
   requireManifest?: "allow" | "warn" | "prompt" | "deny";
 
