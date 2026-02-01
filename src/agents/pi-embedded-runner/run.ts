@@ -26,8 +26,9 @@ import {
   resolveAuthProfileOrder,
   type ResolvedProviderAuth,
 } from "../model-auth.js";
-import { normalizeProviderId } from "../model-selection.js";
+import { normalizeProviderId, parseModelRef } from "../model-selection.js";
 import { ensureOpenClawModelsJson } from "../models-config.js";
+import { smartRouter } from "../smart-router.js";
 import {
   classifyFailoverReason,
   formatAssistantErrorText,
