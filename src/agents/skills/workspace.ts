@@ -6,6 +6,7 @@ import {
 import fs from "node:fs";
 import path from "node:path";
 import type { OpenClawConfig } from "../../config/config.js";
+import type { SkillsSecurityConfig } from "../../config/types.skills.js";
 import type {
   ParsedSkillFrontmatter,
   PermissionRiskLevel,
@@ -15,8 +16,6 @@ import type {
   SkillEntryWithPermissions,
   SkillSnapshot,
 } from "./types.js";
-import { validatePermissionManifest } from "./permissions.js";
-import type { SkillsSecurityConfig } from "../../config/types.skills.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { CONFIG_DIR, resolveUserPath } from "../../utils.js";
 import { resolveBundledSkillsDir } from "./bundled-dir.js";
@@ -27,6 +26,7 @@ import {
   resolveOpenClawMetadata,
   resolveSkillInvocationPolicy,
 } from "./frontmatter.js";
+import { validatePermissionManifest } from "./permissions.js";
 import { resolvePluginSkillDirs } from "./plugin-skills.js";
 import { serializeByKey } from "./serialize.js";
 

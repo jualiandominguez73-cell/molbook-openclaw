@@ -5,11 +5,13 @@ read_when:
   - You want to audit skill security and risk levels
   - You want to add a permission manifest to your skill
 ---
+
 # Skill Permissions
 
 OpenClaw skill permission manifests declare what resources a skill needs access to. This helps users make informed decisions about which skills to trust.
 
 Related:
+
 - Skills system: [Skills](/tools/skills)
 - Skills CLI: [openclaw skills](/cli/skills)
 - Security: [Security](/gateway/security)
@@ -17,6 +19,7 @@ Related:
 ## Overview
 
 Permission manifests are **declarative** (not enforced at runtime). They exist to:
+
 - Document what a skill needs access to
 - Enable risk assessment before loading
 - Support security policy configuration
@@ -60,25 +63,29 @@ metadata:
 Declares file/directory access. Format: `<mode>:<path>`
 
 Modes:
+
 - `read:` — read-only access
 - `write:` — write-only access
 - `readwrite:` — full access
 
 Paths:
+
 - Relative paths (e.g., `./data`) are relative to the skill directory
 - `~` expands to the user's home directory
 - `**` wildcards are supported
 
 Examples:
+
 ```yaml
 filesystem:
-  - "read:./config"           # Read skill's config dir
-  - "write:./output"          # Write to output dir
-  - "readwrite:~/.myapp"      # Full access to ~/.myapp
-  - "read:~/**/*.json"        # Read all JSON files in home
+  - "read:./config" # Read skill's config dir
+  - "write:./output" # Write to output dir
+  - "readwrite:~/.myapp" # Full access to ~/.myapp
+  - "read:~/**/*.json" # Read all JSON files in home
 ```
 
 High-risk patterns (flagged during audit):
+
 - Dotfiles (`~/.ssh`, `~/.gnupg`, `~/.aws`)
 - Environment files (`.env`)
 - Recursive wildcards (`**`)
@@ -90,11 +97,12 @@ Declares network endpoints the skill communicates with.
 
 ```yaml
 network:
-  - "api.example.com"         # Specific domain
-  - "*.example.com"           # Wildcard subdomain
+  - "api.example.com" # Specific domain
+  - "*.example.com" # Wildcard subdomain
 ```
 
 High-risk patterns:
+
 - `any` or `*` (unrestricted network access)
 - Known data exfiltration endpoints (webhook.site, ngrok, requestbin)
 
@@ -109,6 +117,7 @@ env:
 ```
 
 High-risk patterns (flagged during audit):
+
 - AWS credentials (`AWS_*`)
 - Tokens (`*_TOKEN`)
 - Secrets (`*_SECRET`)
@@ -127,6 +136,7 @@ exec:
 ```
 
 High-risk executables (flagged during audit):
+
 - Shells: `bash`, `sh`, `zsh`, `fish`
 - Privilege escalation: `sudo`, `su`
 - Destructive commands: `rm`, `dd`, `mkfs`
@@ -138,30 +148,30 @@ Optional flags indicating access to sensitive data types:
 
 ```yaml
 sensitive_data:
-  credentials: true      # Passwords, tokens, keys
-  personal_info: true    # PII, contacts, messages
-  financial: false       # Financial data, transactions
+  credentials: true # Passwords, tokens, keys
+  personal_info: true # PII, contacts, messages
+  financial: false # Financial data, transactions
 ```
 
 ### Additional Flags
 
 ```yaml
-elevated: true           # Requires sudo/admin access
-system_config: true      # Modifies system configuration
-security_notes: "..."    # Free-form security context
+elevated: true # Requires sudo/admin access
+system_config: true # Modifies system configuration
+security_notes: "..." # Free-form security context
 ```
 
 ## Risk Levels
 
 Skills are assessed into five risk levels based on their permissions:
 
-| Level | Criteria | Example |
-|-------|----------|---------|
-| 🟢 Minimal | No special permissions | Pure computation skill |
-| 🟡 Low | Network access only | Weather API client |
-| 🟠 Moderate | 1-2 risk factors | Reads env vars |
-| 🔴 High | 3+ risk factors or credential access | Password manager |
-| ⛔ Critical | Shell exec or elevated access | System automation |
+| Level       | Criteria                             | Example                |
+| ----------- | ------------------------------------ | ---------------------- |
+| 🟢 Minimal  | No special permissions               | Pure computation skill |
+| 🟡 Low      | Network access only                  | Weather API client     |
+| 🟠 Moderate | 1-2 risk factors                     | Reads env vars         |
+| 🔴 High     | 3+ risk factors or credential access | Password manager       |
+| ⛔ Critical | Shell exec or elevated access        | System automation      |
 
 ## Auditing Skills
 
@@ -220,9 +230,9 @@ Configure skill loading behavior in `~/.openclaw/openclaw.json`:
 
       // Log permission violations at runtime
       // Default: true
-      logViolations: true
-    }
-  }
+      logViolations: true,
+    },
+  },
 }
 ```
 

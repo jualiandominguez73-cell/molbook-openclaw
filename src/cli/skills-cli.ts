@@ -1,6 +1,11 @@
+import type { Command } from "commander";
 import fs from "node:fs";
 import path from "node:path";
-import type { Command } from "commander";
+import type {
+  PermissionRiskLevel,
+  SkillEntryWithPermissions,
+  SkillPermissionManifest,
+} from "../agents/skills/types.js";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import {
   buildWorkspaceSkillStatus,
@@ -8,11 +13,6 @@ import {
   type SkillStatusReport,
 } from "../agents/skills-status.js";
 import { formatPermissionManifest, formatValidationResult } from "../agents/skills/permissions.js";
-import type {
-  PermissionRiskLevel,
-  SkillEntryWithPermissions,
-  SkillPermissionManifest,
-} from "../agents/skills/types.js";
 import { loadWorkspaceSkillEntries } from "../agents/skills/workspace.js";
 import { loadConfig } from "../config/config.js";
 import { defaultRuntime } from "../runtime.js";
@@ -395,7 +395,7 @@ export function formatSkillsAudit(
   }
 
   // Sort by risk level (highest first)
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = filtered.toSorted((a, b) => {
     const aLevel = a.permissionValidation?.risk_level ?? "high";
     const bLevel = b.permissionValidation?.risk_level ?? "high";
     return RISK_ORDER[bLevel] - RISK_ORDER[aLevel];
