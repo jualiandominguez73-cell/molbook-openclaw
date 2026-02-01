@@ -2,6 +2,21 @@
 - Repo: https://github.com/openclaw/openclaw
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
 
+## Komatachi (Distillation Project)
+
+The `komatachi/` directory contains a distillation of OpenClaw - a new codebase being built from the ground up.
+
+**If working on Komatachi**: Read `komatachi/PROGRESS.md` first for current state, completed work, and next steps.
+
+Key files:
+- `komatachi/PROGRESS.md` - Source of truth for project state (read this first)
+- `komatachi/CLAUDE.md` - Project-specific context
+- `komatachi/DISTILLATION.md` - Principles and process
+- `komatachi/scouting/` - Analysis of OpenClaw components
+- `komatachi/src/` - Distilled implementations
+
+Style for Komatachi docs: no emojis; use markdown checkboxes `[x]` instead.
+
 ## Project Structure & Module Organization
 - Source code: `src/` (CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`).
 - Tests: colocated `*.test.ts`.
