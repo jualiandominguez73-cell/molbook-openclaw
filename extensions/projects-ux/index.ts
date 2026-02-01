@@ -320,7 +320,7 @@ export default function (api: any) {
     const store = await loadStore(storagePath);
     const existingPeer = store.peers[peerKey] as PeerState | undefined;
 
-    // Preserve global policy settings; wipe resets only user data.
+    // Wipe-all is a recovery action: it forces Classic (Projects OFF) and resets only this peer's user data.
     const freshPeer: PeerState = {
       version: 1,
       projectsEnabled: false,
@@ -420,6 +420,9 @@ export default function (api: any) {
     if (!peer) {
       return { ok: false, error: "Refused: no peer state." };
     }
+
+    // Prevent stale pendingWipe from reappearing when we reload/write the store during wipe-one.
+    peer.pendingWipe = undefined;
 
     const changed = ensureDefaultProject(peer, defaultProjectName);
     if (changed) {
