@@ -1,13 +1,13 @@
 import { Type } from "@sinclair/typebox";
 import { loadConfig } from "../../config/config.js";
 import { normalizeCronJobCreate, normalizeCronJobPatch } from "../../cron/normalize.js";
+import { readCronRunLogEntries, resolveCronRunLogPath } from "../../cron/run-log.js";
+import { getInProcessServices } from "../../gateway/in-process.js";
 import { truncateUtf16Safe } from "../../utils.js";
 import { resolveSessionAgentId } from "../agent-scope.js";
 import { optionalStringEnum, stringEnum } from "../schema/typebox.js";
 import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
 import { callGatewayTool, type GatewayCallOptions } from "./gateway.js";
-import { getInProcessServices } from "../../gateway/in-process.js";
-import { readCronRunLogEntries, resolveCronRunLogPath } from "../../cron/run-log.js";
 import { resolveInternalSessionKey, resolveMainSessionAlias } from "./sessions-helpers.js";
 
 // NOTE: We use Type.Object({}, { additionalProperties: true }) for job/patch
@@ -235,7 +235,9 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
         case "list": {
           const ipc = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
           if (ipc) {
-            return jsonResult(await ipc.cron.list({ includeDisabled: Boolean(params.includeDisabled) }));
+            return jsonResult(
+              await ipc.cron.list({ includeDisabled: Boolean(params.includeDisabled) }),
+            );
           }
           return jsonResult(
             await callGatewayTool("cron.list", gatewayOpts, {
@@ -339,7 +341,8 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
           }
           const ipcRuns = shouldUseInProcess(gatewayOpts) ? getInProcessServices() : undefined;
           if (ipcRuns) {
-            const entries = readCronRunLogEntries(resolveCronRunLogPath(ipcRuns.cronStorePath, id));
+            const logPath = resolveCronRunLogPath({ storePath: ipcRuns.cronStorePath, jobId: id });
+            const entries = await readCronRunLogEntries(logPath);
             return jsonResult({ jobId: id, runs: entries });
           }
           return jsonResult(await callGatewayTool("cron.runs", gatewayOpts, { id }));
