@@ -40,8 +40,15 @@ STATE_DIR=${OPENCLAW_STATE_DIR:-$HOME/.openclaw}
 mkdir -p "$STATE_DIR"
 CONFIG_FILE="$STATE_DIR/openclaw.json"
 
+# Delete old config if OPENCLAW_RESET_CONFIG is set
+if [ "$OPENCLAW_RESET_CONFIG" = "true" ] && [ -f "$CONFIG_FILE" ]; then
+  echo "Resetting config (OPENCLAW_RESET_CONFIG=true)"
+  rm -f "$CONFIG_FILE"
+fi
+
 # Build config with OpenAI if API key is provided
 if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Creating new config at $CONFIG_FILE"
   if [ -n "$OPENAI_API_KEY" ]; then
     cat > "$CONFIG_FILE" << EOF
 {
@@ -65,6 +72,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
   }
 }
 EOF
+    echo "Configured with OpenAI (gpt-4o)"
   else
     cat > "$CONFIG_FILE" << EOF
 {
@@ -78,6 +86,7 @@ EOF
   }
 }
 EOF
+    echo "Configured without OpenAI (no OPENAI_API_KEY)"
   fi
 fi
 
