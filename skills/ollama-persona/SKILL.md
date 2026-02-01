@@ -1,11 +1,12 @@
 ---
 name: ollama-persona
-description: Set up a local Ollama model with agent persona for cost-efficient posting and replies. Use when setting up local LLM, creating persona models, or offloading simple tasks from expensive cloud models.
+description: Set up a local Ollama model with agent persona for cost-efficient posting.
+metadata: { "openclaw": { "emoji": "🦙", "requires": { "bins": ["curl", "python3"] } } }
 ---
 
 # Ollama Persona
 
-Create a local LLM persona from your workspace identity files for cheap, fast replies.
+Create a local LLM persona from workspace identity files for cheap, fast replies.
 
 ## Prerequisites
 
@@ -45,31 +46,31 @@ The script reads `SOUL.md`, `IDENTITY.md`, and `USER.md` to build a system promp
 ```bash
 # Quick prompt
 curl -s http://localhost:11434/api/generate \
-  -d '{"model":"myagent","prompt":"Write a tweet about AI agents","stream":false}' \
+  -d '{"model":"myagent","prompt":"Write a tweet","stream":false}' \
   | jq -r '.response'
 
-# Or use the helper
-scripts/ask-local "Write a tweet about AI agents"
+# Or use the generated helper
+~/.local/bin/ask-myagent "Write a tweet"
 ```
 
 ## When to Use Local vs Cloud
 
-| Task | Use Local | Use Cloud |
-|------|-----------|-----------|
-| Tweets/posts | ✅ | |
-| Simple summaries | ✅ | |
-| Greentext replies | ✅ | |
-| Coding | | ✅ |
-| Complex reasoning | | ✅ |
-| Multi-step tasks | | ✅ |
+| Task              | Local | Cloud |
+| ----------------- | ----- | ----- |
+| Tweets/posts      | ✅    |       |
+| Simple summaries  | ✅    |       |
+| Greentext replies | ✅    |       |
+| Coding            |       | ✅    |
+| Complex reasoning |       | ✅    |
+| Multi-step tasks  |       | ✅    |
 
 ## Model Options
 
-| Model | Size | VRAM | Speed | Quality |
-|-------|------|------|-------|---------|
-| llama3.2:1b | 1.3GB | 2GB | Fast | Basic |
-| llama3.2:3b | 2GB | 4GB | Good | Solid |
-| llama3.1:8b | 4.7GB | 8GB | Slower | Better |
+| Model       | Size  | VRAM | Speed  | Quality |
+| ----------- | ----- | ---- | ------ | ------- |
+| llama3.2:1b | 1.3GB | 2GB  | Fast   | Basic   |
+| llama3.2:3b | 2GB   | 4GB  | Good   | Solid   |
+| llama3.1:8b | 4.7GB | 8GB  | Slower | Better  |
 
 ## Customization
 
@@ -81,6 +82,6 @@ Edit the generated Modelfile at `~/.ollama/<name>.modelfile` to tune:
 
 ## Troubleshooting
 
-**Model too slow**: Try `llama3.2:1b` or enable GPU offloading
-**Out of memory**: Set `OLLAMA_NUM_GPU=0` for CPU-only
-**Server not running**: `ollama serve &` or check port 11434
+- **Model too slow**: Try `llama3.2:1b` or enable GPU offloading
+- **Out of memory**: Set `OLLAMA_NUM_GPU=0` for CPU-only
+- **Server not running**: `ollama serve &` or check port 11434
