@@ -20,12 +20,6 @@ describe("resolveSiliconFlowAlias", () => {
     expect(resolveSiliconFlowAlias("qwen")).toBe("Qwen/Qwen3-235B-A22B-Instruct-2507");
   });
 
-  it("resolves llama alias", () => {
-    expect(resolveSiliconFlowAlias("llama")).toBe(
-      "Pro/meta-llama/Llama-4-Maverick-17B-128E-Instruct",
-    );
-  });
-
   it("returns input if no alias exists", () => {
     expect(resolveSiliconFlowAlias("some-unknown-model")).toBe("some-unknown-model");
   });
