@@ -1,8 +1,5 @@
 import type { Command } from "commander";
-import { gitStatusCommand } from "../../commands/git.js";
 import { defaultRuntime } from "../../runtime.js";
-import { defaultRuntime } from "../../runtime.js";
-import { theme } from "../../terminal/theme.js";
 
 export function registerGitCommand(program: Command) {
   const gitCmd = program.command("git").description("Git utilities").summary("git status wrapper");
@@ -13,6 +10,7 @@ export function registerGitCommand(program: Command) {
     .option("--json", "Output in JSON format", false)
     .option("--verbose", "Verbose logging", false)
     .action(async (opts) => {
+      const { gitStatusCommand } = await import("../../commands/git.js");
       await gitStatusCommand(
         {
           json: Boolean(opts.json),
