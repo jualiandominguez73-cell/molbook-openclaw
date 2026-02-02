@@ -5,6 +5,7 @@
  * and injects relevant context into the agent's working memory.
  */
 
+import { preAnswerHookRegistry } from "../agent-hooks-registry.js";
 import {
   type ContextFragment,
   type PreAnswerHook,
@@ -209,6 +210,5 @@ export const memorySearchHook: PreAnswerHook = {
  * Auto-register the memory search hook
  */
 export function registerMemorySearchHook(): void {
-  const { preAnswerHookRegistry } = require("./agent-hooks-registry.js");
   preAnswerHookRegistry.register(memorySearchHook);
 }
