@@ -2,24 +2,6 @@ import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import { normalizeTextForComparison } from "./pi-embedded-helpers.js";
-
-/**
- * Tool status emoji for TUI display. Tools can define an emoji that appears
- * in the status bar during execution (e.g., "🔍 web_search…").
- */
-const TOOL_STATUS_EMOJI: Record<string, string> = {
-  gandiva_recall: "🔍",
-  gandiva_reindex: "🔍",
-  memory_search: "🔍",
-  memory_get: "📄",
-  web_search: "🔍",
-  web_fetch: "🌐",
-  browser: "🌐",
-  exec: "⚡",
-  read: "📄",
-  write: "📄",
-  edit: "📄",
-};
 import { isMessagingTool, isMessagingToolSendAction } from "./pi-embedded-messaging.js";
 import {
   extractToolErrorMessage,
@@ -87,7 +69,6 @@ export async function handleToolExecutionStart(
   );
 
   const shouldEmitToolEvents = ctx.shouldEmitToolResult();
-  const emoji = TOOL_STATUS_EMOJI[toolName.toLowerCase()] ?? null;
   emitAgentEvent({
     runId: ctx.params.runId,
     stream: "tool",
@@ -96,7 +77,6 @@ export async function handleToolExecutionStart(
       name: toolName,
       toolCallId,
       args: args as Record<string, unknown>,
-      emoji,
     },
   });
   // Best-effort typing signal; do not block tool summaries on slow emitters.
