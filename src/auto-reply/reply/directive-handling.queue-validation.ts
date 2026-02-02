@@ -10,6 +10,7 @@ export function maybeHandleQueueDirective(params: {
   directives: InlineDirectives;
   cfg: OpenClawConfig;
   channel: string;
+  sessionKey: string;
   sessionEntry?: SessionEntry;
 }): ReplyPayload | undefined {
   const { directives } = params;
@@ -38,8 +39,7 @@ export function maybeHandleQueueDirective(params: {
 
     // Followup queues are keyed by the same string used in enqueue APIs.
     // SessionEntry.sessionId is the session key string for the current conversation.
-    const sessionKey = params.sessionEntry?.sessionId;
-    const depth = sessionKey ? getFollowupQueueDepth(sessionKey) : 0;
+    const depth = getFollowupQueueDepth(params.sessionKey);
 
     // Treat explicit 0 values as overrides (e.g., debounce=0).
     const overrides = Boolean(

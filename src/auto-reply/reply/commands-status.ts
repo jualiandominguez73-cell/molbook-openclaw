@@ -178,8 +178,7 @@ export async function buildStatusReply(params: {
     channel: command.channel,
     sessionEntry,
   });
-  const queueKey = sessionKey ?? sessionEntry?.sessionId;
-  const queueDepth = queueKey ? getFollowupQueueDepth(queueKey) : 0;
+  const queueDepth = sessionKey ? getFollowupQueueDepth(sessionKey) : 0;
   const queueOverrides = Boolean(
     sessionEntry?.queueDebounceMs ?? sessionEntry?.queueCap ?? sessionEntry?.queueDrop,
   );
