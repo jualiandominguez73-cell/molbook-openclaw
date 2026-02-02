@@ -14,6 +14,7 @@ import {
   extractShortModelName,
   type ResponsePrefixContext,
 } from "../../auto-reply/reply/response-prefix-template.js";
+import { normalizeThinkLevel, resolveMaxThinkLevel } from "../../auto-reply/thinking.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { INTERNAL_MESSAGE_CHANNEL } from "../../utils/message-channel.js";
 import {
@@ -228,6 +229,13 @@ export const chatHandlers: GatewayRequestHandlers = {
           model,
           catalog,
         });
+      }
+    }
+    if (thinkingLevel) {
+      const normalized = normalizeThinkLevel(thinkingLevel);
+      if (normalized) {
+        const { provider, model } = resolveSessionModelRef(cfg, entry);
+        thinkingLevel = resolveMaxThinkLevel(normalized, provider, model) ?? thinkingLevel;
       }
     }
     respond(true, {

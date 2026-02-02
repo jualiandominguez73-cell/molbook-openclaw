@@ -25,7 +25,7 @@ export type AgentConfig = {
   agentDir?: string;
   model?: AgentModelConfig;
   /** Default thinking level for this agent (auto-downgrades for unsupported models). */
-  thinkingDefault?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+  thinkingDefault?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
   memorySearch?: MemorySearchConfig;
   /** Human-like delay between block replies for this agent. */
   humanDelay?: HumanDelayConfig;

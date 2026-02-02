@@ -435,6 +435,7 @@ export const AgentEntrySchema = z
         z.literal("medium"),
         z.literal("high"),
         z.literal("xhigh"),
+        z.literal("max"),
       ])
       .optional(),
     memorySearch: MemorySearchSchema,
