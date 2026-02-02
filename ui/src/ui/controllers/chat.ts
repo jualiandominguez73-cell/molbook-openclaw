@@ -55,6 +55,23 @@ function dataUrlToBase64(dataUrl: string): { content: string; mimeType: string }
   return { mimeType: match[1], content: match[2] };
 }
 
+/**
+ * Check if a message is a session reset command (/new or /reset).
+ * These commands are processed by the server but not stored in history,
+ * so they should not be displayed optimistically in the UI.
+ */
+function isChatResetCommand(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return false;
+  }
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "/new" || normalized === "/reset") {
+    return true;
+  }
+  return normalized.startsWith("/new ") || normalized.startsWith("/reset ");
+}
+
 export async function sendChatMessage(
   state: ChatState,
   message: string,
@@ -86,14 +103,21 @@ export async function sendChatMessage(
     }
   }
 
-  state.chatMessages = [
-    ...state.chatMessages,
-    {
-      role: "user",
-      content: contentBlocks,
-      timestamp: now,
-    },
-  ];
+  // Only add message optimistically if it's not a reset command.
+  // Reset commands (/new, /reset) are processed by the server but not stored
+  // in session history. Adding them optimistically would cause them to disappear
+  // when history is reloaded after the command completes.
+  // See: https://github.com/openclaw/openclaw/issues/7189
+  if (!isChatResetCommand(msg)) {
+    state.chatMessages = [
+      ...state.chatMessages,
+      {
+        role: "user",
+        content: contentBlocks,
+        timestamp: now,
+      },
+    ];
+  }
 
   state.chatSending = true;
   state.lastError = null;
