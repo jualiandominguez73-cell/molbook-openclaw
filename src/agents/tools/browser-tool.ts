@@ -273,7 +273,7 @@ export function createBrowserTool(opts?: {
           });
       const bridgeAuthToken = opts?.sandboxBridgeAuthToken?.trim();
       const authToken = !nodeTarget && resolvedTarget === "sandbox" ? bridgeAuthToken : undefined;
-      if (resolvedTarget === "sandbox" && baseUrl && !authToken) {
+      if (!nodeTarget && resolvedTarget === "sandbox" && baseUrl && !authToken) {
         throw new Error(
           "Sandbox browser bridge requires an auth token. Restart the gateway to regenerate it.",
         );
