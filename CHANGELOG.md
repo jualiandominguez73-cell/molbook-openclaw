@@ -172,6 +172,7 @@ Docs: https://docs.openclaw.ai
 - Extensions: restore embedded extension discovery typings.
 - CLI: fix `tui:dev` port resolution.
 - LINE: fix status command TypeError. (#4651)
+- Agents: avoid orphaned tool results for errored tool calls. (#7329)
 - OAuth: skip expired-token warnings when refresh tokens are still valid. (#4593)
 - Build: skip redundant UI install step in Dockerfile. (#4584) Thanks @obviyus.
 
