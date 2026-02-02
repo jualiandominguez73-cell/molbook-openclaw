@@ -5,9 +5,11 @@ import {
   readStringArrayParam,
   readStringOrNumberParam,
   readStringParam,
+  jsonResult,
 } from "../../../agents/tools/common.js";
 import { handleTelegramAction } from "../../../agents/tools/telegram-actions.js";
 import { listEnabledTelegramAccounts } from "../../../telegram/accounts.js";
+import { readTelegramHistoryMessages } from "../../../telegram/history-store.js";
 import { isTelegramInlineButtonsEnabled } from "../../../telegram/inline-buttons.js";
 
 const providerId = "telegram";
@@ -59,6 +61,9 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
     if (gate("sticker", false)) {
       actions.add("sticker");
       actions.add("sticker-search");
+    }
+    if (gate("readHistory", false)) {
+      actions.add("read");
     }
     return Array.from(actions);
   },
@@ -197,6 +202,33 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
         },
         cfg,
       );
+    }
+
+    if (action === "read") {
+      // Note: This reads from local history persisted by the Telegram provider.
+      const chatId =
+        readStringOrNumberParam(params, "chatId") ??
+        readStringOrNumberParam(params, "channelId") ??
+        readStringParam(params, "to") ??
+        readStringParam(params, "target", { required: true });
+      const threadId = readStringOrNumberParam(params, "threadId");
+      const limit = readNumberParam(params, "limit", { integer: true }) ?? 30;
+      const before = readNumberParam(params, "before", { integer: true });
+
+      const messages = await readTelegramHistoryMessages({
+        accountId: accountId ?? "default",
+        chatId,
+        threadId: threadId ?? undefined,
+        limit,
+        beforeMessageId: before ?? undefined,
+      });
+
+      return jsonResult({
+        channel: "telegram",
+        chatId: String(chatId),
+        threadId: threadId != null ? String(threadId) : undefined,
+        messages,
+      });
     }
 
     throw new Error(`Action ${action} is not supported for provider ${providerId}.`);
