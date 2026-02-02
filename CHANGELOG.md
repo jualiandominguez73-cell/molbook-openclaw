@@ -2,6 +2,12 @@
 
 Docs: https://docs.openclaw.ai
 
+## 2026.2.2
+
+### Fixes
+
+- Telegram: enforce thread specs for DM vs forum sends. (#6833) Thanks @obviyus.
+
 ## 2026.1.31
 
 ### Changes
@@ -12,6 +18,7 @@ Docs: https://docs.openclaw.ai
 - Agents: add system prompt safety guardrails. (#5445) Thanks @joshp123.
 - Agents: update pi-ai to 0.50.9 and rename cacheControlTtl -> cacheRetention (with back-compat mapping).
 - Discord: inherit thread parent bindings for routing. (#3892) Thanks @aerolalit.
+- Gateway: require TLS 1.3 minimum for TLS listeners. (#5970) Thanks @loganaden.
 
 ### Fixes
 
@@ -28,6 +35,9 @@ Docs: https://docs.openclaw.ai
 - Browser: secure Chrome extension relay CDP sessions.
 - Docker: use container port for gateway command instead of host port. (#5110) Thanks @mise42.
 - fix(lobster): block arbitrary exec via lobsterPath/cwd injection (GHSA-4mhr-g7xj-cg8j). (#5335) Thanks @vignesh07.
+- Security: block LD*/DYLD* env overrides for host exec. (#4896) Thanks @HassanFleyah.
+- Security: harden web tool content wrapping + file parsing safeguards. (#4058) Thanks @VACInc.
+- Security: enforce Twitch `allowFrom` allowlist gating (deny non-allowlisted senders). Thanks @MegaManSec.
 
 ## 2026.1.30
 
