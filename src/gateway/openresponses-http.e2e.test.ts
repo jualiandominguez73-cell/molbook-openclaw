@@ -428,8 +428,9 @@ describe("OpenResponses HTTP API (e2e)", () => {
       agentCommand.mockReset();
       agentCommand.mockImplementationOnce(async (opts: unknown) => {
         const runId = (opts as { runId?: string } | undefined)?.runId ?? "";
-        const onReasoningStream = (opts as { onReasoningStream?: (payload: { text?: string }) => void })
-          ?.onReasoningStream;
+        const onReasoningStream = (
+          opts as { onReasoningStream?: (payload: { text?: string }) => void }
+        )?.onReasoningStream;
         onReasoningStream?.({ text: "thinking..." });
         emitAgentEvent({ runId, stream: "assistant", data: { delta: "he" } });
         emitAgentEvent({ runId, stream: "assistant", data: { delta: "llo" } });

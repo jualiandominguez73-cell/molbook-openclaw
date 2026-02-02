@@ -15,7 +15,7 @@ describe("OpenResponses Feature Parity", () => {
       const validOutput = {
         type: "function_call_output" as const,
         call_id: "call_123",
-        output: "{\"ok\":true}",
+        output: '{"ok":true}',
       };
 
       const result = OutputItemSchema.safeParse(validOutput);

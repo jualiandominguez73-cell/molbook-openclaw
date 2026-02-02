@@ -252,6 +252,7 @@ Defaults when omitted:
 - `toolResultMaxDataBytes`: unset (tool result data stripped)
 
 Notes:
+
 - `toolResultMaxDataBytes` applies to any `content[].data` field returned by tools
   (images or other binary payloads like PDFs/docx).
 - When unset, OpenClaw strips base64 data for `type: "image"` tool results and returns

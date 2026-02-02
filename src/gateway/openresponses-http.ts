@@ -413,13 +413,12 @@ export async function handleOpenResponsesHttpRequest(
   if (body === undefined) {
     return true;
   }
-  
+
   const rawToolNames = Array.isArray((body as { tools?: unknown })?.tools)
     ? ((body as { tools: Array<{ function?: { name?: string } }> }).tools || [])
         .map((tool) => tool?.function?.name)
         .filter(Boolean)
     : [];
-  
 
   // Validate request body with Zod
   const parseResult = CreateResponseBodySchema.safeParse(body);
@@ -517,7 +516,7 @@ export async function handleOpenResponsesHttpRequest(
   }
 
   const clientTools = extractClientTools(payload);
-  
+
   let toolChoicePrompt: string | undefined;
   let resolvedClientTools = clientTools;
   try {
@@ -527,7 +526,6 @@ export async function handleOpenResponsesHttpRequest(
     });
     resolvedClientTools = toolChoiceResult.tools;
     toolChoicePrompt = toolChoiceResult.extraSystemPrompt;
-    
   } catch (err) {
     sendJson(res, 400, {
       error: { message: String(err), type: "invalid_request_error" },
@@ -539,7 +537,6 @@ export async function handleOpenResponsesHttpRequest(
 
   // Build prompt from input
   const prompt = buildAgentPrompt(payload.input);
-  
 
   const fileContext = fileContexts.length > 0 ? fileContexts.join("\n\n") : undefined;
   const toolChoiceContext = toolChoicePrompt?.trim();
