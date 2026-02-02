@@ -252,8 +252,7 @@ describe("Inworld TTS Provider", () => {
     });
 
     it("should handle network errors", async () => {
-      const networkError = new Error("Network error");
-      (networkError as any).code = "ENOTFOUND";
+      const networkError = Object.assign(new Error("Network error"), { code: "ENOTFOUND" });
       mockFetch.mockRejectedValueOnce(networkError);
 
       const result = await inworldTTS("Hello", { inworld: {} });

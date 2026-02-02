@@ -174,7 +174,9 @@ function getFileExtension(format: string): string {
  * Validates and normalizes the voice ID (case-insensitive).
  */
 function normalizeVoiceId(voiceId: string | undefined): string {
-  if (!voiceId) return DEFAULT_VOICE;
+  if (!voiceId) {
+    return DEFAULT_VOICE;
+  }
 
   // Case-insensitive voice lookup
   const normalizedVoice = INWORLD_VOICE_IDS.find((v) => v.toLowerCase() === voiceId.toLowerCase());
