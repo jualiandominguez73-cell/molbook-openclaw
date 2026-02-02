@@ -38,7 +38,7 @@ describe("readStringOrNumberParam", () => {
 
   it("throws when required and missing", () => {
     expect(() => readStringOrNumberParam({}, "chatId", { required: true })).toThrow(
-      /Missing required parameter 'chatId'/,
+      /chatId required/,
     );
   });
 });
@@ -56,7 +56,7 @@ describe("readNumberParam", () => {
 
   it("throws when required and missing", () => {
     expect(() => readNumberParam({}, "messageId", { required: true })).toThrow(
-      /Missing required parameter 'messageId'/,
+      /messageId required/,
     );
   });
 });
