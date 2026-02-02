@@ -21,6 +21,7 @@ class MockWebSocket {
   static CLOSING = 2;
   static CLOSED = 3;
 
+  url: string;
   readyState = MockWebSocket.CONNECTING;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
@@ -29,7 +30,8 @@ class MockWebSocket {
 
   sentMessages: string[] = [];
 
-  constructor(public url: string) {
+  constructor(url: string) {
+    this.url = url;
     // Simulate connection after a tick
     setTimeout(() => {
       this.readyState = MockWebSocket.OPEN;
@@ -90,22 +92,21 @@ class MockWebSocket {
   }
 }
 
-// Type assertion for global
-const globalWithWebSocket = globalThis as typeof globalThis & { WebSocket: typeof MockWebSocket };
-
 describe("gateway-client", () => {
   let originalWebSocket: typeof WebSocket | undefined;
 
   beforeEach(() => {
-    originalWebSocket = globalWithWebSocket.WebSocket;
-    globalWithWebSocket.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+    originalWebSocket = globalThis.WebSocket;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).WebSocket = MockWebSocket;
     resetGatewayClient();
   });
 
   afterEach(() => {
     resetGatewayClient();
     if (originalWebSocket) {
-      globalWithWebSocket.WebSocket = originalWebSocket;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).WebSocket = originalWebSocket;
     }
   });
 
@@ -159,30 +160,42 @@ describe("gateway-client", () => {
 
     it("uses default URL if not provided", async () => {
       const client = createGatewayClient();
-      void client.connect();
+      const connectPromise = client.connect();
 
       // Wait for WebSocket to be created
       await new Promise((r) => setTimeout(r, 10));
 
       expect(client.getStatus()).toBe("connecting");
+
+      // Clean up
+      client.stop();
+      await expect(connectPromise).rejects.toThrow("Client stopped");
     });
 
     it("uses custom URL if provided", async () => {
       const client = createGatewayClient({ url: "ws://custom:1234" });
-      void client.connect();
+      const connectPromise = client.connect();
 
       await new Promise((r) => setTimeout(r, 10));
       expect(client.getStatus()).toBe("connecting");
+
+      // Clean up
+      client.stop();
+      await expect(connectPromise).rejects.toThrow("Client stopped");
     });
 
     it("calls onStatusChange when status changes", async () => {
       const onStatusChange = vi.fn();
       const client = createGatewayClient({ onStatusChange });
 
-      void client.connect();
+      const connectPromise = client.connect();
       await new Promise((r) => setTimeout(r, 10));
 
       expect(onStatusChange).toHaveBeenCalledWith("connecting");
+
+      // Clean up
+      client.stop();
+      await expect(connectPromise).rejects.toThrow("Client stopped");
     });
 
     it("stops cleanly", () => {
@@ -193,9 +206,11 @@ describe("gateway-client", () => {
 
     it("can stop while connecting", async () => {
       const client = createGatewayClient();
-      void client.connect();
+      const connectPromise = client.connect();
       await new Promise((r) => setTimeout(r, 5));
       client.stop();
+      // The connect promise should reject when stopped
+      await expect(connectPromise).rejects.toThrow("Client stopped");
       expect(client.getStatus()).toBe("disconnected");
     });
   });
@@ -215,7 +230,7 @@ describe("gateway-client", () => {
       const onEvent = vi.fn();
       const client = createGatewayClient({ onEvent });
 
-      void client.connect();
+      const connectPromise = client.connect();
       await new Promise((r) => setTimeout(r, 10));
 
       // Get the mock WebSocket
@@ -229,6 +244,10 @@ describe("gateway-client", () => {
         payload: { foo: "bar" },
         seq: 1,
       });
+
+      // Clean up - stop client and catch the rejection
+      client.stop();
+      await expect(connectPromise).rejects.toThrow("Client stopped");
     });
 
     it("calls onGap when sequence gap detected", async () => {
@@ -236,7 +255,7 @@ describe("gateway-client", () => {
       const onEvent = vi.fn();
       const client = createGatewayClient({ onEvent, onGap });
 
-      void client.connect();
+      const connectPromise = client.connect();
       await new Promise((r) => setTimeout(r, 10));
 
       const ws = (client as unknown as { ws: MockWebSocket }).ws;
@@ -246,6 +265,10 @@ describe("gateway-client", () => {
       ws.simulateEvent("event2", {}, 5); // Gap: expected 2, got 5
 
       expect(onGap).toHaveBeenCalledWith({ expected: 2, received: 5 });
+
+      // Clean up - stop client and catch the rejection
+      client.stop();
+      await expect(connectPromise).rejects.toThrow("Client stopped");
     });
   });
 });

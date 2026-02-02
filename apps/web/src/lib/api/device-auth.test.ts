@@ -2,7 +2,7 @@
  * Unit tests for device-auth module
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   loadDeviceAuthToken,
   storeDeviceAuthToken,
