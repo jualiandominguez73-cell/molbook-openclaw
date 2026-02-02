@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
 import { ensureOpenClawModelsJson } from "./models-config.js";
-import { createSystemPromptOverride } from "./pi-embedded-runner.js";
+import { createSystemPromptOverride } from "./pi-embedded-runner/system-prompt.js";
 
 vi.mock("@mariozechner/pi-ai", async () => {
   const actual = await vi.importActual<typeof import("@mariozechner/pi-ai")>("@mariozechner/pi-ai");
