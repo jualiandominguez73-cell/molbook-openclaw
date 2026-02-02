@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-
-import { slackPlugin } from "./channel.js";
-import { setSlackRuntime } from "./runtime.js";
-
 import type { MoltbotConfig } from "../../../src/config/config.js";
 import { createPluginRuntime } from "../../../src/plugins/runtime/index.js";
+import { slackPlugin } from "./channel.js";
+import { setSlackRuntime } from "./runtime.js";
 
 describe("slack plugin read action", () => {
   it("forwards threadId to readMessages", async () => {

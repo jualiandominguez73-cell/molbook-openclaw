@@ -162,11 +162,17 @@ export async function resolveSlackThreadReplies(params: {
     // Filter out the thread starter (first message) and the excluded message.
     const replies = messages
       .filter((msg) => {
-        if (!msg.ts) return false;
+        if (!msg.ts) {
+          return false;
+        }
         // Exclude thread starter (ts === threadTs).
-        if (msg.ts === params.threadTs) return false;
+        if (msg.ts === params.threadTs) {
+          return false;
+        }
         // Exclude the specified message (usually the current inbound).
-        if (params.excludeTs && msg.ts === params.excludeTs) return false;
+        if (params.excludeTs && msg.ts === params.excludeTs) {
+          return false;
+        }
         return true;
       })
       .map((msg) => ({
