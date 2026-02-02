@@ -131,6 +131,19 @@ async function checkOllamaAvailable() {
   });
 }
 
+// Deep merge utility
+function deepMerge(target, source) {
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      target[key] = target[key] || {};
+      deepMerge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+
 // Initialize configuration with auto-detection
 async function initializeConfig() {
   if (CONFIG) return CONFIG;
@@ -146,7 +159,8 @@ async function initializeConfig() {
     }
   }
   
-  CONFIG = { ...DEFAULT_CONFIG, ...userConfig };
+  // Deep merge instead of shallow spread
+  CONFIG = deepMerge(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), userConfig);
   
   console.log('🔍 CoreMemories: Detecting local LLM...');
   const ollamaCheck = await checkOllamaAvailable();
@@ -317,9 +331,14 @@ class MemoryMdIntegration {
     
     const triggers = CONFIG.memoryMd.updateTriggers;
     
-    // High emotional salience
-    if (entry.emotionalSalience >= triggers.emotionalThreshold) {
+    // High emotional salience (Flash entries have emotionalSalience number)
+    if (entry.emotionalSalience !== undefined && entry.emotionalSalience >= triggers.emotionalThreshold) {
       return { reason: 'high_emotion', score: entry.emotionalSalience };
+    }
+    
+    // High emotional tone (Warm entries have emotionalTone string)
+    if (entry.emotionalTone === 'high') {
+      return { reason: 'high_emotion_tone', tone: entry.emotionalTone };
     }
     
     // Decision type
@@ -649,20 +668,42 @@ class CoreMemories {
   async runCompression() {
     console.log('🔄 CoreMemories: Running compression...');
     
-    const flashEntries = this.getFlashEntries();
+    const flashPath = path.join(this.memoryDir, 'hot', 'flash', 'current.json');
+    if (!fs.existsSync(flashPath)) {
+      console.log('   No flash entries to compress');
+      return;
+    }
+    
+    const flashData = JSON.parse(fs.readFileSync(flashPath, 'utf-8'));
     const now = Date.now();
     const cutoff = now - 48 * 60 * 60 * 1000;
     
-    let compressed = 0;
-    for (const entry of flashEntries) {
+    const toCompress = [];
+    const toKeep = [];
+    
+    // Separate old and new entries
+    for (const entry of flashData.entries) {
       const entryTime = new Date(entry.timestamp).getTime();
       if (entryTime < cutoff) {
-        await this.addWarmEntry(entry);
-        compressed++;
+        toCompress.push(entry);
+      } else {
+        toKeep.push(entry);
       }
     }
     
+    // Compress old entries
+    let compressed = 0;
+    for (const entry of toCompress) {
+      await this.addWarmEntry(entry);
+      compressed++;
+    }
+    
+    // Update flash file with only new entries (removes compressed ones)
+    fs.writeFileSync(flashPath, JSON.stringify({ entries: toKeep }, null, 2));
+    
     console.log(`   ✓ Compressed ${compressed} entries to Warm layer`);
+    console.log(`   ✓ Removed compressed entries from Flash`);
+    console.log(`   ✓ Flash now has ${toKeep.length} entries`);
     console.log(`   Mode: ${CONFIG?.engines?.local?.available ? 'LLM-enhanced' : 'Rule-based'}`);
     
     // Show pending MEMORY.md updates

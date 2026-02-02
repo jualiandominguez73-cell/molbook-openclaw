@@ -3,7 +3,7 @@
  * Connects CoreMemories with CRON, HEARTBEAT, and reminders
  */
 
-const { getCoreMemories } = require('./core-memories-v2.1.js');
+const { getCoreMemories } = require('./index.js');
 
 /**
  * HEARTBEAT Integration

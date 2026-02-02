@@ -2,7 +2,7 @@
  * CoreMemories v2.1 Test - MEMORY.md Integration
  */
 
-const { getCoreMemories } = require('./core-memories-v2.1.js');
+const { getCoreMemories } = require('../src/index.js');
 
 async function test() {
   console.log('🧪 Testing CoreMemories v2.1 (MEMORY.md Integration)\n');
@@ -45,9 +45,9 @@ async function test() {
     id: `mem_${Date.now() - 49 * 60 * 60 * 1000}_flagged`,
     timestamp: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
     type: 'conversation',
-    content: 'Remember this: My recovery code is VZLPNHYDEN8W22737PU8B2. This is critical information.',
+    content: 'Remember this: My test recovery code is TEST1234EXAMPLE5678. This is test information.',
     speaker: 'louis',
-    keywords: ['recovery', 'code', 'critical', 'information'],
+    keywords: ['recovery', 'code', 'test', 'information'],
     emotionalSalience: 0.9,
     userFlagged: true,
     linkedTo: [],
