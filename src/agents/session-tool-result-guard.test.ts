@@ -141,4 +141,23 @@ describe("installSessionToolResultGuard", () => {
       .map((e) => (e as { message: AgentMessage }).message);
     expect(messages.map((m) => m.role)).toEqual(["assistant", "toolResult"]);
   });
+
+  it("skips tracking tool calls from errored assistants", () => {
+    const sm = SessionManager.inMemory();
+    installSessionToolResultGuard(sm);
+
+    sm.appendMessage({
+      role: "assistant",
+      stopReason: "error",
+      content: [{ type: "toolCall", id: "call_err", name: "read", arguments: {} }],
+    } as AgentMessage);
+    sm.appendMessage({ role: "user", content: "next" } as AgentMessage);
+
+    const messages = sm
+      .getEntries()
+      .filter((e) => e.type === "message")
+      .map((e) => (e as { message: AgentMessage }).message);
+
+    expect(messages.map((m) => m.role)).toEqual(["assistant", "user"]);
+  });
 });

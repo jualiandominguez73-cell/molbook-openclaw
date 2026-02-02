@@ -8,6 +8,10 @@ type ToolCallLike = {
 function extractToolCallsFromAssistant(
   msg: Extract<AgentMessage, { role: "assistant" }>,
 ): ToolCallLike[] {
+  const stopReason = (msg as { stopReason?: unknown }).stopReason;
+  if (stopReason === "error" || stopReason === "aborted") {
+    return [];
+  }
   const content = msg.content;
   if (!Array.isArray(content)) {
     return [];

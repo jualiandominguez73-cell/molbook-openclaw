@@ -109,4 +109,26 @@ describe("sanitizeToolUseResultPairing", () => {
     expect(out.some((m) => m.role === "toolResult")).toBe(false);
     expect(out.map((m) => m.role)).toEqual(["user", "assistant"]);
   });
+
+  it("drops tool results for errored tool calls", () => {
+    const input = [
+      {
+        role: "assistant",
+        stopReason: "error",
+        content: [{ type: "toolCall", id: "call_error", name: "read", arguments: {} }],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call_error",
+        toolName: "read",
+        content: [{ type: "text", text: "should drop" }],
+        isError: true,
+      },
+      { role: "user", content: "next" },
+    ] satisfies AgentMessage[];
+
+    const out = sanitizeToolUseResultPairing(input);
+    expect(out.some((m) => m.role === "toolResult")).toBe(false);
+    expect(out.map((m) => m.role)).toEqual(["assistant", "user"]);
+  });
 });
