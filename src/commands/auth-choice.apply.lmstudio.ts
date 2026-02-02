@@ -1,4 +1,5 @@
 import type { OpenClawConfig } from "../config/config.js";
+import type { ModelProviderConfig } from "../config/types.models.js";
 import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { applyPrimaryModel } from "./model-picker.js";
 
@@ -137,19 +138,21 @@ export async function applyAuthChoiceLmStudio(
   const modelId = normalizeLmStudioModelId(String(modelInput)) as string;
   const modelRef = `lmstudio/${modelId}`;
 
+  const nextProvider: ModelProviderConfig = {
+    ...(existingProvider ?? {}),
+    baseUrl: normalizedBaseUrl,
+    apiKey: existingProvider?.apiKey ?? "lmstudio",
+    api: existingProvider?.api ?? DEFAULT_LMSTUDIO_API,
+    models: Array.isArray(existingProvider?.models) ? existingProvider.models : [],
+  };
+
   let nextConfig: OpenClawConfig = {
     ...params.config,
     models: {
       mode: params.config.models?.mode ?? "merge",
       providers: {
         ...params.config.models?.providers,
-        lmstudio: {
-          ...(existingProvider ? { ...existingProvider } : {}),
-          baseUrl: normalizedBaseUrl,
-          apiKey: existingProvider?.apiKey ?? "lmstudio",
-          api: existingProvider?.api ?? DEFAULT_LMSTUDIO_API,
-          ...(Array.isArray(existingProvider?.models) ? { models: existingProvider.models } : {}),
-        },
+        lmstudio: nextProvider,
       },
     },
   };
