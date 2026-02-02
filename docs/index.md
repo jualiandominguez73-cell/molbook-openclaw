@@ -61,7 +61,6 @@ Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
 
 ## How it works
 
-<p align="center">
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -104,7 +103,6 @@ flowchart TB
     Clients --> Gateway["<b>Gateway (single source)<br></b><br>ws://127.0.0.1:18789 (loopback-only)<br><br>http://:18793\n/__openclaw__/canvas/ (Canvas host)"]
     Gateway --> Nodes
 ```
-</p>
 
 Most operations flow through the **Gateway** (`openclaw gateway`), a single long-running process that owns channel connections and the WebSocket control plane.
 

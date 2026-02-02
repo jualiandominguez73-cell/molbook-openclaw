@@ -67,7 +67,6 @@ OpenClaw 同时也驱动着 OpenClaw 助手。
 
 ## 工作原理
 
-<p align="center">
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -110,7 +109,6 @@ flowchart TB
     Clients --> Gateway["<b>Gateway (single source)<br></b><br>ws://127.0.0.1:18789 (loopback-only)<br><br>http://:18793\n/__openclaw__/canvas/ (Canvas host)"]
     Gateway --> Nodes
 ```
-</p>
 
 大多数操作通过 **Gateway** （`openclaw gateway`进行，它是一个长期运行的单进程，负责管理渠道连接和 WebSocket 控制面。
 
