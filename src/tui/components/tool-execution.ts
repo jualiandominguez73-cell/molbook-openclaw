@@ -13,6 +13,8 @@ type ToolResultContent = {
 type ToolResult = {
   content?: ToolResultContent[];
   details?: Record<string, unknown>;
+  error?: string;
+  message?: string;
 };
 
 const PREVIEW_LINES = 12;
@@ -34,21 +36,41 @@ function formatArgs(toolName: string, args: unknown): string {
 }
 
 function extractText(result?: ToolResult): string {
-  if (!result?.content) {
+  if (!result) {
     return "";
   }
-  const lines: string[] = [];
-  for (const entry of result.content) {
-    if (entry.type === "text" && entry.text) {
-      lines.push(entry.text);
-    } else if (entry.type === "image") {
-      const mime = entry.mimeType ?? "image";
-      const size = entry.bytes ? ` ${Math.round(entry.bytes / 1024)}kb` : "";
-      const omitted = entry.omitted ? " (omitted)" : "";
-      lines.push(`[${mime}${size}${omitted}]`);
+  if (result.content && Array.isArray(result.content)) {
+    const lines: string[] = [];
+    for (const entry of result.content) {
+      if (entry.type === "text" && entry.text) {
+        lines.push(entry.text);
+      } else if (entry.type === "image") {
+        const mime = entry.mimeType ?? "image";
+        const size = entry.bytes ? ` ${Math.round(entry.bytes / 1024)}kb` : "";
+        const omitted = entry.omitted ? " (omitted)" : "";
+        lines.push(`[${mime}${size}${omitted}]`);
+      }
     }
+    return lines.join("\n").trim();
   }
-  return lines.join("\n").trim();
+
+  // Fallback for error objects or unstructured results
+  if (typeof result.error === "string") {
+    return `Error: ${result.error}`;
+  }
+  if (typeof result.message === "string") {
+    return result.message;
+  }
+  if (result.details && typeof (result.details as any).status === "string") {
+    return `Status: ${(result.details as any).status}`;
+  }
+
+  // Last resort: show the raw object so the user sees *something*
+  try {
+    return JSON.stringify(result, null, 2);
+  } catch {
+    return "";
+  }
 }
 
 export class ToolExecutionComponent extends Container {
