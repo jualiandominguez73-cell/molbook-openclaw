@@ -253,17 +253,51 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     event: PluginHookBeforeRequestEvent,
     ctx: PluginHookAgentContext,
   ): Promise<PluginHookBeforeRequestResult | undefined> {
-    return runModifyingHook<"before_request", PluginHookBeforeRequestResult>(
-      "before_request",
-      event,
-      ctx,
-      (acc, next) => ({
-        prompt: next.prompt ?? acc?.prompt,
-        messages: next.messages ?? acc?.messages,
-        block: next.block ?? acc?.block,
-        blockResponse: next.blockResponse ?? acc?.blockResponse,
-      }),
-    );
+    const hooks = getHooksForName(registry, "before_request");
+    if (hooks.length === 0) {
+      return undefined;
+    }
+
+    logger?.debug?.(`[hooks] running before_request (${hooks.length} handlers, sequential)`);
+
+    let result: PluginHookBeforeRequestResult | undefined;
+    let currentEvent = { ...event };
+
+    for (const hook of hooks) {
+      try {
+        const handlerResult = await (
+          hook.handler as (event: unknown, ctx: unknown) => Promise<PluginHookBeforeRequestResult>
+        )(currentEvent, ctx);
+
+        if (handlerResult !== undefined && handlerResult !== null) {
+          result = {
+            prompt: handlerResult.prompt ?? result?.prompt,
+            messages: handlerResult.messages ?? result?.messages,
+            block: handlerResult.block ?? result?.block,
+            blockResponse: handlerResult.blockResponse ?? result?.blockResponse,
+          };
+
+          if (handlerResult.prompt !== undefined) {
+            currentEvent = { ...currentEvent, prompt: handlerResult.prompt };
+          }
+          if (handlerResult.messages !== undefined) {
+            currentEvent = { ...currentEvent, messages: handlerResult.messages };
+          }
+          if (handlerResult.block) {
+            break;
+          }
+        }
+      } catch (err) {
+        const msg = `[hooks] before_request handler from ${hook.pluginId} failed: ${String(err)}`;
+        if (catchErrors) {
+          logger?.error(msg);
+        } else {
+          throw new Error(msg, { cause: err });
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -275,16 +309,47 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     event: PluginHookAfterResponseEvent,
     ctx: PluginHookAgentContext,
   ): Promise<PluginHookAfterResponseResult | undefined> {
-    return runModifyingHook<"after_response", PluginHookAfterResponseResult>(
-      "after_response",
-      event,
-      ctx,
-      (acc, next) => ({
-        assistantTexts: next.assistantTexts ?? acc?.assistantTexts,
-        block: next.block ?? acc?.block,
-        blockResponse: next.blockResponse ?? acc?.blockResponse,
-      }),
-    );
+    const hooks = getHooksForName(registry, "after_response");
+    if (hooks.length === 0) {
+      return undefined;
+    }
+
+    logger?.debug?.(`[hooks] running after_response (${hooks.length} handlers, sequential)`);
+
+    let result: PluginHookAfterResponseResult | undefined;
+    let currentEvent = { ...event };
+
+    for (const hook of hooks) {
+      try {
+        const handlerResult = await (
+          hook.handler as (event: unknown, ctx: unknown) => Promise<PluginHookAfterResponseResult>
+        )(currentEvent, ctx);
+
+        if (handlerResult !== undefined && handlerResult !== null) {
+          result = {
+            assistantTexts: handlerResult.assistantTexts ?? result?.assistantTexts,
+            block: handlerResult.block ?? result?.block,
+            blockResponse: handlerResult.blockResponse ?? result?.blockResponse,
+          };
+
+          if (handlerResult.assistantTexts !== undefined) {
+            currentEvent = { ...currentEvent, assistantTexts: handlerResult.assistantTexts };
+          }
+          if (handlerResult.block) {
+            break;
+          }
+        }
+      } catch (err) {
+        const msg = `[hooks] after_response handler from ${hook.pluginId} failed: ${String(err)}`;
+        if (catchErrors) {
+          logger?.error(msg);
+        } else {
+          throw new Error(msg, { cause: err });
+        }
+      }
+    }
+
+    return result;
   }
 
   // =========================================================================
@@ -346,17 +411,48 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     event: PluginHookBeforeToolCallEvent,
     ctx: PluginHookToolContext,
   ): Promise<PluginHookBeforeToolCallResult | undefined> {
-    return runModifyingHook<"before_tool_call", PluginHookBeforeToolCallResult>(
-      "before_tool_call",
-      event,
-      ctx,
-      (acc, next) => ({
-        params: next.params ?? acc?.params,
-        block: next.block ?? acc?.block,
-        blockReason: next.blockReason ?? acc?.blockReason,
-        toolResult: next.toolResult ?? acc?.toolResult,
-      }),
-    );
+    const hooks = getHooksForName(registry, "before_tool_call");
+    if (hooks.length === 0) {
+      return undefined;
+    }
+
+    logger?.debug?.(`[hooks] running before_tool_call (${hooks.length} handlers, sequential)`);
+
+    let result: PluginHookBeforeToolCallResult | undefined;
+    let currentEvent = { ...event };
+
+    for (const hook of hooks) {
+      try {
+        const handlerResult = await (
+          hook.handler as (event: unknown, ctx: unknown) => Promise<PluginHookBeforeToolCallResult>
+        )(currentEvent, ctx);
+
+        if (handlerResult !== undefined && handlerResult !== null) {
+          result = {
+            params: handlerResult.params ?? result?.params,
+            block: handlerResult.block ?? result?.block,
+            blockReason: handlerResult.blockReason ?? result?.blockReason,
+            toolResult: handlerResult.toolResult ?? result?.toolResult,
+          };
+
+          if (handlerResult.params !== undefined) {
+            currentEvent = { ...currentEvent, params: handlerResult.params };
+          }
+          if (handlerResult.block) {
+            break;
+          }
+        }
+      } catch (err) {
+        const msg = `[hooks] before_tool_call handler from ${hook.pluginId} failed: ${String(err)}`;
+        if (catchErrors) {
+          logger?.error(msg);
+        } else {
+          throw new Error(msg, { cause: err });
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -368,16 +464,47 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     event: PluginHookAfterToolCallEvent,
     ctx: PluginHookToolContext,
   ): Promise<PluginHookAfterToolCallResult | undefined> {
-    return runModifyingHook<"after_tool_call", PluginHookAfterToolCallResult>(
-      "after_tool_call",
-      event,
-      ctx,
-      (acc, next) => ({
-        result: next.result ?? acc?.result,
-        block: next.block ?? acc?.block,
-        blockReason: next.blockReason ?? acc?.blockReason,
-      }),
-    );
+    const hooks = getHooksForName(registry, "after_tool_call");
+    if (hooks.length === 0) {
+      return undefined;
+    }
+
+    logger?.debug?.(`[hooks] running after_tool_call (${hooks.length} handlers, sequential)`);
+
+    let result: PluginHookAfterToolCallResult | undefined;
+    let currentEvent = { ...event };
+
+    for (const hook of hooks) {
+      try {
+        const handlerResult = await (
+          hook.handler as (event: unknown, ctx: unknown) => Promise<PluginHookAfterToolCallResult>
+        )(currentEvent, ctx);
+
+        if (handlerResult !== undefined && handlerResult !== null) {
+          result = {
+            result: handlerResult.result ?? result?.result,
+            block: handlerResult.block ?? result?.block,
+            blockReason: handlerResult.blockReason ?? result?.blockReason,
+          };
+
+          if (handlerResult.result !== undefined) {
+            currentEvent = { ...currentEvent, result: handlerResult.result };
+          }
+          if (handlerResult.block) {
+            break;
+          }
+        }
+      } catch (err) {
+        const msg = `[hooks] after_tool_call handler from ${hook.pluginId} failed: ${String(err)}`;
+        if (catchErrors) {
+          logger?.error(msg);
+        } else {
+          throw new Error(msg, { cause: err });
+        }
+      }
+    }
+
+    return result;
   }
 
   /**

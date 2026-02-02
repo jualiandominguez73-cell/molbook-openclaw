@@ -122,11 +122,12 @@ export function validateConfigObject(
   if (avatarIssues.length > 0) {
     return { ok: false, issues: avatarIssues };
   }
+  const withDefaults = applyModelDefaults(
+    applyAgentDefaults(applySessionDefaults(validated.data as OpenClawConfig)),
+  );
   return {
     ok: true,
-    config: applyModelDefaults(
-      applyAgentDefaults(applySessionDefaults(validated.data as OpenClawConfig)),
-    ),
+    config: withDefaults,
   };
 }
 

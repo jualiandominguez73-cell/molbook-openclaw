@@ -6,19 +6,18 @@
  */
 
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
-
 import {
+  emptyPluginConfigSchema,
   type BaseStageConfig,
   type GuardrailBaseConfig,
   type GuardrailEvaluation,
   type GuardrailEvaluationContext,
   type GuardrailStage,
+  type OpenClawPluginApi,
   createGuardrailPlugin,
   extractTextFromContent,
   resolveStageConfig,
-} from "../../src/plugins/guardrails-utils.js";
+} from "openclaw/plugin-sdk";
 
 // ============================================================================
 // Types

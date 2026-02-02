@@ -7,16 +7,15 @@
 
 import path from "node:path";
 
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
-
-import type { OpenClawConfig } from "../../src/config/config.js";
 import {
+  emptyPluginConfigSchema,
   type BaseStageConfig,
   type EmbeddedAgentResult,
   type GuardrailBaseConfig,
   type GuardrailEvaluation,
   type GuardrailEvaluationContext,
+  type OpenClawConfig,
+  type OpenClawPluginApi,
   cleanupTempDir,
   collectText,
   createGuardrailPlugin,
@@ -24,7 +23,7 @@ import {
   extractMessagesContent,
   generateSessionId,
   loadRunEmbeddedPiAgent,
-} from "../../src/plugins/guardrails-utils.js";
+} from "openclaw/plugin-sdk";
 
 // ============================================================================
 // Types

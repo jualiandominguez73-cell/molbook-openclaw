@@ -6,16 +6,15 @@
  * text utilities on sensitive paths.
  */
 
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
-
 import {
+  emptyPluginConfigSchema,
   type BaseStageConfig,
   type GuardrailBaseConfig,
   type GuardrailEvaluation,
   type GuardrailEvaluationContext,
+  type OpenClawPluginApi,
   createGuardrailPlugin,
-} from "../../src/plugins/guardrails-utils.js";
+} from "openclaw/plugin-sdk";
 
 // ============================================================================
 // Types

@@ -716,6 +716,7 @@ export async function runEmbeddedAttempt(
       let messagesSnapshot: AgentMessage[] = [];
       let lastAssistant: AssistantMessage | undefined;
       let guardrailBlock: HookBlock | undefined;
+      let afterResponseMutated = false;
       let sessionIdUsed = activeSession.sessionId;
       const onAbort = () => {
         const reason = params.abortSignal ? getAbortReason(params.abortSignal) : undefined;
@@ -961,13 +962,64 @@ export async function runEmbeddedAttempt(
             },
           );
           if (hookResult?.block) {
+            const blockResponse = hookResult.blockResponse?.trim() || "Response blocked by policy.";
             guardrailBlock = {
               stage: "after_response",
               hookId: "after_response_hook",
-              response: hookResult.blockResponse,
+              response: blockResponse,
             };
+            assistantTexts.splice(0, assistantTexts.length, blockResponse);
+            afterResponseMutated = true;
           } else if (hookResult?.assistantTexts) {
             assistantTexts.splice(0, assistantTexts.length, ...hookResult.assistantTexts);
+            afterResponseMutated = true;
+          }
+        }
+
+        if (afterResponseMutated && sessionManager) {
+          const replacementText = assistantTexts.join("\n\n").trim();
+          if (replacementText) {
+            const leafEntry = sessionManager.getLeafEntry();
+            if (leafEntry?.type === "message" && leafEntry.message.role === "assistant") {
+              if (leafEntry.parentId) {
+                sessionManager.branch(leafEntry.parentId);
+              } else {
+                sessionManager.resetLeaf();
+              }
+              const now = Date.now();
+              const content: AssistantMessage["content"] = [
+                { type: "text", text: replacementText },
+              ];
+              const stopReason: AssistantMessage["stopReason"] = "stop";
+              const replacement: AssistantMessage =
+                lastAssistant && lastAssistant.role === "assistant"
+                  ? { ...lastAssistant, content, stopReason, timestamp: now }
+                  : {
+                      role: "assistant",
+                      content,
+                      api: params.model.api,
+                      provider: params.model.provider,
+                      model: params.model.id,
+                      usage: {
+                        input: 0,
+                        output: 0,
+                        cacheRead: 0,
+                        cacheWrite: 0,
+                        totalTokens: 0,
+                        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                      },
+                      stopReason,
+                      timestamp: now,
+                    };
+              sessionManager.appendMessage(replacement);
+              const sessionContext = sessionManager.buildSessionContext();
+              activeSession.agent.replaceMessages(sessionContext.messages);
+              messagesSnapshot = sessionContext.messages;
+              lastAssistant = messagesSnapshot
+                .slice()
+                .toReversed()
+                .find((m) => m.role === "assistant") as AssistantMessage | undefined;
+            }
           }
         }
 

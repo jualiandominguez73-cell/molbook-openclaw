@@ -9,16 +9,15 @@
 import path from "node:path";
 import os from "node:os";
 
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
-
 import {
+  emptyPluginConfigSchema,
   type BaseStageConfig,
   type GuardrailBaseConfig,
   type GuardrailEvaluation,
   type GuardrailEvaluationContext,
+  type OpenClawPluginApi,
   createGuardrailPlugin,
-} from "../../src/plugins/guardrails-utils.js";
+} from "openclaw/plugin-sdk";
 
 // ============================================================================
 // Types
