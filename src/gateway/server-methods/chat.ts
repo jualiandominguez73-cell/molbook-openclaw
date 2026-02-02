@@ -89,11 +89,12 @@ function getLastEntryId(transcriptPath: string): string | null {
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
         const entry = JSON.parse(lines[i]);
-        if (entry && typeof entry.id === "string") {
+        // Only return message entries, not session headers or other types
+        if (entry && typeof entry.id === "string" && entry.type === "message") {
           return entry.id;
         }
       } catch {
-        // ignore read/stat errors
+        // ignore JSON parse errors for malformed lines
       }
     }
   } catch {
@@ -707,9 +708,12 @@ export const chatHandlers: GatewayRequestHandlers = {
       stopReason: "injected",
       usage: { input: 0, output: 0, totalTokens: 0 },
     };
+    // Get parent ID to maintain tree structure
+    const parentId = getLastEntryId(transcriptPath) ?? sessionId;
     const transcriptEntry = {
       type: "message",
       id: messageId,
+      parentId,
       timestamp: new Date(now).toISOString(),
       message: messageBody,
     };
