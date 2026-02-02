@@ -20,6 +20,7 @@ import { resolveSlackWebClientOptions } from "../client.js";
 import { resolveSlackSlashCommandConfig } from "./commands.js";
 import { createSlackMonitorContext } from "./context.js";
 import { registerSlackMonitorEvents } from "./events.js";
+import { discoverTeammates } from "./teammates.js";
 import { createSlackMessageHandler } from "./message-handler.js";
 import { registerSlackMonitorSlashCommands } from "./slash.js";
 import { normalizeAllowList } from "./allow-list.js";
@@ -176,6 +177,18 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
     );
   }
 
+  let teammates: import("./teammates.js").TeammateInfo[] = [];
+  if (botUserId) {
+    teammates = await discoverTeammates({
+      client: app.client,
+      token: botToken,
+      selfUserId: botUserId,
+    });
+    if (teammates.length > 0) {
+      runtime.log?.(`slack: discovered ${teammates.length} teammate bot(s)`);
+    }
+  }
+
   const ctx = createSlackMonitorContext({
     cfg,
     accountId: account.accountId,
@@ -183,6 +196,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
     app,
     runtime,
     botUserId,
+    teammates,
     teamId,
     apiAppId,
     historyLimit,

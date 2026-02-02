@@ -1,6 +1,7 @@
 import type { App } from "@slack/bolt";
 import type { HistoryEntry } from "../../auto-reply/reply/history.js";
 import type { OpenClawConfig, SlackReactionNotificationMode } from "../../config/config.js";
+import type { TeammateInfo } from "./teammates.js";
 import { resolveSessionKey, type SessionScope } from "../../config/sessions.js";
 import type { DmPolicy, GroupPolicy, ResponseMode } from "../../config/types.js";
 import { logVerbose } from "../../globals.js";
@@ -57,6 +58,7 @@ export type SlackMonitorContext = {
   runtime: RuntimeEnv;
 
   botUserId: string;
+  teammates: TeammateInfo[];
   teamId: string;
   apiAppId: string;
 
@@ -132,6 +134,7 @@ export function createSlackMonitorContext(params: {
   runtime: RuntimeEnv;
 
   botUserId: string;
+  teammates?: TeammateInfo[];
   teamId: string;
   apiAppId: string;
 
@@ -399,6 +402,7 @@ export function createSlackMonitorContext(params: {
     app: params.app,
     runtime: params.runtime,
     botUserId: params.botUserId,
+    teammates: params.teammates ?? [],
     teamId: params.teamId,
     apiAppId: params.apiAppId,
     historyLimit: params.historyLimit,
