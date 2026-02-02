@@ -63,8 +63,8 @@ describe("cron jobs catch-up logic", () => {
   it("schedules missed job immediately on restart", () => {
     const createdAt = Date.parse("2025-12-13T00:00:00.000Z");
     const interval = 3600000; // 1 hour
-    // Restart 1.5 intervals later (not on boundary) - job should have run once but didn't
-    const restartTime = createdAt + Math.floor(1.5 * interval);
+    // Restart 5 min after first due time (not on boundary) - simulates real drift scenario
+    const restartTime = createdAt + interval + 5 * 60_000;
 
     const job: CronJob = {
       id: "test-id",
