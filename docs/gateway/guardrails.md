@@ -135,7 +135,7 @@ Notes:
 
 ### Llama Guard
 
-Llama Guard guardrails use local inference via Ollama or any OpenAI-compatible endpoint to run [Llama Guard 3 8B](https://github.com/meta-llama/PurpleLlama).
+Llama Guard guardrails use local inference via Ollama or any OpenAI-compatible endpoint (e.g., OpenRouter) to run [Llama Guard 3 8B](https://github.com/meta-llama/PurpleLlama).
 
 Configuration example:
 
@@ -171,7 +171,7 @@ Notes:
 
 ### GPT-OSS-Safeguard
 
-GPT-OSS-Safeguard guardrails use local inference via Ollama or any OpenAI-compatible endpoint to run GPT-OSS-Safeguard models.
+GPT-OSS-Safeguard guardrails use local inference via Ollama or any OpenAI-compatible endpoint (e.g., OpenRouter) to run GPT-OSS-Safeguard models.
 
 Configuration example:
 
@@ -203,7 +203,8 @@ Configuration example:
 Notes:
 
 - Uses the built-in model provider system (supports any provider configured in `auth.profiles`)
-- `policy`: Custom safety policy text (400-600 tokens recommended). If omitted, uses a default policy covering violence, hate speech, CSAM, illegal instructions, and PII.
+- `policy`: Custom safety policy text (400-600 tokens recommended). If omitted, uses a default policy focused on prompt injection, secret exfiltration, tool misuse, and basic safety/PII checks.
+- `systemPromptMode`: `append` (default) adds the policy as extra system prompt context; `inline` embeds policy + content into a single user prompt (not recommended — likely to fail with GPT-OSS-Safeguard).
 - `reasoningEffort`: Controls model reasoning depth (`low`, `medium`, `high`). Default: `medium`
 - `outputFormat`: Response format from the model:
   - `binary`: Returns `0` (safe) or `1` (violation)
@@ -228,7 +229,7 @@ Each stage can be configured with:
 
 **Llama Guard** and **GPT-OSS-Safeguard** share common options:
 
-- `provider`: Model provider (e.g., `ollama`, `openai`)
+- `provider`: Model provider (e.g., `ollama`, `openrouter`)
 - `model`: Model identifier
 - `authProfileId`: Optional auth profile for the model provider
 - `timeoutMs`: Request timeout in milliseconds (default: 30000)

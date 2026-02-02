@@ -3,7 +3,7 @@
   "uiHints": {
     "provider": {
       "label": "Model Provider",
-      "help": "e.g., ollama, vllm, openai"
+      "help": "e.g., ollama, vllm, openrouter"
     },
     "model": {
       "label": "Model ID",
@@ -12,6 +12,10 @@
     "policy": {
       "label": "Safety Policy",
       "help": "Custom policy text (400-600 tokens optimal)"
+    },
+    "systemPromptMode": {
+      "label": "System Prompt Mode",
+      "help": "append (default) or inline"
     },
     "reasoningEffort": {
       "label": "Reasoning Effort",
@@ -53,6 +57,10 @@
       },
       "policy": {
         "type": "string"
+      },
+      "systemPromptMode": {
+        "type": "string",
+        "enum": ["inline", "append"]
       },
       "reasoningEffort": {
         "type": "string",
