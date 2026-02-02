@@ -199,7 +199,9 @@ describe("security audit", () => {
   });
 
   it("does not treat a symlinked state dir as world-writable on POSIX", async () => {
-    if (isWindows) return;
+    if (isWindows) {
+      return;
+    }
 
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-security-audit-symlink-"));
     const realStateDir = path.join(tmp, "real-state");
