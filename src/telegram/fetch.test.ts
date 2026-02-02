@@ -60,4 +60,45 @@ describe("resolveTelegramFetch", () => {
     resolveTelegramFetch(undefined, { network: { autoSelectFamily: true } });
     expect(setDefaultAutoSelectFamily).toHaveBeenCalledWith(false);
   });
+
+  it("aborts requests after timeoutMs", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise((resolve) => {
+        init?.signal?.addEventListener("abort", () => resolve({ ok: false }), { once: true });
+      });
+    });
+    const { resolveTelegramFetch } = await loadModule();
+    const resolved = resolveTelegramFetch(fetchMock as unknown as typeof fetch, {
+      timeoutMs: 25,
+    });
+    if (!resolved) {
+      throw new Error("expected fetch");
+    }
+    const response = resolved("https://api.telegram.org/bot123/getUpdates");
+    await vi.advanceTimersByTimeAsync(30);
+    await expect(response).resolves.toEqual({ ok: false });
+    expect(fetchMock).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("skips timeout for non-getUpdates requests", async () => {
+    vi.useFakeTimers();
+    let capturedSignal: AbortSignal | undefined;
+    const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      capturedSignal = init?.signal as AbortSignal | undefined;
+      return Promise.resolve({ ok: true });
+    });
+    const { resolveTelegramFetch } = await loadModule();
+    const resolved = resolveTelegramFetch(fetchMock as unknown as typeof fetch, {
+      timeoutMs: 25,
+    });
+    if (!resolved) {
+      throw new Error("expected fetch");
+    }
+    await resolved("https://api.telegram.org/bot123/getMe");
+    await vi.advanceTimersByTimeAsync(30);
+    expect(capturedSignal).toBeUndefined();
+    vi.useRealTimers();
+  });
 });

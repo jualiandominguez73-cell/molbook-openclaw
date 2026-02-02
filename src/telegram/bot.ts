@@ -59,6 +59,7 @@ export type TelegramBotOptions = {
   replyToMode?: ReplyToMode;
   proxyFetch?: typeof fetch;
   config?: OpenClawConfig;
+  longPollTimeoutMs?: number;
   updateOffset?: {
     lastUpdateId?: number | null;
     onUpdateId?: (updateId: number) => void | Promise<void>;
@@ -126,6 +127,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
 
   const fetchImpl = resolveTelegramFetch(opts.proxyFetch, {
     network: telegramCfg.network,
+    timeoutMs: opts.longPollTimeoutMs,
   });
   const shouldProvideFetch = Boolean(fetchImpl);
   const timeoutSeconds =

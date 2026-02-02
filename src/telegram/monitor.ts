@@ -49,6 +49,20 @@ export function createTelegramRunnerOptions(cfg: OpenClawConfig): RunOptions<unk
   };
 }
 
+const TELEGRAM_LONG_POLL_GRACE_MS = 10_000;
+
+function resolveTelegramLongPollTimeoutMs(options: RunOptions<unknown>): number | undefined {
+  const timeoutSeconds = options.runner?.fetch?.timeout;
+  if (typeof timeoutSeconds !== "number" || !Number.isFinite(timeoutSeconds)) {
+    return undefined;
+  }
+  const timeoutMs = Math.round(timeoutSeconds * 1000);
+  if (timeoutMs <= 0) {
+    return undefined;
+  }
+  return timeoutMs + TELEGRAM_LONG_POLL_GRACE_MS;
+}
+
 const TELEGRAM_POLL_RESTART_POLICY = {
   initialMs: 2000,
   maxMs: 30_000,
@@ -82,6 +96,7 @@ const NETWORK_ERROR_SNIPPETS = [
   "fetch failed",
   "network",
   "timeout",
+  "timed out",
   "socket",
   "econnreset",
   "econnrefused",
@@ -101,6 +116,9 @@ const isNetworkRelatedError = (err: unknown) => {
 
 export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
   const cfg = opts.config ?? loadConfig();
+  const runnerOptions = createTelegramRunnerOptions(cfg);
+  // Abort stale getUpdates requests shortly after their long-poll window.
+  const longPollTimeoutMs = resolveTelegramLongPollTimeoutMs(runnerOptions);
   const account = resolveTelegramAccount({
     cfg,
     accountId: opts.accountId,
@@ -141,6 +159,7 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     proxyFetch,
     config: cfg,
     accountId: account.accountId,
+    longPollTimeoutMs,
     updateOffset: {
       lastUpdateId,
       onUpdateId: persistUpdateId,
@@ -167,7 +186,7 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
   let restartAttempts = 0;
 
   while (!opts.abortSignal?.aborted) {
-    const runner = run(bot, createTelegramRunnerOptions(cfg));
+    const runner = run(bot, runnerOptions);
     const stopOnAbort = () => {
       if (opts.abortSignal?.aborted) {
         void runner.stop();
