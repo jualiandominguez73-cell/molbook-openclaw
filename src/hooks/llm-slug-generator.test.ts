@@ -1,7 +1,5 @@
 import path from "node:path";
-
 import { describe, expect, it, vi } from "vitest";
-
 import type { OpenClawConfig } from "../config/config.js";
 import { makeTempWorkspace } from "../test-helpers/workspace.js";
 
