@@ -152,6 +152,8 @@ function resolveFallbackCandidates(params: {
   agentDir?: string;
   /** Optional explicit fallbacks list; when provided (even empty), replaces agents.defaults.model.fallbacks. */
   fallbacksOverride?: string[];
+  /** When using claude runtime with anthropic provider, SDK handles its own auth */
+  runtimeKind?: "pi" | "claude";
 }): ModelCandidate[] {
   const primary = params.cfg
     ? resolveConfiguredModelRef({
@@ -225,6 +227,7 @@ function resolveFallbackCandidates(params: {
       provider: candidate.provider,
       cfg: params.cfg,
       agentDir: params.agentDir,
+      runtimeKind: params.runtimeKind,
     });
     return configured;
   });
@@ -239,6 +242,8 @@ export async function runWithModelFallback<T>(params: {
   agentDir?: string;
   /** Optional explicit fallbacks list; when provided (even empty), replaces agents.defaults.model.fallbacks. */
   fallbacksOverride?: string[];
+  /** When using claude runtime with anthropic provider, SDK handles its own auth */
+  runtimeKind?: "pi" | "claude";
   run: (provider: string, model: string) => Promise<T>;
   onError?: (attempt: {
     provider: string;
@@ -259,6 +264,7 @@ export async function runWithModelFallback<T>(params: {
     model: params.model,
     agentDir: params.agentDir,
     fallbacksOverride: params.fallbacksOverride,
+    runtimeKind: params.runtimeKind,
   });
 
   if (candidates.length === 0) {

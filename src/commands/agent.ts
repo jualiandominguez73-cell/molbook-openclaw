@@ -387,12 +387,15 @@ export async function agentCommand(
         opts.replyChannel ?? opts.channel,
       );
       const spawnedBy = opts.spawnedBy ?? sessionEntry?.spawnedBy;
+      // Resolve runtime kind before runWithModelFallback so auth filtering is aware of claude SDK
+      const runtimeKind = resolveSessionRuntimeKind(cfg, sessionAgentId, sessionKey);
       const fallbackResult = await runWithModelFallback({
         cfg,
         provider,
         model,
         agentDir,
         fallbacksOverride: resolveAgentModelFallbacksOverride(cfg, sessionAgentId),
+        runtimeKind,
         run: async (providerOverride, modelOverride) => {
           if (isCliProvider(providerOverride, cfg)) {
             const cliSessionId = getCliSessionId(sessionEntry, providerOverride);
@@ -417,7 +420,7 @@ export async function agentCommand(
           const authProfileId =
             providerOverride === provider ? sessionEntry?.authProfileOverride : undefined;
 
-          const runtimeKind = resolveSessionRuntimeKind(cfg, sessionAgentId, sessionKey);
+          // runtimeKind is resolved before runWithModelFallback for auth filtering
           if (runtimeKind === "claude") {
             const claudeSdkSessionId = sessionEntry?.claudeSdkSessionId?.trim() || undefined;
             const sdkRuntime = await createSdkMainAgentRuntime({

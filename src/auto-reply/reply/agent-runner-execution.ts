@@ -146,6 +146,12 @@ export async function runAgentTurnWithFallback(params: {
       };
       const blockReplyPipeline = params.blockReplyPipeline;
       const onToolResult = params.opts?.onToolResult;
+      // Resolve runtime kind before runWithModelFallback so auth filtering is aware of claude SDK
+      const runtimeKind = resolveSessionRuntimeKind(
+        params.followupRun.run.config,
+        params.followupRun.run.agentId,
+        params.sessionKey,
+      );
       const fallbackResult = await runWithModelFallback({
         cfg: params.followupRun.run.config,
         provider: params.followupRun.run.provider,
@@ -155,6 +161,7 @@ export async function runAgentTurnWithFallback(params: {
           params.followupRun.run.config,
           resolveAgentIdFromSessionKey(params.followupRun.run.sessionKey),
         ),
+        runtimeKind,
         run: async (provider, model) => {
           // Notify that model selection is complete (including after fallback).
           // This allows responsePrefix template interpolation with the actual model.
@@ -234,14 +241,7 @@ export async function runAgentTurnWithFallback(params: {
               ? params.followupRun.run.authProfileId
               : undefined;
 
-          // Check runtime configuration to decide between Pi agent and Claude Code SDK
-          // Use resolveSessionRuntimeKind for proper subagent inheritance
-          const runtimeKind = resolveSessionRuntimeKind(
-            params.followupRun.run.config,
-            params.followupRun.run.agentId,
-            params.sessionKey,
-          );
-
+          // runtimeKind is resolved before runWithModelFallback for auth filtering
           // If using Claude Code SDK runtime, create and use SDK runtime
           if (runtimeKind === "claude") {
             // Retrieve Claude SDK session ID from session entry for native session resume

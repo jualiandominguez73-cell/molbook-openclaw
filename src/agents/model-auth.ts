@@ -397,15 +397,25 @@ export function requireApiKey(auth: ResolvedProviderAuth, provider: string): str
  * - Provider has environment variable credentials
  * - Provider has custom API key in models.json
  * - Provider uses aws-sdk auth mode
+ * - Runtime is "claude" and provider is "anthropic" (Claude SDK handles its own auth)
  */
 export function isProviderConfigured(params: {
   provider: string;
   cfg?: OpenClawConfig;
   store?: AuthProfileStore;
   agentDir?: string;
+  /** When using claude runtime with anthropic provider, SDK handles its own auth */
+  runtimeKind?: "pi" | "claude";
 }): boolean {
-  const { provider, cfg, store: providedStore, agentDir } = params;
+  const { provider, cfg, store: providedStore, agentDir, runtimeKind } = params;
   const normalized = normalizeProviderId(provider);
+
+  // When using claude runtime with anthropic provider, SDK handles its own auth
+  // (e.g., Claude Max subscription via Claude Code's internal auth mechanism).
+  // Do NOT require ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN in this case.
+  if (runtimeKind === "claude" && normalized === "anthropic") {
+    return true;
+  }
 
   // Check for aws-sdk auth mode override
   const authOverride = resolveProviderAuthOverride(cfg, provider);

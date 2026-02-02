@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "../config/config.js";
 import type { ModelDefinitionConfig } from "../config/types.models.js";
+import { logDebug } from "../logger.js";
 import {
   DEFAULT_COPILOT_API_BASE_URL,
   resolveCopilotApiToken,
@@ -536,7 +537,7 @@ export async function resolveImplicitBedrockProvider(params: {
     return null;
   }
   if (enabled !== true && !hasAwsCreds) {
-    console.debug("[bedrock] Skipping implicit registration: no AWS credentials detected");
+    logDebug("[bedrock] Skipping implicit registration: no AWS credentials detected");
     return null;
   }
   if (enabled === true && !hasAwsCreds) {
