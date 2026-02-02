@@ -15,7 +15,7 @@ import {
   resolveAgentDeliveryPlan,
   resolveAgentOutboundTarget,
 } from "../../infra/outbound/agent-delivery.js";
-import { normalizeAgentId } from "../../routing/session-key.js";
+import { extractThreadIdFromSessionKey, normalizeAgentId } from "../../routing/session-key.js";
 import { defaultRuntime } from "../../runtime.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { normalizeSessionDeliveryFields } from "../../utils/delivery-context.js";
@@ -26,7 +26,6 @@ import {
   normalizeMessageChannel,
 } from "../../utils/message-channel.js";
 import { resolveAssistantIdentity } from "../assistant-identity.js";
-import { extractThreadIdFromSessionKey, normalizeAgentId } from "../../routing/session-key.js";
 import { parseMessageWithAttachments } from "../chat-attachments.js";
 import { resolveAssistantAvatarUrl } from "../control-ui-shared.js";
 import {
