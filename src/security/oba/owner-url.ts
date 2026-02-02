@@ -59,38 +59,66 @@ export function isPrivateHost(hostname: string): boolean {
   if (h === "localhost" || h === "0.0.0.0" || h.endsWith(".local")) {
     return true;
   }
+
   // IPv6 loopback / unspecified.
   if (h === "::1" || h === "::" || h === "::0") {
     return true;
   }
+  // IPv6 link-local (fe80::).
+  if (h.startsWith("fe80:")) {
+    return true;
+  }
+  // IPv6 unique local address (fc00::/7 → fc00:: through fdff::).
+  if (h.startsWith("fc") || h.startsWith("fd")) {
+    // Validate it looks like an IPv6 address (contains colon).
+    if (h.includes(":")) {
+      return true;
+    }
+  }
+  // IPv6-mapped IPv4 (::ffff:A.B.C.D) — check the embedded IPv4 address.
+  const mappedMatch = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(h);
+  if (mappedMatch) {
+    return isPrivateIPv4(mappedMatch[1]);
+  }
+
   // IPv4 private/reserved ranges.
-  const parts = h.split(".");
-  if (parts.length === 4 && parts.every((p) => /^\d+$/.test(p))) {
-    const [a, b] = parts.map(Number);
-    // 127.x.x.x loopback
-    if (a === 127) {
-      return true;
-    }
-    // 10.x.x.x
-    if (a === 10) {
-      return true;
-    }
-    // 172.16-31.x.x
-    if (a === 172 && b >= 16 && b <= 31) {
-      return true;
-    }
-    // 192.168.x.x
-    if (a === 192 && b === 168) {
-      return true;
-    }
-    // 169.254.x.x link-local
-    if (a === 169 && b === 254) {
-      return true;
-    }
-    // 100.64-127.x.x CGNAT
-    if (a === 100 && b >= 64 && b <= 127) {
-      return true;
-    }
+  if (isPrivateIPv4(h)) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Check if a dotted-quad IPv4 string is in a private/reserved range. */
+function isPrivateIPv4(addr: string): boolean {
+  const parts = addr.split(".");
+  if (parts.length !== 4 || !parts.every((p) => /^\d+$/.test(p))) {
+    return false;
+  }
+  const [a, b] = parts.map(Number);
+  // 127.x.x.x loopback
+  if (a === 127) {
+    return true;
+  }
+  // 10.x.x.x
+  if (a === 10) {
+    return true;
+  }
+  // 172.16-31.x.x
+  if (a === 172 && b >= 16 && b <= 31) {
+    return true;
+  }
+  // 192.168.x.x
+  if (a === 192 && b === 168) {
+    return true;
+  }
+  // 169.254.x.x link-local
+  if (a === 169 && b === 254) {
+    return true;
+  }
+  // 100.64-127.x.x CGNAT
+  if (a === 100 && b >= 64 && b <= 127) {
+    return true;
   }
   return false;
 }

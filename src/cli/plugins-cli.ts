@@ -16,7 +16,7 @@ import { formatDocsLink } from "../terminal/links.js";
 import { renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { resolveUserPath, shortenHomeInString, shortenHomePath } from "../utils.js";
-import type { ObaVerificationResult } from "../security/oba/types.js";
+import { formatObaBadge } from "../security/oba/format.js";
 import { verifyObaContainer, mapLimit } from "../security/oba/verify.js";
 
 export type PluginsListOptions = {
@@ -82,22 +82,6 @@ function formatPluginLine(plugin: PluginRecord, verbose = false): string {
     }
   }
   return parts.join("\n");
-}
-
-function formatObaBadge(verification?: ObaVerificationResult): string {
-  if (!verification || verification.status === "unsigned") {
-    return "";
-  }
-  switch (verification.status) {
-    case "signed":
-      return theme.muted("signed");
-    case "verified":
-      return theme.success("verified");
-    case "invalid":
-      return theme.error("invalid");
-    default:
-      return "";
-  }
 }
 
 async function runPluginVerification(plugins: PluginRecord[]): Promise<void> {

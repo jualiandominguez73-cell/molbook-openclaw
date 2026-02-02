@@ -10,7 +10,7 @@ import {
 import { parseFrontmatter } from "../agents/skills/frontmatter.js";
 import { loadConfig } from "../config/config.js";
 import { defaultRuntime } from "../runtime.js";
-import type { ObaVerificationResult } from "../security/oba/types.js";
+import { formatObaBadge } from "../security/oba/format.js";
 import { verifyObaContainer, mapLimit } from "../security/oba/verify.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { renderTable } from "../terminal/table.js";
@@ -33,22 +33,6 @@ export type SkillInfoOptions = {
 export type SkillsCheckOptions = {
   json?: boolean;
 };
-
-function formatObaBadge(verification?: ObaVerificationResult): string {
-  if (!verification || verification.status === "unsigned") {
-    return "";
-  }
-  switch (verification.status) {
-    case "signed":
-      return theme.muted("signed");
-    case "verified":
-      return theme.success("verified");
-    case "invalid":
-      return theme.error("invalid");
-    default:
-      return "";
-  }
-}
 
 async function runSkillVerification(skills: SkillStatusEntry[]): Promise<void> {
   const verifiable = skills.filter((s) => s.oba);

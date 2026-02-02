@@ -493,6 +493,28 @@ describe("isPrivateHost", () => {
     expect(isPrivateHost("::0")).toBe(true);
   });
 
+  it("detects IPv6 link-local (fe80::)", () => {
+    expect(isPrivateHost("fe80::1")).toBe(true);
+    expect(isPrivateHost("fe80::abcd:1234")).toBe(true);
+  });
+
+  it("detects IPv6 unique local (fc00::/fd00::)", () => {
+    expect(isPrivateHost("fc00::1")).toBe(true);
+    expect(isPrivateHost("fd12:3456::1")).toBe(true);
+  });
+
+  it("detects IPv6-mapped IPv4 private addresses", () => {
+    expect(isPrivateHost("::ffff:127.0.0.1")).toBe(true);
+    expect(isPrivateHost("::ffff:10.0.0.1")).toBe(true);
+    expect(isPrivateHost("::ffff:192.168.1.1")).toBe(true);
+    expect(isPrivateHost("::ffff:169.254.1.1")).toBe(true);
+  });
+
+  it("allows IPv6-mapped IPv4 public addresses", () => {
+    expect(isPrivateHost("::ffff:8.8.8.8")).toBe(false);
+    expect(isPrivateHost("::ffff:1.1.1.1")).toBe(false);
+  });
+
   it("detects .local suffix", () => {
     expect(isPrivateHost("myhost.local")).toBe(true);
   });

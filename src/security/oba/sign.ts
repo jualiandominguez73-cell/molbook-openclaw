@@ -74,16 +74,20 @@ export function extractSkillMetadata(content: string): {
   // Normalize CRLF to LF for consistent parsing.
   const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const fmMatch = normalized.match(FRONTMATTER_RE);
-  if (!fmMatch) {
+  if (!fmMatch || fmMatch.index === undefined) {
     throw new Error("No frontmatter block found");
   }
   const fmBlock = fmMatch[1];
-  const fmBlockStart = normalized.indexOf(fmMatch[1]);
+  // Use match index + 4 (length of "---\n") to get the exact position of the
+  // frontmatter content, instead of indexOf which could match earlier content.
+  const fmBlockStart = fmMatch.index + 4;
 
-  const metaKeyIndex = fmBlock.indexOf("metadata:");
-  if (metaKeyIndex === -1) {
+  // Anchor to line start to avoid matching substrings like "extra_metadata:".
+  const metaKeyMatch = /^metadata:/m.exec(fmBlock);
+  if (!metaKeyMatch) {
     throw new Error("No metadata field found in frontmatter");
   }
+  const metaKeyIndex = metaKeyMatch.index;
 
   const metaValueStart = metaKeyIndex + "metadata:".length;
   const remainingLines = fmBlock.slice(metaValueStart).split("\n");
@@ -120,7 +124,7 @@ export function extractSkillMetadata(content: string): {
  */
 export function parseSkillMetadataObject(content: string): Record<string, unknown> {
   const { metadataRaw } = extractSkillMetadata(content);
-  const parsed = JSON5.parse(metadataRaw) as unknown;
+  const parsed = JSON5.parse(metadataRaw);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("Invalid metadata JSON5");
   }
@@ -142,7 +146,7 @@ export function signSkillMetadata(params: {
 
   const { metadataRaw, metaStart, metaEnd } = extractSkillMetadata(normalized);
 
-  const parsed = JSON5.parse(metadataRaw) as Record<string, unknown>;
+  const parsed = JSON5.parse(metadataRaw);
   if (!parsed || typeof parsed !== "object") {
     throw new Error(`Invalid metadata JSON5 in ${params.skillPath}`);
   }

@@ -13,21 +13,33 @@ type JwkEntry = {
   alg?: string;
 };
 
-// Cache JWKS fetches as promises to prevent stampede (micro-check #4).
-const jwksCache = new Map<string, Promise<{ keys: JwkEntry[] }>>();
+// Cache JWKS fetches with TTL to prevent stampede and allow key rotation.
+type JwksCacheEntry = {
+  promise: Promise<{ keys: JwkEntry[] }>;
+  expiresAt: number;
+};
+const jwksCache = new Map<string, JwksCacheEntry>();
 
 const JWKS_FETCH_TIMEOUT_MS = 3_000;
+const JWKS_CACHE_TTL_MS = 5 * 60 * 1_000; // 5 minutes
 
 /**
  * Fetch JWKS from ownerUrl with a 3s timeout. Caches the promise per URL
  * so concurrent verifications sharing the same owner don't duplicate requests.
+ * Successful entries expire after 5 minutes to pick up key rotations.
  */
 export function resolveJwks(ownerUrl: string): Promise<{ keys: JwkEntry[] }> {
   const cached = jwksCache.get(ownerUrl);
-  if (cached) return cached;
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.promise;
+  }
+  // Expired or not cached — remove stale entry.
+  if (cached) {
+    jwksCache.delete(ownerUrl);
+  }
 
   const promise = fetchJwks(ownerUrl);
-  jwksCache.set(ownerUrl, promise);
+  jwksCache.set(ownerUrl, { promise, expiresAt: Date.now() + JWKS_CACHE_TTL_MS });
 
   // Evict failed fetches so retries can try again.
   promise.catch(() => {
@@ -37,11 +49,25 @@ export function resolveJwks(ownerUrl: string): Promise<{ keys: JwkEntry[] }> {
   return promise;
 }
 
+function isValidJwkEntry(entry: unknown): entry is JwkEntry {
+  if (!entry || typeof entry !== "object") {
+    return false;
+  }
+  const e = entry as Record<string, unknown>;
+  return (
+    typeof e.kty === "string" &&
+    typeof e.crv === "string" &&
+    typeof e.kid === "string" &&
+    typeof e.x === "string"
+  );
+}
+
 async function fetchJwks(ownerUrl: string): Promise<{ keys: JwkEntry[] }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), JWKS_FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(ownerUrl, { signal: controller.signal });
+    // redirect: "error" prevents SSRF via open-redirect to internal hosts.
+    const res = await fetch(ownerUrl, { signal: controller.signal, redirect: "error" });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -49,7 +75,9 @@ async function fetchJwks(ownerUrl: string): Promise<{ keys: JwkEntry[] }> {
     if (!body || !Array.isArray(body.keys)) {
       throw new Error("invalid JWKS response: missing keys array");
     }
-    return { keys: body.keys as JwkEntry[] };
+    // Validate individual JWK entries before caching.
+    const validKeys = body.keys.filter(isValidJwkEntry);
+    return { keys: validKeys };
   } finally {
     clearTimeout(timeout);
   }
@@ -82,7 +110,7 @@ export function verifyObaSignature(payload: Buffer, sigB64Url: string, jwk: JwkE
 export async function verifyObaContainer(
   container: Record<string, unknown>,
 ): Promise<ObaVerificationResult> {
-  const { oba, verification } = classifyObaOffline((container as Record<string, unknown>).oba);
+  const { oba, verification } = classifyObaOffline(container.oba);
 
   // Not signed or already invalid => return as-is.
   if (verification.status !== "signed" || !oba) {

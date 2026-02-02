@@ -173,9 +173,9 @@ async function postAgent(params: {
       return { ok: false, error: `HTTP ${res.status}: ${text}` };
     }
 
-    const data = (await res.json()) as { id?: string };
+    const data = (await res.json()) as { id?: unknown };
     const agentId = data.id;
-    if (!agentId) {
+    if (!agentId || typeof agentId !== "string") {
       return { ok: false, error: "registry did not return agent id" };
     }
 
