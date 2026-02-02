@@ -216,7 +216,7 @@ export const imessagePlugin: ChannelPlugin<ResolvedIMessageAccount> = {
     },
   },
   heartbeat: {
-    checkReady: async ({ cfg, accountId, deps }) => {
+    checkReady: async ({ cfg, accountId }) => {
       const account = resolveIMessageAccount({ cfg, accountId });
       if (!account.enabled) {
         return { ok: false, reason: "imessage-disabled" };
