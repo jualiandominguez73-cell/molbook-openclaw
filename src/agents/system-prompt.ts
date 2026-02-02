@@ -69,6 +69,27 @@ function buildTimeSection(params: { userTimezone?: string }) {
   ];
 }
 
+function buildShellSyntaxSection(os?: string) {
+  if (os === "win32" || os === "Windows" || os?.toLowerCase().includes("windows")) {
+    return [
+      "## Shell Syntax (Windows)",
+      "The exec tool runs commands in PowerShell on this system. Use PowerShell syntax, NOT cmd.exe syntax.",
+      "Common mistakes to avoid:",
+      "- ❌ `dir /O:D` (cmd.exe) → ✅ `Get-ChildItem | Sort-Object LastWriteTime`",
+      "- ❌ `dir /S /B` (cmd.exe) → ✅ `Get-ChildItem -Recurse -Name`",
+      "- ❌ `type file.txt` (cmd.exe) → ✅ `Get-Content file.txt`",
+      "- ❌ `copy src dst` (cmd.exe) → ✅ `Copy-Item src dst`",
+      "- ❌ `del file` (cmd.exe) → ✅ `Remove-Item file`",
+      "- ❌ `mkdir dir` (cmd.exe) → ✅ `New-Item -ItemType Directory -Path dir`",
+      "- ❌ `set VAR=value && cmd` → ✅ `$env:VAR='value'; cmd`",
+      "PowerShell aliases: `dir` works but flags like `/O:D` do not. When in doubt, use full cmdlet names.",
+      "",
+    ];
+  }
+  // Unix/Mac - bash is the default
+  return [];
+}
+
 function buildSafetySection() {
   return [
     "## Safety",
@@ -397,6 +418,7 @@ export function buildAgentSystemPrompt(params: {
     "Keep narration brief and value-dense; avoid repeating obvious steps.",
     "Use plain human language for narration unless in a technical context.",
     "",
+    ...buildShellSyntaxSection(runtimeInfo?.os),
     ...buildSafetySection(),
     "## OpenClaw CLI Quick Reference",
     "OpenClaw is controlled via subcommands. Do not invent commands.",
