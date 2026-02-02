@@ -426,7 +426,17 @@ async function runTavilySearch(params: {
   maxResults: number;
   searchDepth: "basic" | "advanced";
   timeoutSeconds: number;
-}): Promise<{ answer?: string; results: Array<{ title: string; url: string; content: string; score?: number; published?: string; siteName?: string }> }> {
+}): Promise<{
+  answer?: string;
+  results: Array<{
+    title: string;
+    url: string;
+    content: string;
+    score?: number;
+    published?: string;
+    siteName?: string;
+  }>;
+}> {
   const res = await fetch(TAVILY_SEARCH_ENDPOINT, {
     method: "POST",
     headers: {
@@ -621,7 +631,8 @@ export function createWebSearchTool(options?: {
     execute: async (_toolCallId, args) => {
       const perplexityAuth =
         provider === "perplexity" ? resolvePerplexityApiKey(perplexityConfig) : undefined;
-      const tavilyApiKey = provider === "tavily" ? resolveTavilyApiKey(tavilyConfig, search) : undefined;
+      const tavilyApiKey =
+        provider === "tavily" ? resolveTavilyApiKey(tavilyConfig, search) : undefined;
       const apiKey =
         provider === "perplexity"
           ? perplexityAuth?.apiKey
