@@ -24,7 +24,7 @@ function parseRestartDelayMs(value: unknown): number | undefined {
 }
 
 export const gatewayHandlers: GatewayRequestHandlers = {
-  "gateway.restart": async ({ params, respond }) => {
+  "gateway.restart": async ({ params, respond, context }) => {
     const reasonRaw = (params as { reason?: unknown }).reason;
     const noteRaw = (params as { note?: unknown }).note;
     const sessionKeyRaw = (params as { sessionKey?: unknown }).sessionKey;
@@ -55,7 +55,8 @@ export const gatewayHandlers: GatewayRequestHandlers = {
     let sentinelPath: string | null = null;
     try {
       sentinelPath = await writeRestartSentinel(payload);
-    } catch {
+    } catch (err) {
+      context.logGateway.warn(`failed to write restart sentinel: ${String(err)}`);
       sentinelPath = null;
     }
 
