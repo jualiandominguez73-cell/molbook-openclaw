@@ -38,6 +38,10 @@ function isIOSNode(node: NodeSummary): boolean {
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function loadNodes(cfg: OpenClawConfig): Promise<NodeSummary[]> {
   try {
     const res = await callGateway<{ nodes?: NodeSummary[] }>({
@@ -187,10 +191,8 @@ export const handlePTTCommand: CommandHandler = async (params, allowTextCommands
       params: invokeParams,
       config: cfg,
     });
-    const payload =
-      res.payload && typeof res.payload === "object"
-        ? (res.payload as Record<string, unknown>)
-        : {};
+    const emptyPayload: Record<string, unknown> = {};
+    const payload = isRecord(res.payload) ? res.payload : emptyPayload;
 
     const lines = [`PTT ${actionKey} → ${nodeId}`];
     if (typeof payload.status === "string") {
