@@ -11,6 +11,7 @@ import type {
   AgentsListResult,
   ConfigSnapshot,
   ConfigUiHints,
+  CostUsageSummary,
   CronJob,
   CronRunLogEntry,
   CronStatus,
@@ -71,6 +72,7 @@ import {
   type ToolStreamEntry,
 } from "./app-tool-stream";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity";
+import { loadActivity as loadActivityInternal } from "./controllers/activity";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity";
 import { loadSettings, type UiSettings } from "./storage";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types";
@@ -199,6 +201,18 @@ export class OpenClawApp extends LitElement {
   @state() sessionsFilterLimit = "120";
   @state() sessionsIncludeGlobal = true;
   @state() sessionsIncludeUnknown = false;
+
+  @state() activityLoading = false;
+  @state() activityUsageResult: CostUsageSummary | null = null;
+  @state() activityDays = 7;
+  @state() activitySessionsResult: SessionsListResult | null = null;
+  @state() activityError: string | null = null;
+  @state() activitySecurityFindings: Array<{
+    checkId: string;
+    severity: string;
+    title: string;
+    detail: string;
+  }> | null = null;
 
   @state() cronLoading = false;
   @state() cronJobs: CronJob[] = [];
@@ -336,6 +350,12 @@ export class OpenClawApp extends LitElement {
 
   async loadCron() {
     await loadCronInternal(this as unknown as Parameters<typeof loadCronInternal>[0]);
+  }
+
+  async loadActivity(days?: number) {
+    await loadActivityInternal(this as unknown as Parameters<typeof loadActivityInternal>[0], {
+      days,
+    });
   }
 
   async handleAbortChat() {

@@ -71,6 +71,7 @@ const BASE_METHODS = [
   "cron.remove",
   "cron.run",
   "cron.runs",
+  "security.audit",
   "system-presence",
   "system-event",
   "send",

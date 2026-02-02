@@ -22,6 +22,7 @@ import type { ChatQueueItem, CronFormState } from "./ui-types";
 import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
 import { refreshChatAvatar } from "./app-chat";
 import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers";
+import { loadActivity } from "./controllers/activity";
 import { loadChannels } from "./controllers/channels";
 import { loadChatHistory } from "./controllers/chat";
 import {
@@ -74,6 +75,7 @@ import {
   titleForTab,
   type Tab,
 } from "./navigation";
+import { renderActivity } from "./views/activity";
 import { renderChannels } from "./views/channels";
 import { renderChat } from "./views/chat";
 import { renderConfig } from "./views/config";
@@ -234,6 +236,25 @@ export function renderApp(state: AppViewState) {
                 },
                 onConnect: () => state.connect(),
                 onRefresh: () => state.loadOverview(),
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "activity"
+            ? renderActivity({
+                connected: state.connected,
+                loading: state.activityLoading,
+                usageResult: state.activityUsageResult,
+                days: state.activityDays,
+                sessionsResult: state.activitySessionsResult,
+                error: state.activityError,
+                securityFindings: state.activitySecurityFindings,
+                onDaysChange: (days) => {
+                  state.activityDays = days;
+                  void state.loadActivity(days);
+                },
+                onRefresh: () => state.loadActivity(),
               })
             : nothing
         }

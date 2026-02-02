@@ -349,6 +349,8 @@ export type GatewaySessionRow = {
   subject?: string;
   room?: string;
   space?: string;
+  channel?: string;
+  lastChannel?: string;
   updatedAt: number | null;
   sessionId?: string;
   systemSent?: boolean;
@@ -371,6 +373,28 @@ export type SessionsListResult = {
   count: number;
   defaults: GatewaySessionsDefaults;
   sessions: GatewaySessionRow[];
+};
+
+/** Token/cost usage from usage.cost RPC (date-range summary). */
+export type CostUsageTotals = {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  totalTokens: number;
+  totalCost: number;
+  missingCostEntries: number;
+};
+
+export type CostUsageDailyEntry = CostUsageTotals & {
+  date: string;
+};
+
+export type CostUsageSummary = {
+  updatedAt: number;
+  days: number;
+  daily: CostUsageDailyEntry[];
+  totals: CostUsageTotals;
 };
 
 export type SessionsPatchResult = {

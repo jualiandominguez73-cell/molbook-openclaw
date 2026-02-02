@@ -12,6 +12,7 @@ import type {
   AgentsListResult,
   ChannelsStatusSnapshot,
   ConfigSnapshot,
+  CostUsageSummary,
   CronJob,
   CronRunLogEntry,
   CronStatus,
@@ -111,6 +112,17 @@ export type AppViewState = {
   sessionsFilterLimit: string;
   sessionsIncludeGlobal: boolean;
   sessionsIncludeUnknown: boolean;
+  activityLoading: boolean;
+  activityUsageResult: CostUsageSummary | null;
+  activityDays: number;
+  activitySessionsResult: SessionsListResult | null;
+  activityError: string | null;
+  activitySecurityFindings: Array<{
+    checkId: string;
+    severity: string;
+    title: string;
+    detail: string;
+  }> | null;
   cronLoading: boolean;
   cronJobs: CronJob[];
   cronStatus: CronStatus | null;
@@ -149,6 +161,7 @@ export type AppViewState = {
   setTheme: (theme: ThemeMode, context?: ThemeTransitionContext) => void;
   applySettings: (next: UiSettings) => void;
   loadOverview: () => Promise<void>;
+  loadActivity: (days?: number) => Promise<void>;
   loadAssistantIdentity: () => Promise<void>;
   loadCron: () => Promise<void>;
   handleWhatsAppStart: (force: boolean) => Promise<void>;
