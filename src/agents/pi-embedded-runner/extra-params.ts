@@ -73,7 +73,10 @@ function createStreamFnWithExtraParams(
     return undefined;
   }
 
-  const streamParams: CacheRetentionStreamOptions = {};
+  // Pass through all extraParams to support vendor-specific options (e.g. OpenRouter provider hints)
+  // We still resolve known typed params explicitly to ensure correct types/transformations
+  const streamParams: SimpleStreamOptions & Record<string, unknown> = { ...extraParams };
+
   if (typeof extraParams.temperature === "number") {
     streamParams.temperature = extraParams.temperature;
   }
