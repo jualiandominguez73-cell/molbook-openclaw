@@ -9,10 +9,10 @@
  * @license MIT
  */
 
-import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { writeFile, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // ============================================================================
 // Types
@@ -60,43 +60,91 @@ const DEFAULT_FORMAT = "opus";
 /** All available voice IDs for validation */
 export const INWORLD_VOICE_IDS = [
   // English (25)
-  "Alex", "Ashley", "Blake", "Carter", "Clive", "Craig", "Deborah", "Dennis",
-  "Dominus", "Edward", "Elizabeth", "Hades", "Hana", "Julia", "Luna", "Mark",
-  "Olivia", "Pixie", "Priya", "Ronald", "Sarah", "Shaun", "Theodore", "Timothy", "Wendy",
+  "Alex",
+  "Ashley",
+  "Blake",
+  "Carter",
+  "Clive",
+  "Craig",
+  "Deborah",
+  "Dennis",
+  "Dominus",
+  "Edward",
+  "Elizabeth",
+  "Hades",
+  "Hana",
+  "Julia",
+  "Luna",
+  "Mark",
+  "Olivia",
+  "Pixie",
+  "Priya",
+  "Ronald",
+  "Sarah",
+  "Shaun",
+  "Theodore",
+  "Timothy",
+  "Wendy",
   // German (2)
-  "Johanna", "Josef",
+  "Johanna",
+  "Josef",
   // Chinese (4)
-  "Jing", "Xiaoyin", "Xinyi", "Yichen",
+  "Jing",
+  "Xiaoyin",
+  "Xinyi",
+  "Yichen",
   // Dutch (4)
-  "Erik", "Katrien", "Lennart", "Lore",
+  "Erik",
+  "Katrien",
+  "Lennart",
+  "Lore",
   // French (4)
-  "Alain", "Étienne", "Hélène", "Mathieu",
+  "Alain",
+  "Étienne",
+  "Hélène",
+  "Mathieu",
   // Italian (2)
-  "Gianni", "Orietta",
+  "Gianni",
+  "Orietta",
   // Japanese (2)
-  "Asuka", "Satoshi",
+  "Asuka",
+  "Satoshi",
   // Korean (4)
-  "Hyunwoo", "Minji", "Seojun", "Yoona",
+  "Hyunwoo",
+  "Minji",
+  "Seojun",
+  "Yoona",
   // Polish (2)
-  "Szymon", "Wojciech",
+  "Szymon",
+  "Wojciech",
   // Portuguese (2)
-  "Heitor", "Maitê",
+  "Heitor",
+  "Maitê",
   // Spanish (4)
-  "Diego", "Lupita", "Miguel", "Rafael",
+  "Diego",
+  "Lupita",
+  "Miguel",
+  "Rafael",
   // Russian (4)
-  "Dmitry", "Elena", "Nikolai", "Svetlana",
+  "Dmitry",
+  "Elena",
+  "Nikolai",
+  "Svetlana",
   // Hindi (2)
-  "Manoj", "Riya",
+  "Manoj",
+  "Riya",
   // Hebrew (2)
-  "Oren", "Yael",
+  "Oren",
+  "Yael",
   // Arabic (2)
-  "Nour", "Omar",
+  "Nour",
+  "Omar",
 ] as const;
 
 export const INWORLD_MODELS = ["inworld-tts-1", "inworld-tts-1-max"] as const;
 
 /** Type for valid model IDs */
-type InworldModelId = typeof INWORLD_MODELS[number];
+type InworldModelId = (typeof INWORLD_MODELS)[number];
 
 /** Type guard for model validation */
 function isValidModel(model: string): model is InworldModelId {
@@ -129,9 +177,7 @@ function normalizeVoiceId(voiceId: string | undefined): string {
   if (!voiceId) return DEFAULT_VOICE;
 
   // Case-insensitive voice lookup
-  const normalizedVoice = INWORLD_VOICE_IDS.find(
-    v => v.toLowerCase() === voiceId.toLowerCase()
-  );
+  const normalizedVoice = INWORLD_VOICE_IDS.find((v) => v.toLowerCase() === voiceId.toLowerCase());
 
   if (normalizedVoice) {
     return normalizedVoice;
@@ -175,7 +221,7 @@ function normalizeModelId(modelId: string | undefined): string {
  */
 export async function inworldTTS(
   text: string,
-  config: { inworld?: InworldTtsConfig }
+  config: { inworld?: InworldTtsConfig },
 ): Promise<TtsResult> {
   const startTime = Date.now();
   const inworldConfig = config.inworld ?? {};
@@ -185,7 +231,8 @@ export async function inworldTTS(
   if (!apiKey) {
     return {
       success: false,
-      error: "Inworld API key not configured. Set INWORLD_API_KEY environment variable or config.inworld.apiKey",
+      error:
+        "Inworld API key not configured. Set INWORLD_API_KEY environment variable or config.inworld.apiKey",
       provider: "inworld",
     };
   }
@@ -221,7 +268,7 @@ export async function inworldTTS(
     const response = await fetch(`${INWORLD_API_BASE}/voice`, {
       method: "POST",
       headers: {
-        "Authorization": `Basic ${apiKey}`,
+        Authorization: `Basic ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -256,7 +303,7 @@ export async function inworldTTS(
     }
 
     // Parse JSON response with base64-encoded audio
-    const responseData = await response.json() as InworldApiResponse;
+    const responseData = (await response.json()) as InworldApiResponse;
 
     if (!responseData.audioContent) {
       return {
@@ -289,7 +336,9 @@ export async function inworldTTS(
     await writeFile(audioPath, audioBuffer);
 
     const latencyMs = Date.now() - startTime;
-    console.log(`[tts] [inworld] Generated ${audioBuffer.byteLength} bytes in ${latencyMs}ms (voice: ${voiceId})`);
+    console.log(
+      `[tts] [inworld] Generated ${audioBuffer.byteLength} bytes in ${latencyMs}ms (voice: ${voiceId})`,
+    );
 
     return {
       success: true,
@@ -297,7 +346,6 @@ export async function inworldTTS(
       provider: "inworld",
       latencyMs,
     };
-
   } catch (error: unknown) {
     const err = error as Error & { code?: string };
     let errorMessage = err.message ?? "Unknown error";

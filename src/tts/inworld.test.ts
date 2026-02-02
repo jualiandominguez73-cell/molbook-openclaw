@@ -50,30 +50,30 @@ describe("Inworld TTS Provider", () => {
         expect.any(String),
         expect.objectContaining({
           body: expect.stringContaining('"voiceId":"Dennis"'),
-        })
+        }),
       );
     });
 
     it("should include voices from all 15 languages", () => {
       // Sample voice from each language
       const languageVoices = [
-        "Dennis",   // English
-        "Johanna",  // German
-        "Jing",     // Chinese
-        "Erik",     // Dutch
-        "Alain",    // French
-        "Gianni",   // Italian
-        "Asuka",    // Japanese
-        "Minji",    // Korean
-        "Szymon",   // Polish
-        "Heitor",   // Portuguese
-        "Diego",    // Spanish
-        "Dmitry",   // Russian
-        "Manoj",    // Hindi
-        "Oren",     // Hebrew
-        "Nour",     // Arabic
+        "Dennis", // English
+        "Johanna", // German
+        "Jing", // Chinese
+        "Erik", // Dutch
+        "Alain", // French
+        "Gianni", // Italian
+        "Asuka", // Japanese
+        "Minji", // Korean
+        "Szymon", // Polish
+        "Heitor", // Portuguese
+        "Diego", // Spanish
+        "Dmitry", // Russian
+        "Manoj", // Hindi
+        "Oren", // Hebrew
+        "Nour", // Arabic
       ];
-      languageVoices.forEach(voice => {
+      languageVoices.forEach((voice) => {
         expect(INWORLD_VOICE_IDS).toContain(voice);
       });
     });
@@ -117,7 +117,7 @@ describe("Inworld TTS Provider", () => {
           headers: expect.objectContaining({
             Authorization: `Basic ${configApiKey}`,
           }),
-        })
+        }),
       );
     });
   });
@@ -182,7 +182,7 @@ describe("Inworld TTS Provider", () => {
             modelId: "inworld-tts-1-max",
             outputFormat: "WAV",
           }),
-        })
+        }),
       );
     });
   });
@@ -285,7 +285,7 @@ describe("Inworld TTS Provider", () => {
         expect.any(String),
         expect.objectContaining({
           body: expect.stringContaining('"voiceId":"Dennis"'),
-        })
+        }),
       );
     });
 
@@ -301,7 +301,7 @@ describe("Inworld TTS Provider", () => {
         expect.any(String),
         expect.objectContaining({
           body: expect.stringContaining('"modelId":"inworld-tts-1"'),
-        })
+        }),
       );
     });
 
@@ -317,7 +317,7 @@ describe("Inworld TTS Provider", () => {
         expect.any(String),
         expect.objectContaining({
           body: expect.stringContaining('"outputFormat":"OPUS"'),
-        })
+        }),
       );
     });
   });
