@@ -481,7 +481,11 @@ export async function runEmbeddedPiAgent(
               };
             }
             const promptFailoverReason = classifyFailoverReason(errorText);
-            if (promptFailoverReason && promptFailoverReason !== "timeout" && lastProfileId) {
+            // Don't mark profile failure for transient errors (timeout, network)
+            // These are not profile-specific issues
+            const isTransientError =
+              promptFailoverReason === "timeout" || promptFailoverReason === "network";
+            if (promptFailoverReason && !isTransientError && lastProfileId) {
               await markAuthProfileFailure({
                 store: authStore,
                 profileId: lastProfileId,
@@ -490,11 +494,22 @@ export async function runEmbeddedPiAgent(
                 agentDir: params.agentDir,
               });
             }
+            // Log network errors for visibility
+            if (promptFailoverReason === "network" && !isProbeSession) {
+              log.warn(
+                `network error during prompt for ${provider}/${modelId}: ${errorText.slice(0, 200)}`,
+              );
+            }
             if (
               isFailoverErrorMessage(errorText) &&
-              promptFailoverReason !== "timeout" &&
+              !isTransientError &&
               (await advanceAuthProfile())
             ) {
+              continue;
+            }
+            // For network errors, retry with same profile (transient failure)
+            if (promptFailoverReason === "network") {
+              log.info(`retrying after transient network error for ${provider}/${modelId}`);
               continue;
             }
             const fallbackThinking = pickFallbackThinkingLevel({
@@ -560,15 +575,16 @@ export async function runEmbeddedPiAgent(
             );
           }
 
-          // Treat timeout as potential rate limit (Antigravity hangs on rate limit)
-          const shouldRotate = (!aborted && failoverFailure) || timedOut;
+          // Treat timeout and network errors as transient failures that should trigger retry
+          const isNetworkFailure = assistantFailoverReason === "network";
+          const shouldRotate = (!aborted && failoverFailure) || timedOut || isNetworkFailure;
 
           if (shouldRotate) {
-            if (lastProfileId) {
-              const reason =
-                timedOut || assistantFailoverReason === "timeout"
-                  ? "timeout"
-                  : (assistantFailoverReason ?? "unknown");
+            // Network errors are transient - don't mark profile failure, just retry
+            const isTransientAssistantError =
+              timedOut || assistantFailoverReason === "timeout" || isNetworkFailure;
+            if (lastProfileId && !isTransientAssistantError) {
+              const reason = assistantFailoverReason ?? "unknown";
               await markAuthProfileFailure({
                 store: authStore,
                 profileId: lastProfileId,
@@ -576,16 +592,27 @@ export async function runEmbeddedPiAgent(
                 cfg: params.config,
                 agentDir: params.agentDir,
               });
-              if (timedOut && !isProbeSession) {
-                log.warn(
-                  `Profile ${lastProfileId} timed out (possible rate limit). Trying next account...`,
-                );
-              }
-              if (cloudCodeAssistFormatError) {
-                log.warn(
-                  `Profile ${lastProfileId} hit Cloud Code Assist format error. Tool calls will be sanitized on retry.`,
-                );
-              }
+            }
+            if (timedOut && !isProbeSession) {
+              log.warn(
+                `Profile ${lastProfileId} timed out (possible rate limit). Trying next account...`,
+              );
+            }
+            if (isNetworkFailure && !isProbeSession) {
+              log.warn(
+                `Network error for ${provider}/${modelId}: ${lastAssistant?.errorMessage?.slice(0, 200) ?? "unknown"}. Retrying...`,
+              );
+            }
+            if (cloudCodeAssistFormatError) {
+              log.warn(
+                `Profile ${lastProfileId} hit Cloud Code Assist format error. Tool calls will be sanitized on retry.`,
+              );
+            }
+
+            // For network errors, retry immediately with same profile first
+            if (isNetworkFailure) {
+              log.info(`retrying after transient network error for ${provider}/${modelId}`);
+              continue;
             }
 
             const rotated = await advanceAuthProfile();
@@ -609,7 +636,9 @@ export async function runEmbeddedPiAgent(
                     ? "LLM request rate limited."
                     : authFailure
                       ? "LLM request unauthorized."
-                      : "LLM request failed.");
+                      : isNetworkFailure
+                        ? "Network error during LLM request."
+                        : "LLM request failed.");
               const status =
                 resolveFailoverStatus(assistantFailoverReason ?? "unknown") ??
                 (isTimeoutErrorMessage(message) ? 408 : undefined);
