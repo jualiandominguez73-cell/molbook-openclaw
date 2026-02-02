@@ -178,8 +178,8 @@ export function createNodesTool(options?: {
                 : facingRaw === "front" || facingRaw === "back"
                   ? [facingRaw]
                   : (() => {
-                    throw new Error("invalid facing (front|back|both)");
-                  })();
+                      throw new Error("invalid facing (front|back|both)");
+                    })();
             const maxWidth =
               typeof params.maxWidth === "number" && Number.isFinite(params.maxWidth)
                 ? params.maxWidth
@@ -366,13 +366,13 @@ export function createNodesTool(options?: {
                 : undefined;
             const desiredAccuracy =
               params.desiredAccuracy === "coarse" ||
-                params.desiredAccuracy === "balanced" ||
-                params.desiredAccuracy === "precise"
+              params.desiredAccuracy === "balanced" ||
+              params.desiredAccuracy === "precise"
                 ? params.desiredAccuracy
                 : undefined;
             const locationTimeoutMs =
               typeof params.locationTimeoutMs === "number" &&
-                Number.isFinite(params.locationTimeoutMs)
+              Number.isFinite(params.locationTimeoutMs)
                 ? params.locationTimeoutMs
                 : undefined;
             const raw = await callGatewayTool<{ payload: unknown }>("node.invoke", gatewayOpts, {

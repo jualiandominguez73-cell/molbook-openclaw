@@ -5,11 +5,11 @@ import { parseAgentSessionKey } from "../../../src/sessions/session-key-utils.js
 import { scheduleChatScroll } from "./app-scroll";
 import { setLastActiveSessionKey } from "./app-settings";
 import { resetToolStream } from "./app-tool-stream";
+import { AppViewState } from "./app-view-state";
 import { abortChatRun, loadChatHistory, sendChatMessage } from "./controllers/chat";
 import { loadSessions } from "./controllers/sessions";
 import { normalizeBasePath } from "./navigation";
 import { generateUUID } from "./uuid";
-import { AppViewState } from "./app-view-state";
 
 type ChatHost = {
   connected: boolean;

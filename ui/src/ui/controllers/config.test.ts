@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { AppViewState } from "../app-view-state";
 import {
   applyConfigSnapshot,
   applyConfig,
@@ -6,7 +7,6 @@ import {
   updateConfigFormValue,
   type ConfigState,
 } from "./config";
-import { AppViewState } from "../app-view-state";
 
 function createState(): Partial<ConfigState> {
   return {

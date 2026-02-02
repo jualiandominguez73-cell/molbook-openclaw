@@ -74,9 +74,9 @@ import {
 } from "./app-tool-stream";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity";
+import { SkillMessage } from "./controllers/skills";
 import { loadSettings, type UiSettings } from "./storage";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types";
-import { SkillMessage } from "./controllers/skills";
 
 declare global {
   interface Window {

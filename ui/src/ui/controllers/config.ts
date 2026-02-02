@@ -1,6 +1,6 @@
-import { AppViewState } from "../app-view-state";
 import type { GatewayBrowserClient } from "../gateway";
 import type { ConfigSchemaResponse, ConfigSnapshot, ConfigUiHints } from "../types";
+import { AppViewState } from "../app-view-state";
 import {
   cloneConfigObject,
   removePathValue,

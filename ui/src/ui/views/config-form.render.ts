@@ -421,79 +421,82 @@ export function renderConfigForm(props: ConfigFormProps) {
 
   return html`
     <div class="config-form config-form--modern">
-      ${subsectionContext
-      ? (() => {
-        const { sectionKey, subsectionKey, schema: node } = subsectionContext;
-        const hint = hintForPath([sectionKey, subsectionKey], props.uiHints);
-        const label = hint?.label ?? node.title ?? humanize(subsectionKey);
-        const description = hint?.help ?? node.description ?? "";
-        const sectionValue = value[sectionKey];
-        const scopedValue =
-          sectionValue && typeof sectionValue === "object"
-            ? (sectionValue as Record<string, unknown>)[subsectionKey]
-            : undefined;
-        const id = `config-section-${sectionKey}-${subsectionKey}`;
-        return html`
+      ${
+        subsectionContext
+          ? (() => {
+              const { sectionKey, subsectionKey, schema: node } = subsectionContext;
+              const hint = hintForPath([sectionKey, subsectionKey], props.uiHints);
+              const label = hint?.label ?? node.title ?? humanize(subsectionKey);
+              const description = hint?.help ?? node.description ?? "";
+              const sectionValue = value[sectionKey];
+              const scopedValue =
+                sectionValue && typeof sectionValue === "object"
+                  ? (sectionValue as Record<string, unknown>)[subsectionKey]
+                  : undefined;
+              const id = `config-section-${sectionKey}-${subsectionKey}`;
+              return html`
               <section class="config-section-card" id=${id}>
                 <div class="config-section-card__header">
                   <span class="config-section-card__icon">${getSectionIcon(sectionKey)}</span>
                   <div class="config-section-card__titles">
                     <h3 class="config-section-card__title">${label}</h3>
-                    ${description
-            ? html`<p class="config-section-card__desc">${description}</p>`
-            : nothing
-          }
+                    ${
+                      description
+                        ? html`<p class="config-section-card__desc">${description}</p>`
+                        : nothing
+                    }
                   </div>
                 </div>
                 <div class="config-section-card__content">
                   ${renderNode({
-            schema: node,
-            value: scopedValue,
-            path: [sectionKey, subsectionKey],
-            hints: props.uiHints,
-            unsupported,
-            disabled: props.disabled ?? false,
-            showLabel: false,
-            onPatch: props.onPatch,
-          })}
+                    schema: node,
+                    value: scopedValue,
+                    path: [sectionKey, subsectionKey],
+                    hints: props.uiHints,
+                    unsupported,
+                    disabled: props.disabled ?? false,
+                    showLabel: false,
+                    onPatch: props.onPatch,
+                  })}
                 </div>
               </section>
             `;
-      })()
-      : filteredEntries.map(([key, node]) => {
-        const meta = SECTION_META[key] ?? {
-          label: key.charAt(0).toUpperCase() + key.slice(1),
-          description: node.description ?? "",
-        };
+            })()
+          : filteredEntries.map(([key, node]) => {
+              const meta = SECTION_META[key] ?? {
+                label: key.charAt(0).toUpperCase() + key.slice(1),
+                description: node.description ?? "",
+              };
 
-        return html`
+              return html`
               <section class="config-section-card" id="config-section-${key}">
                 <div class="config-section-card__header">
                   <span class="config-section-card__icon">${getSectionIcon(key)}</span>
                   <div class="config-section-card__titles">
                     <h3 class="config-section-card__title">${meta.label}</h3>
-                    ${meta.description
-            ? html`<p class="config-section-card__desc">${meta.description}</p>`
-            : nothing
-          }
+                    ${
+                      meta.description
+                        ? html`<p class="config-section-card__desc">${meta.description}</p>`
+                        : nothing
+                    }
                   </div>
                 </div>
                 <div class="config-section-card__content">
                   ${renderNode({
-            schema: node,
-            value: value[key],
-            path: [key],
-            hints: props.uiHints,
-            unsupported,
-            disabled: props.disabled ?? false,
-            showLabel: false,
-            onPatch: props.onPatch,
-          })}
+                    schema: node,
+                    value: value[key],
+                    path: [key],
+                    hints: props.uiHints,
+                    unsupported,
+                    disabled: props.disabled ?? false,
+                    showLabel: false,
+                    onPatch: props.onPatch,
+                  })}
                 </div>
               </section>
             `;
-      })
-    }
+            })
+      }
     </div>
   `;
 }
