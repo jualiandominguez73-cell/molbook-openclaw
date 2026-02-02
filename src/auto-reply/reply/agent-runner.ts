@@ -41,6 +41,8 @@ import { createReplyToModeFilterForChannel, resolveReplyToMode } from "./reply-t
 import { incrementCompactionCount } from "./session-updates.js";
 import { persistSessionUsageUpdate } from "./session-usage.js";
 import { createTypingSignaler } from "./typing-mode.js";
+import { preAnswerHookRegistry } from "../../agents/agent-hooks-registry.js";
+import { registerMemorySearchHook } from "../../agents/hooks/memory-search-hook.js";
 
 const BLOCK_REPLY_SEND_TIMEOUT_MS = 15_000;
 
@@ -305,10 +307,65 @@ export async function runReplyAgent(params: {
         `Role ordering conflict (${reason}). Restarting session ${sessionKey} -> ${nextSessionId}.`,
       cleanupTranscripts: true,
     });
+
+  // Register built-in hooks (once per process)
+  if (!globalThis.openclawHooksRegistered) {
+    try {
+      registerMemorySearchHook();
+      globalThis.openclawHooksRegistered = true;
+    } catch (error) {
+      // Hook registration may fail in some environments, log but don't fail
+      console.warn("[agent-runner] Failed to register pre-answer hooks:", error);
+    }
+  }
+
   try {
     const runStartedAt = Date.now();
-    const runOutcome = await runAgentTurnWithFallback({
+
+    // Execute pre-answer hooks to gather context
+    let enhancedCommandBody = commandBody;
+    const hookResults = await preAnswerHookRegistry.execute({
       commandBody,
+      sessionKey,
+      sessionEntry: activeSessionEntry,
+      agentConfig: followupRun.run.config,
+      sessionCtx,
+      isHeartbeat,
+      opts,
+    });
+
+    // Check if any hooks produced context
+    const hasHookContext = hookResults.some((r) => r.contextFragments.length > 0);
+
+    if (hasHookContext) {
+      // Collect and format context fragments
+      const fragments = hookResults
+        .flatMap((r) => r.contextFragments)
+        .sort((a, b) => (a.weight ?? 100) - (b.weight ?? 100));
+
+      if (fragments.length > 0) {
+        const contextText = fragments.map((f) => f.content).join("\n\n---\n\n");
+        enhancedCommandBody = `${contextText}\n\n---\n\n${commandBody}`;
+
+        // Log hook execution for diagnostics
+        if (isDiagnosticsEnabled()) {
+          emitDiagnosticEvent({
+            kind: "pre-answer-hooks",
+            sessionKey,
+            hooksExecuted: hookResults.map((r) => ({
+              id: r.hook.id,
+              success: r.success,
+              executionTimeMs: r.executionTimeMs,
+              contextFragments: r.contextFragments.length,
+            })),
+            totalContextFragments: fragments.length,
+          });
+        }
+      }
+    }
+
+    const runOutcome = await runAgentTurnWithFallback({
+      commandBody: enhancedCommandBody,
       followupRun,
       sessionCtx,
       opts,
