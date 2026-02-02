@@ -128,7 +128,9 @@ export async function resolveChannelIdForUpload(
 
   const channels = await listSlackChannels(client);
   const match = resolveByName(nameToResolve, channels);
-  if (match) return match.id;
+  if (match) {
+    return match.id;
+  }
 
   throw new Error(
     `Slack channel not found or bot not a member: "${nameToResolve}" (use channel:<id> or ensure bot is in #${nameToResolve})`,
