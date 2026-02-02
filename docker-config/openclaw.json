@@ -14,7 +14,7 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "ollama/qwen3:4b"
+        "primary": "ollama/llama3"
       }
     }
   }
