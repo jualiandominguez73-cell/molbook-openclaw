@@ -1,13 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-
-import { installGatewayTestHooks, getFreePort, startGatewayServer } from "./test-helpers.server.js";
-import { resetTestPluginRegistry, setTestPluginRegistry, testState } from "./test-helpers.mocks.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestRegistry } from "../test-utils/channel-plugins.js";
-import { CONFIG_PATH } from "../config/config.js";
+import { resetTestPluginRegistry, setTestPluginRegistry, testState } from "./test-helpers.mocks.js";
+import { installGatewayTestHooks, getFreePort, startGatewayServer } from "./test-helpers.server.js";
 
 installGatewayTestHooks({ scope: "suite" });
 
@@ -19,7 +16,9 @@ beforeEach(() => {
 
 const resolveGatewayToken = (): string => {
   const token = (testState.gatewayAuth as { token?: string } | undefined)?.token;
-  if (!token) throw new Error("test gateway token missing");
+  if (!token) {
+    throw new Error("test gateway token missing");
+  }
   return token;
 };
 
@@ -91,6 +90,7 @@ describe("POST /tools/invoke", () => {
       list: [{ id: "main" }],
     } as any;
 
+    const { CONFIG_PATH } = await import("../config/config.js");
     await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
     await fs.writeFile(
       CONFIG_PATH,
