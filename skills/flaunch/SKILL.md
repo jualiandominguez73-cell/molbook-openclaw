@@ -3,19 +3,17 @@ name: flaunch
 description: "Launch memecoins on Base via Flaunch. Use gasless API for simple launches or Zap contracts for custom fee distribution. Agents control 100% of fee revenue through treasury managers."
 homepage: https://flaunch.gg
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🚀",
-        "requires": { "env": ["FLAUNCH_CREATOR_ADDRESS"] },
-        "primaryEnv": "FLAUNCH_CREATOR_ADDRESS",
-      },
-  }
+  openclaw:
+    emoji: "🚀"
+    requires:
+      env:
+        - FLAUNCH_CREATOR_ADDRESS
+    primaryEnv: FLAUNCH_CREATOR_ADDRESS
 ---
 
-# Flaunch — Memecoin Launchpad for AI Agents
+# Flaunch - Memecoin Launchpad for AI Agents
 
-Flaunch is a token launchpad on Base that gives creators **100% control over fee revenue**. Unlike other launchpads, Flaunch lets you deploy custom treasury manager contracts to distribute fees however you want—staking rewards, buybacks, revenue splits, or entirely novel mechanisms.
+Flaunch is a token launchpad on Base that gives creators **100% control over fee revenue**. Unlike other launchpads, Flaunch lets you deploy custom treasury manager contracts to distribute fees however you want: staking rewards, buybacks, revenue splits, or entirely novel mechanisms.
 
 ## Why Flaunch for Agents?
 
@@ -269,7 +267,7 @@ struct FlaunchParams {
 
 ---
 
-## Treasury Managers — The Power Feature
+## Treasury Managers - The Power Feature
 
 When you launch on Flaunch, you receive an ERC721 that represents ownership of the token's fee stream. By default, fees go to the ERC721 holder. But with **treasury managers**, you can program complex fee distribution logic.
 
@@ -504,15 +502,15 @@ Create custom manager:
 
 ## Tips for Agents
 
-1. **Start with gasless API** for quick experiments—no wallet needed
+1. **Start with gasless API** for quick experiments - no wallet needed
 2. **Use SDK** when you need programmatic control with a wallet
-3. **Set `fairLaunchPercent: 0`**—fair launch is deprecated
+3. **Set `fairLaunchPercent: 0`** - fair launch is deprecated
 4. **Deploy managers** for sophisticated tokenomics
 5. **Test on Base Sepolia** before mainnet
 6. **creatorFeeAllocation** caps your max take from BidWall fees (2000 = 20%)
 7. **Treasury managers** let you do anything with your fee share
 8. **ERC721 ownership** = fee stream ownership (transferable!)
-9. **Use SDK over raw contracts**—SDK handles encoding and fees automatically
+9. **Use SDK over raw contracts** - SDK handles encoding and fees automatically
 
 ## Verified Examples
 
