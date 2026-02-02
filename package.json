@@ -244,7 +244,7 @@
       "@hono/node-server>hono": "4.11.7",
       "hono": "4.11.7",
       "qs": "6.14.1",
-      "@sinclair/typebox": "0.34.47",
+      "@sinclair/typebox": "0.34.48",
       "tar": "7.5.7",
       "tough-cookie": "4.1.3"
     },
