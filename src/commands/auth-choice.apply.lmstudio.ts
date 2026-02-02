@@ -62,43 +62,6 @@ function normalizeLmStudioModelId(raw: string): string | null {
   return withoutPrefix;
 }
 
-function upsertLmStudioProviderModel(cfg: OpenClawConfig, modelId: string): OpenClawConfig {
-  const providers = { ...cfg.models?.providers };
-  const existingProvider = providers.lmstudio;
-  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
-  const hasModel = existingModels.some((model) => model.id === modelId);
-  const models = hasModel
-    ? existingModels
-    : [
-        ...existingModels,
-        {
-          id: modelId,
-          name: modelId,
-          reasoning: false,
-          input: DEFAULT_MODEL_INPUT,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: DEFAULT_CONTEXT_WINDOW,
-          maxTokens: DEFAULT_MAX_TOKENS,
-        },
-      ];
-
-  providers.lmstudio = {
-    ...(existingProvider ? { ...existingProvider } : {}),
-    baseUrl: existingProvider?.baseUrl ?? `${DEFAULT_LMSTUDIO_BASE_URL}/v1`,
-    apiKey: existingProvider?.apiKey ?? "lmstudio",
-    api: existingProvider?.api ?? DEFAULT_LMSTUDIO_API,
-    models,
-  };
-
-  return {
-    ...cfg,
-    models: {
-      mode: cfg.models?.mode ?? "merge",
-      providers,
-    },
-  };
-}
-
 export async function applyAuthChoiceLmStudio(
   params: ApplyAuthChoiceParams,
 ): Promise<ApplyAuthChoiceResult | null> {
@@ -139,16 +102,31 @@ export async function applyAuthChoiceLmStudio(
   const modelRef = `lmstudio/${modelId}`;
 
   const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const hasModel = existingModels.some((model) => model.id === modelId);
+  const resolvedModels = hasModel
+    ? existingModels
+    : [
+        ...existingModels,
+        {
+          id: modelId,
+          name: modelId,
+          reasoning: false,
+          input: DEFAULT_MODEL_INPUT,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+          contextWindow: DEFAULT_CONTEXT_WINDOW,
+          maxTokens: DEFAULT_MAX_TOKENS,
+        },
+      ];
   const nextProvider: ModelProviderConfig = {
     ...(existingProvider ?? {
       baseUrl: normalizedBaseUrl,
       api: DEFAULT_LMSTUDIO_API,
-      models: existingModels,
+      models: resolvedModels,
     }),
     baseUrl: normalizedBaseUrl,
     apiKey: existingProvider?.apiKey ?? "lmstudio",
     api: existingProvider?.api ?? DEFAULT_LMSTUDIO_API,
-    models: existingModels,
+    models: resolvedModels,
   };
 
   let nextConfig: OpenClawConfig = {
@@ -162,7 +140,6 @@ export async function applyAuthChoiceLmStudio(
     },
   };
 
-  nextConfig = upsertLmStudioProviderModel(nextConfig, modelId);
   if (params.setDefaultModel) {
     nextConfig = applyPrimaryModel(nextConfig, modelRef);
     await params.prompter.note(`Default model set to ${modelRef}.`, "Model configured");
