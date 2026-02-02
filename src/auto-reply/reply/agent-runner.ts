@@ -4,8 +4,10 @@ import type { TypingMode } from "../../config/types.js";
 import type { OriginatingChannelType, TemplateContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import type { TypingController } from "./typing.js";
+import { preAnswerHookRegistry } from "../../agents/agent-hooks-registry.js";
 import { lookupContextTokens } from "../../agents/context.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../../agents/defaults.js";
+import { registerMemorySearchHook } from "../../agents/hooks/memory-search-hook.js";
 import { resolveModelAuthMode } from "../../agents/model-auth.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { queueEmbeddedPiMessage } from "../../agents/pi-embedded.js";
@@ -41,8 +43,6 @@ import { createReplyToModeFilterForChannel, resolveReplyToMode } from "./reply-t
 import { incrementCompactionCount } from "./session-updates.js";
 import { persistSessionUsageUpdate } from "./session-usage.js";
 import { createTypingSignaler } from "./typing-mode.js";
-import { preAnswerHookRegistry } from "../../agents/agent-hooks-registry.js";
-import { registerMemorySearchHook } from "../../agents/hooks/memory-search-hook.js";
 
 const BLOCK_REPLY_SEND_TIMEOUT_MS = 15_000;
 
@@ -350,7 +350,8 @@ export async function runReplyAgent(params: {
         // Log hook execution for diagnostics
         if (isDiagnosticsEnabled()) {
           emitDiagnosticEvent({
-            kind: "pre-answer-hooks",
+            type: "custom",
+            name: "pre-answer-hooks",
             sessionKey,
             hooksExecuted: hookResults.map((r) => ({
               id: r.hook.id,
@@ -359,7 +360,7 @@ export async function runReplyAgent(params: {
               contextFragments: r.contextFragments.length,
             })),
             totalContextFragments: fragments.length,
-          });
+          } as any);
         }
       }
     }
