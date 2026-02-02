@@ -290,13 +290,23 @@ function resolveTavilyConfig(search?: WebSearchConfig): TavilyConfig {
   return tavily as TavilyConfig;
 }
 
-function resolveTavilyApiKey(tavily?: TavilyConfig): string | undefined {
-  const fromConfig = normalizeApiKey(tavily?.apiKey);
-  if (fromConfig) {
-    return fromConfig;
+function resolveTavilyApiKey(tavily?: TavilyConfig, search?: WebSearchConfig): string | undefined {
+  // 1. Check tavily-specific config first
+  const fromTavilyConfig = normalizeApiKey(tavily?.apiKey);
+  if (fromTavilyConfig) {
+    return fromTavilyConfig;
   }
+
+  // 2. Check TAVILY_API_KEY environment variable
   const fromEnv = normalizeApiKey(process.env.TAVILY_API_KEY);
-  return fromEnv || undefined;
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  // 3. Fallback to generic tools.web.search.apiKey (consistent with Brave behavior)
+  const fromSearchConfig =
+    search && "apiKey" in search && typeof search.apiKey === "string" ? search.apiKey.trim() : "";
+  return fromSearchConfig || undefined;
 }
 
 function resolveTavilySearchDepth(tavily?: TavilyConfig): "basic" | "advanced" {
@@ -605,7 +615,7 @@ export function createWebSearchTool(options?: {
     execute: async (_toolCallId, args) => {
       const perplexityAuth =
         provider === "perplexity" ? resolvePerplexityApiKey(perplexityConfig) : undefined;
-      const tavilyApiKey = provider === "tavily" ? resolveTavilyApiKey(tavilyConfig) : undefined;
+      const tavilyApiKey = provider === "tavily" ? resolveTavilyApiKey(tavilyConfig, search) : undefined;
       const apiKey =
         provider === "perplexity"
           ? perplexityAuth?.apiKey
@@ -628,6 +638,19 @@ export function createWebSearchTool(options?: {
         return jsonResult({
           error: "unsupported_freshness",
           message: "freshness is only supported by the Brave web_search provider.",
+          docs: "https://docs.openclaw.ai/tools/web",
+        });
+      }
+      // Guard: country, search_lang, ui_lang are Brave-only parameters
+      if ((country || search_lang || ui_lang) && (provider === "tavily" || provider === "perplexity")) {
+        const unsupportedParams = [
+          country && "country",
+          search_lang && "search_lang",
+          ui_lang && "ui_lang",
+        ].filter(Boolean);
+        return jsonResult({
+          error: "unsupported_locale_params",
+          message: `${unsupportedParams.join(", ")} ${unsupportedParams.length > 1 ? "are" : "is"} only supported by the Brave web_search provider.`,
           docs: "https://docs.openclaw.ai/tools/web",
         });
       }
