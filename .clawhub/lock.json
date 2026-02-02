@@ -72,6 +72,10 @@
     "mailchannels": {
       "version": "1.0.0",
       "installedAt": 1769996988092
+    },
+    "everclaw": {
+      "version": "0.6.0",
+      "installedAt": 1770040104057
     }
   }
 }
