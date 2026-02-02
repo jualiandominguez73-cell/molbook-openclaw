@@ -18,12 +18,18 @@ import { getCompactionSafeguardRuntime } from "./compaction-safeguard-runtime.js
  */
 function parseModelRef(ref: string): { provider: string; modelId: string } | null {
   const trimmed = ref.trim();
-  if (!trimmed) return null;
+  if (!trimmed) {
+    return null;
+  }
   const slashIndex = trimmed.indexOf("/");
-  if (slashIndex === -1) return null;
+  if (slashIndex === -1) {
+    return null;
+  }
   const provider = trimmed.slice(0, slashIndex);
   const modelId = trimmed.slice(slashIndex + 1);
-  if (!provider || !modelId) return null;
+  if (!provider || !modelId) {
+    return null;
+  }
   return { provider, modelId };
 }
 
