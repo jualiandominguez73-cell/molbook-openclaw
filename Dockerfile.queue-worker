@@ -17,7 +17,9 @@ COPY package*.json pnpm-lock.yaml ./
 COPY patches ./patches
 
 # Install pnpm and dependencies
-RUN npm install -g pnpm@latest && \
+# Use corepack to generate pnpm binary from lockfile (more reliable)
+RUN npm install -g corepack@latest && \
+    corepack enable && \
     pnpm install --frozen-lockfile
 
 # Copy source code
