@@ -247,6 +247,106 @@ export class SkillSemanticIndex {
 }
 
 /**
+ * Create an embedding function using OpenAI's API.
+ * 
+ * @param apiKey - OpenAI API key
+ * @param model - Embedding model name (default: "text-embedding-3-small")
+ * @returns Embedding function
+ */
+export function createOpenAIEmbedFn(
+  apiKey: string,
+  model = "text-embedding-3-small"
+): (text: string) => Promise<number[]> {
+  return async (text: string): Promise<number[]> => {
+    const response = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        input: text,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI embedding failed: ${error}`);
+    }
+
+    const data = (await response.json()) as {
+      data: Array<{ embedding: number[] }>;
+    };
+    return data.data[0].embedding;
+  };
+}
+
+/**
+ * Create an embedding function using Anthropic's API (via Voyage AI).
+ * Note: Anthropic uses Voyage AI for embeddings.
+ * 
+ * @param apiKey - Voyage AI API key
+ * @param model - Embedding model name (default: "voyage-3-lite")
+ * @returns Embedding function
+ */
+export function createVoyageEmbedFn(
+  apiKey: string,
+  model = "voyage-3-lite"
+): (text: string) => Promise<number[]> {
+  return async (text: string): Promise<number[]> => {
+    const response = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        input: text,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Voyage AI embedding failed: ${error}`);
+    }
+
+    const data = (await response.json()) as {
+      data: Array<{ embedding: number[] }>;
+    };
+    return data.data[0].embedding;
+  };
+}
+
+/**
+ * Resolve embed function from configuration.
+ * 
+ * @param provider - Provider name ("openai" | "voyage" | "anthropic")
+ * @param apiKey - API key for the provider
+ * @param model - Optional model name override
+ * @returns Configured embedding function
+ */
+export function resolveEmbedFn(
+  provider: string,
+  apiKey: string,
+  model?: string
+): (text: string) => Promise<number[]> {
+  switch (provider.toLowerCase()) {
+    case "openai":
+      return createOpenAIEmbedFn(apiKey, model ?? "text-embedding-3-small");
+    case "voyage":
+    case "anthropic":
+      return createVoyageEmbedFn(apiKey, model ?? "voyage-3-lite");
+    default:
+      throw new Error(
+        `Unknown embedding provider: ${provider}. ` +
+        "Supported providers: openai, voyage, anthropic"
+      );
+  }
+}
+
+/**
  * Default embed function placeholder.
  * Real implementation should use OpenAI/Anthropic embeddings.
  */
