@@ -1,0 +1,16 @@
+[
+  {"dir":"src\\cli\\system-cli.ts","origin":"--mode must be now or next-heartbeat","translate":"--mode 必须为 now 或 next-heartbeat"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"System tools (events, heartbeat, presence)","translate":"系统工具（事件、心跳、在线状态）"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Docs:","translate":"文档:"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Enqueue a system event and optionally trigger a heartbeat","translate":"加入一个系统事件，并可选触发一次心跳"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"System event text","translate":"系统事件文本"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Wake mode (now|next-heartbeat)","translate":"唤醒模式（now|next-heartbeat）"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Output JSON","translate":"输出 JSON"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"--text is required","translate":"必须提供 --text"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"ok","translate":"成功"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Heartbeat controls","translate":"心跳控制"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Show the last heartbeat event","translate":"显示最近一次心跳事件"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Enable heartbeats","translate":"启用心跳"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"Disable heartbeats","translate":"禁用心跳"},
+  {"dir":"src\\cli\\system-cli.ts","origin":"List system presence entries","translate":"列出系统在线状态条目"}
+]

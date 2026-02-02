@@ -1,0 +1,17 @@
+[
+  {"dir": "src/cli/memory-cli.ts", "origin": "Indexing memory…", "translate": "正在索引记忆..."},
+  {"dir": "src/cli/memory-cli.ts", "origin": "elapsed", "translate": "耗时"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "eta", "translate": "剩余"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Memory index updated (${agentId}).", "translate": "记忆索引已更新 (${agentId})。"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Memory index failed (${agentId}): ${message}", "translate": "记忆索引失败 (${agentId}): ${message}"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Search memory files", "translate": "搜索记忆文件"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Search query", "translate": "搜索关键词"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Agent id (default: default agent)", "translate": "Agent id（默认：默认 Agent）"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Max results", "translate": "最大结果数"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Minimum score", "translate": "最小分数"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Print JSON", "translate": "输出 JSON"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Memory search disabled.", "translate": "记忆搜索已禁用。"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Memory manager close failed: ${formatErrorMessage(err)}", "translate": "记忆管理器关闭失败: ${formatErrorMessage(err)}"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "Memory search failed: ${message}", "translate": "记忆搜索失败: ${message}"},
+  {"dir": "src/cli/memory-cli.ts", "origin": "No matches.", "translate": "无匹配结果。"}
+]

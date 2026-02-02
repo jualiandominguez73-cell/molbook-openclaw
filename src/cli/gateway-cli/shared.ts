@@ -39,10 +39,10 @@ export function describeUnknownError(err: unknown): string {
     try {
       return JSON.stringify(err);
     } catch {
-      return "Unknown error";
+      return "未知错误";
     }
   }
-  return "Unknown error";
+  return "未知错误";
 }
 
 export function extractGatewayMiskeys(parsed: unknown): {
@@ -68,21 +68,21 @@ export function renderGatewayServiceStopHints(env: NodeJS.ProcessEnv = process.e
   switch (process.platform) {
     case "darwin":
       return [
-        `Tip: ${formatCliCommand("openclaw gateway stop")}`,
-        `Or: launchctl bootout gui/$UID/${resolveGatewayLaunchAgentLabel(profile)}`,
+        `提示: ${formatCliCommand("openclaw gateway stop")}`,
+        `或: launchctl bootout gui/$UID/${resolveGatewayLaunchAgentLabel(profile)}`,
       ];
     case "linux":
       return [
-        `Tip: ${formatCliCommand("openclaw gateway stop")}`,
-        `Or: systemctl --user stop ${resolveGatewaySystemdServiceName(profile)}.service`,
+        `提示: ${formatCliCommand("openclaw gateway stop")}`,
+        `或: systemctl --user stop ${resolveGatewaySystemdServiceName(profile)}.service`,
       ];
     case "win32":
       return [
-        `Tip: ${formatCliCommand("openclaw gateway stop")}`,
-        `Or: schtasks /End /TN "${resolveGatewayWindowsTaskName(profile)}"`,
+        `提示: ${formatCliCommand("openclaw gateway stop")}`,
+        `或: schtasks /End /TN "${resolveGatewayWindowsTaskName(profile)}"`,
       ];
     default:
-      return [`Tip: ${formatCliCommand("openclaw gateway stop")}`];
+      return [`提示: ${formatCliCommand("openclaw gateway stop")}`];
   }
 }
 
@@ -97,8 +97,8 @@ export async function maybeExplainGatewayServiceStop() {
   if (loaded === false) return;
   defaultRuntime.error(
     loaded
-      ? `Gateway service appears ${service.loadedText}. Stop it first.`
-      : "Gateway service status unknown; if supervised, stop it first.",
+      ? `网关服务似乎${service.loadedText}。请先停止它。`
+      : "网关服务状态未知；如果受监控，请先停止它。",
   );
   for (const hint of renderGatewayServiceStopHints()) {
     defaultRuntime.error(hint);

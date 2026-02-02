@@ -131,30 +131,30 @@ function renderApprovalsSnapshot(snapshot: ExecApprovalsSnapshot, targetLabel: s
         Target: targetLabel,
         Agent: agentId,
         Pattern: pattern,
-        LastUsed: lastUsedAt ? `${formatAge(Math.max(0, now - lastUsedAt))} ago` : muted("unknown"),
+        LastUsed: lastUsedAt ? `${formatAge(Math.max(0, now - lastUsedAt))} ago` : muted("未知"),
       });
     }
   }
 
   const summaryRows = [
-    { Field: "Target", Value: targetLabel },
-    { Field: "Path", Value: snapshot.path },
-    { Field: "Exists", Value: snapshot.exists ? "yes" : "no" },
-    { Field: "Hash", Value: snapshot.hash },
-    { Field: "Version", Value: String(file.version ?? 1) },
-    { Field: "Socket", Value: file.socket?.path ?? "default" },
-    { Field: "Defaults", Value: defaultsParts.length > 0 ? defaultsParts.join(", ") : "none" },
-    { Field: "Agents", Value: String(Object.keys(agents).length) },
-    { Field: "Allowlist", Value: String(allowlistRows.length) },
+    { Field: "目标", Value: targetLabel },
+    { Field: "路径", Value: snapshot.path },
+    { Field: "存在", Value: snapshot.exists ? "是" : "否" },
+    { Field: "哈希", Value: snapshot.hash },
+    { Field: "版本", Value: String(file.version ?? 1) },
+    { Field: "套接字", Value: file.socket?.path ?? "默认" },
+    { Field: "默认值", Value: defaultsParts.length > 0 ? defaultsParts.join(", ") : "无" },
+    { Field: "代理", Value: String(Object.keys(agents).length) },
+    { Field: "白名单", Value: String(allowlistRows.length) },
   ];
 
-  defaultRuntime.log(heading("Approvals"));
+  defaultRuntime.log(heading("批准"));
   defaultRuntime.log(
     renderTable({
       width: tableWidth,
       columns: [
-        { key: "Field", header: "Field", minWidth: 8 },
-        { key: "Value", header: "Value", minWidth: 24, flex: true },
+        { key: "Field", header: "字段", minWidth: 8 },
+        { key: "Value", header: "值", minWidth: 24, flex: true },
       ],
       rows: summaryRows,
     }).trimEnd(),
@@ -162,20 +162,20 @@ function renderApprovalsSnapshot(snapshot: ExecApprovalsSnapshot, targetLabel: s
 
   if (allowlistRows.length === 0) {
     defaultRuntime.log("");
-    defaultRuntime.log(muted("No allowlist entries."));
+    defaultRuntime.log(muted("无白名单条目。"));
     return;
   }
 
   defaultRuntime.log("");
-  defaultRuntime.log(heading("Allowlist"));
+  defaultRuntime.log(heading("白名单"));
   defaultRuntime.log(
     renderTable({
       width: tableWidth,
       columns: [
-        { key: "Target", header: "Target", minWidth: 10 },
-        { key: "Agent", header: "Agent", minWidth: 8 },
-        { key: "Pattern", header: "Pattern", minWidth: 20, flex: true },
-        { key: "LastUsed", header: "Last Used", minWidth: 10 },
+        { key: "Target", header: "目标", minWidth: 10 },
+        { key: "Agent", header: "代理", minWidth: 8 },
+        { key: "Pattern", header: "模式", minWidth: 20, flex: true },
+        { key: "LastUsed", header: "最后使用", minWidth: 10 },
       ],
       rows: allowlistRows,
     }).trimEnd(),
@@ -229,18 +229,18 @@ export function registerExecApprovalsCli(program: Command) {
   const approvals = program
     .command("approvals")
     .alias("exec-approvals")
-    .description("Manage exec approvals (gateway or node host)")
+    .description("管理执行批准（网关或节点主机）")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "docs.openclaw.ai/cli/approvals")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/approvals", "docs.openclaw.ai/cli/approvals")}\n`,
     );
 
   const getCmd = approvals
     .command("get")
-    .description("Fetch exec approvals snapshot")
-    .option("--node <node>", "Target node id/name/IP")
-    .option("--gateway", "Force gateway approvals", false)
+    .description("获取执行批准快照")
+    .option("--node <node>", "目标节点 ID/名称/IP")
+    .option("--gateway", "强制网关批准", false)
     .action(async (opts: ExecApprovalsCliOpts) => {
       try {
         const { snapshot, nodeId, source } = await loadSnapshotTarget(opts);
@@ -251,7 +251,7 @@ export function registerExecApprovalsCli(program: Command) {
 
         const muted = (text: string) => (isRich() ? theme.muted(text) : text);
         if (source === "local") {
-          defaultRuntime.log(muted("Showing local approvals."));
+          defaultRuntime.log(muted("显示本地批准。"));
           defaultRuntime.log("");
         }
         const targetLabel = source === "local" ? "local" : nodeId ? `node:${nodeId}` : "gateway";
@@ -265,30 +265,30 @@ export function registerExecApprovalsCli(program: Command) {
 
   const setCmd = approvals
     .command("set")
-    .description("Replace exec approvals with a JSON file")
-    .option("--node <node>", "Target node id/name/IP")
-    .option("--gateway", "Force gateway approvals", false)
-    .option("--file <path>", "Path to JSON file to upload")
-    .option("--stdin", "Read JSON from stdin", false)
+    .description("使用 JSON 文件替换执行批准")
+    .option("--node <node>", "目标节点 ID/名称/IP")
+    .option("--gateway", "强制网关批准", false)
+    .option("--file <path>", "要上传的 JSON 文件路径")
+    .option("--stdin", "从 stdin 读取 JSON", false)
     .action(async (opts: ExecApprovalsCliOpts) => {
       try {
         if (!opts.file && !opts.stdin) {
-          defaultRuntime.error("Provide --file or --stdin.");
+          defaultRuntime.error("请提供 --file 或 --stdin。");
           defaultRuntime.exit(1);
           return;
         }
         if (opts.file && opts.stdin) {
-          defaultRuntime.error("Use either --file or --stdin (not both).");
+          defaultRuntime.error("请使用 --file 或 --stdin（不能同时使用）。");
           defaultRuntime.exit(1);
           return;
         }
         const { snapshot, nodeId, source } = await loadSnapshotTarget(opts);
         if (source === "local") {
-          defaultRuntime.log(theme.muted("Writing local approvals."));
+          defaultRuntime.log(theme.muted("写入本地批准。"));
         }
         const targetLabel = source === "local" ? "local" : nodeId ? `node:${nodeId}` : "gateway";
         if (!snapshot.hash) {
-          defaultRuntime.error("Exec approvals hash missing; reload and retry.");
+          defaultRuntime.error("执行批准哈希丢失；请重新加载并重试。");
           defaultRuntime.exit(1);
           return;
         }
@@ -297,7 +297,7 @@ export function registerExecApprovalsCli(program: Command) {
         try {
           file = JSON5.parse(raw) as ExecApprovalsFile;
         } catch (err) {
-          defaultRuntime.error(`Failed to parse approvals JSON: ${String(err)}`);
+          defaultRuntime.error(`解析批准 JSON 失败：${String(err)}`);
           defaultRuntime.exit(1);
           return;
         }
@@ -310,7 +310,7 @@ export function registerExecApprovalsCli(program: Command) {
           defaultRuntime.log(JSON.stringify(next));
           return;
         }
-        defaultRuntime.log(theme.muted(`Target: ${targetLabel}`));
+        defaultRuntime.log(theme.muted(`目标：${targetLabel}`));
         renderApprovalsSnapshot(next, targetLabel);
       } catch (err) {
         defaultRuntime.error(formatCliError(err));
@@ -321,46 +321,46 @@ export function registerExecApprovalsCli(program: Command) {
 
   const allowlist = approvals
     .command("allowlist")
-    .description("Edit the per-agent allowlist")
+    .description("编辑每个代理的白名单")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatExample(
+        `\n${theme.heading("示例:")}\n${formatExample(
           'openclaw approvals allowlist add "~/Projects/**/bin/rg"',
-          "Allowlist a local binary pattern for the main agent.",
+          "将本地二进制模式添加到主代理白名单。",
         )}\n${formatExample(
           'openclaw approvals allowlist add --agent main --node <id|name|ip> "/usr/bin/uptime"',
-          "Allowlist on a specific node/agent.",
+          "在特定节点/代理上添加白名单。",
         )}\n${formatExample(
           'openclaw approvals allowlist add --agent "*" "/usr/bin/uname"',
-          "Allowlist for all agents (wildcard).",
+          "为所有代理添加白名单（通配符）。",
         )}\n${formatExample(
           'openclaw approvals allowlist remove "~/Projects/**/bin/rg"',
-          "Remove an allowlist pattern.",
-        )}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/approvals", "docs.openclaw.ai/cli/approvals")}\n`,
+          "移除白名单模式。",
+        )}\n\n${theme.muted("文档:")} ${formatDocsLink("/cli/approvals", "docs.openclaw.ai/cli/approvals")}\n`,
     );
 
   const allowlistAdd = allowlist
     .command("add <pattern>")
-    .description("Add a glob pattern to an allowlist")
-    .option("--node <node>", "Target node id/name/IP")
-    .option("--gateway", "Force gateway approvals", false)
-    .option("--agent <id>", 'Agent id (defaults to "*")')
+    .description("向白名单添加 glob 模式")
+    .option("--node <node>", "目标节点 ID/名称/IP")
+    .option("--gateway", "强制网关批准", false)
+    .option("--agent <id>", "代理 ID（默认为 \"*\"）")
     .action(async (pattern: string, opts: ExecApprovalsCliOpts) => {
       try {
         const trimmed = pattern.trim();
         if (!trimmed) {
-          defaultRuntime.error("Pattern required.");
+          defaultRuntime.error("必须提供模式。");
           defaultRuntime.exit(1);
           return;
         }
         const { snapshot, nodeId, source } = await loadSnapshotTarget(opts);
         if (source === "local") {
-          defaultRuntime.log(theme.muted("Writing local approvals."));
+          defaultRuntime.log(theme.muted("写入本地批准。"));
         }
         const targetLabel = source === "local" ? "local" : nodeId ? `node:${nodeId}` : "gateway";
         if (!snapshot.hash) {
-          defaultRuntime.error("Exec approvals hash missing; reload and retry.");
+          defaultRuntime.error("执行批准哈希丢失；请重新加载并重试。");
           defaultRuntime.exit(1);
           return;
         }
@@ -370,7 +370,7 @@ export function registerExecApprovalsCli(program: Command) {
         const agent = ensureAgent(file, agentKey);
         const allowlistEntries = Array.isArray(agent.allowlist) ? agent.allowlist : [];
         if (allowlistEntries.some((entry) => normalizeAllowlistEntry(entry) === trimmed)) {
-          defaultRuntime.log("Already allowlisted.");
+          defaultRuntime.log("已在白名单中。");
           return;
         }
         allowlistEntries.push({ pattern: trimmed, lastUsedAt: Date.now() });
@@ -384,7 +384,7 @@ export function registerExecApprovalsCli(program: Command) {
           defaultRuntime.log(JSON.stringify(next));
           return;
         }
-        defaultRuntime.log(theme.muted(`Target: ${targetLabel}`));
+        defaultRuntime.log(theme.muted(`目标：${targetLabel}`));
         renderApprovalsSnapshot(next, targetLabel);
       } catch (err) {
         defaultRuntime.error(formatCliError(err));
@@ -395,25 +395,25 @@ export function registerExecApprovalsCli(program: Command) {
 
   const allowlistRemove = allowlist
     .command("remove <pattern>")
-    .description("Remove a glob pattern from an allowlist")
-    .option("--node <node>", "Target node id/name/IP")
-    .option("--gateway", "Force gateway approvals", false)
-    .option("--agent <id>", 'Agent id (defaults to "*")')
+    .description("从白名单移除 glob 模式")
+    .option("--node <node>", "目标节点 ID/名称/IP")
+    .option("--gateway", "强制网关批准", false)
+    .option("--agent <id>", "代理 ID（默认为 \"*\"）")
     .action(async (pattern: string, opts: ExecApprovalsCliOpts) => {
       try {
         const trimmed = pattern.trim();
         if (!trimmed) {
-          defaultRuntime.error("Pattern required.");
+          defaultRuntime.error("必须提供模式。");
           defaultRuntime.exit(1);
           return;
         }
         const { snapshot, nodeId, source } = await loadSnapshotTarget(opts);
         if (source === "local") {
-          defaultRuntime.log(theme.muted("Writing local approvals."));
+          defaultRuntime.log(theme.muted("写入本地批准。"));
         }
         const targetLabel = source === "local" ? "local" : nodeId ? `node:${nodeId}` : "gateway";
         if (!snapshot.hash) {
-          defaultRuntime.error("Exec approvals hash missing; reload and retry.");
+          defaultRuntime.error("执行批准哈希丢失；请重新加载并重试。");
           defaultRuntime.exit(1);
           return;
         }
@@ -426,7 +426,7 @@ export function registerExecApprovalsCli(program: Command) {
           (entry) => normalizeAllowlistEntry(entry) !== trimmed,
         );
         if (nextEntries.length === allowlistEntries.length) {
-          defaultRuntime.log("Pattern not found.");
+          defaultRuntime.log("未找到模式。");
           return;
         }
         if (nextEntries.length === 0) {
@@ -449,7 +449,7 @@ export function registerExecApprovalsCli(program: Command) {
           defaultRuntime.log(JSON.stringify(next));
           return;
         }
-        defaultRuntime.log(theme.muted(`Target: ${targetLabel}`));
+        defaultRuntime.log(theme.muted(`目标：${targetLabel}`));
         renderApprovalsSnapshot(next, targetLabel);
       } catch (err) {
         defaultRuntime.error(formatCliError(err));

@@ -19,7 +19,7 @@ import { WizardCancelledError } from "./prompts.js";
 
 function guardCancel<T>(value: T | symbol): T {
   if (isCancel(value)) {
-    cancel(stylePromptTitle("Setup cancelled.") ?? "Setup cancelled.");
+    cancel(stylePromptTitle("安装已取消。") ?? "安装已取消。");
     throw new WizardCancelledError();
   }
   return value as T;

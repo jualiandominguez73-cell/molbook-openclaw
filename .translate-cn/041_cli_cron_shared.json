@@ -1,0 +1,21 @@
+[
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "警告: 网关中的定时任务调度器已禁用; 任务已保存但不会自动运行。", "translate": "警告: 网关中的定时任务调度器已禁用; 任务已保存但不会自动运行。"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "请通过 `cron.enabled: true` 重新启用 (或移除 `cron.enabled: false`) 并重启网关。", "translate": "请通过 `cron.enabled: true` 重新启用 (或移除 `cron.enabled: false`) 并重启网关。"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "store ? `存储: ${store}` : \"\"", "translate": "store ? `存储: ${store}` : \"\""},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "<1分", "translate": "<1分"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "in ${label}", "translate": "${label}后"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "${label} ago", "translate": "${label}前"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "at ${formatIsoMinute(schedule.atMs)}", "translate": "于 ${formatIsoMinute(schedule.atMs)}"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "every ${formatDuration(schedule.everyMs)}", "translate": "每 ${formatDuration(schedule.everyMs)}"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "disabled", "translate": "已禁用"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "running", "translate": "运行中"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "idle", "translate": "空闲"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "No cron jobs.", "translate": "没有定时任务。"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Name", "translate": "名称"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Schedule", "translate": "调度"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Next", "translate": "下次运行"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Last", "translate": "上次运行"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Status", "translate": "状态"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Target", "translate": "目标"},
+  {"dir": "src/cli/cron-cli/shared.ts", "origin": "Agent", "translate": "代理"}
+]

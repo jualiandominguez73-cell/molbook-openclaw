@@ -5,16 +5,16 @@ type MinimalTheme = {
 };
 
 export const defaultWaitingPhrases = [
-  "flibbertigibbeting",
-  "kerfuffling",
-  "dillydallying",
-  "twiddling thumbs",
-  "noodling",
-  "bamboozling",
-  "moseying",
-  "hobnobbing",
-  "pondering",
-  "conjuring",
+  "正在思考",
+  "稍等片刻",
+  "马上就好",
+  "正在处理",
+  "正在加载",
+  "请稍候",
+  "正在连接",
+  "正在计算",
+  "正在生成",
+  "别急别急",
 ];
 
 export function pickWaitingPhrase(tick: number, phrases = defaultWaitingPhrases) {

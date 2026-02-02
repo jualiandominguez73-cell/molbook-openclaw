@@ -1,0 +1,6 @@
+[
+  {"dir":"src\\cli\\program\\register.configure.ts","origin":"Interactive prompt to set up credentials, devices, and agent defaults","translate":"交互式配置：设置凭据、设备与代理默认值"},
+  {"dir":"src\\cli\\program\\register.configure.ts","origin":"Docs:","translate":"文档:"},
+  {"dir":"src\\cli\\program\\register.configure.ts","origin":"Configuration sections (repeatable). Options: ${CONFIGURE_WIZARD_SECTIONS.join(\", \")}","translate":"配置分区（可重复指定）。可选值：${CONFIGURE_WIZARD_SECTIONS.join(\", \")}"},
+  {"dir":"src\\cli\\program\\register.configure.ts","origin":"Invalid --section: ${invalid.join(\", \")}. Expected one of: ${CONFIGURE_WIZARD_SECTIONS.join(\", \")}.","translate":"无效的 --section：${invalid.join(\", \")}。可选值：${CONFIGURE_WIZARD_SECTIONS.join(\", \")}。"}
+]

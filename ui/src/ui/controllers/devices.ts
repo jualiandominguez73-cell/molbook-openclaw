@@ -57,7 +57,7 @@ export async function loadDevices(state: DevicesState, opts?: { quiet?: boolean 
       paired: Array.isArray(res?.paired) ? res!.paired : [],
     };
   } catch (err) {
-    if (!opts?.quiet) state.devicesError = String(err);
+    if (!opts?.quiet) state.devicesError = "加载设备列表失败：" + String(err);
   } finally {
     state.devicesLoading = false;
   }
@@ -69,19 +69,19 @@ export async function approveDevicePairing(state: DevicesState, requestId: strin
     await state.client.request("device.pair.approve", { requestId });
     await loadDevices(state);
   } catch (err) {
-    state.devicesError = String(err);
+    state.devicesError = "批准配对失败：" + String(err);
   }
 }
 
 export async function rejectDevicePairing(state: DevicesState, requestId: string) {
   if (!state.client || !state.connected) return;
-  const confirmed = window.confirm("Reject this device pairing request?");
+  const confirmed = window.confirm("拒绝此设备配对请求？");
   if (!confirmed) return;
   try {
     await state.client.request("device.pair.reject", { requestId });
     await loadDevices(state);
   } catch (err) {
-    state.devicesError = String(err);
+    state.devicesError = "拒绝配对失败：" + String(err);
   }
 }
 
@@ -105,11 +105,11 @@ export async function rotateDeviceToken(
           scopes: res.scopes ?? params.scopes ?? [],
         });
       }
-      window.prompt("New device token (copy and store securely):", res.token);
+      window.prompt("新设备令牌（请复制并安全存储）：", res.token);
     }
     await loadDevices(state);
   } catch (err) {
-    state.devicesError = String(err);
+    state.devicesError = "轮换令牌失败：" + String(err);
   }
 }
 
@@ -119,7 +119,7 @@ export async function revokeDeviceToken(
 ) {
   if (!state.client || !state.connected) return;
   const confirmed = window.confirm(
-    `Revoke token for ${params.deviceId} (${params.role})?`,
+    `确定要撤销 ${params.deviceId} (${params.role}) 的令牌吗？`,
   );
   if (!confirmed) return;
   try {
@@ -130,6 +130,6 @@ export async function revokeDeviceToken(
     }
     await loadDevices(state);
   } catch (err) {
-    state.devicesError = String(err);
+    state.devicesError = "撤销令牌失败：" + String(err);
   }
 }

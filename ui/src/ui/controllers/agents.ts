@@ -18,7 +18,7 @@ export async function loadAgents(state: AgentsState) {
     const res = (await state.client.request("agents.list", {})) as AgentsListResult | undefined;
     if (res) state.agentsList = res;
   } catch (err) {
-    state.agentsError = String(err);
+    state.agentsError = "加载代理列表失败：" + String(err);
   } finally {
     state.agentsLoading = false;
   }

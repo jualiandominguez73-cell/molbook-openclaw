@@ -46,7 +46,7 @@ export async function loadConfig(state: ConfigState) {
     const res = (await state.client.request("config.get", {})) as ConfigSnapshot;
     applyConfigSnapshot(state, res);
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "加载配置失败：" + String(err);
   } finally {
     state.configLoading = false;
   }
@@ -63,7 +63,7 @@ export async function loadConfigSchema(state: ConfigState) {
     )) as ConfigSchemaResponse;
     applyConfigSchema(state, res);
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "加载配置架构失败：" + String(err);
   } finally {
     state.configSchemaLoading = false;
   }
@@ -114,14 +114,14 @@ export async function saveConfig(state: ConfigState) {
         : state.configRaw;
     const baseHash = state.configSnapshot?.hash;
     if (!baseHash) {
-      state.lastError = "Config hash missing; reload and retry.";
+      state.lastError = "配置哈希丢失；请重新加载并重试。";
       return;
     }
     await state.client.request("config.set", { raw, baseHash });
     state.configFormDirty = false;
     await loadConfig(state);
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "保存配置失败：" + String(err);
   } finally {
     state.configSaving = false;
   }
@@ -138,7 +138,7 @@ export async function applyConfig(state: ConfigState) {
         : state.configRaw;
     const baseHash = state.configSnapshot?.hash;
     if (!baseHash) {
-      state.lastError = "Config hash missing; reload and retry.";
+      state.lastError = "配置哈希丢失；请重新加载并重试。";
       return;
     }
     await state.client.request("config.apply", {
@@ -149,7 +149,7 @@ export async function applyConfig(state: ConfigState) {
     state.configFormDirty = false;
     await loadConfig(state);
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "应用配置失败：" + String(err);
   } finally {
     state.configApplying = false;
   }
@@ -164,7 +164,7 @@ export async function runUpdate(state: ConfigState) {
       sessionKey: state.applySessionKey,
     });
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "启动更新失败：" + String(err);
   } finally {
     state.updateRunning = false;
   }

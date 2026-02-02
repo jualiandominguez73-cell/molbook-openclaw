@@ -57,7 +57,7 @@ describe("skills-cli", () => {
     it("formats empty skills list", () => {
       const report = createMockReport([]);
       const output = formatSkillsList(report, {});
-      expect(output).toContain("No skills found");
+      expect(output).toContain("未找到技能");
       expect(output).toContain("npx clawhub");
     });
 
@@ -86,7 +86,7 @@ describe("skills-cli", () => {
       ]);
       const output = formatSkillsList(report, {});
       expect(output).toContain("disabled-skill");
-      expect(output).toContain("disabled");
+      expect(output).toContain("已禁用");
     });
 
     it("formats skills list with missing requirements", () => {
@@ -105,9 +105,9 @@ describe("skills-cli", () => {
       ]);
       const output = formatSkillsList(report, { verbose: true });
       expect(output).toContain("needs-stuff");
-      expect(output).toContain("missing");
-      expect(output).toContain("anyBins");
-      expect(output).toContain("os:");
+      expect(output).toContain("缺少依赖");
+      expect(output).toContain("任一二进制");
+      expect(output).toContain("系统:");
     });
 
     it("filters to eligible only with --eligible flag", () => {
@@ -137,7 +137,7 @@ describe("skills-cli", () => {
     it("returns not found message for unknown skill", () => {
       const report = createMockReport([]);
       const output = formatSkillInfo(report, "unknown-skill", {});
-      expect(output).toContain("not found");
+      expect(output).toContain("未找到技能");
       expect(output).toContain("npx clawhub");
     });
 
@@ -168,7 +168,7 @@ describe("skills-cli", () => {
       expect(output).toContain("A detailed description");
       expect(output).toContain("https://example.com");
       expect(output).toContain("node");
-      expect(output).toContain("Any binaries");
+      expect(output).toContain("任一可执行文件");
       expect(output).toContain("API_KEY");
     });
 
@@ -238,10 +238,10 @@ describe("skills-cli", () => {
 
       // Format should work without errors
       const listOutput = formatSkillsList(report, {});
-      expect(listOutput).toContain("Skills");
+      expect(listOutput).toContain("技能");
 
       const checkOutput = formatSkillsCheck(report, {});
-      expect(checkOutput).toContain("Total:");
+      expect(checkOutput).toContain("总计:");
 
       // JSON output should be valid
       const jsonOutput = formatSkillsList(report, { json: true });
@@ -266,7 +266,7 @@ describe("skills-cli", () => {
 
       const output = formatSkillInfo(report, "peekaboo", {});
       expect(output).toContain("peekaboo");
-      expect(output).toContain("Details:");
+      expect(output).toContain("详情:");
     });
   });
 });

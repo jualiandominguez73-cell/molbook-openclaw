@@ -79,13 +79,13 @@ export function registerNodesStatusCommands(nodes: Command) {
   nodesCallOpts(
     nodes
       .command("status")
-      .description("List known nodes with connection status and capabilities")
-      .option("--connected", "Only show connected nodes")
-      .option("--last-connected <duration>", "Only show nodes connected within duration (e.g. 24h)")
+      .description("列出已知节点及其连接状态和能力")
+      .option("--connected", "仅显示已连接节点")
+      .option("--last-connected <duration>", "仅显示指定时间内连接过的节点 (如 24h)")
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("status", async () => {
           const connectedOnly = Boolean(opts.connected);
-          const sinceMs = parseSinceMs(opts.lastConnected, "Invalid --last-connected");
+          const sinceMs = parseSinceMs(opts.lastConnected, "无效的 --last-connected");
           const result = (await callGatewayCli("node.list", opts, {})) as unknown;
           const obj =
             typeof result === "object" && result !== null

@@ -88,15 +88,15 @@ export function registerNodesPairingCommands(nodes: Command) {
   nodesCallOpts(
     nodes
       .command("rename")
-      .description("Rename a paired node (display name override)")
-      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
-      .requiredOption("--name <displayName>", "New display name")
+      .description("重命名已配对节点 (覆盖显示名称)")
+      .requiredOption("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
+      .requiredOption("--name <displayName>", "新显示名称")
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("rename", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));
           const name = String(opts.name ?? "").trim();
           if (!nodeId || !name) {
-            defaultRuntime.error("--node and --name required");
+            defaultRuntime.error("需要 --node 和 --name");
             defaultRuntime.exit(1);
             return;
           }

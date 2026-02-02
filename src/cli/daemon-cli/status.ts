@@ -14,7 +14,7 @@ export async function runDaemonStatus(opts: DaemonStatusOptions) {
     printDaemonStatus(status, { json: Boolean(opts.json) });
   } catch (err) {
     const rich = isRich();
-    defaultRuntime.error(colorize(rich, theme.error, `Gateway status failed: ${String(err)}`));
+    defaultRuntime.error(colorize(rich, theme.error, `网关状态检查失败: ${String(err)}`));
     defaultRuntime.exit(1);
   }
 }

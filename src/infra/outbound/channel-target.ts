@@ -1,10 +1,10 @@
 import { MESSAGE_ACTION_TARGET_MODE } from "./message-action-spec.js";
 
 export const CHANNEL_TARGET_DESCRIPTION =
-  "Recipient/channel: E.164 for WhatsApp/Signal, Telegram chat id/@username, Discord/Slack channel/user, or iMessage handle/chat_id";
+  "收件人/频道：WhatsApp/Signal 的 E.164，Telegram 聊天 ID/@username，Discord/Slack 频道/用户，或 iMessage 句柄/chat_id";
 
 export const CHANNEL_TARGETS_DESCRIPTION =
-  "Recipient/channel targets (same format as --target); accepts ids or names when the directory is available.";
+  "收件人/频道目标（格式同 --target）；当目录可用时接受 ID 或名称。";
 
 export function applyTargetToParams(params: {
   action: string;
@@ -18,10 +18,10 @@ export function applyTargetToParams(params: {
 
   if (mode !== "none") {
     if (hasLegacyTo || hasLegacyChannelId) {
-      throw new Error("Use `target` instead of `to`/`channelId`.");
+      throw new Error("请使用 `target` 代替 `to`/`channelId`。");
     }
   } else if (hasLegacyTo) {
-    throw new Error("Use `target` for actions that accept a destination.");
+    throw new Error("对于接受目的地的操作，请使用 `target`。");
   }
 
   if (!target) return;
@@ -33,5 +33,5 @@ export function applyTargetToParams(params: {
     params.args.to = target;
     return;
   }
-  throw new Error(`Action ${params.action} does not accept a target.`);
+  throw new Error(`操作 ${params.action} 不接受目标。`);
 }

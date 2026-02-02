@@ -95,9 +95,9 @@ export function registerNodesCanvasCommands(nodes: Command) {
   nodesCallOpts(
     canvas
       .command("present")
-      .description("Show the canvas (optionally with a target URL/path)")
-      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
-      .option("--target <urlOrPath>", "Target URL/path (optional)")
+      .description("显示画布 (可选目标 URL/路径)")
+      .requiredOption("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
+      .option("--target <urlOrPath>", "目标 URL/路径 (可选)")
       .option("--x <px>", "Placement x coordinate")
       .option("--y <px>", "Placement y coordinate")
       .option("--width <px>", "Placement width")

@@ -3,11 +3,11 @@ import { collectOption } from "../helpers.js";
 import type { MessageCliHelpers } from "./helpers.js";
 
 export function registerMessageEmojiCommands(message: Command, helpers: MessageCliHelpers) {
-  const emoji = message.command("emoji").description("Emoji actions");
+  const emoji = message.command("emoji").description("表情符号动作");
 
   helpers
-    .withMessageBase(emoji.command("list").description("List emojis"))
-    .option("--guild-id <id>", "Guild id (Discord)")
+    .withMessageBase(emoji.command("list").description("列出表情符号"))
+    .option("--guild-id <id>", "公会 ID (Discord)")
     .action(async (opts) => {
       await helpers.runMessageAction("emoji-list", opts);
     });
@@ -16,26 +16,26 @@ export function registerMessageEmojiCommands(message: Command, helpers: MessageC
     .withMessageBase(
       emoji
         .command("upload")
-        .description("Upload an emoji")
-        .requiredOption("--guild-id <id>", "Guild id"),
+        .description("上传表情符号")
+        .requiredOption("--guild-id <id>", "公会 ID"),
     )
-    .requiredOption("--emoji-name <name>", "Emoji name")
-    .requiredOption("--media <path-or-url>", "Emoji media (path or URL)")
-    .option("--role-ids <id>", "Role id (repeat)", collectOption, [] as string[])
+    .requiredOption("--emoji-name <name>", "表情符号名称")
+    .requiredOption("--media <path-or-url>", "表情符号媒体（路径或 URL）")
+    .option("--role-ids <id>", "角色 ID（可重复）", collectOption, [] as string[])
     .action(async (opts) => {
       await helpers.runMessageAction("emoji-upload", opts);
     });
 }
 
 export function registerMessageStickerCommands(message: Command, helpers: MessageCliHelpers) {
-  const sticker = message.command("sticker").description("Sticker actions");
+  const sticker = message.command("sticker").description("贴纸动作");
 
   helpers
     .withMessageBase(
-      helpers.withRequiredMessageTarget(sticker.command("send").description("Send stickers")),
+      helpers.withRequiredMessageTarget(sticker.command("send").description("发送贴纸")),
     )
-    .requiredOption("--sticker-id <id>", "Sticker id (repeat)", collectOption)
-    .option("-m, --message <text>", "Optional message body")
+    .requiredOption("--sticker-id <id>", "贴纸 ID（可重复）", collectOption)
+    .option("-m, --message <text>", "可选消息正文")
     .action(async (opts) => {
       await helpers.runMessageAction("sticker", opts);
     });
@@ -44,13 +44,13 @@ export function registerMessageStickerCommands(message: Command, helpers: Messag
     .withMessageBase(
       sticker
         .command("upload")
-        .description("Upload a sticker")
-        .requiredOption("--guild-id <id>", "Guild id"),
+        .description("上传贴纸")
+        .requiredOption("--guild-id <id>", "公会 ID"),
     )
-    .requiredOption("--sticker-name <name>", "Sticker name")
-    .requiredOption("--sticker-desc <text>", "Sticker description")
-    .requiredOption("--sticker-tags <tags>", "Sticker tags")
-    .requiredOption("--media <path-or-url>", "Sticker media (path or URL)")
+    .requiredOption("--sticker-name <name>", "贴纸名称")
+    .requiredOption("--sticker-desc <text>", "贴纸描述")
+    .requiredOption("--sticker-tags <tags>", "贴纸标签")
+    .requiredOption("--media <path-or-url>", "贴纸媒体（路径或 URL）")
     .action(async (opts) => {
       await helpers.runMessageAction("sticker-upload", opts);
     });

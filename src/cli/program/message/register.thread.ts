@@ -2,19 +2,19 @@ import type { Command } from "commander";
 import type { MessageCliHelpers } from "./helpers.js";
 
 export function registerMessageThreadCommands(message: Command, helpers: MessageCliHelpers) {
-  const thread = message.command("thread").description("Thread actions");
+  const thread = message.command("thread").description("线程操作");
 
   helpers
     .withMessageBase(
       helpers.withRequiredMessageTarget(
         thread
           .command("create")
-          .description("Create a thread")
-          .requiredOption("--thread-name <name>", "Thread name"),
+          .description("创建线程")
+          .requiredOption("--thread-name <name>", "线程名称"),
       ),
     )
-    .option("--message-id <id>", "Message id (optional)")
-    .option("--auto-archive-min <n>", "Thread auto-archive minutes")
+    .option("--message-id <id>", "消息 ID（可选）")
+    .option("--auto-archive-min <n>", "线程自动归档分钟数")
     .action(async (opts) => {
       await helpers.runMessageAction("thread-create", opts);
     });
@@ -23,13 +23,13 @@ export function registerMessageThreadCommands(message: Command, helpers: Message
     .withMessageBase(
       thread
         .command("list")
-        .description("List threads")
-        .requiredOption("--guild-id <id>", "Guild id"),
+        .description("列出线程")
+        .requiredOption("--guild-id <id>", "公会 ID"),
     )
-    .option("--channel-id <id>", "Channel id")
-    .option("--include-archived", "Include archived threads", false)
-    .option("--before <id>", "Read/search before id")
-    .option("--limit <n>", "Result limit")
+    .option("--channel-id <id>", "频道 ID")
+    .option("--include-archived", "包含已归档线程", false)
+    .option("--before <id>", "读取/搜索此 ID 之前的消息")
+    .option("--limit <n>", "结果限制")
     .action(async (opts) => {
       await helpers.runMessageAction("thread-list", opts);
     });
@@ -39,15 +39,15 @@ export function registerMessageThreadCommands(message: Command, helpers: Message
       helpers.withRequiredMessageTarget(
         thread
           .command("reply")
-          .description("Reply in a thread")
-          .requiredOption("-m, --message <text>", "Message body"),
+          .description("在线程中回复")
+          .requiredOption("-m, --message <text>", "消息正文"),
       ),
     )
     .option(
       "--media <path-or-url>",
-      "Attach media (image/audio/video/document). Accepts local paths or URLs.",
+      "附加媒体（图像/音频/视频/文档）。接受本地路径或 URL。",
     )
-    .option("--reply-to <id>", "Reply-to message id")
+    .option("--reply-to <id>", "回复消息 ID")
     .action(async (opts) => {
       await helpers.runMessageAction("thread-reply", opts);
     });

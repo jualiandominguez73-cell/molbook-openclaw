@@ -39,7 +39,7 @@ export async function loadChatHistory(state: ChatState) {
     state.chatMessages = Array.isArray(res.messages) ? res.messages : [];
     state.chatThinkingLevel = res.thinkingLevel ?? null;
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "加载聊天记录失败：" + String(err);
   } finally {
     state.chatLoading = false;
   }
@@ -123,12 +123,12 @@ export async function sendChatMessage(
     state.chatRunId = null;
     state.chatStream = null;
     state.chatStreamStartedAt = null;
-    state.lastError = error;
+    state.lastError = "发送消息失败：" + error;
     state.chatMessages = [
       ...state.chatMessages,
       {
         role: "assistant",
-        content: [{ type: "text", text: "Error: " + error }],
+        content: [{ type: "text", text: "错误：" + error }],
         timestamp: Date.now(),
       },
     ];
@@ -150,7 +150,7 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
     );
     return true;
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "终止对话失败：" + String(err);
     return false;
   }
 }
@@ -193,7 +193,7 @@ export function handleChatEvent(
     state.chatStream = null;
     state.chatRunId = null;
     state.chatStreamStartedAt = null;
-    state.lastError = payload.errorMessage ?? "chat error";
+    state.lastError = payload.errorMessage ?? "聊天错误";
   }
   return payload.state;
 }

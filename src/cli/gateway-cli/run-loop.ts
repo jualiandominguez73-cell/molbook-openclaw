@@ -28,15 +28,15 @@ export async function runGatewayLoop(params: {
 
   const request = (action: GatewayRunSignalAction, signal: string) => {
     if (shuttingDown) {
-      gatewayLog.info(`received ${signal} during shutdown; ignoring`);
+      gatewayLog.info(`在关闭期间收到 ${signal}；忽略`);
       return;
     }
     shuttingDown = true;
     const isRestart = action === "restart";
-    gatewayLog.info(`received ${signal}; ${isRestart ? "restarting" : "shutting down"}`);
+    gatewayLog.info(`收到 ${signal}；${isRestart ? "正在重启" : "正在关闭"}`);
 
     const forceExitTimer = setTimeout(() => {
-      gatewayLog.error("shutdown timed out; exiting without full cleanup");
+      gatewayLog.error("关闭超时；退出时未完全清理");
       cleanupSignals();
       params.runtime.exit(0);
     }, 5000);
@@ -44,11 +44,11 @@ export async function runGatewayLoop(params: {
     void (async () => {
       try {
         await server?.close({
-          reason: isRestart ? "gateway restarting" : "gateway stopping",
+          reason: isRestart ? "网关正在重启" : "网关正在停止",
           restartExpectedMs: isRestart ? 1500 : null,
         });
       } catch (err) {
-        gatewayLog.error(`shutdown error: ${String(err)}`);
+        gatewayLog.error(`关闭错误: ${String(err)}`);
       } finally {
         clearTimeout(forceExitTimer);
         server = null;
@@ -64,19 +64,19 @@ export async function runGatewayLoop(params: {
   };
 
   const onSigterm = () => {
-    gatewayLog.info("signal SIGTERM received");
+    gatewayLog.info("收到 SIGTERM 信号");
     request("stop", "SIGTERM");
   };
   const onSigint = () => {
-    gatewayLog.info("signal SIGINT received");
+    gatewayLog.info("收到 SIGINT 信号");
     request("stop", "SIGINT");
   };
   const onSigusr1 = () => {
-    gatewayLog.info("signal SIGUSR1 received");
+    gatewayLog.info("收到 SIGUSR1 信号");
     const authorized = consumeGatewaySigusr1RestartAuthorization();
     if (!authorized && !isGatewaySigusr1RestartExternallyAllowed()) {
       gatewayLog.warn(
-        "SIGUSR1 restart ignored (not authorized; enable commands.restart or use gateway tool).",
+        "忽略 SIGUSR1 重启 (未授权；启用 commands.restart 或使用 gateway 工具)。",
       );
       return;
     }

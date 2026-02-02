@@ -9,12 +9,12 @@ import { runCommandWithRuntime } from "./cli-utils.js";
 export function registerDocsCli(program: Command) {
   program
     .command("docs")
-    .description("Search the live OpenClaw docs")
-    .argument("[query...]", "Search query")
+    .description("搜索在线 OpenClaw 文档")
+    .argument("[query...]", "搜索关键词")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "docs.openclaw.ai/cli/docs")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/docs", "docs.openclaw.ai/cli/docs")}\n`,
     )
     .action(async (queryParts: string[]) => {
       await runCommandWithRuntime(defaultRuntime, async () => {

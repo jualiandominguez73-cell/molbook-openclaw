@@ -79,7 +79,7 @@ function zoneFileNeedsBootstrap(zonePath: string): boolean {
 function detectBrewPrefix(): string {
   const out = run("brew", ["--prefix"]);
   const prefix = out.trim();
-  if (!prefix) throw new Error("failed to resolve Homebrew prefix");
+  if (!prefix) throw new Error("无法解析 Homebrew 前缀");
   return prefix;
 }
 
@@ -94,21 +94,21 @@ function ensureImportLine(corefilePath: string, importGlob: string): boolean {
 export function registerDnsCli(program: Command) {
   const dns = program
     .command("dns")
-    .description("DNS helpers for wide-area discovery (Tailscale + CoreDNS)")
+    .description("用于广域发现的 DNS 助手 (Tailscale + CoreDNS)")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "docs.openclaw.ai/cli/dns")}\n`,
+      () => `\n${theme.muted("文档:")} ${formatDocsLink("/cli/dns", "docs.openclaw.ai/cli/dns")}\n`,
     );
 
   dns
     .command("setup")
     .description(
-      "Set up CoreDNS to serve your discovery domain for unicast DNS-SD (Wide-Area Bonjour)",
+      "设置 CoreDNS 以服务于单播 DNS-SD (广域 Bonjour) 的发现域",
     )
-    .option("--domain <domain>", "Wide-area discovery domain (e.g. openclaw.internal)")
+    .option("--domain <domain>", "广域发现域 (例如 openclaw.internal)")
     .option(
       "--apply",
-      "Install/update CoreDNS config and (re)start the service (requires sudo)",
+      "安装/更新 CoreDNS 配置并(重新)启动服务 (需要 sudo)",
       false,
     )
     .action(async (opts) => {
@@ -120,23 +120,23 @@ export function registerDnsCli(program: Command) {
       });
       if (!wideAreaDomain) {
         throw new Error(
-          "No wide-area domain configured. Set discovery.wideArea.domain or pass --domain.",
+          "未配置广域发现域。请设置 discovery.wideArea.domain 或传递 --domain。",
         );
       }
       const zonePath = getWideAreaZonePath(wideAreaDomain);
 
       const tableWidth = Math.max(60, (process.stdout.columns ?? 120) - 1);
-      defaultRuntime.log(theme.heading("DNS setup"));
+      defaultRuntime.log(theme.heading("DNS 设置"));
       defaultRuntime.log(
         renderTable({
           width: tableWidth,
           columns: [
-            { key: "Key", header: "Key", minWidth: 18 },
-            { key: "Value", header: "Value", minWidth: 24, flex: true },
+            { key: "Key", header: "键", minWidth: 18 },
+            { key: "Value", header: "值", minWidth: 24, flex: true },
           ],
           rows: [
-            { Key: "Domain", Value: wideAreaDomain },
-            { Key: "Zone file", Value: zonePath },
+            { Key: "域", Value: wideAreaDomain },
+            { Key: "区域文件", Value: zonePath },
             {
               Key: "Tailnet IP",
               Value: `${tailnetIPv4 ?? "—"}${tailnetIPv6 ? ` (v6 ${tailnetIPv6})` : ""}`,
@@ -145,7 +145,7 @@ export function registerDnsCli(program: Command) {
         }).trimEnd(),
       );
       defaultRuntime.log("");
-      defaultRuntime.log(theme.heading("Recommended ~/.openclaw/openclaw.json:"));
+      defaultRuntime.log(theme.heading("推荐的 ~/.openclaw/openclaw.json:"));
       defaultRuntime.log(
         JSON.stringify(
           {
@@ -157,25 +157,25 @@ export function registerDnsCli(program: Command) {
         ),
       );
       defaultRuntime.log("");
-      defaultRuntime.log(theme.heading("Tailscale admin (DNS → Nameservers):"));
+      defaultRuntime.log(theme.heading("Tailscale 管理 (DNS → Nameservers):"));
       defaultRuntime.log(
-        theme.muted(`- Add nameserver: ${tailnetIPv4 ?? "<this machine's tailnet IPv4>"}`),
+        theme.muted(`- 添加名称服务器: ${tailnetIPv4 ?? "<本机 tailnet IPv4>"}`),
       );
       defaultRuntime.log(
-        theme.muted(`- Restrict to domain (Split DNS): ${wideAreaDomain.replace(/\.$/, "")}`),
+        theme.muted(`- 限制到域 (Split DNS): ${wideAreaDomain.replace(/\.$/, "")}`),
       );
 
       if (!opts.apply) {
         defaultRuntime.log("");
-        defaultRuntime.log(theme.muted("Run with --apply to install CoreDNS and configure it."));
+        defaultRuntime.log(theme.muted("运行 --apply 以安装 CoreDNS 并配置它。"));
         return;
       }
 
       if (process.platform !== "darwin") {
-        throw new Error("dns setup is currently supported on macOS only");
+        throw new Error("dns setup 目前仅支持 macOS");
       }
       if (!tailnetIPv4 && !tailnetIPv6) {
-        throw new Error("no tailnet IP detected; ensure Tailscale is running on this machine");
+        throw new Error("未检测到 Tailnet IP；请确保 Tailscale 正在本机运行");
       }
 
       const prefix = detectBrewPrefix();
@@ -237,7 +237,7 @@ export function registerDnsCli(program: Command) {
       }
 
       defaultRuntime.log("");
-      defaultRuntime.log(theme.heading("Starting CoreDNS (sudo)…"));
+      defaultRuntime.log(theme.heading("正在启动 CoreDNS (sudo)…"));
       run("sudo", ["brew", "services", "restart", "coredns"], {
         inherit: true,
       });
@@ -246,7 +246,7 @@ export function registerDnsCli(program: Command) {
         defaultRuntime.log("");
         defaultRuntime.log(
           theme.muted(
-            "Note: enable discovery.wideArea.enabled in ~/.openclaw/openclaw.json on the gateway and restart the gateway so it writes the DNS-SD zone.",
+            "注意：在网关上的 ~/.openclaw/openclaw.json 中启用 discovery.wideArea.enabled 并重启网关，以便它写入 DNS-SD 区域。",
           ),
         );
       }

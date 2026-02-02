@@ -1,0 +1,9 @@
+[
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"Send messages and channel actions","translate":"发送消息与频道动作"},
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"Examples:","translate":"示例:"},
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"Send a text message.","translate":"发送一条文本消息。"},
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"Send a message with media.","translate":"发送包含媒体的消息。"},
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"Create a Discord poll.","translate":"创建一个 Discord 投票。"},
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"React to a message.","translate":"对消息添加反应。"},
+  {"dir":"src\\cli\\program\\register.message.ts","origin":"Docs:","translate":"文档:"}
+]

@@ -1,0 +1,29 @@
+[
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Health checks + quick fixes for the gateway and channels","translate":"网关与频道的健康检查与快速修复"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Docs:","translate":"文档:"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Disable workspace memory system suggestions","translate":"禁用工作区记忆系统建议"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Accept defaults without prompting","translate":"不提示，直接接受默认值"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Apply recommended repairs without prompting","translate":"不提示，直接应用推荐修复"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Apply recommended repairs (alias for --repair)","translate":"应用推荐修复（--repair 的别名）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Apply aggressive repairs (overwrites custom service config)","translate":"应用激进修复（会覆盖自定义服务配置）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Run without prompts (safe migrations only)","translate":"无交互运行（仅安全迁移）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Generate and configure a gateway token","translate":"生成并配置网关令牌"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Scan system services for extra gateway installs","translate":"扫描系统服务中额外的网关安装"},
+
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Open the Control UI with your current token","translate":"使用当前令牌打开控制台 UI"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Print URL but do not launch a browser","translate":"仅打印 URL，不启动浏览器"},
+
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Reset local config/state (keeps the CLI installed)","translate":"重置本地配置/状态（保留 CLI 安装）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"config|config+creds+sessions|full (default: interactive prompt)","translate":"config|config+creds+sessions|full（默认：交互式提示）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Skip confirmation prompts","translate":"跳过确认提示"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Disable prompts (requires --scope + --yes)","translate":"禁用提示（需要 --scope + --yes）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Print actions without removing files","translate":"仅打印动作，不删除文件"},
+
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Uninstall the gateway service + local data (CLI remains)","translate":"卸载网关服务与本地数据（保留 CLI）"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Remove the gateway service","translate":"移除网关服务"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Remove state + config","translate":"移除状态与配置"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Remove workspace dirs","translate":"移除工作区目录"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Remove the macOS app","translate":"移除 macOS App"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Remove service + state + workspace + app","translate":"移除服务 + 状态 + 工作区 + App"},
+  {"dir":"src\\cli\\program\\register.maintenance.ts","origin":"Disable prompts (requires --yes)","translate":"禁用提示（需要 --yes）"}
+]

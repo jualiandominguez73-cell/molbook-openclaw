@@ -1,0 +1,18 @@
+[
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Unexpected logs.tail response", "translate": "意外的 logs.tail 响应"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "openclaw logs: output ${target} closed (${code}). Stopping tail.", "translate": "openclaw logs: 输出 ${target} 已关闭 (${code})。停止 tail。"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Gateway not reachable. Is it running and accessible?", "translate": "网关无法连接。是否已运行并可访问？"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Hint: run `${formatCliCommand(\"openclaw doctor\")}`.", "translate": "提示：运行 `${formatCliCommand(\"openclaw doctor\")}`。"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Tail gateway file logs via RPC", "translate": "通过 RPC 查看网关文件日志"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Max lines to return", "translate": "最大返回行数"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Max bytes to read", "translate": "最大读取字节数"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Follow log output", "translate": "跟随日志输出"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Polling interval in ms", "translate": "轮询间隔（毫秒）"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Emit JSON log lines", "translate": "输出 JSON 日志行"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Plain text output (no ANSI styling)", "translate": "纯文本输出（无 ANSI 样式）"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Disable ANSI colors", "translate": "禁用 ANSI 颜色"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Docs:", "translate": "文档:"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Log tail truncated (increase --max-bytes).", "translate": "日志 tail 已截断（增加 --max-bytes）。"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Log cursor reset (file rotated).", "translate": "日志游标已重置（文件已轮转）。"},
+  {"dir": "src\\cli\\logs-cli.ts", "origin": "Log file:", "translate": "日志文件:"}
+]

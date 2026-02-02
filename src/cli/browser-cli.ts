@@ -20,16 +20,16 @@ import { addGatewayClientOptions } from "./gateway-rpc.js";
 export function registerBrowserCli(program: Command) {
   const browser = program
     .command("browser")
-    .description("Manage OpenClaw's dedicated browser (Chrome/Chromium)")
-    .option("--browser-profile <name>", "Browser profile name (default from config)")
-    .option("--json", "Output machine-readable JSON", false)
+    .description("管理 OpenClaw 专用浏览器（Chrome/Chromium）")
+    .option("--browser-profile <name>", "浏览器配置名称（默认取自配置）")
+    .option("--json", "输出机器可读的 JSON", false)
     .addHelpText(
       "after",
       () =>
-        `\n${theme.heading("Examples:")}\n${formatHelpExamples(
+        `\n${theme.heading("示例:")}\n${formatHelpExamples(
           [...browserCoreExamples, ...browserActionExamples].map((cmd) => [cmd, ""]),
           true,
-        )}\n\n${theme.muted("Docs:")} ${formatDocsLink(
+        )}\n\n${theme.muted("文档:")} ${formatDocsLink(
           "/cli/browser",
           "docs.openclaw.ai/cli/browser",
         )}\n`,
@@ -37,7 +37,7 @@ export function registerBrowserCli(program: Command) {
     .action(() => {
       browser.outputHelp();
       defaultRuntime.error(
-        danger(`Missing subcommand. Try: "${formatCliCommand("openclaw browser status")}"`),
+        danger(`缺少子命令。试试："${formatCliCommand("openclaw browser status")}"`),
       );
       defaultRuntime.exit(1);
     });

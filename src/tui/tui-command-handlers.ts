@@ -68,7 +68,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
     try {
       const models = await client.listModels();
       if (models.length === 0) {
-        chatLog.addSystem("no models available");
+        chatLog.addSystem("无可用模型");
         tui.requestRender();
         return;
       }
@@ -85,10 +85,10 @@ export function createCommandHandlers(context: CommandHandlerContext) {
               key: state.currentSessionKey,
               model: item.value,
             });
-            chatLog.addSystem(`model set to ${item.value}`);
+            chatLog.addSystem(`模型已设置为 ${item.value}`);
             await refreshSessionInfo();
           } catch (err) {
-            chatLog.addSystem(`model set failed: ${String(err)}`);
+            chatLog.addSystem(`模型设置失败: ${String(err)}`);
           }
           closeOverlay();
           tui.requestRender();
@@ -101,7 +101,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
       openOverlay(selector);
       tui.requestRender();
     } catch (err) {
-      chatLog.addSystem(`model list failed: ${String(err)}`);
+      chatLog.addSystem(`模型列表获取失败: ${String(err)}`);
       tui.requestRender();
     }
   };
@@ -109,14 +109,14 @@ export function createCommandHandlers(context: CommandHandlerContext) {
   const openAgentSelector = async () => {
     await refreshAgents();
     if (state.agents.length === 0) {
-      chatLog.addSystem("no agents found");
+      chatLog.addSystem("未找到智能体");
       tui.requestRender();
       return;
     }
     const items = state.agents.map((agent: AgentSummary) => ({
       value: agent.id,
       label: agent.name ? `${agent.id} (${agent.name})` : agent.id,
-      description: agent.id === state.agentDefaultId ? "default" : "",
+      description: agent.id === state.agentDefaultId ? "默认" : "",
     }));
     const selector = createSearchableSelectList(items, 9);
     selector.onSelect = (item) => {
@@ -301,7 +301,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
             state.sessionInfo.model,
             "|",
           );
-          chatLog.addSystem(`usage: /think <${levels}>`);
+          chatLog.addSystem(`用法: /think <${levels}>`);
           break;
         }
         try {
@@ -317,7 +317,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
         break;
       case "verbose":
         if (!args) {
-          chatLog.addSystem("usage: /verbose <on|off>");
+          chatLog.addSystem("用法: /verbose <on|off>");
           break;
         }
         try {
@@ -333,7 +333,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
         break;
       case "reasoning":
         if (!args) {
-          chatLog.addSystem("usage: /reasoning <on|off>");
+          chatLog.addSystem("用法: /reasoning <on|off>");
           break;
         }
         try {
@@ -350,7 +350,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
       case "usage": {
         const normalized = args ? normalizeUsageDisplay(args) : undefined;
         if (args && !normalized) {
-          chatLog.addSystem("usage: /usage <off|tokens|full>");
+          chatLog.addSystem("用法: /usage <off|tokens|full>");
           break;
         }
         const currentRaw = state.sessionInfo.responseUsage;
@@ -371,11 +371,11 @@ export function createCommandHandlers(context: CommandHandlerContext) {
       }
       case "elevated":
         if (!args) {
-          chatLog.addSystem("usage: /elevated <on|off|ask|full>");
+          chatLog.addSystem("用法: /elevated <on|off|ask|full>");
           break;
         }
         if (!["on", "off", "ask", "full"].includes(args)) {
-          chatLog.addSystem("usage: /elevated <on|off|ask|full>");
+          chatLog.addSystem("用法: /elevated <on|off|ask|full>");
           break;
         }
         try {
@@ -391,7 +391,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
         break;
       case "activation":
         if (!args) {
-          chatLog.addSystem("usage: /activation <mention|always>");
+          chatLog.addSystem("用法: /activation <mention|always>");
           break;
         }
         try {
@@ -415,14 +415,27 @@ export function createCommandHandlers(context: CommandHandlerContext) {
           tui.requestRender();
 
           await client.resetSession(state.currentSessionKey);
-          chatLog.addSystem(`session ${state.currentSessionKey} reset`);
+          chatLog.addSystem(`会话 ${state.currentSessionKey} 已重置`);
           await loadHistory();
         } catch (err) {
-          chatLog.addSystem(`reset failed: ${String(err)}`);
+          chatLog.addSystem(`重置失败: ${String(err)}`);
         }
         break;
       case "abort":
-        await abortActive();
+        if (!state.activeChatRunId) {
+          chatLog.addSystem("无活跃运行");
+          break;
+        }
+        try {
+          await client.abortChat({
+            sessionKey: state.currentSessionKey,
+            runId: state.activeChatRunId,
+          });
+          setActivityStatus("已中止");
+        } catch (err) {
+          chatLog.addSystem(`中止失败: ${String(err)}`);
+          setActivityStatus("中止失败");
+        }
         break;
       case "settings":
         openSettings();

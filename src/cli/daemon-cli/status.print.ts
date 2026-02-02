@@ -64,64 +64,64 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   const serviceStatus = service.loaded
     ? okText(service.loadedText)
     : warnText(service.notLoadedText);
-  defaultRuntime.log(`${label("Service:")} ${accent(service.label)} (${serviceStatus})`);
+  defaultRuntime.log(`${label("服务:")} ${accent(service.label)} (${serviceStatus})`);
   try {
     const logFile = getResolvedLoggerSettings().file;
-    defaultRuntime.log(`${label("File logs:")} ${infoText(shortenHomePath(logFile))}`);
+    defaultRuntime.log(`${label("日志文件:")} ${infoText(shortenHomePath(logFile))}`);
   } catch {
     // ignore missing config/log resolution
   }
   if (service.command?.programArguments?.length) {
     defaultRuntime.log(
-      `${label("Command:")} ${infoText(service.command.programArguments.join(" "))}`,
+      `${label("命令:")} ${infoText(service.command.programArguments.join(" "))}`,
     );
   }
   if (service.command?.sourcePath) {
     defaultRuntime.log(
-      `${label("Service file:")} ${infoText(shortenHomePath(service.command.sourcePath))}`,
+      `${label("服务文件:")} ${infoText(shortenHomePath(service.command.sourcePath))}`,
     );
   }
   if (service.command?.workingDirectory) {
     defaultRuntime.log(
-      `${label("Working dir:")} ${infoText(shortenHomePath(service.command.workingDirectory))}`,
+      `${label("工作目录:")} ${infoText(shortenHomePath(service.command.workingDirectory))}`,
     );
   }
   const daemonEnvLines = safeDaemonEnv(service.command?.environment);
   if (daemonEnvLines.length > 0) {
-    defaultRuntime.log(`${label("Service env:")} ${daemonEnvLines.join(" ")}`);
+    defaultRuntime.log(`${label("服务环境:")} ${daemonEnvLines.join(" ")}`);
   }
   spacer();
 
   if (service.configAudit?.issues.length) {
-    defaultRuntime.error(warnText("Service config looks out of date or non-standard."));
+    defaultRuntime.error(warnText("服务配置似乎已过期或不标准。"));
     for (const issue of service.configAudit.issues) {
       const detail = issue.detail ? ` (${issue.detail})` : "";
-      defaultRuntime.error(`${warnText("Service config issue:")} ${issue.message}${detail}`);
+      defaultRuntime.error(`${warnText("服务配置问题:")} ${issue.message}${detail}`);
     }
     defaultRuntime.error(
       warnText(
-        `Recommendation: run "${formatCliCommand("openclaw doctor")}" (or "${formatCliCommand("openclaw doctor --repair")}").`,
+        `建议: 运行 "${formatCliCommand("openclaw doctor")}" (或 "${formatCliCommand("openclaw doctor --repair")}").`,
       ),
     );
   }
 
   if (status.config) {
-    const cliCfg = `${shortenHomePath(status.config.cli.path)}${status.config.cli.exists ? "" : " (missing)"}${status.config.cli.valid ? "" : " (invalid)"}`;
-    defaultRuntime.log(`${label("Config (cli):")} ${infoText(cliCfg)}`);
+    const cliCfg = `${shortenHomePath(status.config.cli.path)}${status.config.cli.exists ? "" : " (缺失)"}${status.config.cli.valid ? "" : " (无效)"}`;
+    defaultRuntime.log(`${label("配置 (cli):")} ${infoText(cliCfg)}`);
     if (!status.config.cli.valid && status.config.cli.issues?.length) {
       for (const issue of status.config.cli.issues.slice(0, 5)) {
         defaultRuntime.error(
-          `${errorText("Config issue:")} ${issue.path || "<root>"}: ${issue.message}`,
+          `${errorText("配置问题:")} ${issue.path || "<root>"}: ${issue.message}`,
         );
       }
     }
     if (status.config.daemon) {
-      const daemonCfg = `${shortenHomePath(status.config.daemon.path)}${status.config.daemon.exists ? "" : " (missing)"}${status.config.daemon.valid ? "" : " (invalid)"}`;
-      defaultRuntime.log(`${label("Config (service):")} ${infoText(daemonCfg)}`);
+      const daemonCfg = `${shortenHomePath(status.config.daemon.path)}${status.config.daemon.exists ? "" : " (缺失)"}${status.config.daemon.valid ? "" : " (无效)"}`;
+      defaultRuntime.log(`${label("配置 (service):")} ${infoText(daemonCfg)}`);
       if (!status.config.daemon.valid && status.config.daemon.issues?.length) {
         for (const issue of status.config.daemon.issues.slice(0, 5)) {
           defaultRuntime.error(
-            `${errorText("Service config issue:")} ${issue.path || "<root>"}: ${issue.message}`,
+            `${errorText("服务配置问题:")} ${issue.path || "<root>"}: ${issue.message}`,
           );
         }
       }
@@ -129,12 +129,12 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     if (status.config.mismatch) {
       defaultRuntime.error(
         errorText(
-          "Root cause: CLI and service are using different config paths (likely a profile/state-dir mismatch).",
+          "根本原因: CLI 和服务使用不同的配置路径 (可能是 profile/state-dir 不匹配)。",
         ),
       );
       defaultRuntime.error(
         errorText(
-          `Fix: rerun \`${formatCliCommand("openclaw gateway install --force")}\` from the same --profile / OPENCLAW_STATE_DIR you expect.`,
+          `修复: 从您期望的同一 --profile / OPENCLAW_STATE_DIR 重新运行 \`${formatCliCommand("openclaw gateway install --force")}\`。`,
         ),
       );
     }
@@ -144,12 +144,12 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   if (status.gateway) {
     const bindHost = status.gateway.bindHost ?? "n/a";
     defaultRuntime.log(
-      `${label("Gateway:")} bind=${infoText(status.gateway.bindMode)} (${infoText(bindHost)}), port=${infoText(String(status.gateway.port))} (${infoText(status.gateway.portSource)})`,
+      `${label("网关:")} bind=${infoText(status.gateway.bindMode)} (${infoText(bindHost)}), port=${infoText(String(status.gateway.port))} (${infoText(status.gateway.portSource)})`,
     );
-    defaultRuntime.log(`${label("Probe target:")} ${infoText(status.gateway.probeUrl)}`);
+    defaultRuntime.log(`${label("探测目标:")} ${infoText(status.gateway.probeUrl)}`);
     const controlUiEnabled = status.config?.daemon?.controlUi?.enabled ?? true;
     if (!controlUiEnabled) {
-      defaultRuntime.log(`${label("Dashboard:")} ${warnText("disabled")}`);
+      defaultRuntime.log(`${label("仪表板:")} ${warnText("已禁用")}`);
     } else {
       const links = resolveControlUiLinks({
         port: status.gateway.port,
@@ -157,10 +157,10 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
         customBindHost: status.gateway.customBindHost,
         basePath: status.config?.daemon?.controlUi?.basePath,
       });
-      defaultRuntime.log(`${label("Dashboard:")} ${infoText(links.httpUrl)}`);
+      defaultRuntime.log(`${label("仪表板:")} ${infoText(links.httpUrl)}`);
     }
     if (status.gateway.probeNote) {
-      defaultRuntime.log(`${label("Probe note:")} ${infoText(status.gateway.probeNote)}`);
+      defaultRuntime.log(`${label("探测备注:")} ${infoText(status.gateway.probeNote)}`);
     }
     spacer();
   }
@@ -176,20 +176,20 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
           : runtimeStatus === "unknown"
             ? theme.muted
             : theme.warn;
-    defaultRuntime.log(`${label("Runtime:")} ${colorize(rich, runtimeColor, runtimeLine)}`);
+    defaultRuntime.log(`${label("运行时:")} ${colorize(rich, runtimeColor, runtimeLine)}`);
   }
 
   if (rpc && !rpc.ok && service.loaded && service.runtime?.status === "running") {
     defaultRuntime.log(
-      warnText("Warm-up: launch agents can take a few seconds. Try again shortly."),
+      warnText("预热: 启动代理可能需要几秒钟。请稍后重试。"),
     );
   }
   if (rpc) {
     if (rpc.ok) {
-      defaultRuntime.log(`${label("RPC probe:")} ${okText("ok")}`);
+      defaultRuntime.log(`${label("RPC 探测:")} ${okText("正常")}`);
     } else {
-      defaultRuntime.error(`${label("RPC probe:")} ${errorText("failed")}`);
-      if (rpc.url) defaultRuntime.error(`${label("RPC target:")} ${rpc.url}`);
+      defaultRuntime.error(`${label("RPC 探测:")} ${errorText("失败")}`);
+      if (rpc.url) defaultRuntime.error(`${label("RPC 目标:")} ${rpc.url}`);
       const lines = String(rpc.error ?? "unknown")
         .split(/\r?\n/)
         .filter(Boolean);

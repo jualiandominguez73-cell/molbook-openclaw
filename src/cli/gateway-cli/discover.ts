@@ -15,12 +15,12 @@ export function parseDiscoverTimeoutMs(raw: unknown, fallbackMs: number): number
         ? String(raw)
         : null;
   if (value === null) {
-    throw new Error("invalid --timeout");
+    throw new Error("无效的 --timeout");
   }
   if (!value) return fallbackMs;
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`invalid --timeout: ${value}`);
+    throw new Error(`无效的 --timeout: ${value}`);
   }
   return parsed;
 }
@@ -70,33 +70,33 @@ export function renderBeaconLines(beacon: GatewayBonjourBeacon, rich: boolean): 
   const lines = [`- ${title} ${domain}`];
 
   if (beacon.tailnetDns) {
-    lines.push(`  ${colorize(rich, theme.info, "tailnet")}: ${beacon.tailnetDns}`);
+    lines.push(`  ${colorize(rich, theme.info, "Tailnet")}: ${beacon.tailnetDns}`);
   }
   if (beacon.lanHost) {
-    lines.push(`  ${colorize(rich, theme.info, "lan")}: ${beacon.lanHost}`);
+    lines.push(`  ${colorize(rich, theme.info, "局域网")}: ${beacon.lanHost}`);
   }
   if (beacon.host) {
-    lines.push(`  ${colorize(rich, theme.info, "host")}: ${beacon.host}`);
+    lines.push(`  ${colorize(rich, theme.info, "主机")}: ${beacon.host}`);
   }
 
   if (wsUrl) {
-    lines.push(`  ${colorize(rich, theme.muted, "ws")}: ${colorize(rich, theme.command, wsUrl)}`);
+    lines.push(`  ${colorize(rich, theme.muted, "WS")}: ${colorize(rich, theme.command, wsUrl)}`);
   }
   if (beacon.role) {
-    lines.push(`  ${colorize(rich, theme.muted, "role")}: ${beacon.role}`);
+    lines.push(`  ${colorize(rich, theme.muted, "角色")}: ${beacon.role}`);
   }
   if (beacon.transport) {
-    lines.push(`  ${colorize(rich, theme.muted, "transport")}: ${beacon.transport}`);
+    lines.push(`  ${colorize(rich, theme.muted, "传输")}: ${beacon.transport}`);
   }
   if (beacon.gatewayTls) {
     const fingerprint = beacon.gatewayTlsFingerprintSha256
       ? `sha256 ${beacon.gatewayTlsFingerprintSha256}`
-      : "enabled";
-    lines.push(`  ${colorize(rich, theme.muted, "tls")}: ${fingerprint}`);
+      : "已启用";
+    lines.push(`  ${colorize(rich, theme.muted, "TLS")}: ${fingerprint}`);
   }
   if (typeof beacon.sshPort === "number" && beacon.sshPort > 0 && host) {
     const ssh = `ssh -N -L 18789:127.0.0.1:18789 <user>@${host} -p ${beacon.sshPort}`;
-    lines.push(`  ${colorize(rich, theme.muted, "ssh")}: ${colorize(rich, theme.command, ssh)}`);
+    lines.push(`  ${colorize(rich, theme.muted, "SSH")}: ${colorize(rich, theme.command, ssh)}`);
   }
   return lines;
 }

@@ -1,0 +1,4 @@
+[
+  {"dir": "src/cli/cron-cli/register.ts", "origin": "Manage cron jobs (via Gateway)", "translate": "管理定时任务 (通过网关)"},
+  {"dir": "src/cli/cron-cli/register.ts", "origin": "Docs:", "translate": "文档:"}
+]

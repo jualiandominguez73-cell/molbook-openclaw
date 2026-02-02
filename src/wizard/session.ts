@@ -60,7 +60,7 @@ class WizardSessionPrompter implements WizardPrompter {
   async outro(message: string): Promise<void> {
     await this.prompt({
       type: "note",
-      title: "Done",
+      title: "完成",
       message,
       executor: "client",
     });
@@ -193,7 +193,7 @@ export class WizardSession {
   async answer(stepId: string, value: unknown): Promise<void> {
     const deferred = this.answerDeferred.get(stepId);
     if (!deferred) {
-      throw new Error("wizard: no pending step");
+      throw new Error("wizard: 没有待处理的步骤");
     }
     this.answerDeferred.delete(stepId);
     this.currentStep = null;
@@ -236,7 +236,7 @@ export class WizardSession {
 
   async awaitAnswer(step: WizardStep): Promise<unknown> {
     if (this.status !== "running") {
-      throw new Error("wizard: session not running");
+      throw new Error("wizard: 会话未运行");
     }
     this.pushStep(step);
     const deferred = createDeferred<unknown>();

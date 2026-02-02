@@ -56,23 +56,23 @@ async function ensureDevWorkspace(dir: string) {
   const [agents, soul, tools, identity, user] = await Promise.all([
     loadDevTemplate(
       "AGENTS.dev.md",
-      `# AGENTS.md - OpenClaw Dev Workspace\n\nDefault dev workspace for openclaw gateway --dev.\n`,
+      `# AGENTS.md - OpenClaw 开发工作区\n\nopenclaw gateway --dev 的默认开发工作区。\n`,
     ),
     loadDevTemplate(
       "SOUL.dev.md",
-      `# SOUL.md - Dev Persona\n\nProtocol droid for debugging and operations.\n`,
+      `# SOUL.md - 开发角色\n\n用于调试和操作的协议机器人。\n`,
     ),
     loadDevTemplate(
       "TOOLS.dev.md",
-      `# TOOLS.md - User Tool Notes (editable)\n\nAdd your local tool notes here.\n`,
+      `# TOOLS.md - 用户工具说明 (可编辑)\n\n在此处添加您的本地工具说明。\n`,
     ),
     loadDevTemplate(
       "IDENTITY.dev.md",
-      `# IDENTITY.md - Agent Identity\n\n- Name: ${DEV_IDENTITY_NAME}\n- Creature: protocol droid\n- Vibe: ${DEV_IDENTITY_THEME}\n- Emoji: ${DEV_IDENTITY_EMOJI}\n`,
+      `# IDENTITY.md - 代理身份\n\n- Name: ${DEV_IDENTITY_NAME}\n- Creature: protocol droid\n- Vibe: ${DEV_IDENTITY_THEME}\n- Emoji: ${DEV_IDENTITY_EMOJI}\n`,
     ),
     loadDevTemplate(
       "USER.dev.md",
-      `# USER.md - User Profile\n\n- Name:\n- Preferred address:\n- Notes:\n`,
+      `# USER.md - 用户资料\n\n- Name:\n- Preferred address:\n- Notes:\n`,
     ),
   ]);
 
@@ -119,6 +119,6 @@ export async function ensureDevGatewayConfig(opts: { reset?: boolean }) {
     },
   });
   await ensureDevWorkspace(workspace);
-  defaultRuntime.log(`Dev config ready: ${shortenHomePath(configPath)}`);
-  defaultRuntime.log(`Dev workspace ready: ${shortenHomePath(resolveUserPath(workspace))}`);
+  defaultRuntime.log(`开发配置就绪: ${shortenHomePath(configPath)}`);
+  defaultRuntime.log(`开发工作区就绪: ${shortenHomePath(resolveUserPath(workspace))}`);
 }

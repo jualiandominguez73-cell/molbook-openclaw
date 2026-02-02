@@ -1,6 +1,8 @@
 import type { GatewayAuthChoice } from "../commands/onboard-types.js";
+import { z } from "zod";
 
-export type WizardFlow = "quickstart" | "advanced";
+export const WizardFlowSchema = z.enum(["quickstart", "advanced"]);
+export type WizardFlow = z.infer<typeof WizardFlowSchema>;
 
 export type QuickstartGatewayDefaults = {
   hasExisting: boolean;

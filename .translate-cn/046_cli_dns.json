@@ -1,0 +1,14 @@
+[
+  {"dir":"src/cli/dns-cli.ts","origin":"DNS helpers for wide-area discovery (Tailscale + CoreDNS)","translate":"用于广域发现的 DNS 助手 (Tailscale + CoreDNS)"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Setup CoreDNS to serve the discovery domain for unicast DNS-SD (Wide-Area Bonjour)","translate":"设置 CoreDNS 以服务于单播 DNS-SD (广域 Bonjour) 的发现域"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Wide-area discovery domain (e.g. openclaw.internal)","translate":"广域发现域 (例如 openclaw.internal)"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Install/update CoreDNS config and (re)start the service (requires sudo)","translate":"安装/更新 CoreDNS 配置并(重新)启动服务 (需要 sudo)"},
+  {"dir":"src/cli/dns-cli.ts","origin":"DNS Setup","translate":"DNS 设置"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Recommended ~/.openclaw/openclaw.json:","translate":"推荐的 ~/.openclaw/openclaw.json:"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Tailscale admin (DNS → Nameservers):","translate":"Tailscale 管理 (DNS → Nameservers):"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Starting CoreDNS (sudo)...","translate":"正在启动 CoreDNS (sudo)…"},
+  {"dir":"src/cli/dns-cli.ts","origin":"No wide-area domain configured. Set discovery.wideArea.domain or pass --domain.","translate":"未配置广域发现域。请设置 discovery.wideArea.domain 或传递 --domain。"},
+  {"dir":"src/cli/dns-cli.ts","origin":"Run with --apply to install CoreDNS and configure it.","translate":"运行 --apply 以安装 CoreDNS 并配置它。"},
+  {"dir":"src/cli/dns-cli.ts","origin":"dns setup is currently supported on macOS only","translate":"dns setup 目前仅支持 macOS"},
+  {"dir":"src/cli/dns-cli.ts","origin":"no tailnet IP detected; ensure Tailscale is running on this machine","translate":"未检测到 Tailnet IP；请确保 Tailscale 正在本机运行"}
+]

@@ -20,11 +20,11 @@ export function createMessageCliHelpers(
 ): MessageCliHelpers {
   const withMessageBase = (command: Command) =>
     command
-      .option("--channel <channel>", `Channel: ${messageChannelOptions}`)
-      .option("--account <id>", "Channel account id (accountId)")
-      .option("--json", "Output result as JSON", false)
-      .option("--dry-run", "Print payload and skip sending", false)
-      .option("--verbose", "Verbose logging", false);
+      .option("--channel <channel>", `频道: ${messageChannelOptions}`)
+      .option("--account <id>", "频道账户 ID (accountId)")
+      .option("--json", "以 JSON 格式输出结果", false)
+      .option("--dry-run", "打印载荷并跳过发送", false)
+      .option("--verbose", "详细日志", false);
 
   const withMessageTarget = (command: Command) =>
     command.option("-t, --target <dest>", CHANNEL_TARGET_DESCRIPTION);

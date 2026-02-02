@@ -1,0 +1,9 @@
+[
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Tip: ${formatCliCommand(\"openclaw gateway stop\")}", "translate": "提示: ${formatCliCommand(\"openclaw gateway stop\")}"},
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Or: launchctl bootout gui/$UID/${resolveGatewayLaunchAgentLabel(profile)}", "translate": "或: launchctl bootout gui/$UID/${resolveGatewayLaunchAgentLabel(profile)}"},
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Or: systemctl --user stop ${resolveGatewaySystemdServiceName(profile)}.service", "translate": "或: systemctl --user stop ${resolveGatewaySystemdServiceName(profile)}.service"},
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Or: schtasks /End /TN \"${resolveGatewayWindowsTaskName(profile)}\"", "translate": "或: schtasks /End /TN \"${resolveGatewayWindowsTaskName(profile)}\""},
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Gateway service appears ${service.loadedText}. Stop it first.", "translate": "网关服务似乎${service.loadedText}。请先停止它。"},
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Gateway service status unknown; if supervised, stop it first.", "translate": "网关服务状态未知；如果受监控，请先停止它。"},
+  {"dir": "src/cli/gateway-cli/shared.ts", "origin": "Unknown error", "translate": "未知错误"}
+]

@@ -22,7 +22,7 @@ export async function loadNodes(
     };
     state.nodes = Array.isArray(res.nodes) ? res.nodes : [];
   } catch (err) {
-    if (!opts?.quiet) state.lastError = String(err);
+    if (!opts?.quiet) state.lastError = "加载节点列表失败：" + String(err);
   } finally {
     state.nodesLoading = false;
   }

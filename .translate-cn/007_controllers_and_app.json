@@ -1,0 +1,37 @@
+[
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\controllers\\chat.ts",
+    "origin": "Error: ",
+    "translate": "错误："
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\controllers\\chat.ts",
+    "origin": "Chat error",
+    "translate": "聊天错误"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\app.ts",
+    "origin": "Execution approval failed: ",
+    "translate": "执行审批失败："
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\controllers\\config.ts",
+    "origin": "Configuration loaded",
+    "translate": "配置已加载"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\controllers\\sessions.ts",
+    "origin": "Sessions loaded",
+    "translate": "会话已加载"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\controllers\\channels.ts",
+    "origin": "Channels loaded",
+    "translate": "通道已加载"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\app-render.helpers.ts",
+    "origin": "Refresh chat data",
+    "translate": "刷新聊天数据"
+  }
+]

@@ -18,8 +18,8 @@ export function registerCronStatusCommand(cron: Command) {
   addGatewayClientOptions(
     cron
       .command("status")
-      .description("Show cron scheduler status")
-      .option("--json", "Output JSON", false)
+      .description("显示定时任务调度器状态")
+      .option("--json", "输出 JSON", false)
       .action(async (opts) => {
         try {
           const res = await callGatewayFromCli("cron.status", opts, {});
@@ -36,9 +36,9 @@ export function registerCronListCommand(cron: Command) {
   addGatewayClientOptions(
     cron
       .command("list")
-      .description("List cron jobs")
-      .option("--all", "Include disabled jobs", false)
-      .option("--json", "Output JSON", false)
+      .description("列出定时任务")
+      .option("--all", "包含禁用的任务", false)
+      .option("--json", "输出 JSON", false)
       .action(async (opts) => {
         try {
           const res = await callGatewayFromCli("cron.list", opts, {
@@ -63,42 +63,42 @@ export function registerCronAddCommand(cron: Command) {
     cron
       .command("add")
       .alias("create")
-      .description("Add a cron job")
-      .requiredOption("--name <name>", "Job name")
-      .option("--description <text>", "Optional description")
-      .option("--disabled", "Create job disabled", false)
-      .option("--delete-after-run", "Delete one-shot job after it succeeds", false)
-      .option("--agent <id>", "Agent id for this job")
-      .option("--session <target>", "Session target (main|isolated)", "main")
-      .option("--wake <mode>", "Wake mode (now|next-heartbeat)", "next-heartbeat")
-      .option("--at <when>", "Run once at time (ISO) or +duration (e.g. 20m)")
-      .option("--every <duration>", "Run every duration (e.g. 10m, 1h)")
-      .option("--cron <expr>", "Cron expression (5-field)")
-      .option("--tz <iana>", "Timezone for cron expressions (IANA)", "")
-      .option("--system-event <text>", "System event payload (main session)")
-      .option("--message <text>", "Agent message payload")
-      .option("--thinking <level>", "Thinking level for agent jobs (off|minimal|low|medium|high)")
-      .option("--model <model>", "Model override for agent jobs (provider/model or alias)")
-      .option("--timeout-seconds <n>", "Timeout seconds for agent jobs")
+      .description("添加定时任务")
+      .requiredOption("--name <name>", "任务名称")
+      .option("--description <text>", "可选描述")
+      .option("--disabled", "创建禁用状态的任务", false)
+      .option("--delete-after-run", "一次性任务成功后删除", false)
+      .option("--agent <id>", "此任务的代理 ID")
+      .option("--session <target>", "会话目标 (main|isolated)", "main")
+      .option("--wake <mode>", "唤醒模式 (now|next-heartbeat)", "next-heartbeat")
+      .option("--at <when>", "在指定时间 (ISO) 或时长后运行一次 (如 20m)")
+      .option("--every <duration>", "每隔指定时长运行 (如 10m, 1h)")
+      .option("--cron <expr>", "Cron 表达式 (5 字段)")
+      .option("--tz <iana>", "Cron 表达式的时区 (IANA)", "")
+      .option("--system-event <text>", "系统事件载荷 (主会话)")
+      .option("--message <text>", "代理消息载荷")
+      .option("--thinking <level>", "代理任务的思考等级 (off|minimal|low|medium|high)")
+      .option("--model <model>", "代理任务的模型覆盖 (提供商/模型 或 别名)")
+      .option("--timeout-seconds <n>", "代理任务的超时秒数")
       .option(
         "--deliver",
-        "Deliver agent output (required when using last-route delivery without --to)",
+        "投递代理输出 (使用 last-route 投递且无 --to 时必需)",
         false,
       )
-      .option("--channel <channel>", `Delivery channel (${getCronChannelOptions()})`, "last")
+      .option("--channel <channel>", `投递频道 (${getCronChannelOptions()})`, "last")
       .option(
         "--to <dest>",
-        "Delivery destination (E.164, Telegram chatId, or Discord channel/user)",
+        "投递目的地 (E.164, Telegram chatId, 或 Discord 频道/用户)",
       )
-      .option("--best-effort-deliver", "Do not fail the job if delivery fails", false)
-      .option("--post-prefix <prefix>", "Prefix for main-session post", "Cron")
+      .option("--best-effort-deliver", "如果投递失败不要标记任务失败", false)
+      .option("--post-prefix <prefix>", "摘要系统事件的前缀", "Cron")
       .option(
         "--post-mode <mode>",
-        "What to post back to main for isolated jobs (summary|full)",
+        "独立任务向主会话发送的内容 (summary|full)",
         "summary",
       )
-      .option("--post-max-chars <n>", "Max chars when --post-mode=full (default 8000)", "8000")
-      .option("--json", "Output JSON", false)
+      .option("--post-max-chars <n>", "post-mode=full 时的最大字符数 (默认 8000)", "8000")
+      .option("--json", "输出 JSON", false)
       .action(async (opts: GatewayRpcOpts & Record<string, unknown>) => {
         try {
           const schedule = (() => {
@@ -107,16 +107,16 @@ export function registerCronAddCommand(cron: Command) {
             const cronExpr = typeof opts.cron === "string" ? opts.cron : "";
             const chosen = [Boolean(at), Boolean(every), Boolean(cronExpr)].filter(Boolean).length;
             if (chosen !== 1) {
-              throw new Error("Choose exactly one schedule: --at, --every, or --cron");
+              throw new Error("请选择且仅选择一种调度方式: --at, --every, 或 --cron");
             }
             if (at) {
               const atMs = parseAtMs(at);
-              if (!atMs) throw new Error("Invalid --at; use ISO time or duration like 20m");
+              if (!atMs) throw new Error("无效的 --at; 请使用 ISO 时间或时长如 20m");
               return { kind: "at" as const, atMs };
             }
             if (every) {
               const everyMs = parseDurationMs(every);
-              if (!everyMs) throw new Error("Invalid --every; use e.g. 10m, 1h, 1d");
+              if (!everyMs) throw new Error("无效的 --every; 请使用如 10m, 1h, 1d");
               return { kind: "every" as const, everyMs };
             }
             return {
@@ -129,13 +129,13 @@ export function registerCronAddCommand(cron: Command) {
           const sessionTargetRaw = typeof opts.session === "string" ? opts.session : "main";
           const sessionTarget = sessionTargetRaw.trim() || "main";
           if (sessionTarget !== "main" && sessionTarget !== "isolated") {
-            throw new Error("--session must be main or isolated");
+            throw new Error("--session 必须是 main 或 isolated");
           }
 
           const wakeModeRaw = typeof opts.wake === "string" ? opts.wake : "next-heartbeat";
           const wakeMode = wakeModeRaw.trim() || "next-heartbeat";
           if (wakeMode !== "now" && wakeMode !== "next-heartbeat") {
-            throw new Error("--wake must be now or next-heartbeat");
+            throw new Error("--wake 必须是 now 或 next-heartbeat");
           }
 
           const agentId =
@@ -148,7 +148,7 @@ export function registerCronAddCommand(cron: Command) {
             const message = typeof opts.message === "string" ? opts.message.trim() : "";
             const chosen = [Boolean(systemEvent), Boolean(message)].filter(Boolean).length;
             if (chosen !== 1) {
-              throw new Error("Choose exactly one payload: --system-event or --message");
+              throw new Error("请选择一种载荷: --system-event 或 --message");
             }
             if (systemEvent) return { kind: "systemEvent" as const, text: systemEvent };
             const timeoutSeconds = parsePositiveIntOrUndefined(opts.timeoutSeconds);
@@ -171,10 +171,10 @@ export function registerCronAddCommand(cron: Command) {
           })();
 
           if (sessionTarget === "main" && payload.kind !== "systemEvent") {
-            throw new Error("Main jobs require --system-event (systemEvent).");
+            throw new Error("主会话任务需要 --system-event (systemEvent).");
           }
           if (sessionTarget === "isolated" && payload.kind !== "agentTurn") {
-            throw new Error("Isolated jobs require --message (agentTurn).");
+            throw new Error("独立会话任务需要 --message (agentTurn).");
           }
 
           const isolation =
@@ -197,7 +197,7 @@ export function registerCronAddCommand(cron: Command) {
 
           const nameRaw = typeof opts.name === "string" ? opts.name : "";
           const name = nameRaw.trim();
-          if (!name) throw new Error("--name is required");
+          if (!name) throw new Error("--name 是必需的");
 
           const description =
             typeof opts.description === "string" && opts.description.trim()

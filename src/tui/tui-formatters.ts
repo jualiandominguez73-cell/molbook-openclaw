@@ -9,7 +9,7 @@ export function resolveFinalAssistantText(params: {
   if (finalText.trim()) return finalText;
   const streamedText = params.streamedText ?? "";
   if (streamedText.trim()) return streamedText;
-  return "(no output)";
+  return "(无输出)";
 }
 
 export function composeThinkingAndContent(params: {
@@ -166,10 +166,10 @@ export function formatContextUsageLine(params: {
   const ctxLabel = typeof params.context === "number" ? formatTokenCount(params.context) : "?";
   const pct = typeof params.percent === "number" ? Math.min(999, Math.round(params.percent)) : null;
   const remainingLabel =
-    typeof params.remaining === "number" ? `${formatTokenCount(params.remaining)} left` : null;
+    typeof params.remaining === "number" ? `剩余 ${formatTokenCount(params.remaining)}` : null;
   const pctLabel = pct !== null ? `${pct}%` : null;
   const extra = [remainingLabel, pctLabel].filter(Boolean).join(", ");
-  return `tokens ${totalLabel}/${ctxLabel}${extra ? ` (${extra})` : ""}`;
+  return `token ${totalLabel}/${ctxLabel}${extra ? ` (${extra})` : ""}`;
 }
 
 export function asString(value: unknown, fallback = ""): string {

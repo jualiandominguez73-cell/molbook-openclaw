@@ -181,9 +181,9 @@ export async function gatherDaemonStatus(
   const probeUrl = probeUrlOverride ?? `ws://${probeHost}:${daemonPort}`;
   const probeNote =
     !probeUrlOverride && bindMode === "lan"
-      ? "Local probe uses loopback (127.0.0.1). bind=lan listens on 0.0.0.0 (all interfaces); use a LAN IP for remote clients."
+      ? "本地探测使用回环地址 (127.0.0.1)。bind=lan 监听 0.0.0.0 (所有接口)；远程客户端请使用局域网 IP。"
       : !probeUrlOverride && bindMode === "loopback"
-        ? "Loopback-only gateway; only local clients can connect."
+        ? "仅回环网关；只有本地客户端可以连接。"
         : undefined;
 
   const cliPort = resolveGatewayPort(cliCfg, process.env);

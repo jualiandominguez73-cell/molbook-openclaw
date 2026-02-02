@@ -15,19 +15,19 @@ import { shortenHomePath } from "../../utils.js";
 export function registerNodesScreenCommands(nodes: Command) {
   const screen = nodes
     .command("screen")
-    .description("Capture screen recordings from a paired node");
+    .description("从已配对节点捕获屏幕录制");
 
   nodesCallOpts(
     screen
       .command("record")
-      .description("Capture a short screen recording from a node (prints MEDIA:<path>)")
-      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
-      .option("--screen <index>", "Screen index (0 = primary)", "0")
-      .option("--duration <ms|10s>", "Clip duration (ms or 10s)", "10000")
-      .option("--fps <fps>", "Frames per second", "10")
-      .option("--no-audio", "Disable microphone audio capture")
-      .option("--out <path>", "Output path")
-      .option("--invoke-timeout <ms>", "Node invoke timeout in ms (default 120000)", "120000")
+      .description("从节点捕获短屏幕录制 (输出 MEDIA:<路径>)")
+      .requiredOption("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
+      .option("--screen <index>", "屏幕索引 (0 = 主屏幕)", "0")
+      .option("--duration <ms|10s>", "片段时长 (毫秒或 10s)", "10000")
+      .option("--fps <fps>", "帧率", "10")
+      .option("--no-audio", "禁用麦克风音频捕获")
+      .option("--out <path>", "输出路径")
+      .option("--invoke-timeout <ms>", "节点调用超时毫秒数 (默认 120000)", "120000")
       .action(async (opts: NodesRpcOpts & { out?: string }) => {
         await runNodesCommand("screen record", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));

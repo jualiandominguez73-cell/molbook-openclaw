@@ -29,14 +29,14 @@ export type SkillsCheckOptions = {
 
 function appendClawHubHint(output: string, json?: boolean): string {
   if (json) return output;
-  return `${output}\n\nTip: use \`npx clawhub\` to search, install, and sync skills.`;
+  return `${output}\n\n提示：使用 \`npx clawhub\` 搜索、安装并同步技能。`;
 }
 
 function formatSkillStatus(skill: SkillStatusEntry): string {
-  if (skill.eligible) return theme.success("✓ ready");
-  if (skill.disabled) return theme.warn("⏸ disabled");
-  if (skill.blockedByAllowlist) return theme.warn("🚫 blocked");
-  return theme.error("✗ missing");
+  if (skill.eligible) return theme.success("✓ 可用");
+  if (skill.disabled) return theme.warn("⏸ 已禁用");
+  if (skill.blockedByAllowlist) return theme.warn("🚫 已拦截");
+  return theme.error("✗ 缺少依赖");
 }
 
 function formatSkillName(skill: SkillStatusEntry): string {
@@ -47,19 +47,19 @@ function formatSkillName(skill: SkillStatusEntry): string {
 function formatSkillMissingSummary(skill: SkillStatusEntry): string {
   const missing: string[] = [];
   if (skill.missing.bins.length > 0) {
-    missing.push(`bins: ${skill.missing.bins.join(", ")}`);
+    missing.push(`二进制: ${skill.missing.bins.join(", ")}`);
   }
   if (skill.missing.anyBins.length > 0) {
-    missing.push(`anyBins: ${skill.missing.anyBins.join(", ")}`);
+    missing.push(`任一二进制: ${skill.missing.anyBins.join(", ")}`);
   }
   if (skill.missing.env.length > 0) {
-    missing.push(`env: ${skill.missing.env.join(", ")}`);
+    missing.push(`环境变量: ${skill.missing.env.join(", ")}`);
   }
   if (skill.missing.config.length > 0) {
-    missing.push(`config: ${skill.missing.config.join(", ")}`);
+    missing.push(`配置: ${skill.missing.config.join(", ")}`);
   }
   if (skill.missing.os.length > 0) {
-    missing.push(`os: ${skill.missing.os.join(", ")}`);
+    missing.push(`系统: ${skill.missing.os.join(", ")}`);
   }
   return missing.join("; ");
 }
@@ -92,8 +92,8 @@ export function formatSkillsList(report: SkillStatusReport, opts: SkillsListOpti
 
   if (skills.length === 0) {
     const message = opts.eligible
-      ? `No eligible skills found. Run \`${formatCliCommand("openclaw skills list")}\` to see all skills.`
-      : "No skills found.";
+      ? `未找到可用技能。运行 \`${formatCliCommand("openclaw skills list")}\` 查看全部技能。`
+      : "未找到技能。";
     return appendClawHubHint(message, opts.json);
   }
 
@@ -111,18 +111,18 @@ export function formatSkillsList(report: SkillStatusReport, opts: SkillsListOpti
   });
 
   const columns = [
-    { key: "Status", header: "Status", minWidth: 10 },
-    { key: "Skill", header: "Skill", minWidth: 18, flex: true },
-    { key: "Description", header: "Description", minWidth: 24, flex: true },
-    { key: "Source", header: "Source", minWidth: 10 },
+    { key: "Status", header: "状态", minWidth: 10 },
+    { key: "Skill", header: "技能", minWidth: 18, flex: true },
+    { key: "Description", header: "描述", minWidth: 24, flex: true },
+    { key: "Source", header: "来源", minWidth: 10 },
   ];
   if (opts.verbose) {
-    columns.push({ key: "Missing", header: "Missing", minWidth: 18, flex: true });
+    columns.push({ key: "Missing", header: "缺失", minWidth: 18, flex: true });
   }
 
   const lines: string[] = [];
   lines.push(
-    `${theme.heading("Skills")} ${theme.muted(`(${eligible.length}/${skills.length} ready)`)}`,
+    `${theme.heading("技能")} ${theme.muted(`(${eligible.length}/${skills.length} 可用)`)}`,
   );
   lines.push(
     renderTable({
@@ -150,7 +150,7 @@ export function formatSkillInfo(
       return JSON.stringify({ error: "not found", skill: skillName }, null, 2);
     }
     return appendClawHubHint(
-      `Skill "${skillName}" not found. Run \`${formatCliCommand("openclaw skills list")}\` to see available skills.`,
+      `未找到技能“${skillName}”。运行 \`${formatCliCommand("openclaw skills list")}\` 查看可用技能。`,
       opts.json,
     );
   }
@@ -162,12 +162,12 @@ export function formatSkillInfo(
   const lines: string[] = [];
   const emoji = skill.emoji ?? "📦";
   const status = skill.eligible
-    ? theme.success("✓ Ready")
+    ? theme.success("✓ 可用")
     : skill.disabled
-      ? theme.warn("⏸ Disabled")
+      ? theme.warn("⏸ 已禁用")
       : skill.blockedByAllowlist
-        ? theme.warn("🚫 Blocked by allowlist")
-        : theme.error("✗ Missing requirements");
+        ? theme.warn("🚫 被允许列表拦截")
+        : theme.error("✗ 缺少依赖");
 
   lines.push(`${emoji} ${theme.heading(skill.name)} ${status}`);
   lines.push("");
@@ -175,14 +175,14 @@ export function formatSkillInfo(
   lines.push("");
 
   // Details
-  lines.push(theme.heading("Details:"));
-  lines.push(`${theme.muted("  Source:")} ${skill.source}`);
-  lines.push(`${theme.muted("  Path:")} ${shortenHomePath(skill.filePath)}`);
+  lines.push(theme.heading("详情:"));
+  lines.push(`${theme.muted("  来源:")} ${skill.source}`);
+  lines.push(`${theme.muted("  路径:")} ${shortenHomePath(skill.filePath)}`);
   if (skill.homepage) {
-    lines.push(`${theme.muted("  Homepage:")} ${skill.homepage}`);
+    lines.push(`${theme.muted("  主页:")} ${skill.homepage}`);
   }
   if (skill.primaryEnv) {
-    lines.push(`${theme.muted("  Primary env:")} ${skill.primaryEnv}`);
+    lines.push(`${theme.muted("  主环境变量:")} ${skill.primaryEnv}`);
   }
 
   // Requirements
@@ -195,13 +195,13 @@ export function formatSkillInfo(
 
   if (hasRequirements) {
     lines.push("");
-    lines.push(theme.heading("Requirements:"));
+    lines.push(theme.heading("依赖要求:"));
     if (skill.requirements.bins.length > 0) {
       const binsStatus = skill.requirements.bins.map((bin) => {
         const missing = skill.missing.bins.includes(bin);
         return missing ? theme.error(`✗ ${bin}`) : theme.success(`✓ ${bin}`);
       });
-      lines.push(`${theme.muted("  Binaries:")} ${binsStatus.join(", ")}`);
+      lines.push(`${theme.muted("  可执行文件:")} ${binsStatus.join(", ")}`);
     }
     if (skill.requirements.anyBins.length > 0) {
       const anyBinsMissing = skill.missing.anyBins.length > 0;
@@ -209,35 +209,35 @@ export function formatSkillInfo(
         const missing = anyBinsMissing;
         return missing ? theme.error(`✗ ${bin}`) : theme.success(`✓ ${bin}`);
       });
-      lines.push(`${theme.muted("  Any binaries:")} ${anyBinsStatus.join(", ")}`);
+      lines.push(`${theme.muted("  任一可执行文件:")} ${anyBinsStatus.join(", ")}`);
     }
     if (skill.requirements.env.length > 0) {
       const envStatus = skill.requirements.env.map((env) => {
         const missing = skill.missing.env.includes(env);
         return missing ? theme.error(`✗ ${env}`) : theme.success(`✓ ${env}`);
       });
-      lines.push(`${theme.muted("  Environment:")} ${envStatus.join(", ")}`);
+      lines.push(`${theme.muted("  环境变量:")} ${envStatus.join(", ")}`);
     }
     if (skill.requirements.config.length > 0) {
       const configStatus = skill.requirements.config.map((cfg) => {
         const missing = skill.missing.config.includes(cfg);
         return missing ? theme.error(`✗ ${cfg}`) : theme.success(`✓ ${cfg}`);
       });
-      lines.push(`${theme.muted("  Config:")} ${configStatus.join(", ")}`);
+      lines.push(`${theme.muted("  配置:")} ${configStatus.join(", ")}`);
     }
     if (skill.requirements.os.length > 0) {
       const osStatus = skill.requirements.os.map((osName) => {
         const missing = skill.missing.os.includes(osName);
         return missing ? theme.error(`✗ ${osName}`) : theme.success(`✓ ${osName}`);
       });
-      lines.push(`${theme.muted("  OS:")} ${osStatus.join(", ")}`);
+      lines.push(`${theme.muted("  操作系统:")} ${osStatus.join(", ")}`);
     }
   }
 
   // Install options
   if (skill.install.length > 0 && !skill.eligible) {
     lines.push("");
-    lines.push(theme.heading("Install options:"));
+    lines.push(theme.heading("安装选项:"));
     for (const inst of skill.install) {
       lines.push(`  ${theme.warn("→")} ${inst.label}`);
     }
@@ -282,17 +282,17 @@ export function formatSkillsCheck(report: SkillStatusReport, opts: SkillsCheckOp
   }
 
   const lines: string[] = [];
-  lines.push(theme.heading("Skills Status Check"));
+  lines.push(theme.heading("技能状态检查"));
   lines.push("");
-  lines.push(`${theme.muted("Total:")} ${report.skills.length}`);
-  lines.push(`${theme.success("✓")} ${theme.muted("Eligible:")} ${eligible.length}`);
-  lines.push(`${theme.warn("⏸")} ${theme.muted("Disabled:")} ${disabled.length}`);
-  lines.push(`${theme.warn("🚫")} ${theme.muted("Blocked by allowlist:")} ${blocked.length}`);
-  lines.push(`${theme.error("✗")} ${theme.muted("Missing requirements:")} ${missingReqs.length}`);
+  lines.push(`${theme.muted("总计:")} ${report.skills.length}`);
+  lines.push(`${theme.success("✓")} ${theme.muted("可用:")} ${eligible.length}`);
+  lines.push(`${theme.warn("⏸")} ${theme.muted("已禁用:")} ${disabled.length}`);
+  lines.push(`${theme.warn("🚫")} ${theme.muted("被允许列表拦截:")} ${blocked.length}`);
+  lines.push(`${theme.error("✗")} ${theme.muted("缺少依赖:")} ${missingReqs.length}`);
 
   if (eligible.length > 0) {
     lines.push("");
-    lines.push(theme.heading("Ready to use:"));
+    lines.push(theme.heading("可直接使用:"));
     for (const skill of eligible) {
       const emoji = skill.emoji ?? "📦";
       lines.push(`  ${emoji} ${skill.name}`);
@@ -301,24 +301,24 @@ export function formatSkillsCheck(report: SkillStatusReport, opts: SkillsCheckOp
 
   if (missingReqs.length > 0) {
     lines.push("");
-    lines.push(theme.heading("Missing requirements:"));
+    lines.push(theme.heading("缺少依赖:"));
     for (const skill of missingReqs) {
       const emoji = skill.emoji ?? "📦";
       const missing: string[] = [];
       if (skill.missing.bins.length > 0) {
-        missing.push(`bins: ${skill.missing.bins.join(", ")}`);
+        missing.push(`二进制: ${skill.missing.bins.join(", ")}`);
       }
       if (skill.missing.anyBins.length > 0) {
-        missing.push(`anyBins: ${skill.missing.anyBins.join(", ")}`);
+        missing.push(`任一二进制: ${skill.missing.anyBins.join(", ")}`);
       }
       if (skill.missing.env.length > 0) {
-        missing.push(`env: ${skill.missing.env.join(", ")}`);
+        missing.push(`环境变量: ${skill.missing.env.join(", ")}`);
       }
       if (skill.missing.config.length > 0) {
-        missing.push(`config: ${skill.missing.config.join(", ")}`);
+        missing.push(`配置: ${skill.missing.config.join(", ")}`);
       }
       if (skill.missing.os.length > 0) {
-        missing.push(`os: ${skill.missing.os.join(", ")}`);
+        missing.push(`系统: ${skill.missing.os.join(", ")}`);
       }
       lines.push(`  ${emoji} ${skill.name} ${theme.muted(`(${missing.join("; ")})`)}`);
     }
@@ -333,19 +333,19 @@ export function formatSkillsCheck(report: SkillStatusReport, opts: SkillsCheckOp
 export function registerSkillsCli(program: Command) {
   const skills = program
     .command("skills")
-    .description("List and inspect available skills")
+    .description("列出并查看可用技能")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/skills", "docs.openclaw.ai/cli/skills")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/skills", "docs.openclaw.ai/cli/skills")}\n`,
     );
 
   skills
     .command("list")
-    .description("List all available skills")
-    .option("--json", "Output as JSON", false)
-    .option("--eligible", "Show only eligible (ready to use) skills", false)
-    .option("-v, --verbose", "Show more details including missing requirements", false)
+    .description("列出所有可用技能")
+    .option("--json", "以 JSON 输出", false)
+    .option("--eligible", "仅显示可用（可直接使用）的技能", false)
+    .option("-v, --verbose", "显示更多细节（包含缺少的依赖）", false)
     .action(async (opts) => {
       try {
         const config = loadConfig();
@@ -360,9 +360,9 @@ export function registerSkillsCli(program: Command) {
 
   skills
     .command("info")
-    .description("Show detailed information about a skill")
-    .argument("<name>", "Skill name")
-    .option("--json", "Output as JSON", false)
+    .description("显示技能的详细信息")
+    .argument("<name>", "技能名称")
+    .option("--json", "以 JSON 输出", false)
     .action(async (name, opts) => {
       try {
         const config = loadConfig();
@@ -377,8 +377,8 @@ export function registerSkillsCli(program: Command) {
 
   skills
     .command("check")
-    .description("Check which skills are ready vs missing requirements")
-    .option("--json", "Output as JSON", false)
+    .description("检查哪些技能可用，哪些缺少依赖")
+    .option("--json", "以 JSON 输出", false)
     .action(async (opts) => {
       try {
         const config = loadConfig();

@@ -6,20 +6,20 @@ import { callGatewayCli, nodesCallOpts, resolveNodeId } from "./rpc.js";
 import type { NodesRpcOpts } from "./types.js";
 
 export function registerNodesLocationCommands(nodes: Command) {
-  const location = nodes.command("location").description("Fetch location from a paired node");
+  const location = nodes.command("location").description("从已配对节点获取位置");
 
   nodesCallOpts(
     location
       .command("get")
-      .description("Fetch the current location from a node")
-      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
-      .option("--max-age <ms>", "Use cached location newer than this (ms)")
+      .description("从节点获取当前位置")
+      .requiredOption("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
+      .option("--max-age <ms>", "使用此时间内的缓存位置 (毫秒)")
       .option(
         "--accuracy <coarse|balanced|precise>",
-        "Desired accuracy (default: balanced/precise depending on node setting)",
+        "期望精度 (默认: 取决于节点设置的 balanced/precise)",
       )
-      .option("--location-timeout <ms>", "Location fix timeout (ms)", "10000")
-      .option("--invoke-timeout <ms>", "Node invoke timeout in ms (default 20000)", "20000")
+      .option("--location-timeout <ms>", "定位超时 (毫秒)", "10000")
+      .option("--invoke-timeout <ms>", "节点调用超时毫秒数 (默认 20000)", "20000")
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("location get", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));

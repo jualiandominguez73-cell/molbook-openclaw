@@ -38,7 +38,7 @@ function extractText(result?: ToolResult): string {
     } else if (entry.type === "image") {
       const mime = entry.mimeType ?? "image";
       const size = entry.bytes ? ` ${Math.round(entry.bytes / 1024)}kb` : "";
-      const omitted = entry.omitted ? " (omitted)" : "";
+      const omitted = entry.omitted ? " (已省略)" : "";
       lines.push(`[${mime}${size}${omitted}]`);
     }
   }
@@ -110,7 +110,7 @@ export class ToolExecutionComponent extends Container {
       name: this.toolName,
       args: this.args,
     });
-    const title = `${display.emoji} ${display.label}${this.isPartial ? " (running)" : ""}`;
+    const title = `${display.emoji} ${display.label}${this.isPartial ? " (运行中)" : ""}`;
     this.header.setText(theme.toolTitle(theme.bold(title)));
 
     const argLine = formatArgs(this.toolName, this.args);

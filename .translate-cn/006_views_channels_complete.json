@@ -1,0 +1,92 @@
+[
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Channel Health",
+    "translate": "通道健康状态"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Snapshot of channel status from the gateway.",
+    "translate": "来自网关的通道状态快照。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "No snapshot available.",
+    "translate": "暂无快照。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Channel status and configuration.",
+    "translate": "通道状态和配置。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Configured",
+    "translate": "已配置"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Running",
+    "translate": "运行中"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Connected",
+    "translate": "已连接"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "n/a",
+    "translate": "暂无"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Yes",
+    "translate": "是"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "No",
+    "translate": "否"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Active",
+    "translate": "活跃"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\channels.ts",
+    "origin": "Last Inbound",
+    "translate": "最后入站"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\overview.ts",
+    "origin": "System Overview",
+    "translate": "系统概览"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\overview.ts",
+    "origin": "Active Sessions",
+    "translate": "活跃会话"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\overview.ts",
+    "origin": "System Load",
+    "translate": "系统负载"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\chat.ts",
+    "origin": "Chat",
+    "translate": "聊天"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\chat.ts",
+    "origin": "Send",
+    "translate": "发送"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\ui\\src\\ui\\views\\markdown-sidebar.ts",
+    "origin": "Close",
+    "translate": "关闭"
+  }
+]

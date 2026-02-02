@@ -16,7 +16,7 @@ export async function loadChannels(state: ChannelsState, probe: boolean) {
     state.channelsSnapshot = res;
     state.channelsLastSuccess = Date.now();
   } catch (err) {
-    state.channelsError = String(err);
+    state.channelsError = "加载通道状态失败：" + String(err);
   } finally {
     state.channelsLoading = false;
   }
@@ -34,7 +34,7 @@ export async function startWhatsAppLogin(state: ChannelsState, force: boolean) {
     state.whatsappLoginQrDataUrl = res.qrDataUrl ?? null;
     state.whatsappLoginConnected = null;
   } catch (err) {
-    state.whatsappLoginMessage = String(err);
+    state.whatsappLoginMessage = "启动登录失败：" + String(err);
     state.whatsappLoginQrDataUrl = null;
     state.whatsappLoginConnected = null;
   } finally {
@@ -53,7 +53,7 @@ export async function waitWhatsAppLogin(state: ChannelsState) {
     state.whatsappLoginConnected = res.connected ?? null;
     if (res.connected) state.whatsappLoginQrDataUrl = null;
   } catch (err) {
-    state.whatsappLoginMessage = String(err);
+    state.whatsappLoginMessage = "等待登录失败：" + String(err);
     state.whatsappLoginConnected = null;
   } finally {
     state.whatsappBusy = false;
@@ -65,11 +65,11 @@ export async function logoutWhatsApp(state: ChannelsState) {
   state.whatsappBusy = true;
   try {
     await state.client.request("channels.logout", { channel: "whatsapp" });
-    state.whatsappLoginMessage = "Logged out.";
+    state.whatsappLoginMessage = "已退出登录。";
     state.whatsappLoginQrDataUrl = null;
     state.whatsappLoginConnected = null;
   } catch (err) {
-    state.whatsappLoginMessage = String(err);
+    state.whatsappLoginMessage = "退出登录失败：" + String(err);
   } finally {
     state.whatsappBusy = false;
   }

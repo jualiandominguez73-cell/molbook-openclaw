@@ -166,22 +166,22 @@ export function registerNodesInvokeCommands(nodes: Command) {
   nodesCallOpts(
     nodes
       .command("run")
-      .description("Run a shell command on a node (mac only)")
-      .option("--node <idOrNameOrIp>", "Node id, name, or IP")
-      .option("--cwd <path>", "Working directory")
+      .description("在节点上运行 Shell 命令 (仅限 mac)")
+      .option("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
+      .option("--cwd <path>", "工作目录")
       .option(
         "--env <key=val>",
-        "Environment override (repeatable)",
+        "覆盖环境变量 (可重复)",
         (value: string, prev: string[] = []) => [...prev, value],
       )
-      .option("--raw <command>", "Run a raw shell command string (sh -lc / cmd.exe /c)")
-      .option("--agent <id>", "Agent id (default: configured default agent)")
-      .option("--ask <mode>", "Exec ask mode (off|on-miss|always)")
-      .option("--security <mode>", "Exec security mode (deny|allowlist|full)")
-      .option("--command-timeout <ms>", "Command timeout (ms)")
-      .option("--needs-screen-recording", "Require screen recording permission")
-      .option("--invoke-timeout <ms>", "Node invoke timeout in ms (default 30000)", "30000")
-      .argument("[command...]", "Command and args")
+      .option("--raw <command>", "运行原始 Shell 命令字符串 (sh -lc / cmd.exe /c)")
+      .option("--agent <id>", "Agent ID (默认: 配置的默认 Agent)")
+      .option("--ask <mode>", "执行询问模式 (off|on-miss|always)")
+      .option("--security <mode>", "执行安全模式 (deny|allowlist|full)")
+      .option("--command-timeout <ms>", "命令超时 (毫秒)")
+      .option("--needs-screen-recording", "需要屏幕录制权限")
+      .option("--invoke-timeout <ms>", "节点调用超时毫秒数 (默认 30000)", "30000")
+      .argument("[command...]", "命令和参数")
       .action(async (command: string[], opts: NodesRunOpts) => {
         await runNodesCommand("run", async () => {
           const cfg = loadConfig();
@@ -189,15 +189,15 @@ export function registerNodesInvokeCommands(nodes: Command) {
           const execDefaults = resolveExecDefaults(cfg, agentId);
           const raw = typeof opts.raw === "string" ? opts.raw.trim() : "";
           if (raw && Array.isArray(command) && command.length > 0) {
-            throw new Error("use --raw or argv, not both");
+            throw new Error("使用 --raw 或 argv，不能同时使用");
           }
           if (!raw && (!Array.isArray(command) || command.length === 0)) {
-            throw new Error("command required");
+            throw new Error("需要命令");
           }
 
           const nodeQuery = String(opts.node ?? "").trim() || execDefaults?.node?.trim() || "";
           if (!nodeQuery) {
-            throw new Error("node required (set --node or tools.exec.node)");
+            throw new Error("需要节点 (设置 --node 或 tools.exec.node)");
           }
           const nodeId = await resolveNodeId(opts, nodeQuery);
 

@@ -50,7 +50,7 @@ export function registerNodesNotifyCommand(nodes: Command) {
             return;
           }
           const { ok } = getNodesTheme();
-          defaultRuntime.log(ok("notify ok"));
+          defaultRuntime.log(ok("通知已发送"));
         });
       }),
   );

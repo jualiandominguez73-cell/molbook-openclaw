@@ -1,0 +1,447 @@
+[
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Scheduler",
+    "translate": "调度器"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Gateway-owned cron scheduler status.",
+    "translate": "网关拥有的 Cron 调度器状态。"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Enabled",
+    "translate": "已启用"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Yes",
+    "translate": "是"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "No",
+    "translate": "否"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Jobs",
+    "translate": "任务"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Next wake",
+    "translate": "下次唤醒"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Refreshing…",
+    "translate": "正在刷新…"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Refresh",
+    "translate": "刷新"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "New Job",
+    "translate": "新建任务"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Create a scheduled wakeup or agent run.",
+    "translate": "创建一个定时唤醒或代理运行任务。"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Name",
+    "translate": "名称"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Description",
+    "translate": "描述"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Agent ID",
+    "translate": "代理 ID"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Schedule",
+    "translate": "调度"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Every",
+    "translate": "每隔"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "At",
+    "translate": "指定时间"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Cron",
+    "translate": "Cron"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Session",
+    "translate": "会话"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Main",
+    "translate": "主会话"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Isolated",
+    "translate": "隔离会话"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Wake mode",
+    "translate": "唤醒模式"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Next heartbeat",
+    "translate": "下次心跳"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Now",
+    "translate": "立即"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Payload",
+    "translate": "载荷"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "System event",
+    "translate": "系统事件"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Agent turn",
+    "translate": "代理轮次"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "System text",
+    "translate": "系统文本"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Agent message",
+    "translate": "代理消息"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Deliver",
+    "translate": "投递"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Channel",
+    "translate": "通道"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "To",
+    "translate": "接收者"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Timeout (seconds)",
+    "translate": "超时 (秒)"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Post to main prefix",
+    "translate": "发布到主会话前缀"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Saving…",
+    "translate": "正在保存…"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Add job",
+    "translate": "添加任务"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "All scheduled jobs stored in the gateway.",
+    "translate": "网关中存储的所有调度任务。"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "No jobs yet.",
+    "translate": "暂无任务。"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Run history",
+    "translate": "运行历史"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Select a job to inspect run history.",
+    "translate": "选择一个任务以查看运行历史。"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "No runs yet.",
+    "translate": "暂无运行记录。"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Run at",
+    "translate": "运行时间"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Unit",
+    "translate": "单位"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Minutes",
+    "translate": "分钟"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Hours",
+    "translate": "小时"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Days",
+    "translate": "天"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Expression",
+    "translate": "表达式"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Timezone (optional)",
+    "translate": "时区 (可选)"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "enabled",
+    "translate": "已启用"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "disabled",
+    "translate": "已禁用"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Disable",
+    "translate": "禁用"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Enable",
+    "translate": "启用"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Run",
+    "translate": "运行"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Runs",
+    "translate": "运行记录"
+  },
+  {
+    "dir": "src/ui/views/cron.ts",
+    "origin": "Remove",
+    "translate": "移除"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Snapshots",
+    "translate": "快照"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Status, health, and heartbeat data.",
+    "translate": "状态、健康和心跳数据。"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Status",
+    "translate": "状态"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Security audit",
+    "translate": "安全审计"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "critical",
+    "translate": "个严重"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "warnings",
+    "translate": "个警告"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "No critical issues",
+    "translate": "无严重问题"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "info",
+    "translate": "个信息"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Run",
+    "translate": "运行"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "for details",
+    "translate": "查看详情"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Health",
+    "translate": "健康"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Last heartbeat",
+    "translate": "上次心跳"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Manual RPC",
+    "translate": "手动 RPC"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Send a raw gateway method with JSON params.",
+    "translate": "发送带有 JSON 参数的原始网关方法。"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Method",
+    "translate": "方法"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Params (JSON)",
+    "translate": "参数 (JSON)"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Call",
+    "translate": "调用"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Models",
+    "translate": "模型"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Catalog from models.list.",
+    "translate": "来自 models.list 的目录。"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Event Log",
+    "translate": "事件日志"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "Latest gateway events.",
+    "translate": "最新的网关事件。"
+  },
+  {
+    "dir": "src/ui/views/debug.ts",
+    "origin": "No events yet.",
+    "translate": "暂无事件。"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Logs",
+    "translate": "日志"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Gateway file logs (JSONL).",
+    "translate": "网关文件日志 (JSONL)。"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Loading…",
+    "translate": "正在加载…"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Export",
+    "translate": "导出"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "filtered",
+    "translate": "已过滤"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "visible",
+    "translate": "可见"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Filter",
+    "translate": "过滤"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Search logs",
+    "translate": "搜索日志"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Auto-follow",
+    "translate": "自动跟随"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "File",
+    "translate": "文件"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "Log output truncated; showing latest chunk.",
+    "translate": "日志输出已截断；仅显示最新部分。"
+  },
+  {
+    "dir": "src/ui/views/logs.ts",
+    "origin": "No log entries.",
+    "translate": "无日志条目。"
+  }
+]

@@ -8,26 +8,26 @@ import { parseTimeoutMs } from "./parse-timeout.js";
 export function registerTuiCli(program: Command) {
   program
     .command("tui")
-    .description("Open a terminal UI connected to the Gateway")
-    .option("--url <url>", "Gateway WebSocket URL (defaults to gateway.remote.url when configured)")
-    .option("--token <token>", "Gateway token (if required)")
-    .option("--password <password>", "Gateway password (if required)")
-    .option("--session <key>", 'Session key (default: "main", or "global" when scope is global)')
-    .option("--deliver", "Deliver assistant replies", false)
-    .option("--thinking <level>", "Thinking level override")
-    .option("--message <text>", "Send an initial message after connecting")
-    .option("--timeout-ms <ms>", "Agent timeout in ms (defaults to agents.defaults.timeoutSeconds)")
-    .option("--history-limit <n>", "History entries to load", "200")
+    .description("打开连接到网关的终端 UI")
+    .option("--url <url>", "网关 WebSocket URL（配置后默认使用 gateway.remote.url）")
+    .option("--token <token>", "网关令牌（如需要）")
+    .option("--password <password>", "网关密码（如需要）")
+    .option("--session <key>", '会话键（默认："main"；当 scope 为 global 时默认："global"）')
+    .option("--deliver", "转发助手回复", false)
+    .option("--thinking <level>", "覆盖思考等级")
+    .option("--message <text>", "连接后发送一条初始消息")
+    .option("--timeout-ms <ms>", "代理超时（毫秒，默认：agents.defaults.timeoutSeconds）")
+    .option("--history-limit <n>", "加载的历史记录条数", "200")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/tui", "docs.openclaw.ai/cli/tui")}\n`,
+      () => `\n${theme.muted("文档:")} ${formatDocsLink("/cli/tui", "docs.openclaw.ai/cli/tui")}\n`,
     )
     .action(async (opts) => {
       try {
         const timeoutMs = parseTimeoutMs(opts.timeoutMs);
         if (opts.timeoutMs !== undefined && timeoutMs === undefined) {
           defaultRuntime.error(
-            `warning: invalid --timeout-ms "${String(opts.timeoutMs)}"; ignoring`,
+            `警告：无效的 --timeout-ms "${String(opts.timeoutMs)}"；已忽略`,
           );
         }
         const historyLimit = Number.parseInt(String(opts.historyLimit ?? "200"), 10);

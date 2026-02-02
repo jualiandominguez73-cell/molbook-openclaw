@@ -14,17 +14,20 @@ export type GatewayRpcOpts = {
 
 export const gatewayCallOpts = (cmd: Command) =>
   cmd
-    .option("--url <url>", "Gateway WebSocket URL (defaults to gateway.remote.url when configured)")
-    .option("--token <token>", "Gateway token (if required)")
-    .option("--password <password>", "Gateway password (password auth)")
-    .option("--timeout <ms>", "Timeout in ms", "10000")
-    .option("--expect-final", "Wait for final response (agent)", false)
-    .option("--json", "Output JSON", false);
+    .option(
+      "--url <url>",
+      "网关 WebSocket URL (默认为配置中的 gateway.remote.url)",
+    )
+    .option("--token <token>", "网关令牌 (如需)")
+    .option("--password <password>", "网关密码 (密码认证)")
+    .option("--timeout <ms>", "超时时间 (ms)", "10000")
+    .option("--expect-final", "等待最终响应 (agent)", false)
+    .option("--json", "输出 JSON", false);
 
 export const callGatewayCli = async (method: string, opts: GatewayRpcOpts, params?: unknown) =>
   withProgress(
     {
-      label: `Gateway ${method}`,
+      label: `网关 ${method}`,
       indeterminate: true,
       enabled: opts.json !== true,
     },

@@ -56,7 +56,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const isDevProfile = process.env.OPENCLAW_PROFILE?.trim().toLowerCase() === "dev";
   const devMode = Boolean(opts.dev) || isDevProfile;
   if (opts.reset && !devMode) {
-    defaultRuntime.error("Use --reset with --dev.");
+    defaultRuntime.error("请配合 --dev 使用 --reset。");
     defaultRuntime.exit(1);
     return;
   }
@@ -76,7 +76,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     wsLogRaw !== "compact" &&
     wsLogRaw !== "full"
   ) {
-    defaultRuntime.error('Invalid --ws-log (use "auto", "full", "compact")');
+    defaultRuntime.error('无效的 --ws-log (请使用 "auto", "full", "compact")');
     defaultRuntime.exit(1);
   }
   setGatewayWsLogStyle(wsLogStyle);
@@ -96,12 +96,12 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const cfg = loadConfig();
   const portOverride = parsePort(opts.port);
   if (opts.port !== undefined && portOverride === null) {
-    defaultRuntime.error("Invalid port");
+    defaultRuntime.error("无效端口");
     defaultRuntime.exit(1);
   }
   const port = portOverride ?? resolveGatewayPort(cfg);
   if (!Number.isFinite(port) || port <= 0) {
-    defaultRuntime.error("Invalid port");
+    defaultRuntime.error("无效端口");
     defaultRuntime.exit(1);
   }
   if (opts.force) {
@@ -112,22 +112,22 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
         sigtermTimeoutMs: 700,
       });
       if (killed.length === 0) {
-        gatewayLog.info(`force: no listeners on port ${port}`);
+        gatewayLog.info(`强制: 端口 ${port} 上无监听者`);
       } else {
         for (const proc of killed) {
           gatewayLog.info(
-            `force: killed pid ${proc.pid}${proc.command ? ` (${proc.command})` : ""} on port ${port}`,
+            `强制: 已终止 pid ${proc.pid}${proc.command ? ` (${proc.command})` : ""} (端口 ${port})`,
           );
         }
         if (escalatedToSigkill) {
-          gatewayLog.info(`force: escalated to SIGKILL while freeing port ${port}`);
+          gatewayLog.info(`强制: 升级为 SIGKILL 以释放端口 ${port}`);
         }
         if (waitedMs > 0) {
-          gatewayLog.info(`force: waited ${waitedMs}ms for port ${port} to free`);
+          gatewayLog.info(`强制: 等待了 ${waitedMs}ms 以释放端口 ${port}`);
         }
       }
     } catch (err) {
-      defaultRuntime.error(`Force: ${String(err)}`);
+      defaultRuntime.error(`强制: ${String(err)}`);
       defaultRuntime.exit(1);
       return;
     }
@@ -142,7 +142,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   const authMode: GatewayAuthMode | null =
     authModeRaw === "token" || authModeRaw === "password" ? authModeRaw : null;
   if (authModeRaw && !authMode) {
-    defaultRuntime.error('Invalid --auth (use "token" or "password")');
+    defaultRuntime.error('无效的 --auth (请使用 "token" 或 "password")');
     defaultRuntime.exit(1);
     return;
   }
@@ -152,7 +152,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       ? tailscaleRaw
       : null;
   if (tailscaleRaw && !tailscaleMode) {
-    defaultRuntime.error('Invalid --tailscale (use "off", "serve", or "funnel")');
+    defaultRuntime.error('无效的 --tailscale (请使用 "off", "serve", 或 "funnel")');
     defaultRuntime.exit(1);
     return;
   }
@@ -165,11 +165,11 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   if (!opts.allowUnconfigured && mode !== "local") {
     if (!configExists) {
       defaultRuntime.error(
-        `Missing config. Run \`${formatCliCommand("openclaw setup")}\` or set gateway.mode=local (or pass --allow-unconfigured).`,
+        `缺少配置。运行 \`${formatCliCommand("openclaw setup")}\` 或设置 gateway.mode=local (或传递 --allow-unconfigured)。`,
       );
     } else {
       defaultRuntime.error(
-        `Gateway start blocked: set gateway.mode=local (current: ${mode ?? "unset"}) or pass --allow-unconfigured.`,
+        `网关启动受阻: 设置 gateway.mode=local (当前: ${mode ?? "unset"}) 或传递 --allow-unconfigured。`,
       );
     }
     defaultRuntime.exit(1);
@@ -185,7 +185,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       ? bindRaw
       : null;
   if (!bind) {
-    defaultRuntime.error('Invalid --bind (use "loopback", "lan", "tailnet", "auto", or "custom")');
+    defaultRuntime.error('无效的 --bind (请使用 "loopback", "lan", "tailnet", "auto", 或 "custom")');
     defaultRuntime.exit(1);
     return;
   }
@@ -211,18 +211,18 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     (resolvedAuthMode === "token" && hasToken) || (resolvedAuthMode === "password" && hasPassword);
   const authHints: string[] = [];
   if (miskeys.hasGatewayToken) {
-    authHints.push('Found "gateway.token" in config. Use "gateway.auth.token" instead.');
+    authHints.push('在配置中发现 "gateway.token"。请改用 "gateway.auth.token"。');
   }
   if (miskeys.hasRemoteToken) {
     authHints.push(
-      '"gateway.remote.token" is for remote CLI calls; it does not enable local gateway auth.',
+      '"gateway.remote.token" 用于远程 CLI 调用；它不启用本地网关认证。',
     );
   }
   if (resolvedAuthMode === "token" && !hasToken && !resolvedAuth.allowTailscale) {
     defaultRuntime.error(
       [
-        "Gateway auth is set to token, but no token is configured.",
-        "Set gateway.auth.token (or OPENCLAW_GATEWAY_TOKEN), or pass --token.",
+        "网关认证设置为令牌，但未配置令牌。",
+        "设置 gateway.auth.token (或 OPENCLAW_GATEWAY_TOKEN)，或传递 --token。",
         ...authHints,
       ]
         .filter(Boolean)
@@ -234,8 +234,8 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   if (resolvedAuthMode === "password" && !hasPassword) {
     defaultRuntime.error(
       [
-        "Gateway auth is set to password, but no password is configured.",
-        "Set gateway.auth.password (or OPENCLAW_GATEWAY_PASSWORD), or pass --password.",
+        "网关认证设置为密码，但未配置密码。",
+        "设置 gateway.auth.password (或 OPENCLAW_GATEWAY_PASSWORD)，或传递 --password。",
         ...authHints,
       ]
         .filter(Boolean)
@@ -247,8 +247,8 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   if (bind !== "loopback" && !hasSharedSecret) {
     defaultRuntime.error(
       [
-        `Refusing to bind gateway to ${bind} without auth.`,
-        "Set gateway.auth.token/password (or OPENCLAW_GATEWAY_TOKEN/OPENCLAW_GATEWAY_PASSWORD) or pass --token/--password.",
+        `拒绝在无认证的情况下将网关绑定到 ${bind}。`,
+        "设置 gateway.auth.token/password (或 OPENCLAW_GATEWAY_TOKEN/OPENCLAW_GATEWAY_PASSWORD) 或传递 --token/--password。",
         ...authHints,
       ]
         .filter(Boolean)
@@ -288,7 +288,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     ) {
       const errMessage = describeUnknownError(err);
       defaultRuntime.error(
-        `Gateway failed to start: ${errMessage}\nIf the gateway is supervised, stop it with: ${formatCliCommand("openclaw gateway stop")}`,
+        `网关启动失败: ${errMessage}\n如果网关受监管，请使用以下命令停止: ${formatCliCommand("openclaw gateway stop")}`,
       );
       try {
         const diagnostics = await inspectPortUsage(port);
@@ -304,52 +304,52 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       defaultRuntime.exit(1);
       return;
     }
-    defaultRuntime.error(`Gateway failed to start: ${String(err)}`);
+    defaultRuntime.error(`网关启动失败: ${String(err)}`);
     defaultRuntime.exit(1);
   }
 }
 
 export function addGatewayRunCommand(cmd: Command): Command {
   return cmd
-    .option("--port <port>", "Port for the gateway WebSocket")
+    .option("--port <port>", "网关 WebSocket 端口")
     .option(
       "--bind <mode>",
-      'Bind mode ("loopback"|"lan"|"tailnet"|"auto"|"custom"). Defaults to config gateway.bind (or loopback).',
+      '绑定模式 ("loopback"|"lan"|"tailnet"|"auto"|"custom")。默认为配置 gateway.bind (或 loopback)。',
     )
     .option(
       "--token <token>",
-      "Shared token required in connect.params.auth.token (default: OPENCLAW_GATEWAY_TOKEN env if set)",
+      "connect.params.auth.token 所需的共享令牌 (默认: 如果设置了 OPENCLAW_GATEWAY_TOKEN env)",
     )
-    .option("--auth <mode>", 'Gateway auth mode ("token"|"password")')
-    .option("--password <password>", "Password for auth mode=password")
-    .option("--tailscale <mode>", 'Tailscale exposure mode ("off"|"serve"|"funnel")')
+    .option("--auth <mode>", '网关认证模式 ("token"|"password")')
+    .option("--password <password>", "auth mode=password 的密码")
+    .option("--tailscale <mode>", 'Tailscale 暴露模式 ("off"|"serve"|"funnel")')
     .option(
       "--tailscale-reset-on-exit",
-      "Reset Tailscale serve/funnel configuration on shutdown",
+      "关闭时重置 Tailscale serve/funnel 配置",
       false,
     )
     .option(
       "--allow-unconfigured",
-      "Allow gateway start without gateway.mode=local in config",
+      "允许在配置中没有 gateway.mode=local 的情况下启动网关",
       false,
     )
-    .option("--dev", "Create a dev config + workspace if missing (no BOOTSTRAP.md)", false)
+    .option("--dev", "如果缺少则创建 dev 配置 + 工作区 (无 BOOTSTRAP.md)", false)
     .option(
       "--reset",
-      "Reset dev config + credentials + sessions + workspace (requires --dev)",
+      "重置 dev 配置 + 凭据 + 会话 + 工作区 (需要 --dev)",
       false,
     )
-    .option("--force", "Kill any existing listener on the target port before starting", false)
-    .option("--verbose", "Verbose logging to stdout/stderr", false)
+    .option("--force", "在启动前终止目标端口上的任何现有监听器", false)
+    .option("--verbose", "将详细日志记录到 stdout/stderr", false)
     .option(
       "--claude-cli-logs",
-      "Only show claude-cli logs in the console (includes stdout/stderr)",
+      "仅在控制台中显示 claude-cli 日志 (包括 stdout/stderr)",
       false,
     )
-    .option("--ws-log <style>", 'WebSocket log style ("auto"|"full"|"compact")', "auto")
-    .option("--compact", 'Alias for "--ws-log compact"', false)
-    .option("--raw-stream", "Log raw model stream events to jsonl", false)
-    .option("--raw-stream-path <path>", "Raw stream jsonl path")
+    .option("--ws-log <style>", 'WebSocket 日志样式 ("auto"|"full"|"compact")', "auto")
+    .option("--compact", '"--ws-log compact" 的别名', false)
+    .option("--raw-stream", "将原始模型流事件记录到 jsonl", false)
+    .option("--raw-stream-path <path>", "原始流 jsonl 路径")
     .action(async (opts) => {
       await runGatewayCommand(opts);
     });

@@ -5,24 +5,24 @@ import type { GatewayStatusSummary } from "./tui-types.js";
 
 export function formatStatusSummary(summary: GatewayStatusSummary) {
   const lines: string[] = [];
-  lines.push("Gateway status");
+  lines.push("网关状态");
 
   if (!summary.linkChannel) {
-    lines.push("Link channel: unknown");
+    lines.push("链接通道: 未知");
   } else {
-    const linkLabel = summary.linkChannel.label ?? "Link channel";
+    const linkLabel = summary.linkChannel.label ?? "链接通道";
     const linked = summary.linkChannel.linked === true;
     const authAge =
       linked && typeof summary.linkChannel.authAgeMs === "number"
-        ? ` (last refreshed ${formatAge(summary.linkChannel.authAgeMs)})`
+        ? ` (上次刷新 ${formatAge(summary.linkChannel.authAgeMs)})`
         : "";
-    lines.push(`${linkLabel}: ${linked ? "linked" : "not linked"}${authAge}`);
+    lines.push(`${linkLabel}: ${linked ? "已连接" : "未连接"}${authAge}`);
   }
 
   const providerSummary = Array.isArray(summary.providerSummary) ? summary.providerSummary : [];
   if (providerSummary.length > 0) {
     lines.push("");
-    lines.push("System:");
+    lines.push("系统:");
     for (const line of providerSummary) {
       lines.push(`  ${line}`);
     }
@@ -32,18 +32,18 @@ export function formatStatusSummary(summary: GatewayStatusSummary) {
   if (heartbeatAgents.length > 0) {
     const heartbeatParts = heartbeatAgents.map((agent) => {
       const agentId = agent.agentId ?? "unknown";
-      if (!agent.enabled || !agent.everyMs) return `disabled (${agentId})`;
+      if (!agent.enabled || !agent.everyMs) return `已禁用 (${agentId})`;
       return `${agent.every ?? "unknown"} (${agentId})`;
     });
     lines.push("");
-    lines.push(`Heartbeat: ${heartbeatParts.join(", ")}`);
+    lines.push(`心跳: ${heartbeatParts.join(", ")}`);
   }
 
   const sessionPaths = summary.sessions?.paths ?? [];
   if (sessionPaths.length === 1) {
-    lines.push(`Session store: ${sessionPaths[0]}`);
+    lines.push(`会话存储: ${sessionPaths[0]}`);
   } else if (sessionPaths.length > 1) {
-    lines.push(`Session stores: ${sessionPaths.length}`);
+    lines.push(`会话存储数量: ${sessionPaths.length}`);
   }
 
   const defaults = summary.sessions?.defaults;
@@ -52,16 +52,16 @@ export function formatStatusSummary(summary: GatewayStatusSummary) {
     typeof defaults?.contextTokens === "number"
       ? ` (${formatTokenCount(defaults.contextTokens)} ctx)`
       : "";
-  lines.push(`Default model: ${defaultModel}${defaultCtx}`);
+  lines.push(`默认模型: ${defaultModel}${defaultCtx}`);
 
   const sessionCount = summary.sessions?.count ?? 0;
-  lines.push(`Active sessions: ${sessionCount}`);
+  lines.push(`活跃会话: ${sessionCount}`);
 
   const recent = Array.isArray(summary.sessions?.recent) ? summary.sessions?.recent : [];
   if (recent.length > 0) {
-    lines.push("Recent sessions:");
+    lines.push("最近会话:");
     for (const entry of recent) {
-      const ageLabel = typeof entry.age === "number" ? formatAge(entry.age) : "no activity";
+      const ageLabel = typeof entry.age === "number" ? formatAge(entry.age) : "无活动";
       const model = entry.model ?? "unknown";
       const usage = formatContextUsageLine({
         total: entry.totalTokens ?? null,
@@ -79,7 +79,7 @@ export function formatStatusSummary(summary: GatewayStatusSummary) {
   const queued = Array.isArray(summary.queuedSystemEvents) ? summary.queuedSystemEvents : [];
   if (queued.length > 0) {
     const preview = queued.slice(0, 3).join(" | ");
-    lines.push(`Queued system events (${queued.length}): ${preview}`);
+    lines.push(`队列中的系统事件 (${queued.length}): ${preview}`);
   }
 
   return lines;

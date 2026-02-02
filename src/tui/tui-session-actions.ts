@@ -82,7 +82,7 @@ export function createSessionActions(context: SessionActionContext) {
       const result = await client.listAgents();
       applyAgentsResult(result);
     } catch (err) {
-      chatLog.addSystem(`agents list failed: ${String(err)}`);
+      chatLog.addSystem(`智能体列表获取失败: ${String(err)}`);
     }
   };
 
@@ -130,7 +130,7 @@ export function createSessionActions(context: SessionActionContext) {
           displayName: entry?.displayName,
         };
       } catch (err) {
-        chatLog.addSystem(`sessions list failed: ${String(err)}`);
+        chatLog.addSystem(`会话列表获取失败: ${String(err)}`);
       }
       updateAutocompleteProvider();
       updateFooter();
@@ -157,7 +157,7 @@ export function createSessionActions(context: SessionActionContext) {
       state.currentSessionId = typeof record.sessionId === "string" ? record.sessionId : null;
       state.sessionInfo.thinkingLevel = record.thinkingLevel ?? state.sessionInfo.thinkingLevel;
       chatLog.clearAll();
-      chatLog.addSystem(`session ${state.currentSessionKey}`);
+      chatLog.addSystem(`会话 ${state.currentSessionKey}`);
       for (const entry of record.messages ?? []) {
         if (!entry || typeof entry !== "object") continue;
         const message = entry as Record<string, unknown>;
@@ -218,7 +218,7 @@ export function createSessionActions(context: SessionActionContext) {
 
   const abortActive = async () => {
     if (!state.activeChatRunId) {
-      chatLog.addSystem("no active run");
+      chatLog.addSystem("无活跃运行");
       tui.requestRender();
       return;
     }
@@ -227,10 +227,10 @@ export function createSessionActions(context: SessionActionContext) {
         sessionKey: state.currentSessionKey,
         runId: state.activeChatRunId,
       });
-      setActivityStatus("aborted");
+      setActivityStatus("已中止");
     } catch (err) {
-      chatLog.addSystem(`abort failed: ${String(err)}`);
-      setActivityStatus("abort failed");
+      chatLog.addSystem(`中止失败: ${String(err)}`);
+      setActivityStatus("中止失败");
     }
     tui.requestRender();
   };

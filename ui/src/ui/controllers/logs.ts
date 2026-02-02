@@ -129,7 +129,7 @@ export async function loadLogs(
     state.logsTruncated = Boolean(payload.truncated);
     state.logsLastFetchAt = Date.now();
   } catch (err) {
-    state.logsError = String(err);
+    state.logsError = "加载日志失败：" + String(err);
   } finally {
     if (!opts?.quiet) state.logsLoading = false;
   }

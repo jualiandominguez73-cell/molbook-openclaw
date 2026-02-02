@@ -99,8 +99,8 @@ export async function runTui(opts: TuiOptions) {
   let autoMessageSent = false;
   let sessionInfo: SessionInfo = {};
   let lastCtrlCAt = 0;
-  let activityStatus = "idle";
-  let connectionStatus = "connecting";
+  let activityStatus = "空闲";
+  let connectionStatus = "正在连接";
   let statusTimeout: NodeJS.Timeout | null = null;
   let statusTimer: NodeJS.Timeout | null = null;
   let statusStartedAt: number | null = null;
@@ -290,7 +290,7 @@ export async function runTui(opts: TuiOptions) {
     const agentLabel = formatAgentLabel(currentAgentId);
     header.setText(
       theme.header(
-        `openclaw tui - ${client.connection.url} - agent ${agentLabel} - session ${sessionLabel}`,
+        `openclaw tui - ${client.connection.url} - 智能体 ${agentLabel} - 会话 ${sessionLabel}`,
       ),
     );
   };
@@ -447,19 +447,19 @@ export async function runTui(opts: TuiOptions) {
       ? sessionInfo.modelProvider
         ? `${sessionInfo.modelProvider}/${sessionInfo.model}`
         : sessionInfo.model
-      : "unknown";
+      : "未知";
     const tokens = formatTokens(sessionInfo.totalTokens ?? null, sessionInfo.contextTokens ?? null);
     const think = sessionInfo.thinkingLevel ?? "off";
     const verbose = sessionInfo.verboseLevel ?? "off";
     const reasoning = sessionInfo.reasoningLevel ?? "off";
     const reasoningLabel =
-      reasoning === "on" ? "reasoning" : reasoning === "stream" ? "reasoning:stream" : null;
+      reasoning === "on" ? "推理" : reasoning === "stream" ? "推理:流式" : null;
     const footerParts = [
-      `agent ${agentLabel}`,
-      `session ${sessionLabel}`,
+      `智能体 ${agentLabel}`,
+      `会话 ${sessionLabel}`,
       modelLabel,
-      think !== "off" ? `think ${think}` : null,
-      verbose !== "off" ? `verbose ${verbose}` : null,
+      think !== "off" ? `思考 ${think}` : null,
+      verbose !== "off" ? `详细 ${verbose}` : null,
       reasoningLabel,
       tokens,
     ].filter(Boolean);
@@ -540,7 +540,7 @@ export async function runTui(opts: TuiOptions) {
     const now = Date.now();
     if (editor.getText().trim().length > 0) {
       editor.setText("");
-      setActivityStatus("cleared input");
+      setActivityStatus("已清除输入");
       tui.requestRender();
       return;
     }
@@ -550,7 +550,7 @@ export async function runTui(opts: TuiOptions) {
       process.exit(0);
     }
     lastCtrlCAt = now;
-    setActivityStatus("press ctrl+c again to exit");
+    setActivityStatus("再次按 Ctrl+C 退出");
     tui.requestRender();
   };
   editor.onCtrlD = () => {
@@ -561,7 +561,7 @@ export async function runTui(opts: TuiOptions) {
   editor.onCtrlO = () => {
     toolsExpanded = !toolsExpanded;
     chatLog.setToolsExpanded(toolsExpanded);
-    setActivityStatus(toolsExpanded ? "tools expanded" : "tools collapsed");
+    setActivityStatus(toolsExpanded ? "工具已展开" : "工具已折叠");
     tui.requestRender();
   };
   editor.onCtrlL = () => {
@@ -587,12 +587,12 @@ export async function runTui(opts: TuiOptions) {
     isConnected = true;
     const reconnected = wasDisconnected;
     wasDisconnected = false;
-    setConnectionStatus("connected");
+    setConnectionStatus("已连接");
     void (async () => {
       await refreshAgents();
       updateHeader();
       await loadHistory();
-      setConnectionStatus(reconnected ? "gateway reconnected" : "gateway connected", 4000);
+      setConnectionStatus(reconnected ? "网关已重连" : "网关已连接", 4000);
       tui.requestRender();
       if (!autoMessageSent && autoMessage) {
         autoMessageSent = true;
@@ -607,20 +607,20 @@ export async function runTui(opts: TuiOptions) {
     isConnected = false;
     wasDisconnected = true;
     historyLoaded = false;
-    const reasonLabel = reason?.trim() ? reason.trim() : "closed";
-    setConnectionStatus(`gateway disconnected: ${reasonLabel}`, 5000);
-    setActivityStatus("idle");
+    const reasonLabel = reason?.trim() ? reason.trim() : "已关闭";
+    setConnectionStatus(`网关已断开: ${reasonLabel}`, 5000);
+    setActivityStatus("空闲");
     updateFooter();
     tui.requestRender();
   };
 
   client.onGap = (info) => {
-    setConnectionStatus(`event gap: expected ${info.expected}, got ${info.received}`, 5000);
+    setConnectionStatus(`事件缺失: 预期 ${info.expected}, 实际 ${info.received}`, 5000);
     tui.requestRender();
   };
 
   updateHeader();
-  setConnectionStatus("connecting");
+  setConnectionStatus("正在连接");
   updateFooter();
   tui.start();
   client.start();

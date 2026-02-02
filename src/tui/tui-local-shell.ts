@@ -39,15 +39,15 @@ export function createLocalShellRunner(deps: LocalShellDeps) {
     localExecAsked = true;
 
     return await new Promise<boolean>((resolve) => {
-      deps.chatLog.addSystem("Allow local shell commands for this session?");
+      deps.chatLog.addSystem("是否允许此会话执行本地 Shell 命令?");
       deps.chatLog.addSystem(
-        "This runs commands on YOUR machine (not the gateway) and may delete files or reveal secrets.",
+        "这将在您的机器(而非网关)上运行命令，可能会删除文件或泄露机密。",
       );
-      deps.chatLog.addSystem("Select Yes/No (arrows + Enter), Esc to cancel.");
+      deps.chatLog.addSystem("选择 是/否 (箭头键 + Enter)，Esc 取消。");
       const selector = createSelector(
         [
-          { value: "no", label: "No" },
-          { value: "yes", label: "Yes" },
+          { value: "no", label: "否" },
+          { value: "yes", label: "是" },
         ],
         2,
       );
@@ -55,17 +55,17 @@ export function createLocalShellRunner(deps: LocalShellDeps) {
         deps.closeOverlay();
         if (item.value === "yes") {
           localExecAllowed = true;
-          deps.chatLog.addSystem("local shell: enabled for this session");
+          deps.chatLog.addSystem("本地 Shell: 此会话已启用");
           resolve(true);
         } else {
-          deps.chatLog.addSystem("local shell: not enabled");
+          deps.chatLog.addSystem("本地 Shell: 未启用");
           resolve(false);
         }
         deps.tui.requestRender();
       };
       selector.onCancel = () => {
         deps.closeOverlay();
-        deps.chatLog.addSystem("local shell: cancelled");
+        deps.chatLog.addSystem("本地 Shell: 已取消");
         deps.tui.requestRender();
         resolve(false);
       };
@@ -81,7 +81,7 @@ export function createLocalShellRunner(deps: LocalShellDeps) {
     if (cmd === "") return;
 
     if (localExecAsked && !localExecAllowed) {
-      deps.chatLog.addSystem("local shell: not enabled for this session");
+      deps.chatLog.addSystem("本地 Shell: 此会话未启用");
       deps.tui.requestRender();
       return;
     }
@@ -119,14 +119,14 @@ export function createLocalShellRunner(deps: LocalShellDeps) {
           }
         }
         deps.chatLog.addSystem(
-          `[local] exit ${code ?? "?"}${signal ? ` (signal ${String(signal)})` : ""}`,
+          `[local] 退出 ${code ?? "?"}${signal ? ` (信号 ${String(signal)})` : ""}`,
         );
         deps.tui.requestRender();
         resolve();
       });
 
       child.on("error", (err) => {
-        deps.chatLog.addSystem(`[local] error: ${String(err)}`);
+        deps.chatLog.addSystem(`[local] 错误: ${String(err)}`);
         deps.tui.requestRender();
         resolve();
       });

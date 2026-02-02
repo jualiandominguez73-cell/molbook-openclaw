@@ -44,7 +44,7 @@ export async function loadSessions(
       | undefined;
     if (res) state.sessionsResult = res;
   } catch (err) {
-    state.sessionsError = String(err);
+    state.sessionsError = "加载会话失败：" + String(err);
   } finally {
     state.sessionsLoading = false;
   }
@@ -70,7 +70,7 @@ export async function patchSession(
     await state.client.request("sessions.patch", params);
     await loadSessions(state);
   } catch (err) {
-    state.sessionsError = String(err);
+    state.sessionsError = "更新会话失败：" + String(err);
   }
 }
 
@@ -78,7 +78,7 @@ export async function deleteSession(state: SessionsState, key: string) {
   if (!state.client || !state.connected) return;
   if (state.sessionsLoading) return;
   const confirmed = window.confirm(
-    `Delete session "${key}"?\n\nDeletes the session entry and archives its transcript.`,
+    `确定要删除会话 "${key}" 吗？\n\n将删除会话条目并归档其记录。`,
   );
   if (!confirmed) return;
   state.sessionsLoading = true;
@@ -87,7 +87,7 @@ export async function deleteSession(state: SessionsState, key: string) {
     await state.client.request("sessions.delete", { key, deleteTranscript: true });
     await loadSessions(state);
   } catch (err) {
-    state.sessionsError = String(err);
+    state.sessionsError = "删除会话失败：" + String(err);
   } finally {
     state.sessionsLoading = false;
   }

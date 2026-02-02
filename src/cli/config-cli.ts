@@ -39,9 +39,9 @@ function parsePath(raw: string): PathSegment[] {
       if (current) parts.push(current);
       current = "";
       const close = trimmed.indexOf("]", i);
-      if (close === -1) throw new Error(`Invalid path (missing "]"): ${raw}`);
+      if (close === -1) throw new Error(`无效路径（缺少 "]"）：${raw}`);
       const inside = trimmed.slice(i + 1, close).trim();
-      if (!inside) throw new Error(`Invalid path (empty "[]"): ${raw}`);
+      if (!inside) throw new Error(`无效路径（"[]" 为空）：${raw}`);
       parts.push(inside);
       i = close + 1;
       continue;
@@ -59,7 +59,7 @@ function parseValue(raw: string, opts: { json?: boolean }): unknown {
     try {
       return JSON5.parse(trimmed);
     } catch (err) {
-      throw new Error(`Failed to parse JSON5 value: ${String(err)}`);
+      throw new Error(`解析 JSON5 值失败：${String(err)}`);
     }
   }
 
@@ -98,7 +98,7 @@ function setAtPath(root: Record<string, unknown>, path: PathSegment[], value: un
     const nextIsIndex = Boolean(next && isIndexSegment(next));
     if (Array.isArray(current)) {
       if (!isIndexSegment(segment)) {
-        throw new Error(`Expected numeric index for array segment "${segment}"`);
+        throw new Error(`数组段 "${segment}" 应为数字索引`);
       }
       const index = Number.parseInt(segment, 10);
       const existing = current[index];
@@ -109,7 +109,7 @@ function setAtPath(root: Record<string, unknown>, path: PathSegment[], value: un
       continue;
     }
     if (!current || typeof current !== "object") {
-      throw new Error(`Cannot traverse into "${segment}" (not an object)`);
+      throw new Error(`无法遍历进入 "${segment}" (非对象)`);
     }
     const record = current as Record<string, unknown>;
     const existing = record[segment];
@@ -122,14 +122,14 @@ function setAtPath(root: Record<string, unknown>, path: PathSegment[], value: un
   const last = path[path.length - 1];
   if (Array.isArray(current)) {
     if (!isIndexSegment(last)) {
-      throw new Error(`Expected numeric index for array segment "${last}"`);
+      throw new Error(`数组段 "${last}" 应为数字索引`);
     }
     const index = Number.parseInt(last, 10);
     current[index] = value;
     return;
   }
   if (!current || typeof current !== "object") {
-    throw new Error(`Cannot set "${last}" (parent is not an object)`);
+    throw new Error(`无法设置 "${last}"（父级非对象）`);
   }
   (current as Record<string, unknown>)[last] = value;
 }
@@ -169,11 +169,11 @@ function unsetAtPath(root: Record<string, unknown>, path: PathSegment[]): boolea
 async function loadValidConfig() {
   const snapshot = await readConfigFileSnapshot();
   if (snapshot.valid) return snapshot;
-  defaultRuntime.error(`Config invalid at ${shortenHomePath(snapshot.path)}.`);
+  defaultRuntime.error(`配置无效：${shortenHomePath(snapshot.path)}。`);
   for (const issue of snapshot.issues) {
-    defaultRuntime.error(`- ${issue.path || "<root>"}: ${issue.message}`);
+    defaultRuntime.error(`- ${issue.path || "<根>"}: ${issue.message}`);
   }
-  defaultRuntime.error(`Run \`${formatCliCommand("openclaw doctor")}\` to repair, then retry.`);
+  defaultRuntime.error(`运行 \`${formatCliCommand("openclaw doctor")}\` 修复后重试。`);
   defaultRuntime.exit(1);
   return snapshot;
 }
@@ -181,15 +181,15 @@ async function loadValidConfig() {
 export function registerConfigCli(program: Command) {
   const cmd = program
     .command("config")
-    .description("Config helpers (get/set/unset). Run without subcommand for the wizard.")
+    .description("配置助手（get/set/unset）。不带子命令时进入向导。")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/config", "docs.openclaw.ai/cli/config")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/config", "docs.openclaw.ai/cli/config")}\n`,
     )
     .option(
       "--section <section>",
-      "Configure wizard sections (repeatable). Use with no subcommand.",
+      "配置向导分区（可重复指定）。需搭配无子命令使用。",
       (value: string, previous: string[]) => [...previous, value],
       [] as string[],
     )
@@ -209,7 +209,7 @@ export function registerConfigCli(program: Command) {
       const invalid = sections.filter((s) => !CONFIGURE_WIZARD_SECTIONS.includes(s as never));
       if (invalid.length > 0) {
         defaultRuntime.error(
-          `Invalid --section: ${invalid.join(", ")}. Expected one of: ${CONFIGURE_WIZARD_SECTIONS.join(", ")}.`,
+          `无效的 --section：${invalid.join(", ")}。可选值：${CONFIGURE_WIZARD_SECTIONS.join(", ")}。`,
         );
         defaultRuntime.exit(1);
         return;
@@ -220,19 +220,19 @@ export function registerConfigCli(program: Command) {
 
   cmd
     .command("get")
-    .description("Get a config value by dot path")
-    .argument("<path>", "Config path (dot or bracket notation)")
-    .option("--json", "Output JSON", false)
+    .description("按点路径读取配置值")
+    .argument("<path>", "配置路径（点号或括号表示法）")
+    .option("--json", "输出 JSON", false)
     .action(async (path: string, opts) => {
       try {
         const parsedPath = parsePath(path);
         if (parsedPath.length === 0) {
-          throw new Error("Path is empty.");
+          throw new Error("路径为空。");
         }
         const snapshot = await loadValidConfig();
         const res = getAtPath(snapshot.config, parsedPath);
         if (!res.found) {
-          defaultRuntime.error(danger(`Config path not found: ${path}`));
+          defaultRuntime.error(danger(`未找到配置路径：${path}`));
           defaultRuntime.exit(1);
           return;
         }
@@ -257,20 +257,20 @@ export function registerConfigCli(program: Command) {
 
   cmd
     .command("set")
-    .description("Set a config value by dot path")
-    .argument("<path>", "Config path (dot or bracket notation)")
-    .argument("<value>", "Value (JSON5 or raw string)")
-    .option("--json", "Parse value as JSON5 (required)", false)
+    .description("按点路径设置配置值")
+    .argument("<path>", "配置路径（点号或括号表示法）")
+    .argument("<value>", "值（JSON5 或原始字符串）")
+    .option("--json", "将值按 JSON5 解析（必须指定）", false)
     .action(async (path: string, value: string, opts) => {
       try {
         const parsedPath = parsePath(path);
-        if (parsedPath.length === 0) throw new Error("Path is empty.");
+        if (parsedPath.length === 0) throw new Error("路径为空。");
         const parsedValue = parseValue(value, opts);
         const snapshot = await loadValidConfig();
         const next = snapshot.config as Record<string, unknown>;
         setAtPath(next, parsedPath, parsedValue);
         await writeConfigFile(next);
-        defaultRuntime.log(info(`Updated ${path}. Restart the gateway to apply.`));
+        defaultRuntime.log(info(`已更新 ${path}。重启网关以生效。`));
       } catch (err) {
         defaultRuntime.error(danger(String(err)));
         defaultRuntime.exit(1);
@@ -279,22 +279,22 @@ export function registerConfigCli(program: Command) {
 
   cmd
     .command("unset")
-    .description("Remove a config value by dot path")
-    .argument("<path>", "Config path (dot or bracket notation)")
+    .description("按点路径移除配置值")
+    .argument("<path>", "配置路径（点号或括号表示法）")
     .action(async (path: string) => {
       try {
         const parsedPath = parsePath(path);
-        if (parsedPath.length === 0) throw new Error("Path is empty.");
+        if (parsedPath.length === 0) throw new Error("路径为空。");
         const snapshot = await loadValidConfig();
         const next = snapshot.config as Record<string, unknown>;
         const removed = unsetAtPath(next, parsedPath);
         if (!removed) {
-          defaultRuntime.error(danger(`Config path not found: ${path}`));
+          defaultRuntime.error(danger(`未找到配置路径：${path}`));
           defaultRuntime.exit(1);
           return;
         }
         await writeConfigFile(next);
-        defaultRuntime.log(info(`Removed ${path}. Restart the gateway to apply.`));
+        defaultRuntime.log(info(`已移除 ${path}。重启网关以生效。`));
       } catch (err) {
         defaultRuntime.error(danger(String(err)));
         defaultRuntime.exit(1);

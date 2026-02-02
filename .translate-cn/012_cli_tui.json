@@ -1,0 +1,14 @@
+[
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Open a terminal UI connected to the Gateway","translate":"打开连接到网关的终端 UI"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Gateway WebSocket URL (defaults to gateway.remote.url when configured)","translate":"网关 WebSocket URL（配置后默认使用 gateway.remote.url）"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Gateway token (if required)","translate":"网关令牌（如需要）"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Gateway password (if required)","translate":"网关密码（如需要）"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Session key (default: \"main\", or \"global\" when scope is global)","translate":"会话键（默认：\"main\"；当 scope 为 global 时默认：\"global\"）"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Deliver assistant replies","translate":"转发助手回复"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Thinking level override","translate":"覆盖思考等级"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Send an initial message after connecting","translate":"连接后发送一条初始消息"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Agent timeout in ms (defaults to agents.defaults.timeoutSeconds)","translate":"代理超时（毫秒，默认：agents.defaults.timeoutSeconds）"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"History entries to load","translate":"加载的历史记录条数"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"Docs:","translate":"文档:"},
+  {"dir":"src\\cli\\tui-cli.ts","origin":"warning: invalid --timeout-ms \"${String(opts.timeoutMs)}\"; ignoring","translate":"警告：无效的 --timeout-ms \"${String(opts.timeoutMs)}\"；已忽略"}
+]

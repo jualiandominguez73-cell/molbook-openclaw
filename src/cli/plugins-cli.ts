@@ -35,10 +35,10 @@ export type PluginUpdateOptions = {
 function formatPluginLine(plugin: PluginRecord, verbose = false): string {
   const status =
     plugin.status === "loaded"
-      ? theme.success("loaded")
+      ? theme.success("已加载")
       : plugin.status === "disabled"
-        ? theme.warn("disabled")
-        : theme.error("error");
+        ? theme.warn("已禁用")
+        : theme.error("错误");
   const name = theme.command(plugin.name || plugin.id);
   const idSuffix = plugin.name && plugin.name !== plugin.id ? theme.muted(` (${plugin.id})`) : "";
   const desc = plugin.description
@@ -47,7 +47,7 @@ function formatPluginLine(plugin: PluginRecord, verbose = false): string {
           ? `${plugin.description.slice(0, 57)}...`
           : plugin.description,
       )
-    : theme.muted("(no description)");
+    : theme.muted("(无描述)");
 
   if (!verbose) {
     return `${name}${idSuffix} ${status} - ${desc}`;
@@ -94,19 +94,19 @@ function logSlotWarnings(warnings: string[]) {
 export function registerPluginsCli(program: Command) {
   const plugins = program
     .command("plugins")
-    .description("Manage OpenClaw plugins/extensions")
+    .description("管理 OpenClaw 插件/扩展")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/plugins", "docs.openclaw.ai/cli/plugins")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/plugins", "docs.openclaw.ai/cli/plugins")}\n`,
     );
 
   plugins
     .command("list")
-    .description("List discovered plugins")
-    .option("--json", "Print JSON")
-    .option("--enabled", "Only show enabled plugins", false)
-    .option("--verbose", "Show detailed entries", false)
+    .description("列出已发现的插件")
+    .option("--json", "输出 JSON")
+    .option("--enabled", "仅显示已启用的插件", false)
+    .option("--verbose", "显示详细条目", false)
     .action((opts: PluginsListOptions) => {
       const report = buildPluginStatusReport();
       const list = opts.enabled
@@ -124,13 +124,13 @@ export function registerPluginsCli(program: Command) {
       }
 
       if (list.length === 0) {
-        defaultRuntime.log(theme.muted("No plugins found."));
+        defaultRuntime.log(theme.muted("未找到插件。"));
         return;
       }
 
       const loaded = list.filter((p) => p.status === "loaded").length;
       defaultRuntime.log(
-        `${theme.heading("Plugins")} ${theme.muted(`(${loaded}/${list.length} loaded)`)}`,
+        `${theme.heading("插件")} ${theme.muted(`(${loaded}/${list.length} 已加载)`)}`,
       );
 
       if (!opts.verbose) {
@@ -143,10 +143,10 @@ export function registerPluginsCli(program: Command) {
             ID: plugin.name && plugin.name !== plugin.id ? plugin.id : "",
             Status:
               plugin.status === "loaded"
-                ? theme.success("loaded")
+                ? theme.success("已加载")
                 : plugin.status === "disabled"
-                  ? theme.warn("disabled")
-                  : theme.error("error"),
+                  ? theme.warn("已禁用")
+                  : theme.error("错误"),
             Source: sourceLine,
             Version: plugin.version ?? "",
           };
@@ -155,11 +155,11 @@ export function registerPluginsCli(program: Command) {
           renderTable({
             width: tableWidth,
             columns: [
-              { key: "Name", header: "Name", minWidth: 14, flex: true },
+              { key: "Name", header: "名称", minWidth: 14, flex: true },
               { key: "ID", header: "ID", minWidth: 10, flex: true },
-              { key: "Status", header: "Status", minWidth: 10 },
-              { key: "Source", header: "Source", minWidth: 26, flex: true },
-              { key: "Version", header: "Version", minWidth: 8 },
+              { key: "Status", header: "状态", minWidth: 10 },
+              { key: "Source", header: "来源", minWidth: 26, flex: true },
+              { key: "Version", header: "版本", minWidth: 8 },
             ],
             rows,
           }).trimEnd(),
@@ -177,14 +177,14 @@ export function registerPluginsCli(program: Command) {
 
   plugins
     .command("info")
-    .description("Show plugin details")
-    .argument("<id>", "Plugin id")
-    .option("--json", "Print JSON")
+    .description("显示插件详情")
+    .argument("<id>", "插件 ID")
+    .option("--json", "输出 JSON")
     .action((id: string, opts: PluginInfoOptions) => {
       const report = buildPluginStatusReport();
       const plugin = report.plugins.find((p) => p.id === id || p.name === id);
       if (!plugin) {
-        defaultRuntime.error(`Plugin not found: ${id}`);
+        defaultRuntime.error(`未找到插件：${id}`);
         process.exit(1);
       }
       const cfg = loadConfig();
@@ -202,48 +202,48 @@ export function registerPluginsCli(program: Command) {
       }
       if (plugin.description) lines.push(plugin.description);
       lines.push("");
-      lines.push(`${theme.muted("Status:")} ${plugin.status}`);
-      lines.push(`${theme.muted("Source:")} ${shortenHomeInString(plugin.source)}`);
-      lines.push(`${theme.muted("Origin:")} ${plugin.origin}`);
-      if (plugin.version) lines.push(`${theme.muted("Version:")} ${plugin.version}`);
+      lines.push(`${theme.muted("状态:")} ${plugin.status}`);
+      lines.push(`${theme.muted("来源:")} ${shortenHomeInString(plugin.source)}`);
+      lines.push(`${theme.muted("原点:")} ${plugin.origin}`);
+      if (plugin.version) lines.push(`${theme.muted("版本:")} ${plugin.version}`);
       if (plugin.toolNames.length > 0) {
-        lines.push(`${theme.muted("Tools:")} ${plugin.toolNames.join(", ")}`);
+        lines.push(`${theme.muted("工具:")} ${plugin.toolNames.join(", ")}`);
       }
       if (plugin.hookNames.length > 0) {
-        lines.push(`${theme.muted("Hooks:")} ${plugin.hookNames.join(", ")}`);
+        lines.push(`${theme.muted("钩子:")} ${plugin.hookNames.join(", ")}`);
       }
       if (plugin.gatewayMethods.length > 0) {
-        lines.push(`${theme.muted("Gateway methods:")} ${plugin.gatewayMethods.join(", ")}`);
+        lines.push(`${theme.muted("网关方法:")} ${plugin.gatewayMethods.join(", ")}`);
       }
       if (plugin.providerIds.length > 0) {
-        lines.push(`${theme.muted("Providers:")} ${plugin.providerIds.join(", ")}`);
+        lines.push(`${theme.muted("提供商:")} ${plugin.providerIds.join(", ")}`);
       }
       if (plugin.cliCommands.length > 0) {
-        lines.push(`${theme.muted("CLI commands:")} ${plugin.cliCommands.join(", ")}`);
+        lines.push(`${theme.muted("CLI 命令:")} ${plugin.cliCommands.join(", ")}`);
       }
       if (plugin.services.length > 0) {
-        lines.push(`${theme.muted("Services:")} ${plugin.services.join(", ")}`);
+        lines.push(`${theme.muted("服务:")} ${plugin.services.join(", ")}`);
       }
-      if (plugin.error) lines.push(`${theme.error("Error:")} ${plugin.error}`);
+      if (plugin.error) lines.push(`${theme.error("错误:")} ${plugin.error}`);
       if (install) {
         lines.push("");
-        lines.push(`${theme.muted("Install:")} ${install.source}`);
-        if (install.spec) lines.push(`${theme.muted("Spec:")} ${install.spec}`);
+        lines.push(`${theme.muted("安装:")} ${install.source}`);
+        if (install.spec) lines.push(`${theme.muted("规范:")} ${install.spec}`);
         if (install.sourcePath)
-          lines.push(`${theme.muted("Source path:")} ${shortenHomePath(install.sourcePath)}`);
+          lines.push(`${theme.muted("源路径:")} ${shortenHomePath(install.sourcePath)}`);
         if (install.installPath)
-          lines.push(`${theme.muted("Install path:")} ${shortenHomePath(install.installPath)}`);
-        if (install.version) lines.push(`${theme.muted("Recorded version:")} ${install.version}`);
+          lines.push(`${theme.muted("安装路径:")} ${shortenHomePath(install.installPath)}`);
+        if (install.version) lines.push(`${theme.muted("记录版本:")} ${install.version}`);
         if (install.installedAt)
-          lines.push(`${theme.muted("Installed at:")} ${install.installedAt}`);
+          lines.push(`${theme.muted("安装时间:")} ${install.installedAt}`);
       }
       defaultRuntime.log(lines.join("\n"));
     });
 
   plugins
     .command("enable")
-    .description("Enable a plugin in config")
-    .argument("<id>", "Plugin id")
+    .description("在配置中启用插件")
+    .argument("<id>", "插件 ID")
     .action(async (id: string) => {
       const cfg = loadConfig();
       let next: OpenClawConfig = {
@@ -263,13 +263,13 @@ export function registerPluginsCli(program: Command) {
       next = slotResult.config;
       await writeConfigFile(next);
       logSlotWarnings(slotResult.warnings);
-      defaultRuntime.log(`Enabled plugin "${id}". Restart the gateway to apply.`);
+      defaultRuntime.log(`已启用插件 "${id}"。重启网关以应用。`);
     });
 
   plugins
     .command("disable")
-    .description("Disable a plugin in config")
-    .argument("<id>", "Plugin id")
+    .description("在配置中禁用插件")
+    .argument("<id>", "插件 ID")
     .action(async (id: string) => {
       const cfg = loadConfig();
       const next = {
@@ -286,14 +286,14 @@ export function registerPluginsCli(program: Command) {
         },
       };
       await writeConfigFile(next);
-      defaultRuntime.log(`Disabled plugin "${id}". Restart the gateway to apply.`);
+      defaultRuntime.log(`已禁用插件 "${id}"。重启网关以应用。`);
     });
 
   plugins
     .command("install")
-    .description("Install a plugin (path, archive, or npm spec)")
-    .argument("<path-or-spec>", "Path (.ts/.js/.zip/.tgz/.tar.gz) or an npm package spec")
-    .option("-l, --link", "Link a local path instead of copying", false)
+    .description("安装插件（路径、归档或 npm 规范）")
+    .argument("<path-or-spec>", "路径 (.ts/.js/.zip/.tgz/.tar.gz) 或 npm 包规范")
+    .option("-l, --link", "链接本地路径而不是复制", false)
     .action(async (raw: string, opts: { link?: boolean }) => {
       const resolved = resolveUserPath(raw);
       const cfg = loadConfig();
@@ -336,8 +336,8 @@ export function registerPluginsCli(program: Command) {
           next = slotResult.config;
           await writeConfigFile(next);
           logSlotWarnings(slotResult.warnings);
-          defaultRuntime.log(`Linked plugin path: ${shortenHomePath(resolved)}`);
-          defaultRuntime.log(`Restart the gateway to load plugins.`);
+          defaultRuntime.log(`已链接插件路径：${shortenHomePath(resolved)}`);
+          defaultRuntime.log(`重启网关以加载插件。`);
           return;
         }
 
@@ -378,13 +378,13 @@ export function registerPluginsCli(program: Command) {
         next = slotResult.config;
         await writeConfigFile(next);
         logSlotWarnings(slotResult.warnings);
-        defaultRuntime.log(`Installed plugin: ${result.pluginId}`);
-        defaultRuntime.log(`Restart the gateway to load plugins.`);
+        defaultRuntime.log(`已安装插件：${result.pluginId}`);
+        defaultRuntime.log(`重启网关以加载插件。`);
         return;
       }
 
       if (opts.link) {
-        defaultRuntime.error("`--link` requires a local path.");
+        defaultRuntime.error("`--link` 需要本地路径。");
         process.exit(1);
       }
 
@@ -401,7 +401,7 @@ export function registerPluginsCli(program: Command) {
         raw.endsWith(".tar") ||
         raw.endsWith(".zip");
       if (looksLikePath) {
-        defaultRuntime.error(`Path not found: ${resolved}`);
+        defaultRuntime.error(`未找到路径：${resolved}`);
         process.exit(1);
       }
 
@@ -441,16 +441,16 @@ export function registerPluginsCli(program: Command) {
       next = slotResult.config;
       await writeConfigFile(next);
       logSlotWarnings(slotResult.warnings);
-      defaultRuntime.log(`Installed plugin: ${result.pluginId}`);
-      defaultRuntime.log(`Restart the gateway to load plugins.`);
+      defaultRuntime.log(`已安装插件：${result.pluginId}`);
+      defaultRuntime.log(`重启网关以加载插件。`);
     });
 
   plugins
     .command("update")
-    .description("Update installed plugins (npm installs only)")
-    .argument("[id]", "Plugin id (omit with --all)")
-    .option("--all", "Update all tracked plugins", false)
-    .option("--dry-run", "Show what would change without writing", false)
+    .description("更新已安装的插件（仅限 npm 安装）")
+    .argument("[id]", "插件 ID（使用 --all 时省略）")
+    .option("--all", "更新所有跟踪的插件", false)
+    .option("--dry-run", "仅显示变更而不写入", false)
     .action(async (id: string | undefined, opts: PluginUpdateOptions) => {
       const cfg = loadConfig();
       const installs = cfg.plugins?.installs ?? {};
@@ -458,10 +458,10 @@ export function registerPluginsCli(program: Command) {
 
       if (targets.length === 0) {
         if (opts.all) {
-          defaultRuntime.log("No npm-installed plugins to update.");
+          defaultRuntime.log("没有需要更新的 npm 安装插件。");
           return;
         }
-        defaultRuntime.error("Provide a plugin id or use --all.");
+        defaultRuntime.error("请提供插件 ID 或使用 --all。");
         process.exit(1);
       }
 
@@ -489,33 +489,33 @@ export function registerPluginsCli(program: Command) {
 
       if (!opts.dryRun && result.changed) {
         await writeConfigFile(result.config);
-        defaultRuntime.log("Restart the gateway to load plugins.");
+        defaultRuntime.log("重启网关以加载插件。");
       }
     });
 
   plugins
     .command("doctor")
-    .description("Report plugin load issues")
+    .description("报告插件加载问题")
     .action(() => {
       const report = buildPluginStatusReport();
       const errors = report.plugins.filter((p) => p.status === "error");
       const diags = report.diagnostics.filter((d) => d.level === "error");
 
       if (errors.length === 0 && diags.length === 0) {
-        defaultRuntime.log("No plugin issues detected.");
+        defaultRuntime.log("未检测到插件问题。");
         return;
       }
 
       const lines: string[] = [];
       if (errors.length > 0) {
-        lines.push(theme.error("Plugin errors:"));
+        lines.push(theme.error("插件错误:"));
         for (const entry of errors) {
-          lines.push(`- ${entry.id}: ${entry.error ?? "failed to load"} (${entry.source})`);
+          lines.push(`- ${entry.id}: ${entry.error ?? "加载失败"} (${entry.source})`);
         }
       }
       if (diags.length > 0) {
         if (lines.length > 0) lines.push("");
-        lines.push(theme.warn("Diagnostics:"));
+        lines.push(theme.warn("诊断信息:"));
         for (const diag of diags) {
           const target = diag.pluginId ? `${diag.pluginId}: ` : "";
           lines.push(`- ${target}${diag.message}`);
@@ -523,7 +523,7 @@ export function registerPluginsCli(program: Command) {
       }
       const docs = formatDocsLink("/plugin", "docs.openclaw.ai/plugin");
       lines.push("");
-      lines.push(`${theme.muted("Docs:")} ${docs}`);
+      lines.push(`${theme.muted("文档:")} ${docs}`);
       defaultRuntime.log(lines.join("\n"));
     });
 }

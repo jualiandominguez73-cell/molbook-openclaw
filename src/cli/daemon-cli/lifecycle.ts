@@ -33,7 +33,7 @@ export async function runDaemonUninstall(opts: DaemonLifecycleOptions = {}) {
   };
 
   if (resolveIsNixMode(process.env)) {
-    fail("Nix mode detected; service uninstall is disabled.");
+    fail("检测到 Nix 模式；服务卸载已禁用。");
     return;
   }
 
@@ -54,7 +54,7 @@ export async function runDaemonUninstall(opts: DaemonLifecycleOptions = {}) {
   try {
     await service.uninstall({ env: process.env, stdout });
   } catch (err) {
-    fail(`Gateway uninstall failed: ${String(err)}`);
+    fail(`网关卸载失败: ${String(err)}`);
     return;
   }
 
@@ -65,7 +65,7 @@ export async function runDaemonUninstall(opts: DaemonLifecycleOptions = {}) {
     loaded = false;
   }
   if (loaded) {
-    fail("Gateway service still loaded after uninstall.");
+    fail("卸载后网关服务仍处于加载状态。");
     return;
   }
   emit({
@@ -119,14 +119,14 @@ export async function runDaemonStart(opts: DaemonLifecycleOptions = {}) {
     emit({
       ok: true,
       result: "not-loaded",
-      message: `Gateway service ${service.notLoadedText}.`,
+      message: `网关服务 ${service.notLoadedText}。`,
       hints,
       service: buildDaemonServiceSnapshot(service, loaded),
     });
     if (!json) {
-      defaultRuntime.log(`Gateway service ${service.notLoadedText}.`);
+      defaultRuntime.log(`网关服务 ${service.notLoadedText}。`);
       for (const hint of hints) {
-        defaultRuntime.log(`Start with: ${hint}`);
+        defaultRuntime.log(`启动命令: ${hint}`);
       }
     }
     return;
@@ -135,7 +135,7 @@ export async function runDaemonStart(opts: DaemonLifecycleOptions = {}) {
     await service.restart({ env: process.env, stdout });
   } catch (err) {
     const hints = renderGatewayServiceStartHints();
-    fail(`Gateway start failed: ${String(err)}`, hints);
+    fail(`网关启动失败: ${String(err)}`, hints);
     return;
   }
 
@@ -181,25 +181,25 @@ export async function runDaemonStop(opts: DaemonLifecycleOptions = {}) {
   try {
     loaded = await service.isLoaded({ env: process.env });
   } catch (err) {
-    fail(`Gateway service check failed: ${String(err)}`);
+    fail(`网关服务检查失败: ${String(err)}`);
     return;
   }
   if (!loaded) {
     emit({
       ok: true,
       result: "not-loaded",
-      message: `Gateway service ${service.notLoadedText}.`,
+      message: `网关服务 ${service.notLoadedText}。`,
       service: buildDaemonServiceSnapshot(service, loaded),
     });
     if (!json) {
-      defaultRuntime.log(`Gateway service ${service.notLoadedText}.`);
+      defaultRuntime.log(`网关服务 ${service.notLoadedText}。`);
     }
     return;
   }
   try {
     await service.stop({ env: process.env, stdout });
   } catch (err) {
-    fail(`Gateway stop failed: ${String(err)}`);
+    fail(`网关停止失败: ${String(err)}`);
     return;
   }
 
@@ -251,7 +251,7 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
   try {
     loaded = await service.isLoaded({ env: process.env });
   } catch (err) {
-    fail(`Gateway service check failed: ${String(err)}`);
+    fail(`网关服务检查失败: ${String(err)}`);
     return false;
   }
   if (!loaded) {
@@ -265,14 +265,14 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
     emit({
       ok: true,
       result: "not-loaded",
-      message: `Gateway service ${service.notLoadedText}.`,
+      message: `网关服务 ${service.notLoadedText}。`,
       hints,
       service: buildDaemonServiceSnapshot(service, loaded),
     });
     if (!json) {
-      defaultRuntime.log(`Gateway service ${service.notLoadedText}.`);
+      defaultRuntime.log(`网关服务 ${service.notLoadedText}。`);
       for (const hint of hints) {
-        defaultRuntime.log(`Start with: ${hint}`);
+        defaultRuntime.log(`启动命令: ${hint}`);
       }
     }
     return false;
@@ -293,7 +293,7 @@ export async function runDaemonRestart(opts: DaemonLifecycleOptions = {}): Promi
     return true;
   } catch (err) {
     const hints = renderGatewayServiceStartHints();
-    fail(`Gateway restart failed: ${String(err)}`, hints);
+    fail(`网关重启失败: ${String(err)}`, hints);
     return false;
   }
 }

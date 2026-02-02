@@ -129,22 +129,22 @@ export function renderRuntimeHints(
     }
   })();
   if (runtime.missingUnit) {
-    hints.push(`Service not installed. Run: ${formatCliCommand("openclaw gateway install", env)}`);
-    if (fileLog) hints.push(`File logs: ${fileLog}`);
+    hints.push(`服务未安装。请运行: ${formatCliCommand("openclaw gateway install", env)}`);
+    if (fileLog) hints.push(`日志文件: ${fileLog}`);
     return hints;
   }
   if (runtime.status === "stopped") {
-    if (fileLog) hints.push(`File logs: ${fileLog}`);
+    if (fileLog) hints.push(`日志文件: ${fileLog}`);
     if (process.platform === "darwin") {
       const logs = resolveGatewayLogPaths(env);
-      hints.push(`Launchd stdout (if installed): ${logs.stdoutPath}`);
-      hints.push(`Launchd stderr (if installed): ${logs.stderrPath}`);
+      hints.push(`Launchd 标准输出 (如果已安装): ${logs.stdoutPath}`);
+      hints.push(`Launchd 标准错误 (如果已安装): ${logs.stderrPath}`);
     } else if (process.platform === "linux") {
       const unit = resolveGatewaySystemdServiceName(env.OPENCLAW_PROFILE);
-      hints.push(`Logs: journalctl --user -u ${unit}.service -n 200 --no-pager`);
+      hints.push(`日志: journalctl --user -u ${unit}.service -n 200 --no-pager`);
     } else if (process.platform === "win32") {
       const task = resolveGatewayWindowsTaskName(env.OPENCLAW_PROFILE);
-      hints.push(`Logs: schtasks /Query /TN "${task}" /V /FO LIST`);
+      hints.push(`日志: schtasks /Query /TN "${task}" /V /FO LIST`);
     }
   }
   return hints;

@@ -52,7 +52,7 @@ async function fetchLogs(
     { progress: showProgress },
   );
   if (!payload || typeof payload !== "object") {
-    throw new Error("Unexpected logs.tail response");
+    throw new Error("意外的 logs.tail 响应");
   }
   return payload as LogsTailPayload;
 }
@@ -113,7 +113,7 @@ function createLogWriters() {
     onBrokenPipe: (err, stream) => {
       const code = err.code ?? "EPIPE";
       const target = stream === process.stdout ? "stdout" : "stderr";
-      const message = `openclaw logs: output ${target} closed (${code}). Stopping tail.`;
+      const message = `openclaw logs: 输出 ${target} 已关闭 (${code})。停止 tail。`;
       try {
         clearActiveProgressLine();
         process.stderr.write(`${message}\n`);
@@ -140,8 +140,8 @@ function emitGatewayError(
   errorLine: (text: string) => boolean,
 ) {
   const details = buildGatewayConnectionDetails({ url: opts.url });
-  const message = "Gateway not reachable. Is it running and accessible?";
-  const hint = `Hint: run \`${formatCliCommand("openclaw doctor")}\`.`;
+  const message = "网关无法连接。是否已运行并可访问？";
+  const hint = `提示：运行 \`${formatCliCommand("openclaw doctor")}\`。`;
   const errorText = err instanceof Error ? err.message : String(err);
 
   if (mode === "json") {
@@ -170,18 +170,18 @@ function emitGatewayError(
 export function registerLogsCli(program: Command) {
   const logs = program
     .command("logs")
-    .description("Tail gateway file logs via RPC")
-    .option("--limit <n>", "Max lines to return", "200")
-    .option("--max-bytes <n>", "Max bytes to read", "250000")
-    .option("--follow", "Follow log output", false)
-    .option("--interval <ms>", "Polling interval in ms", "1000")
-    .option("--json", "Emit JSON log lines", false)
-    .option("--plain", "Plain text output (no ANSI styling)", false)
-    .option("--no-color", "Disable ANSI colors")
+    .description("通过 RPC 查看网关文件日志")
+    .option("--limit <n>", "最大返回行数", "200")
+    .option("--max-bytes <n>", "最大读取字节数", "250000")
+    .option("--follow", "跟随日志输出", false)
+    .option("--interval <ms>", "轮询间隔（毫秒）", "1000")
+    .option("--json", "输出 JSON 日志行", false)
+    .option("--plain", "纯文本输出（无 ANSI 样式）", false)
+    .option("--no-color", "禁用 ANSI 颜色")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/logs", "docs.openclaw.ai/cli/logs")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/logs", "docs.openclaw.ai/cli/logs")}\n`,
     );
 
   addGatewayClientOptions(logs);
@@ -272,12 +272,12 @@ export function registerLogsCli(program: Command) {
           }
         }
         if (payload.truncated) {
-          if (!errorLine("Log tail truncated (increase --max-bytes).")) {
+          if (!errorLine("日志 tail 已截断（增加 --max-bytes）。")) {
             return;
           }
         }
         if (payload.reset) {
-          if (!errorLine("Log cursor reset (file rotated).")) {
+          if (!errorLine("日志游标已重置（文件已轮转）。")) {
             return;
           }
         }

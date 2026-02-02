@@ -19,9 +19,9 @@ export async function warnIfCronSchedulerDisabled(opts: GatewayRpcOpts) {
     const store = typeof res?.storePath === "string" ? res.storePath : "";
     defaultRuntime.error(
       [
-        "warning: cron scheduler is disabled in the Gateway; jobs are saved but will not run automatically.",
-        "Re-enable with `cron.enabled: true` (or remove `cron.enabled: false`) and restart the Gateway.",
-        store ? `store: ${store}` : "",
+        "警告: 网关中的定时任务调度器已禁用; 任务已保存但不会自动运行。",
+        "请通过 `cron.enabled: true` 重新启用 (或移除 `cron.enabled: false`) 并重启网关。",
+        store ? `存储: ${store}` : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -94,7 +94,7 @@ const formatDuration = (ms: number) => {
 };
 
 const formatSpan = (ms: number) => {
-  if (ms < 60_000) return "<1m";
+  if (ms < 60_000) return "<1分";
   if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
   if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h`;
   return `${Math.round(ms / 86_400_000)}d`;
@@ -104,37 +104,37 @@ const formatRelative = (ms: number | null | undefined, nowMs: number) => {
   if (!ms) return "-";
   const delta = ms - nowMs;
   const label = formatSpan(Math.abs(delta));
-  return delta >= 0 ? `in ${label}` : `${label} ago`;
+  return delta >= 0 ? `${label}后` : `${label}前`;
 };
 
 const formatSchedule = (schedule: CronSchedule) => {
-  if (schedule.kind === "at") return `at ${formatIsoMinute(schedule.atMs)}`;
-  if (schedule.kind === "every") return `every ${formatDuration(schedule.everyMs)}`;
+  if (schedule.kind === "at") return `于 ${formatIsoMinute(schedule.atMs)}`;
+  if (schedule.kind === "every") return `每 ${formatDuration(schedule.everyMs)}`;
   return schedule.tz ? `cron ${schedule.expr} @ ${schedule.tz}` : `cron ${schedule.expr}`;
 };
 
 const formatStatus = (job: CronJob) => {
-  if (!job.enabled) return "disabled";
-  if (job.state.runningAtMs) return "running";
-  return job.state.lastStatus ?? "idle";
+  if (!job.enabled) return "已禁用";
+  if (job.state.runningAtMs) return "运行中";
+  return job.state.lastStatus ?? "空闲";
 };
 
 export function printCronList(jobs: CronJob[], runtime = defaultRuntime) {
   if (jobs.length === 0) {
-    runtime.log("No cron jobs.");
+    runtime.log("没有定时任务。");
     return;
   }
 
   const rich = isRich();
   const header = [
     pad("ID", CRON_ID_PAD),
-    pad("Name", CRON_NAME_PAD),
-    pad("Schedule", CRON_SCHEDULE_PAD),
-    pad("Next", CRON_NEXT_PAD),
-    pad("Last", CRON_LAST_PAD),
-    pad("Status", CRON_STATUS_PAD),
-    pad("Target", CRON_TARGET_PAD),
-    pad("Agent", CRON_AGENT_PAD),
+    pad("名称", CRON_NAME_PAD),
+    pad("调度", CRON_SCHEDULE_PAD),
+    pad("下次运行", CRON_NEXT_PAD),
+    pad("上次运行", CRON_LAST_PAD),
+    pad("状态", CRON_STATUS_PAD),
+    pad("目标", CRON_TARGET_PAD),
+    pad("代理", CRON_AGENT_PAD),
   ].join(" ");
 
   runtime.log(rich ? theme.heading(header) : header);
@@ -160,7 +160,7 @@ export function printCronList(jobs: CronJob[], runtime = defaultRuntime) {
     const coloredStatus = (() => {
       if (statusRaw === "ok") return colorize(rich, theme.success, statusLabel);
       if (statusRaw === "error") return colorize(rich, theme.error, statusLabel);
-      if (statusRaw === "running") return colorize(rich, theme.warn, statusLabel);
+      if (statusRaw === "运行中") return colorize(rich, theme.warn, statusLabel);
       if (statusRaw === "skipped") return colorize(rich, theme.muted, statusLabel);
       return colorize(rich, theme.muted, statusLabel);
     })();

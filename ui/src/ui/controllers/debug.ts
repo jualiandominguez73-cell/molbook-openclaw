@@ -34,7 +34,7 @@ export async function loadDebug(state: DebugState) {
       : [];
     state.debugHeartbeat = heartbeat as unknown;
   } catch (err) {
-    state.debugCallError = String(err);
+    state.debugCallError = "加载调试信息失败：" + String(err);
   } finally {
     state.debugLoading = false;
   }
@@ -51,6 +51,6 @@ export async function callDebugMethod(state: DebugState) {
     const res = await state.client.request(state.debugCallMethod.trim(), params);
     state.debugCallResult = JSON.stringify(res, null, 2);
   } catch (err) {
-    state.debugCallError = String(err);
+    state.debugCallError = "调用调试方法失败：" + String(err);
   }
 }

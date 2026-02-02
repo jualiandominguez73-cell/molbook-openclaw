@@ -24,13 +24,13 @@ const parseFacing = (value: string): CameraFacing => {
 };
 
 export function registerNodesCameraCommands(nodes: Command) {
-  const camera = nodes.command("camera").description("Capture camera media from a paired node");
+  const camera = nodes.command("camera").description("从已配对节点获取摄像头媒体");
 
   nodesCallOpts(
     camera
       .command("list")
-      .description("List available cameras on a node")
-      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
+      .description("列出节点上的可用摄像头")
+      .requiredOption("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("camera list", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));
@@ -86,14 +86,14 @@ export function registerNodesCameraCommands(nodes: Command) {
   nodesCallOpts(
     camera
       .command("snap")
-      .description("Capture a photo from a node camera (prints MEDIA:<path>)")
-      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
-      .option("--facing <front|back|both>", "Camera facing", "both")
-      .option("--device-id <id>", "Camera device id (from nodes camera list)")
-      .option("--max-width <px>", "Max width in px (optional)")
-      .option("--quality <0-1>", "JPEG quality (default 0.9)")
-      .option("--delay-ms <ms>", "Delay before capture in ms (macOS default 2000)")
-      .option("--invoke-timeout <ms>", "Node invoke timeout in ms (default 20000)", "20000")
+      .description("从节点摄像头拍摄照片 (输出 MEDIA:<路径>)")
+      .requiredOption("--node <idOrNameOrIp>", "节点 ID、名称或 IP")
+      .option("--facing <front|back|both>", "摄像头朝向", "both")
+      .option("--device-id <id>", "摄像头设备 ID (来自节点摄像头列表)")
+      .option("--max-width <px>", "最大宽度像素 (可选)")
+      .option("--quality <0-1>", "JPEG 质量 (默认 0.9)")
+      .option("--delay-ms <ms>", "拍摄前延迟毫秒数 (macOS 默认 2000)")
+      .option("--invoke-timeout <ms>", "节点调用超时毫秒数 (默认 20000)", "20000")
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("camera snap", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));

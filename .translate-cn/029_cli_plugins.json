@@ -1,0 +1,7 @@
+[
+  {"dir": "src/cli/plugins-cli.ts", "origin": "No plugin issues detected.", "translate": "未检测到插件问题。"},
+  {"dir": "src/cli/plugins-cli.ts", "origin": "Plugin errors:", "translate": "插件错误:"},
+  {"dir": "src/cli/plugins-cli.ts", "origin": "failed to load", "translate": "加载失败"},
+  {"dir": "src/cli/plugins-cli.ts", "origin": "Diagnostics:", "translate": "诊断信息:"},
+  {"dir": "src/cli/plugins-cli.ts", "origin": "Docs:", "translate": "文档:"}
+]

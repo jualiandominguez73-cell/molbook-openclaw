@@ -1,0 +1,307 @@
+[
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\clack-prompter.ts",
+    "origin": "Setup cancelled.",
+    "translate": "安装已取消。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\session.ts",
+    "origin": "Done",
+    "translate": "完成"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\session.ts",
+    "origin": "wizard: no pending step",
+    "translate": "wizard: 没有待处理的步骤"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\session.ts",
+    "origin": "wizard: session not running",
+    "translate": "wizard: 会话未运行"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\prompts.ts",
+    "origin": "wizard cancelled",
+    "translate": "向导已取消"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Gateway port",
+    "translate": "Gateway 端口"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Invalid port",
+    "translate": "无效端口"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Gateway bind",
+    "translate": "Gateway 绑定"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Loopback (127.0.0.1)",
+    "translate": "回环 (127.0.0.1)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "LAN (0.0.0.0)",
+    "translate": "局域网 (0.0.0.0)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Tailnet (Tailscale IP)",
+    "translate": "Tailnet (Tailscale IP)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Auto (Loopback → LAN)",
+    "translate": "自动 (回环 → 局域网)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Custom IP",
+    "translate": "自定义 IP"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Custom IP address",
+    "translate": "自定义 IP 地址"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "IP address is required for custom bind mode",
+    "translate": "自定义绑定模式需要 IP 地址"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Invalid IPv4 address (e.g., 192.168.1.100)",
+    "translate": "无效的 IPv4 地址 (例如 192.168.1.100)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Invalid IPv4 address (each octet must be 0-255)",
+    "translate": "无效的 IPv4 地址 (每个八位字节必须是 0-255)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Gateway auth",
+    "translate": "Gateway 认证"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Token",
+    "translate": "令牌"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Recommended default (local + remote)",
+    "translate": "推荐默认值 (本地 + 远程)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Password",
+    "translate": "密码"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Tailscale exposure",
+    "translate": "Tailscale 暴露"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Off",
+    "translate": "关闭"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "No Tailscale exposure",
+    "translate": "无 Tailscale 暴露"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Serve",
+    "translate": "Serve"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Private HTTPS for your tailnet (devices on Tailscale)",
+    "translate": "Tailnet 的私有 HTTPS (Tailscale 上的设备)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Funnel",
+    "translate": "Funnel"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Public HTTPS via Tailscale Funnel (internet)",
+    "translate": "通过 Tailscale Funnel 的公共 HTTPS (互联网)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Tailscale binary not found in PATH or /Applications.",
+    "translate": "在 PATH 或 /Applications 中未找到 Tailscale 二进制文件。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Ensure Tailscale is installed from:",
+    "translate": "确保从以下位置安装 Tailscale："
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "You can continue setup, but serve/funnel will fail at runtime.",
+    "translate": "您可以继续设置，但在运行时 serve/funnel 将会失败。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Tailscale Warning",
+    "translate": "Tailscale 警告"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Reset Tailscale serve/funnel on exit?",
+    "translate": "退出时重置 Tailscale serve/funnel？"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Tailscale requires bind=loopback. Adjusting bind to loopback.",
+    "translate": "Tailscale 需要 bind=loopback。正在调整绑定为 loopback。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Note",
+    "translate": "注意"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Tailscale funnel requires password auth.",
+    "translate": "Tailscale funnel 需要密码认证。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Gateway token (blank to generate)",
+    "translate": "Gateway 令牌 (留空以生成)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Needed for multi-machine or non-loopback access",
+    "translate": "多机或非回环访问所需"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Gateway password",
+    "translate": "Gateway 密码"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Required",
+    "translate": "必填"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Setup complete!",
+    "translate": "安装完成！"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "OpenClaw is ready.",
+    "translate": "OpenClaw 已准备就绪。"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Command to run",
+    "translate": "运行命令"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Start gateway",
+    "translate": "启动 Gateway"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Config file",
+    "translate": "配置文件"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Next steps",
+    "translate": "后续步骤"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Join Discord",
+    "translate": "加入 Discord"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Read docs",
+    "translate": "阅读文档"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Star on GitHub",
+    "translate": "在 GitHub 上点赞"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Welcome to OpenClaw",
+    "translate": "欢迎使用 OpenClaw"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "OpenClaw Setup",
+    "translate": "OpenClaw 安装"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Choose a setup mode",
+    "translate": "选择安装模式"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Quickstart (recommended)",
+    "translate": "快速开始 (推荐)"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Use defaults for most users",
+    "translate": "使用大多数用户的默认设置"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Advanced",
+    "translate": "高级"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Customize all settings",
+    "translate": "自定义所有设置"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Exit",
+    "translate": "退出"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.ts",
+    "origin": "Cancel setup",
+    "translate": "取消安装"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Or run in background:",
+    "translate": "或者后台运行:"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.finalize.ts",
+    "origin": "Exit",
+    "translate": "退出"
+  },
+  {
+    "dir": "c:\\Users\\com01\\Desktop\\OpenCray\\src\\wizard\\onboarding.gateway-config.ts",
+    "origin": "Docs:",
+    "translate": "文档:"
+  }
+]

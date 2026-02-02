@@ -13,11 +13,11 @@ import { registerNodesStatusCommands } from "./register.status.js";
 export function registerNodesCli(program: Command) {
   const nodes = program
     .command("nodes")
-    .description("Manage gateway-owned node pairing")
+    .description("管理网关拥有的节点配对")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/nodes", "docs.openclaw.ai/cli/nodes")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/nodes", "docs.openclaw.ai/cli/nodes")}\n`,
     );
 
   registerNodesStatusCommands(nodes);

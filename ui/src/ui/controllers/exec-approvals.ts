@@ -85,13 +85,13 @@ export async function loadExecApprovals(
   try {
     const rpc = resolveExecApprovalsRpc(target);
     if (!rpc) {
-      state.lastError = "Select a node before loading exec approvals.";
+      state.lastError = "加载执行审批前请选择节点。";
       return;
     }
     const res = (await state.client.request(rpc.method, rpc.params)) as ExecApprovalsSnapshot;
     applyExecApprovalsSnapshot(state, res);
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "加载执行审批配置失败：" + String(err);
   } finally {
     state.execApprovalsLoading = false;
   }
@@ -117,7 +117,7 @@ export async function saveExecApprovals(
   try {
     const baseHash = state.execApprovalsSnapshot?.hash;
     if (!baseHash) {
-      state.lastError = "Exec approvals hash missing; reload and retry.";
+      state.lastError = "执行审批配置哈希丢失；请重新加载并重试。";
       return;
     }
     const file =
@@ -126,14 +126,14 @@ export async function saveExecApprovals(
       {};
     const rpc = resolveExecApprovalsSaveRpc(target, { file, baseHash });
     if (!rpc) {
-      state.lastError = "Select a node before saving exec approvals.";
+      state.lastError = "保存执行审批前请选择节点。";
       return;
     }
     await state.client.request(rpc.method, rpc.params);
     state.execApprovalsDirty = false;
     await loadExecApprovals(state, target);
   } catch (err) {
-    state.lastError = String(err);
+    state.lastError = "保存执行审批配置失败：" + String(err);
   } finally {
     state.execApprovalsSaving = false;
   }

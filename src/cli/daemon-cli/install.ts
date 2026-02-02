@@ -43,24 +43,24 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
   };
 
   if (resolveIsNixMode(process.env)) {
-    fail("Nix mode detected; service install is disabled.");
+    fail("检测到 Nix 模式；服务安装已禁用。");
     return;
   }
 
   const cfg = loadConfig();
   const portOverride = parsePort(opts.port);
   if (opts.port !== undefined && portOverride === null) {
-    fail("Invalid port");
+    fail("无效端口");
     return;
   }
   const port = portOverride ?? resolveGatewayPort(cfg);
   if (!Number.isFinite(port) || port <= 0) {
-    fail("Invalid port");
+    fail("无效端口");
     return;
   }
   const runtimeRaw = opts.runtime ? String(opts.runtime) : DEFAULT_GATEWAY_DAEMON_RUNTIME;
   if (!isGatewayDaemonRuntime(runtimeRaw)) {
-    fail('Invalid --runtime (use "node" or "bun")');
+    fail('无效的 --runtime (使用 "node" 或 "bun")');
     return;
   }
 
@@ -69,7 +69,7 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
   try {
     loaded = await service.isLoaded({ env: process.env });
   } catch (err) {
-    fail(`Gateway service check failed: ${String(err)}`);
+    fail(`网关服务检查失败: ${String(err)}`);
     return;
   }
   if (loaded) {
@@ -77,14 +77,14 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
       emit({
         ok: true,
         result: "already-installed",
-        message: `Gateway service already ${service.loadedText}.`,
+        message: `网关服务已 ${service.loadedText}。`,
         service: buildDaemonServiceSnapshot(service, loaded),
         warnings: warnings.length ? warnings : undefined,
       });
       if (!json) {
-        defaultRuntime.log(`Gateway service already ${service.loadedText}.`);
+        defaultRuntime.log(`网关服务已 ${service.loadedText}。`);
         defaultRuntime.log(
-          `Reinstall with: ${formatCliCommand("openclaw gateway install --force")}`,
+          `请使用此命令重新安装: ${formatCliCommand("openclaw gateway install --force")}`,
         );
       }
       return;

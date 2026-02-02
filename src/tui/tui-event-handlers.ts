@@ -71,7 +71,7 @@ export function createEventHandlers(context: EventHandlerContext) {
       const displayText = streamAssembler.ingestDelta(evt.runId, evt.message, state.showThinking);
       if (!displayText) return;
       chatLog.updateAssistant(displayText, evt.runId);
-      setActivityStatus("streaming");
+      setActivityStatus("流式传输中");
     }
     if (evt.state === "final") {
       if (isCommandMessage(evt.message)) {
@@ -80,7 +80,7 @@ export function createEventHandlers(context: EventHandlerContext) {
         streamAssembler.drop(evt.runId);
         noteFinalizedRun(evt.runId);
         state.activeChatRunId = null;
-        setActivityStatus("idle");
+        setActivityStatus("空闲");
         void refreshSessionInfo?.();
         tui.requestRender();
         return;
@@ -109,7 +109,7 @@ export function createEventHandlers(context: EventHandlerContext) {
       void refreshSessionInfo?.();
     }
     if (evt.state === "error") {
-      chatLog.addSystem(`run error: ${evt.errorMessage ?? "unknown"}`);
+      chatLog.addSystem(`运行错误: ${evt.errorMessage ?? "未知"}`);
       streamAssembler.drop(evt.runId);
       sessionRuns.delete(evt.runId);
       state.activeChatRunId = null;
@@ -150,9 +150,9 @@ export function createEventHandlers(context: EventHandlerContext) {
     if (evt.stream === "lifecycle") {
       if (!isActiveRun) return;
       const phase = typeof evt.data?.phase === "string" ? evt.data.phase : "";
-      if (phase === "start") setActivityStatus("running");
-      if (phase === "end") setActivityStatus("idle");
-      if (phase === "error") setActivityStatus("error");
+      if (phase === "start") setActivityStatus("运行中");
+      if (phase === "end") setActivityStatus("空闲");
+      if (phase === "error") setActivityStatus("错误");
       tui.requestRender();
     }
   };

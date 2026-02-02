@@ -87,7 +87,7 @@ async function checkReadableFile(pathname: string): Promise<{ exists: boolean; i
     if (code === "ENOENT") return { exists: false };
     return {
       exists: true,
-      issue: `${shortenHomePath(pathname)} not readable (${code ?? "error"})`,
+      issue: `${shortenHomePath(pathname)} 无法读取 (${code ?? "error"})`,
     };
   }
 }
@@ -104,11 +104,11 @@ async function scanSessionFiles(agentId: string): Promise<SourceScan> {
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === "ENOENT") {
-      issues.push(`sessions directory missing (${shortenHomePath(sessionsDir)})`);
+      issues.push(`sessions 目录缺失 (${shortenHomePath(sessionsDir)})`);
       return { source: "sessions", totalFiles: 0, issues };
     }
     issues.push(
-      `sessions directory not accessible (${shortenHomePath(sessionsDir)}): ${code ?? "error"}`,
+      `sessions 目录无法访问 (${shortenHomePath(sessionsDir)}): ${code ?? "error"}`,
     );
     return { source: "sessions", totalFiles: null, issues };
   }
@@ -138,10 +138,10 @@ async function scanMemoryFiles(
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ENOENT") {
-        issues.push(`additional memory path missing (${shortenHomePath(extraPath)})`);
+        issues.push(`额外的记忆路径缺失 (${shortenHomePath(extraPath)})`);
       } else {
         issues.push(
-          `additional memory path not accessible (${shortenHomePath(extraPath)}): ${code ?? "error"}`,
+          `额外的记忆路径无法访问 (${shortenHomePath(extraPath)}): ${code ?? "error"}`,
         );
       }
     }
@@ -154,11 +154,11 @@ async function scanMemoryFiles(
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === "ENOENT") {
-      issues.push(`memory directory missing (${shortenHomePath(memoryDir)})`);
+      issues.push(`memory 目录缺失 (${shortenHomePath(memoryDir)})`);
       dirReadable = false;
     } else {
       issues.push(
-        `memory directory not accessible (${shortenHomePath(memoryDir)}): ${code ?? "error"}`,
+        `memory 目录无法访问 (${shortenHomePath(memoryDir)}): ${code ?? "error"}`,
       );
       dirReadable = null;
     }
@@ -173,7 +173,7 @@ async function scanMemoryFiles(
     const code = (err as NodeJS.ErrnoException).code;
     if (dirReadable !== null) {
       issues.push(
-        `memory directory scan failed (${shortenHomePath(memoryDir)}): ${code ?? "error"}`,
+        `memory 目录扫描失败 (${shortenHomePath(memoryDir)}): ${code ?? "error"}`,
       );
       dirReadable = null;
     }
@@ -192,7 +192,7 @@ async function scanMemoryFiles(
   }
 
   if ((totalFiles ?? 0) === 0 && issues.length === 0) {
-    issues.push(`no memory files found in ${shortenHomePath(workspaceDir)}`);
+    issues.push(`未在 ${shortenHomePath(workspaceDir)} 找到记忆文件`);
   }
 
   return { source: "memory", totalFiles, issues };
@@ -451,31 +451,31 @@ export async function runMemoryStatus(opts: MemoryCommandOptions) {
 export function registerMemoryCli(program: Command) {
   const memory = program
     .command("memory")
-    .description("Memory search tools")
+    .description("记忆搜索工具")
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/memory", "docs.openclaw.ai/cli/memory")}\n`,
+        `\n${theme.muted("文档:")} ${formatDocsLink("/cli/memory", "docs.openclaw.ai/cli/memory")}\n`,
     );
 
   memory
     .command("status")
-    .description("Show memory search index status")
-    .option("--agent <id>", "Agent id (default: default agent)")
-    .option("--json", "Print JSON")
-    .option("--deep", "Probe embedding provider availability")
-    .option("--index", "Reindex if dirty (implies --deep)")
-    .option("--verbose", "Verbose logging", false)
+    .description("显示记忆搜索索引状态")
+    .option("--agent <id>", "Agent id（默认：默认 Agent）")
+    .option("--json", "输出 JSON")
+    .option("--deep", "探测 Embedding 提供商可用性")
+    .option("--index", "如果脏则重新索引（隐含 --deep）")
+    .option("--verbose", "详细日志", false)
     .action(async (opts: MemoryCommandOptions) => {
       await runMemoryStatus(opts);
     });
 
   memory
     .command("index")
-    .description("Reindex memory files")
-    .option("--agent <id>", "Agent id (default: default agent)")
-    .option("--force", "Force full reindex", false)
-    .option("--verbose", "Verbose logging", false)
+    .description("重新索引记忆文件")
+    .option("--agent <id>", "Agent id（默认：默认 Agent）")
+    .option("--force", "强制完全重新索引", false)
+    .option("--verbose", "详细日志", false)
     .action(async (opts: MemoryCommandOptions & { force?: boolean }) => {
       setVerbose(Boolean(opts.verbose));
       const cfg = loadConfig();
@@ -483,9 +483,9 @@ export function registerMemoryCli(program: Command) {
       for (const agentId of agentIds) {
         await withManager<MemoryManager>({
           getManager: () => getMemorySearchManager({ cfg, agentId }),
-          onMissing: (error) => defaultRuntime.log(error ?? "Memory search disabled."),
+          onMissing: (error) => defaultRuntime.log(error ?? "记忆搜索已禁用。"),
           onCloseError: (err) =>
-            defaultRuntime.error(`Memory manager close failed: ${formatErrorMessage(err)}`),
+            defaultRuntime.error(`记忆管理器关闭失败: ${formatErrorMessage(err)}`),
           close: (manager) => manager.close(),
           run: async (manager) => {
             try {
@@ -502,26 +502,26 @@ export function registerMemoryCli(program: Command) {
                 );
                 const extraPaths = formatExtraPaths(status.workspaceDir, status.extraPaths ?? []);
                 const lines = [
-                  `${heading("Memory Index")} ${muted(`(${agentId})`)}`,
-                  `${label("Provider")} ${info(status.provider)} ${muted(
+                  `${heading("记忆索引")} ${muted(`(${agentId})`)}`,
+                  `${label("提供商")} ${info(status.provider)} ${muted(
                     `(requested: ${status.requestedProvider})`,
                   )}`,
-                  `${label("Model")} ${info(status.model)}`,
+                  `${label("模型")} ${info(status.model)}`,
                   sourceLabels.length
-                    ? `${label("Sources")} ${info(sourceLabels.join(", "))}`
+                    ? `${label("来源")} ${info(sourceLabels.join(", "))}`
                     : null,
                   extraPaths.length
-                    ? `${label("Extra paths")} ${info(extraPaths.join(", "))}`
+                    ? `${label("额外路径")} ${info(extraPaths.join(", "))}`
                     : null,
                 ].filter(Boolean) as string[];
                 if (status.fallback) {
-                  lines.push(`${label("Fallback")} ${warn(status.fallback.from)}`);
+                  lines.push(`${label("回退")} ${warn(status.fallback.from)}`);
                 }
                 defaultRuntime.log(lines.join("\n"));
                 defaultRuntime.log("");
               }
               const startedAt = Date.now();
-              let lastLabel = "Indexing memory…";
+              let lastLabel = "正在索引记忆...";
               let lastCompleted = 0;
               let lastTotal = 0;
               const formatElapsed = () => {
@@ -546,12 +546,12 @@ export function registerMemoryCli(program: Command) {
                 const elapsed = formatElapsed();
                 const eta = formatEta();
                 return eta
-                  ? `${lastLabel} · elapsed ${elapsed} · eta ${eta}`
-                  : `${lastLabel} · elapsed ${elapsed}`;
+                  ? `${lastLabel} · 耗时 ${elapsed} · 剩余 ${eta}`
+                  : `${lastLabel} · 耗时 ${elapsed}`;
               };
               await withProgressTotals(
                 {
-                  label: "Indexing memory…",
+                  label: "正在索引记忆...",
                   total: 0,
                   fallback: opts.verbose ? "line" : undefined,
                 },
@@ -593,12 +593,12 @@ export function registerMemoryCli(program: Command) {
 
   memory
     .command("search")
-    .description("Search memory files")
-    .argument("<query>", "Search query")
-    .option("--agent <id>", "Agent id (default: default agent)")
-    .option("--max-results <n>", "Max results", (value: string) => Number(value))
-    .option("--min-score <n>", "Minimum score", (value: string) => Number(value))
-    .option("--json", "Print JSON")
+    .description("搜索记忆文件")
+    .argument("<query>", "搜索关键词")
+    .option("--agent <id>", "Agent id（默认：默认 Agent）")
+    .option("--max-results <n>", "最大结果数", (value: string) => Number(value))
+    .option("--min-score <n>", "最小分数", (value: string) => Number(value))
+    .option("--json", "输出 JSON")
     .action(
       async (
         query: string,
@@ -611,9 +611,9 @@ export function registerMemoryCli(program: Command) {
         const agentId = resolveAgent(cfg, opts.agent);
         await withManager<MemoryManager>({
           getManager: () => getMemorySearchManager({ cfg, agentId }),
-          onMissing: (error) => defaultRuntime.log(error ?? "Memory search disabled."),
+          onMissing: (error) => defaultRuntime.log(error ?? "记忆搜索已禁用。"),
           onCloseError: (err) =>
-            defaultRuntime.error(`Memory manager close failed: ${formatErrorMessage(err)}`),
+            defaultRuntime.error(`记忆管理器关闭失败: ${formatErrorMessage(err)}`),
           close: (manager) => manager.close(),
           run: async (manager) => {
             let results: Awaited<ReturnType<typeof manager.search>>;
@@ -624,7 +624,7 @@ export function registerMemoryCli(program: Command) {
               });
             } catch (err) {
               const message = formatErrorMessage(err);
-              defaultRuntime.error(`Memory search failed: ${message}`);
+              defaultRuntime.error(`记忆搜索失败: ${message}`);
               process.exitCode = 1;
               return;
             }
@@ -633,7 +633,7 @@ export function registerMemoryCli(program: Command) {
               return;
             }
             if (results.length === 0) {
-              defaultRuntime.log("No matches.");
+              defaultRuntime.log("无匹配结果。");
               return;
             }
             const rich = isRich();

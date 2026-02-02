@@ -1,0 +1,10 @@
+[
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Initialize ~/.openclaw/openclaw.json and the agent workspace","translate":"初始化 ~/.openclaw/openclaw.json 与代理工作区"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Docs:","translate":"文档:"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Agent workspace directory (default: ~/.openclaw/workspace; stored as agents.defaults.workspace)","translate":"代理工作区目录（默认：~/.openclaw/workspace；保存为 agents.defaults.workspace）"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Run the interactive onboarding wizard","translate":"运行交互式引导向导"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Run the wizard without prompts","translate":"以无提示方式运行向导"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Wizard mode: local|remote","translate":"向导模式：local|remote"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Remote Gateway WebSocket URL","translate":"远程网关 WebSocket URL"},
+  {"dir":"src\\cli\\program\\register.setup.ts","origin":"Remote Gateway token (optional)","translate":"远程网关令牌（可选）"}
+]

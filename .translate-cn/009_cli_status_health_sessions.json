@@ -1,0 +1,32 @@
+[
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"--timeout must be a positive integer (milliseconds)","translate":"--timeout 必须是正整数（毫秒）"},
+
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Show channel health and recent session recipients","translate":"显示频道健康状态与近期会话收件人"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Output JSON instead of text","translate":"输出 JSON（而非文本）"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Full diagnosis (read-only, pasteable)","translate":"完整诊断（只读，可复制粘贴）"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Show model provider usage/quota snapshots","translate":"显示模型提供方用量/配额快照"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Probe channels (WhatsApp Web + Telegram + Discord + Slack + Signal)","translate":"探测频道（WhatsApp Web + Telegram + Discord + Slack + Signal）"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Probe timeout in milliseconds","translate":"探测超时（毫秒）"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Verbose logging","translate":"详细日志"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Alias for --verbose","translate":"--verbose 的别名"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Examples:","translate":"示例:"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Show channel health + session summary.","translate":"显示频道健康状态与会话概要。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Full diagnosis (read-only).","translate":"完整诊断（只读）。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Machine-readable output.","translate":"机器可读输出。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Show model provider usage/quota snapshots.","translate":"显示模型提供方用量/配额快照。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Run channel probes (WA + Telegram + Discord + Slack + Signal).","translate":"运行频道探测（WA + Telegram + Discord + Slack + Signal）。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Tighten probe timeout.","translate":"缩短探测超时。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Docs:","translate":"文档:"},
+
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Fetch health from the running gateway","translate":"从运行中的网关获取健康信息"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Connection timeout in milliseconds","translate":"连接超时（毫秒）"},
+
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"List stored conversation sessions","translate":"列出已存储的对话会话"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Output as JSON","translate":"输出为 JSON"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Path to session store (default: resolved from config)","translate":"会话存储路径（默认：从配置解析）"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Only show sessions updated within the past N minutes","translate":"仅显示最近 N 分钟内更新的会话"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"List all sessions.","translate":"列出所有会话。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Only last 2 hours.","translate":"仅显示最近 2 小时。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Use a specific session store.","translate":"使用指定的会话存储文件。"},
+  {"dir":"src\\cli\\program\\register.status-health-sessions.ts","origin":"Shows token usage per session when the agent reports it; set agents.defaults.contextTokens to see % of your model window.","translate":"当代理上报时，显示每个会话的 token 用量；设置 agents.defaults.contextTokens 以显示占模型上下文窗口的百分比。"}
+]
