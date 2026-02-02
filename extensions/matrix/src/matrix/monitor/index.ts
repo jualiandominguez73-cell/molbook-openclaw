@@ -195,9 +195,6 @@ export async function monitorMatrixProvider(opts: MonitorMatrixOpts = {}): Promi
   const groupPolicy = allowlistOnly && groupPolicyRaw === "open" ? "allowlist" : groupPolicyRaw;
   const replyToMode = opts.replyToMode ?? cfg.channels?.matrix?.replyToMode ?? "off";
   const threadReplies = cfg.channels?.matrix?.threadReplies ?? "inbound";
-  const threadContextConfig = cfg.channels?.matrix?.threadContext;
-  const threadContextEnabled = threadContextConfig?.enabled !== false;
-  const threadContextMaxMessages = threadContextConfig?.maxMessages ?? 50;
   const dmConfig = cfg.channels?.matrix?.dm;
   const dmEnabled = dmConfig?.enabled ?? true;
   const dmPolicyRaw = dmConfig?.policy ?? "pairing";
@@ -226,8 +223,6 @@ export async function monitorMatrixProvider(opts: MonitorMatrixOpts = {}): Promi
     groupPolicy,
     replyToMode,
     threadReplies,
-    threadContextEnabled,
-    threadContextMaxMessages,
     dmEnabled,
     dmPolicy,
     textLimit,

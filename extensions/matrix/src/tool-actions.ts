@@ -16,6 +16,7 @@ import {
   listMatrixReactions,
   pinMatrixMessage,
   readMatrixMessages,
+  readMatrixThread,
   removeMatrixReactions,
   sendMatrixMessage,
   unpinMatrixMessage,
@@ -158,6 +159,19 @@ export async function handleMatrixAction(
     const roomId = readRoomId(params);
     const result = await getMatrixRoomInfo(roomId);
     return jsonResult({ ok: true, room: result });
+  }
+
+  if (action === "readThread") {
+    if (!isActionEnabled("threads")) {
+      throw new Error("Matrix thread reading is disabled.");
+    }
+    const roomId = readRoomId(params);
+    const threadId = readStringParam(params, "threadId", { required: true });
+    const limit = readNumberParam(params, "limit", { integer: true });
+    const result = await readMatrixThread(roomId, threadId, {
+      limit: limit ?? undefined,
+    });
+    return jsonResult({ ok: true, thread: result });
   }
 
   throw new Error(`Unsupported Matrix action: ${action}`);

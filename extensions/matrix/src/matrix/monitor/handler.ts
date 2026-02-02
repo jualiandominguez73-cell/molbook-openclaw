@@ -33,11 +33,8 @@ import { resolveMentions } from "./mentions.js";
 import { deliverMatrixReplies } from "./replies.js";
 import { resolveMatrixRoomConfig } from "./rooms.js";
 import {
-  fetchMatrixThreadContext,
-  formatMatrixThreadContext,
   resolveMatrixThreadRootId,
   resolveMatrixThreadTarget,
-  type FormattedThreadContext,
 } from "./threads.js";
 import { EventType, RelationType } from "./types.js";
 
@@ -74,8 +71,6 @@ export type MatrixMonitorHandlerParams = {
   groupPolicy: "open" | "allowlist" | "disabled";
   replyToMode: ReplyToMode;
   threadReplies: "off" | "inbound" | "always";
-  threadContextEnabled: boolean;
-  threadContextMaxMessages: number;
   dmEnabled: boolean;
   dmPolicy: "open" | "pairing" | "allowlist" | "disabled";
   textLimit: number;
@@ -109,8 +104,6 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
     groupPolicy,
     replyToMode,
     threadReplies,
-    threadContextEnabled,
-    threadContextMaxMessages,
     dmEnabled,
     dmPolicy,
     textLimit,
@@ -468,27 +461,10 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         isThreadRoot: false, // @vector-im/matrix-bot-sdk doesn't have this info readily available
       });
 
-      // Fetch thread context if message is in a thread and feature is enabled
-      let threadContextRaw: Awaited<ReturnType<typeof fetchMatrixThreadContext>> = null;
-      let formattedThreadContext: FormattedThreadContext | undefined;
-      let threadStarterBody: string | undefined;
-      let threadLabel: string | undefined;
-      if (threadRootId && threadContextEnabled) {
-        threadContextRaw = await fetchMatrixThreadContext({
-          client,
-          roomId,
-          threadRootId,
-          maxMessages: threadContextMaxMessages,
-          maxMediaBytes: mediaMaxBytes,
-        });
-        if (threadContextRaw) {
-          formattedThreadContext = formatMatrixThreadContext({
-            context: threadContextRaw,
-            roomId,
-            currentMessageEventId: messageId,
-          });
-        }
-      }
+      // Thread label for display context (agent can use read-thread tool for full context)
+      const threadLabel = threadRootId
+        ? `Matrix thread #${roomName ?? roomInfo.canonicalAlias ?? roomId}`
+        : undefined;
 
       const route = core.channel.routing.resolveAgentRoute({
         cfg,
@@ -508,20 +484,6 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         storePath,
         sessionKey: route.sessionKey,
       });
-
-      // Format thread starter body and label (aligned with Discord pattern)
-      if (threadContextRaw) {
-        const root = threadContextRaw.root;
-        threadStarterBody = core.channel.reply.formatAgentEnvelope({
-          channel: "Matrix",
-          from: root.sender,
-          timestamp: root.timestamp,
-          envelope: envelopeOptions,
-          body: root.body,
-        });
-        const roomLabel = roomName ?? roomInfo.canonicalAlias ?? roomId;
-        threadLabel = `Matrix thread #${roomLabel}`;
-      }
 
       const body = core.channel.reply.formatAgentEnvelope({
         channel: "Matrix",
@@ -555,11 +517,7 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         MessageSid: messageId,
         ReplyToId: threadTarget ? undefined : (replyToEventId ?? undefined),
         MessageThreadId: threadTarget,
-        ThreadStarterBody: threadStarterBody,
         ThreadLabel: threadLabel,
-        ThreadContext: formattedThreadContext
-          ? JSON.stringify(formattedThreadContext)
-          : undefined,
         Timestamp: eventTs ?? undefined,
         MediaPath: media?.path,
         MediaType: media?.contentType,

@@ -190,58 +190,76 @@ Once verified, the bot can decrypt messages in encrypted rooms.
 
 ### Thread context
 
-When the bot receives a message in a thread, it can fetch the full thread history for context-aware responses.
+When the bot receives a message in a thread, it gets minimal thread awareness:
 
-- `channels.matrix.threadContext.enabled` - Enable thread context fetching (default: `true`)
-- `channels.matrix.threadContext.maxMessages` - Maximum thread messages to fetch (default: `50`)
+- `MessageThreadId` - The thread root event ID (for replying in thread)
+- `ThreadLabel` - Display label like `"Matrix thread #room-name"`
 
-When enabled, messages in threads include:
+For full thread context, agents can use the **read-thread** tool to fetch the complete thread on-demand.
 
-1. **Text summary** in the message body for readability
-2. **JSON data** in the `ThreadContext` field with full metadata
+#### read-thread tool
 
-Text summary format:
-
-```
---- Thread Context ---
-[Thread Root] @user1:server.org: We should migrate to the new API
-[Reply 1] @user2:server.org: Agreed, but we need to update docs first [m.image]
-[Reply 2] @user3:server.org: I can handle the docs
---- Current Message ---
-```
-
-JSON structure (`ThreadContext` field):
+The `read-thread` action fetches the full thread history including all media:
 
 ```json
 {
+  "action": "read-thread",
   "roomId": "!abc123:server.org",
-  "root": {
-    "eventId": "$root_event_id",
-    "sender": "@user1:server.org",
-    "body": "We should migrate to the new API",
-    "timestamp": 1706889600000,
-    "msgtype": "m.text"
-  },
-  "replies": [
-    {
-      "eventId": "$reply1_event_id",
-      "sender": "@user2:server.org",
-      "body": "Here is the architecture diagram",
-      "timestamp": 1706889660000,
-      "msgtype": "m.image",
-      "mediaPath": "/tmp/openclaw/media/abc123.png",
-      "mediaType": "image/png"
-    }
-  ]
+  "threadId": "$thread_root_event_id",
+  "limit": 50
 }
 ```
 
-This enables the bot to:
+Returns:
+
+```json
+{
+  "ok": true,
+  "thread": {
+    "roomId": "!abc123:server.org",
+    "threadId": "$thread_root_event_id",
+    "root": {
+      "eventId": "$root_event_id",
+      "sender": "@user1:server.org",
+      "body": "We should migrate to the new API",
+      "timestamp": 1706889600000,
+      "msgtype": "m.text"
+    },
+    "replies": [
+      {
+        "eventId": "$reply1_event_id",
+        "sender": "@user2:server.org",
+        "body": "Here is the architecture diagram",
+        "timestamp": 1706889660000,
+        "msgtype": "m.image",
+        "mediaPath": "/tmp/openclaw/media/abc123.png",
+        "mediaType": "image/png"
+      }
+    ]
+  }
+}
+```
+
+Enable the tool via config:
+
+```json5
+{
+  channels: {
+    matrix: {
+      actions: {
+        threads: true,
+      },
+    },
+  },
+}
+```
+
+This enables agents to:
 
 - Summarize threads with full context
 - Create issues/tickets with proper attribution (sender IDs)
 - Link to specific messages using event IDs (Matrix permalinks)
-- Access media files directly (downloaded to local paths, same as regular messages)
+- Access media files directly (downloaded to local paths)
 
 ## Capabilities
 
@@ -272,8 +290,6 @@ Provider options:
 - `channels.matrix.encryption`: enable E2EE (default: false).
 - `channels.matrix.initialSyncLimit`: initial sync limit.
 - `channels.matrix.threadReplies`: `off | inbound | always` (default: inbound).
-- `channels.matrix.threadContext.enabled`: fetch thread context for messages in threads (default: true).
-- `channels.matrix.threadContext.maxMessages`: max thread messages to fetch (default: 50).
 - `channels.matrix.textChunkLimit`: outbound text chunk size (chars).
 - `channels.matrix.chunkMode`: `length` (default) or `newline` to split on blank lines (paragraph boundaries) before length chunking.
 - `channels.matrix.dm.policy`: `pairing | allowlist | open | disabled` (default: pairing).
@@ -287,4 +303,4 @@ Provider options:
 - `channels.matrix.mediaMaxMb`: inbound/outbound media cap (MB).
 - `channels.matrix.autoJoin`: invite handling (`always | allowlist | off`, default: always).
 - `channels.matrix.autoJoinAllowlist`: allowed room IDs/aliases for auto-join.
-- `channels.matrix.actions`: per-action tool gating (reactions/messages/pins/memberInfo/channelInfo).
+- `channels.matrix.actions`: per-action tool gating (reactions/messages/pins/memberInfo/channelInfo/threads).

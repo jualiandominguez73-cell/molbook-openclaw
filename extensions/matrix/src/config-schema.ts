@@ -10,6 +10,7 @@ const matrixActionSchema = z
     pins: z.boolean().optional(),
     memberInfo: z.boolean().optional(),
     channelInfo: z.boolean().optional(),
+    threads: z.boolean().optional(),
   })
   .optional();
 
@@ -49,12 +50,6 @@ export const MatrixConfigSchema = z.object({
   groupPolicy: z.enum(["open", "disabled", "allowlist"]).optional(),
   replyToMode: z.enum(["off", "first", "all"]).optional(),
   threadReplies: z.enum(["off", "inbound", "always"]).optional(),
-  threadContext: z
-    .object({
-      enabled: z.boolean().optional(),
-      maxMessages: z.number().optional(),
-    })
-    .optional(),
   textChunkLimit: z.number().optional(),
   chunkMode: z.enum(["length", "newline"]).optional(),
   mediaMaxMb: z.number().optional(),

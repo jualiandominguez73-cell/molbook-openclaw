@@ -39,6 +39,9 @@ export const matrixMessageActions: ChannelMessageActionAdapter = {
     if (gate("channelInfo")) {
       actions.add("channel-info");
     }
+    if (gate("threads")) {
+      actions.add("read-thread");
+    }
     return Array.from(actions);
   },
   supportsAction: ({ action }) => action !== "poll",
@@ -185,6 +188,20 @@ export const matrixMessageActions: ChannelMessageActionAdapter = {
         {
           action: "channelInfo",
           roomId: resolveRoomId(),
+        },
+        cfg,
+      );
+    }
+
+    if (action === "read-thread") {
+      const threadId = readStringParam(params, "threadId", { required: true });
+      const limit = readNumberParam(params, "limit", { integer: true });
+      return await handleMatrixAction(
+        {
+          action: "readThread",
+          roomId: resolveRoomId(),
+          threadId,
+          limit,
         },
         cfg,
       );
