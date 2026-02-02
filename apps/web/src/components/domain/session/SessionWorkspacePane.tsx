@@ -72,7 +72,8 @@ export function SessionWorkspacePane({
   className,
 }: SessionWorkspacePaneProps) {
   const terminalRef = React.useRef<WebTerminalRef>(null);
-  const [activeTab, setActiveTab] = React.useState<"terminal" | "files">("terminal");
+  const [activeTab, setActiveTab] = React.useState<"terminal" | "files">("files");
+  const [filesRevision, setFilesRevision] = React.useState(0);
 
   // Handle terminal resize when maximized state changes
   React.useEffect(() => {
@@ -85,19 +86,15 @@ export function SessionWorkspacePane({
     }
   }, [isMaximized]);
 
-  const handleRefreshTerminal = () => {
-    terminalRef.current?.clear();
-    terminalRef.current?.writeln("Terminal cleared.");
-    terminalRef.current?.writeln(`Session: ${sessionKey ?? "none"}`);
-    terminalRef.current?.writeln(`Workspace: ${workspaceDir}`);
-    terminalRef.current?.writeln("");
+  const handleRefreshFiles = () => {
+    setFilesRevision((prev) => prev + 1);
   };
 
   return (
     <div
       className={cn(
         "flex flex-col border border-border rounded-xl bg-card overflow-hidden",
-        isMaximized && "fixed inset-x-4 bottom-4 top-20 z-50 shadow-2xl",
+        isMaximized && "fixed inset-x-4 bottom-24 top-20 z-50 shadow-2xl",
         className
       )}
     >
@@ -123,13 +120,13 @@ export function SessionWorkspacePane({
         </Tabs>
 
         <div className="flex items-center gap-1">
-          {activeTab === "terminal" && (
+          {activeTab === "files" && (
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={handleRefreshTerminal}
-              title="Clear terminal"
+              onClick={handleRefreshFiles}
+              title="Refresh files"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -163,7 +160,7 @@ export function SessionWorkspacePane({
             onData={onTerminalData}
           />
         ) : (
-          <FileExplorer files={mockFileTree} workspaceDir={workspaceDir} />
+          <FileExplorer key={filesRevision} files={mockFileTree} workspaceDir={workspaceDir} />
         )}
       </div>
     </div>
