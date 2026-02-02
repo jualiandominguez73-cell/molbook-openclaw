@@ -310,6 +310,13 @@ class OpenAIRealtimeSTTSession implements RealtimeSTTSession {
 
   close(): void {
     this.closed = true;
+    if (this.transcriptWaiters.length > 0) {
+      const waiters = this.transcriptWaiters.splice(0);
+      for (const waiter of waiters) {
+        clearTimeout(waiter.timeout);
+        waiter.reject(new Error("Transcript session closed"));
+      }
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;

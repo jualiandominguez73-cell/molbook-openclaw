@@ -29,4 +29,17 @@ describe("OpenAIRealtimeSTTSession waitForTranscript", () => {
     await expect(second).resolves.toBe("second");
     expect(seen).toEqual(["first", "second"]);
   });
+
+  it("rejects pending waiters on close", async () => {
+    const provider = new OpenAIRealtimeSTTProvider({ apiKey: "test-key" });
+    const session = provider.createSession() as unknown as {
+      waitForTranscript: (timeoutMs?: number) => Promise<string>;
+      close: () => void;
+    };
+
+    const pending = session.waitForTranscript(1000);
+    session.close();
+
+    await expect(pending).rejects.toThrow("Transcript session closed");
+  });
 });
