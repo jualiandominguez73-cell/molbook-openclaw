@@ -26,7 +26,7 @@ import {
   resolveAuthProfileOrder,
   type ResolvedProviderAuth,
 } from "../model-auth.js";
-import { normalizeProviderId } from "../model-selection.js";
+import { normalizeProviderId, resolveConfiguredModelRef } from "../model-selection.js";
 import { ensureOpenClawModelsJson } from "../models-config.js";
 import {
   classifyFailoverReason,
@@ -93,8 +93,24 @@ export async function runEmbeddedPiAgent(
       const resolvedWorkspace = resolveUserPath(params.workspaceDir);
       const prevCwd = process.cwd();
 
-      const provider = (params.provider ?? DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER;
-      const modelId = (params.model ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL;
+      let provider = params.provider?.trim();
+      let modelId = params.model?.trim();
+
+      if (!provider || !modelId) {
+        // Resolve defaults from config if not explicit
+        const defaults = resolveConfiguredModelRef({
+          cfg: params.config ?? ({} as OpenClawConfig),
+          defaultProvider: DEFAULT_PROVIDER,
+          defaultModel: DEFAULT_MODEL,
+        });
+        if (!provider) {
+          provider = defaults.provider;
+        }
+        if (!modelId) {
+          modelId = defaults.model;
+        }
+      }
+
       const agentDir = params.agentDir ?? resolveOpenClawAgentDir();
       const fallbackConfigured =
         (params.config?.agents?.defaults?.model?.fallbacks?.length ?? 0) > 0;

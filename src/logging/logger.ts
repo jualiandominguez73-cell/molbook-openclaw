@@ -105,7 +105,12 @@ function buildLogger(settings: ResolvedSettings): TsLogger<LogObj> {
       const off = -d.getTimezoneOffset();
       const sign = off >= 0 ? "+" : "-";
       const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, "0");
-      const time = new Date(d.getTime() + off * 60000).toISOString().slice(0, -1) + sign + pad(off / 60) + ":" + pad(off % 60);
+      const time =
+        new Date(d.getTime() + off * 60000).toISOString().slice(0, -1) +
+        sign +
+        pad(off / 60) +
+        ":" +
+        pad(off % 60);
       const line = JSON.stringify({ ...logObj, time });
       fs.appendFileSync(settings.file, `${line}\n`, { encoding: "utf8" });
     } catch {
