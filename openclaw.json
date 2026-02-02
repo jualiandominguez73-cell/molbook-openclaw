@@ -1,6 +1,11 @@
 {
-  "agent": {
-    "model": "pipbot/claude-sonnet-4"
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "pipbot/claude-sonnet-4",
+        "fallbacks": ["pipbot/claude-haiku-4-5"]
+      }
+    }
   },
   "models": {
     "providers": {
@@ -59,6 +64,8 @@
     }
   },
   "gateway": {
-    "port": 18789
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan"
   }
 }
