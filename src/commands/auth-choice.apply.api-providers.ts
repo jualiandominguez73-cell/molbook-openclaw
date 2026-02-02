@@ -286,7 +286,7 @@ async function resolvePuterModelId(params: {
   }
 
   const filtered = models.filter((model) => model !== PUTER_DEFAULT_MODEL_ID);
-  const options: WizardSelectOption<string>[] = [
+  const options: WizardSelectOption[] = [
     {
       value: PUTER_MODEL_PICKER_DEFAULT,
       label: `Default (${PUTER_DEFAULT_MODEL_ID})`,
