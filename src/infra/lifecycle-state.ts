@@ -13,6 +13,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { CONFIG_DIR } from "../utils.js";
+import { listActiveCheckpoints, type Checkpoint } from "../agents/checkpoint.js";
 
 const LIFECYCLE_PATH = path.join(CONFIG_DIR, "lifecycle.json");
 
@@ -28,6 +29,7 @@ export type PreviousShutdown = {
   time: number;
   reason: "clean" | "crash" | "unknown";
   uptime?: number;
+  interruptedCheckpoints?: Checkpoint[];
 };
 
 async function loadLifecycleState(): Promise<LifecycleState | null> {
@@ -49,28 +51,37 @@ async function saveLifecycleState(state: LifecycleState): Promise<void> {
 /**
  * Call on gateway startup, before full initialization.
  * Returns info about the previous shutdown if we can detect a crash.
+ * If a crash is detected, also includes any interrupted checkpoints.
  */
 export async function markLifecycleStarting(): Promise<PreviousShutdown | null> {
   const previous = await loadLifecycleState();
   let previousShutdown: PreviousShutdown | null = null;
 
   if (previous) {
+    const baseInfo = {
+      time: previous.lastHeartbeat,
+      uptime: previous.lastHeartbeat - previous.startedAt,
+    };
+
     if (previous.status === "running") {
       // Previous state was "running" but we're starting up = crash
+      // Check for interrupted checkpoints
+      const checkpoints = await listActiveCheckpoints();
+      const interrupted = checkpoints.filter((cp) => cp.progress < 100);
+
       previousShutdown = {
-        time: previous.lastHeartbeat,
+        ...baseInfo,
         reason: "crash",
-        uptime: previous.lastHeartbeat - previous.startedAt,
+        interruptedCheckpoints: interrupted.length > 0 ? interrupted : undefined,
       };
     } else if (previous.status === "stopped") {
       previousShutdown = {
-        time: previous.lastHeartbeat,
+        ...baseInfo,
         reason: "clean",
-        uptime: previous.lastHeartbeat - previous.startedAt,
       };
     } else {
       previousShutdown = {
-        time: previous.lastHeartbeat,
+        ...baseInfo,
         reason: "unknown",
       };
     }

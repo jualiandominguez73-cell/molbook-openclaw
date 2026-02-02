@@ -155,6 +155,17 @@ export async function startGatewayServer(
     console.warn(
       `[gateway] Detected previous crash at ${new Date(previousShutdown.time).toISOString()} (uptime: ${Math.round((previousShutdown.uptime ?? 0) / 1000)}s)`,
     );
+    if (
+      previousShutdown.interruptedCheckpoints &&
+      previousShutdown.interruptedCheckpoints.length > 0
+    ) {
+      console.warn(
+        `[gateway] Found ${previousShutdown.interruptedCheckpoints.length} interrupted checkpoint(s):`,
+      );
+      for (const cp of previousShutdown.interruptedCheckpoints) {
+        console.warn(`  - ${cp.task} (${cp.progress}%) [${cp.sessionKey}]`);
+      }
+    }
   }
 
   // Ensure all default port derivations (browser/canvas) see the actual runtime port.
