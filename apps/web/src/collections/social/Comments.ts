@@ -110,5 +110,48 @@ export const Comments: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false
     }
+  ],
+  indexes: [
+    {
+      fields: {
+        post: 1
+      },
+      options: {
+        name: 'comments_post_idx'
+      }
+    },
+    {
+      fields: {
+        post: 1,
+        createdAt: -1
+      },
+      options: {
+        name: 'comments_post_created_at_idx'
+      }
+    },
+    {
+      fields: {
+        author: 1
+      },
+      options: {
+        name: 'comments_author_idx'
+      }
+    },
+    {
+      fields: {
+        parentComment: 1
+      },
+      options: {
+        name: 'comments_parent_idx'
+      }
+    },
+    {
+      fields: {
+        createdAt: -1
+      },
+      options: {
+        name: 'comments_created_at_idx'
+      }
+    }
   ]
 }

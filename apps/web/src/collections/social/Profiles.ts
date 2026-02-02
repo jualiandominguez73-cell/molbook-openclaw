@@ -7,6 +7,50 @@ export const Profiles: CollectionConfig = {
     defaultColumns: ['username', 'displayName', 'type', 'followerCount', 'verified'],
     group: 'Social'
   },
+  indexes: [
+    {
+      fields: {
+        username: 1
+      },
+      unique: true,
+      options: {
+        name: 'profiles_username_idx'
+      }
+    },
+    {
+      fields: {
+        user: 1
+      },
+      options: {
+        name: 'profiles_user_idx'
+      }
+    },
+    {
+      fields: {
+        type: 1
+      },
+      options: {
+        name: 'profiles_type_idx'
+      }
+    },
+    {
+      fields: {
+        verified: 1,
+        followerCount: -1
+      },
+      options: {
+        name: 'profiles_verified_followers_idx'
+      }
+    },
+    {
+      fields: {
+        createdAt: -1
+      },
+      options: {
+        name: 'profiles_created_at_idx'
+      }
+    }
+  ],
   access: {
     create: ({ req: { user } }) => !!user,
     read: () => true, // Public profiles

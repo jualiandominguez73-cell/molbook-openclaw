@@ -30,21 +30,44 @@ import { botStatus } from './endpoints/bot-status'
 import { getFeed, getProfileTimeline } from './endpoints/social/feed'
 import { followProfile, unfollowProfile } from './endpoints/social/profiles'
 
-// Endpoints - Blockchain
+// Endpoints - ActivityPub Federation
+import {
+  handleInboxRequest,
+  handleSharedInboxRequest,
+  getActorProfile,
+  getActorOutbox,
+  getActorFollowers,
+  getActorFollowing
+} from './endpoints/activitypub/inbox'
+
+// Endpoints - Blockchain (Secure)
 import {
   mintBotNFT,
   listBotForSale,
-  listBotForRent,
-  buyBot,
-  rentBot,
+  prepareBuyTransaction,
+  confirmBuyTransaction,
   getBalance,
-  withdrawEarnings,
-  getBotRating,
-  rateBot,
-  registerBittensorMiner,
-  getBittensorEarnings,
+  verifySignatureEndpoint,
+  getNFTMetadata,
   getMarketplaceListings
-} from './endpoints/blockchain'
+} from './endpoints/blockchain-secure'
+
+// Middleware - Security
+import { authenticate, requireAdmin } from './middleware/authenticate'
+import {
+  authorizeBotOwnership,
+  authorizeProfileOwnership,
+  blockchainRateLimit,
+  socialActionRateLimit,
+  botManagementRateLimit
+} from './middleware/authorize'
+import { verifyCsrfToken, generateCsrfToken } from './middleware/csrf'
+import {
+  validateBlockchainRequest,
+  validateSocialPost,
+  sanitizeQueryParams,
+  validatePagination
+} from './middleware/validation'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -84,114 +107,184 @@ export default buildConfig({
     }
   }),
   endpoints: [
-    // Bot Management
+    // Security - CSRF Token Generation
+    {
+      path: '/csrf-token',
+      method: 'get',
+      handler: generateCsrfToken
+    },
+
+    // Security - Signature Verification Utility
+    {
+      path: '/verify-signature',
+      method: 'post',
+      handler: verifySignatureEndpoint
+    },
+
+    // Bot Management (with authentication, authorization, and rate limiting)
     {
       path: '/start-bot',
       method: 'post',
-      handler: startBot
+      handler: [
+        authenticate,
+        authorizeBotOwnership,
+        botManagementRateLimit,
+        verifyCsrfToken,
+        startBot
+      ]
     },
     {
       path: '/stop-bot',
       method: 'post',
-      handler: stopBot
+      handler: [
+        authenticate,
+        authorizeBotOwnership,
+        botManagementRateLimit,
+        verifyCsrfToken,
+        stopBot
+      ]
     },
     {
       path: '/restart-bot',
       method: 'post',
-      handler: restartBot
+      handler: [
+        authenticate,
+        authorizeBotOwnership,
+        botManagementRateLimit,
+        verifyCsrfToken,
+        restartBot
+      ]
     },
     {
       path: '/bot-status',
       method: 'get',
-      handler: botStatus
+      handler: [sanitizeQueryParams, validatePagination, botStatus]
     },
 
-    // Social Platform
+    // Social Platform (with authentication and rate limiting)
     {
       path: '/social/feed',
       method: 'get',
-      handler: getFeed
+      handler: [sanitizeQueryParams, validatePagination, getFeed]
     },
     {
       path: '/social/profiles/:username/timeline',
       method: 'get',
-      handler: getProfileTimeline
+      handler: [sanitizeQueryParams, validatePagination, getProfileTimeline]
     },
     {
       path: '/social/profiles/:id/follow',
       method: 'post',
-      handler: followProfile
+      handler: [
+        authenticate,
+        socialActionRateLimit,
+        verifyCsrfToken,
+        followProfile
+      ]
     },
     {
       path: '/social/profiles/:id/follow',
       method: 'delete',
-      handler: unfollowProfile
+      handler: [
+        authenticate,
+        socialActionRateLimit,
+        verifyCsrfToken,
+        unfollowProfile
+      ]
     },
 
-    // Blockchain - NFT and Marketplace
+    // Blockchain - NFT and Marketplace (SECURE - No private keys!)
     {
-      path: '/blockchain/mint-nft',
+      path: '/blockchain-secure/mint-nft',
       method: 'post',
-      handler: mintBotNFT
+      handler: [
+        authenticate,
+        authorizeBotOwnership,
+        blockchainRateLimit,
+        validateBlockchainRequest,
+        verifyCsrfToken,
+        mintBotNFT
+      ]
     },
     {
-      path: '/blockchain/list-sale',
+      path: '/blockchain-secure/list-sale',
       method: 'post',
-      handler: listBotForSale
+      handler: [
+        authenticate,
+        authorizeBotOwnership,
+        blockchainRateLimit,
+        validateBlockchainRequest,
+        verifyCsrfToken,
+        listBotForSale
+      ]
     },
     {
-      path: '/blockchain/list-rent',
+      path: '/blockchain-secure/prepare-buy',
       method: 'post',
-      handler: listBotForRent
+      handler: [
+        authenticate,
+        blockchainRateLimit,
+        validateBlockchainRequest,
+        prepareBuyTransaction
+      ]
     },
     {
-      path: '/blockchain/buy-bot',
+      path: '/blockchain-secure/confirm-buy',
       method: 'post',
-      handler: buyBot
+      handler: [
+        authenticate,
+        blockchainRateLimit,
+        validateBlockchainRequest,
+        verifyCsrfToken,
+        confirmBuyTransaction
+      ]
     },
     {
-      path: '/blockchain/rent-bot',
-      method: 'post',
-      handler: rentBot
-    },
-    {
-      path: '/blockchain/balance',
+      path: '/blockchain-secure/balance',
       method: 'get',
-      handler: getBalance
+      handler: [sanitizeQueryParams, getBalance]
     },
     {
-      path: '/blockchain/withdraw',
-      method: 'post',
-      handler: withdrawEarnings
-    },
-    {
-      path: '/blockchain/bot-rating',
+      path: '/blockchain-secure/nft-metadata',
       method: 'get',
-      handler: getBotRating
+      handler: [sanitizeQueryParams, getNFTMetadata]
     },
     {
-      path: '/blockchain/rate-bot',
-      method: 'post',
-      handler: rateBot
+      path: '/blockchain-secure/marketplace/listings',
+      method: 'get',
+      handler: [sanitizeQueryParams, validatePagination, getMarketplaceListings]
     },
 
-    // Blockchain - Bittensor
+    // ActivityPub Federation Endpoints
     {
-      path: '/blockchain/bittensor/register',
+      path: '/ap/users/:username',
+      method: 'get',
+      handler: getActorProfile
+    },
+    {
+      path: '/ap/users/:username/inbox',
       method: 'post',
-      handler: registerBittensorMiner
+      handler: handleInboxRequest
     },
     {
-      path: '/blockchain/bittensor/earnings',
-      method: 'get',
-      handler: getBittensorEarnings
+      path: '/ap/inbox',
+      method: 'post',
+      handler: handleSharedInboxRequest
     },
-
-    // Blockchain - Marketplace
     {
-      path: '/blockchain/marketplace/listings',
+      path: '/ap/users/:username/outbox',
       method: 'get',
-      handler: getMarketplaceListings
+      handler: [sanitizeQueryParams, getActorOutbox]
+    },
+    {
+      path: '/ap/users/:username/followers',
+      method: 'get',
+      handler: getActorFollowers
+    },
+    {
+      path: '/ap/users/:username/following',
+      method: 'get',
+      handler: getActorFollowing
     }
   ],
   sharp: true

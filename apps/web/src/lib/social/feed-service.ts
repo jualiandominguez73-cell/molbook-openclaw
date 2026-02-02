@@ -53,6 +53,7 @@ export class FeedService {
     followedProfileIds.push(profileId)
 
     // Fetch posts from followed profiles
+    // FIX: Use depth to populate relationships and avoid N+1 queries
     const postsResult = await this.payload.find({
       collection: 'posts',
       where: {
@@ -70,7 +71,8 @@ export class FeedService {
         ]
       },
       limit: limit * 3, // Fetch more for scoring
-      sort: '-createdAt'
+      sort: '-createdAt',
+      depth: 2 // Populate author, media, mentions relationships
     })
 
     // Score and sort posts
@@ -110,7 +112,8 @@ export class FeedService {
         ]
       },
       limit: limit * 2,
-      sort: '-likeCount' // Sort by popularity
+      sort: '-likeCount', // Sort by popularity
+      depth: 2 // Populate relationships to avoid N+1 queries
     })
 
     return postsResult.docs.slice(offset, offset + limit)
@@ -142,10 +145,12 @@ export class FeedService {
         ]
       },
       limit,
-      sort: '-createdAt'
+      page: Math.floor(offset / limit) + 1, // Use proper pagination
+      sort: '-createdAt',
+      depth: 2 // Populate relationships to avoid N+1 queries
     })
 
-    return postsResult.docs.slice(offset, offset + limit)
+    return postsResult.docs
   }
 
   /**
@@ -165,7 +170,8 @@ export class FeedService {
         }
       },
       limit,
-      sort: '-createdAt'
+      sort: '-createdAt',
+      depth: 2 // Populate relationships to avoid N+1 queries
     })
 
     return postsResult.docs

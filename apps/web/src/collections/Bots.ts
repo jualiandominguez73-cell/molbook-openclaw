@@ -4,9 +4,44 @@ export const Bots: CollectionConfig = {
   slug: 'bots',
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'status', 'model', 'updatedAt'],
+    defaultColumns: ['name', 'user', 'status', 'model', 'updatedAt'],
     group: 'Bot Management'
   },
+  indexes: [
+    {
+      fields: {
+        user: 1
+      },
+      options: {
+        name: 'bots_user_idx'
+      }
+    },
+    {
+      fields: {
+        user: 1,
+        status: 1
+      },
+      options: {
+        name: 'bots_user_status_idx'
+      }
+    },
+    {
+      fields: {
+        status: 1
+      },
+      options: {
+        name: 'bots_status_idx'
+      }
+    },
+    {
+      fields: {
+        createdAt: -1
+      },
+      options: {
+        name: 'bots_created_at_idx'
+      }
+    }
+  ],
   access: {
     create: ({ req: { user } }) => {
       return user?.role === 'admin' || user?.role === 'operator'
@@ -86,6 +121,42 @@ export const Bots: CollectionConfig = {
       admin: {
         description: 'Unique identifier (auto-generated from name)',
         readOnly: true
+      }
+    },
+    {
+      name: 'user',
+      type: 'relationship',
+      relationTo: 'users',
+      required: true,
+      admin: {
+        description: 'User who owns this bot',
+        position: 'sidebar'
+      }
+    },
+    {
+      name: 'profile',
+      type: 'relationship',
+      relationTo: 'profiles',
+      admin: {
+        description: 'Associated social profile for this bot',
+        position: 'sidebar'
+      }
+    },
+    {
+      name: 'agentType',
+      type: 'select',
+      defaultValue: 'assistant',
+      options: [
+        { label: 'Assistant', value: 'assistant' },
+        { label: 'Content Creator', value: 'content_creator' },
+        { label: 'Data Analyst', value: 'data_analyst' },
+        { label: 'Code Helper', value: 'code_helper' },
+        { label: 'Customer Support', value: 'customer_support' },
+        { label: 'Researcher', value: 'researcher' },
+        { label: 'Custom', value: 'custom' }
+      ],
+      admin: {
+        description: 'Type of bot/agent'
       }
     },
     {

@@ -125,7 +125,43 @@ export const Likes: CollectionConfig = {
         targetPost: 1,
         targetComment: 1
       },
-      unique: true
+      unique: true,
+      options: {
+        name: 'likes_unique_idx'
+      }
+    },
+    {
+      fields: {
+        profile: 1
+      },
+      options: {
+        name: 'likes_profile_idx'
+      }
+    },
+    {
+      fields: {
+        targetPost: 1
+      },
+      options: {
+        name: 'likes_target_post_idx'
+      }
+    },
+    {
+      fields: {
+        targetComment: 1
+      },
+      options: {
+        name: 'likes_target_comment_idx'
+      }
+    },
+    {
+      fields: {
+        targetPost: 1,
+        createdAt: -1
+      },
+      options: {
+        name: 'likes_post_created_at_idx'
+      }
     }
   ]
 }

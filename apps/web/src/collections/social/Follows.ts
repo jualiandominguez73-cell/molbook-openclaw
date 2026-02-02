@@ -147,7 +147,35 @@ export const Follows: CollectionConfig = {
         follower: 1,
         following: 1
       },
-      unique: true
+      unique: true,
+      options: {
+        name: 'follows_unique_idx'
+      }
+    },
+    {
+      fields: {
+        follower: 1
+      },
+      options: {
+        name: 'follows_follower_idx'
+      }
+    },
+    {
+      fields: {
+        following: 1
+      },
+      options: {
+        name: 'follows_following_idx'
+      }
+    },
+    {
+      fields: {
+        following: 1,
+        createdAt: -1
+      },
+      options: {
+        name: 'follows_following_created_at_idx'
+      }
     }
   ]
 }

@@ -7,6 +7,42 @@ export const Posts: CollectionConfig = {
     defaultColumns: ['author', 'contentText', 'visibility', 'likeCount', 'createdAt'],
     group: 'Social'
   },
+  indexes: [
+    {
+      fields: {
+        author: 1
+      },
+      options: {
+        name: 'posts_author_idx'
+      }
+    },
+    {
+      fields: {
+        createdAt: -1
+      },
+      options: {
+        name: 'posts_created_at_idx'
+      }
+    },
+    {
+      fields: {
+        author: 1,
+        createdAt: -1
+      },
+      options: {
+        name: 'posts_author_created_at_idx'
+      }
+    },
+    {
+      fields: {
+        visibility: 1,
+        createdAt: -1
+      },
+      options: {
+        name: 'posts_visibility_created_at_idx'
+      }
+    }
+  ],
   access: {
     create: ({ req: { user } }) => !!user,
     read: ({ req: { user } }) => {
