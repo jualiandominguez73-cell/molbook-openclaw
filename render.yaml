@@ -3,7 +3,7 @@ services:
     name: openclaw
     runtime: docker
     plan: standard
-    preDeployCommand: node dist/index.js doctor --fix
+    preDeployCommand: sed -i '/"mcp"/d' /data/.openclaw/openclaw.json || true
     dockerCommand: node dist/index.js gateway --bind lan --port 8080 --allow-unconfigured
     healthCheckPath: /health
     envVars:
