@@ -193,8 +193,17 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
   const COMPACTION_RETRY_TIMEOUT_MS = 120_000; // 2 minutes
   let compactionRetryTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
+  const clearCompactionRetryTimeout = () => {
+    if (compactionRetryTimeoutId !== undefined) {
+      clearTimeout(compactionRetryTimeoutId);
+      compactionRetryTimeoutId = undefined;
+    }
+  };
+
   const ensureCompactionPromise = () => {
     if (!state.compactionRetryPromise) {
+      // Clear any existing timeout before creating a new one to prevent leaks
+      clearCompactionRetryTimeout();
       state.compactionRetryPromise = new Promise((resolve) => {
         state.compactionRetryResolve = resolve;
         // Safety timeout: force-resolve if compaction retry hangs to prevent deadlock (#5784)
@@ -208,16 +217,12 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
             state.compactionRetryPromise = null;
             state.pendingCompactionRetry = 0;
             compactionRetryTimeoutId = undefined;
+            // Reset state to match normal compaction-retry cleanup behavior
+            // (resetForCompactionRetry is defined later but accessible via closure)
+            resetForCompactionRetry();
           }
         }, COMPACTION_RETRY_TIMEOUT_MS);
       });
-    }
-  };
-
-  const clearCompactionRetryTimeout = () => {
-    if (compactionRetryTimeoutId !== undefined) {
-      clearTimeout(compactionRetryTimeoutId);
-      compactionRetryTimeoutId = undefined;
     }
   };
 

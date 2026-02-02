@@ -291,7 +291,9 @@ export async function handleOpenAiHttpRequest(
               conversationId: sessionKey,
             },
           )
-          .catch(() => {});
+          .catch((err) => {
+            console.error(`[openai-http] message_sent hook failed: ${String(err)}`);
+          });
       }
 
       sendJson(res, 200, {
