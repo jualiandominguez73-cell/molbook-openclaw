@@ -33,6 +33,31 @@ export async function loadCronStore(storePath: string): Promise<CronStoreFile> {
   }
 }
 
+/**
+ * Cleans up orphaned .tmp files from previous crashed writes.
+ * This should be called during startup to ensure no stale .tmp files interfere with operation.
+ */
+export async function cleanupOrphanedTempFiles(storePath: string): Promise<void> {
+  const dir = path.dirname(storePath);
+  const base = path.basename(storePath);
+  let entries: fs.Dirent[] = [];
+  try {
+    entries = await fs.promises.readdir(dir, { withFileTypes: true });
+  } catch (err) {
+    // If the directory doesn't exist yet, there's nothing to clean up.
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
+      return;
+    }
+    throw err;
+  }
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.startsWith(`${base}.`) && entry.name.endsWith(".tmp")) {
+      const tmpPath = path.join(dir, entry.name);
+      await fs.promises.unlink(tmpPath).catch(() => {});
+    }
+  }
+}
+
 export async function saveCronStore(storePath: string, store: CronStoreFile) {
   await fs.promises.mkdir(path.dirname(storePath), { recursive: true });
   const tmp = `${storePath}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
