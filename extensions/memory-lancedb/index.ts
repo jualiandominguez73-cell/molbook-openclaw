@@ -21,6 +21,18 @@ import {
 } from "./config.js";
 
 // ============================================================================
+// CLI Output (bypasses console capture to avoid logging sensitive content)
+// ============================================================================
+
+/**
+ * Print to stdout without going through OpenClaw's console capture.
+ * Use this for CLI output that shouldn't end up in log files (e.g., memory content).
+ */
+function cliPrint(message: string): void {
+  process.stdout.write(`${message}\n`);
+}
+
+// ============================================================================
 // Input Validation (SQL Injection Prevention)
 // ============================================================================
 
@@ -789,41 +801,43 @@ const memoryPlugin = {
         if (opts.json) {
           report[agentId] = { ...agentReport, nearDupeDetails: nearDupes.slice(0, 10) };
         } else {
-          console.log(`\n🧠 Memory Health — agent: ${agentId}`);
-          console.log("─".repeat(50));
-          console.log(`   Total memories:  ${total}`);
-          console.log(`   Avg text length: ${avgLen} chars`);
-          console.log(`   Date range:      ${oldest} → ${newest}`);
-          console.log(`\n   📂 Categories:`);
+          // Use cliPrint to avoid logging to file (privacy)
+          cliPrint(`\n🧠 Memory Health — agent: ${agentId}`);
+          cliPrint("─".repeat(50));
+          cliPrint(`   Total memories:  ${total}`);
+          cliPrint(`   Avg text length: ${avgLen} chars`);
+          cliPrint(`   Date range:      ${oldest} → ${newest}`);
+          cliPrint(`\n   📂 Categories:`);
           const catOrder = ["core", "fact", "preference", "decision", "entity", "other"];
           for (const cat of catOrder) {
             if (categories[cat]) {
               const pct = ((categories[cat] / total) * 100).toFixed(0);
               const bar = "█".repeat(Math.max(1, Math.round((categories[cat] / total) * 30)));
-              console.log(
+              cliPrint(
                 `      ${cat.padEnd(12)} ${String(categories[cat]).padStart(3)} (${pct.padStart(2)}%) ${bar}`,
               );
             }
           }
-          console.log(`\n   ⚡ Importance:`);
+          cliPrint(`\n   ⚡ Importance:`);
           for (const [label, count] of Object.entries(importance)) {
             if (count > 0) {
-              console.log(`      ${label.padEnd(20)} ${String(count).padStart(3)}`);
+              cliPrint(`      ${label.padEnd(20)} ${String(count).padStart(3)}`);
             }
           }
           if (nearDupes.length > 0) {
-            console.log(`\n   ⚠️  Near-duplicates (≥0.80): ${nearDupes.length}`);
+            cliPrint(`\n   ⚠️  Near-duplicates (≥0.80): ${nearDupes.length}`);
             for (const d of nearDupes.slice(0, 5)) {
-              console.log(`      [${d.sim}] "${d.a}..." ↔ "${d.b}..."`);
+              cliPrint(`      [${d.sim}] "${d.a}..." ↔ "${d.b}..."`);
             }
           } else if (opts.verbose) {
-            console.log(`\n   ✅ No near-duplicates found`);
+            cliPrint(`\n   ✅ No near-duplicates found`);
           }
         }
       }
 
       if (opts.json) {
-        console.log(JSON.stringify(report, null, 2));
+        // Use cliPrint for JSON output (may contain memory text in nearDupeDetails)
+        cliPrint(JSON.stringify(report, null, 2));
       }
     };
 
@@ -976,19 +990,21 @@ const memoryPlugin = {
                     importance: m.importance,
                     createdAt: new Date(m.createdAt).toISOString(),
                   }));
-                  console.log(
+                  // Use cliPrint to avoid logging sensitive memory content
+                  cliPrint(
                     JSON.stringify({ agentId, total: memories.length, memories: output }, null, 2),
                   );
                 } else if (opts.verbose) {
-                  console.log(`\n🧠 Memories — agent: ${agentId} (${memories.length} total)`);
-                  console.log("─".repeat(60));
+                  // Use cliPrint to avoid logging sensitive memory content
+                  cliPrint(`\n🧠 Memories — agent: ${agentId} (${memories.length} total)`);
+                  cliPrint("─".repeat(60));
                   for (const m of memories) {
-                    console.log(
+                    cliPrint(
                       `  [${m.category}] (${m.importance}) ${m.text.slice(0, 120)}${m.text.length > 120 ? "..." : ""}`,
                     );
                   }
                 } else {
-                  console.log(`Agent ${agentId}: ${memories.length} memories`);
+                  cliPrint(`Agent ${agentId}: ${memories.length} memories`);
                 }
               }
             });
