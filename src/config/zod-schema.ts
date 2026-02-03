@@ -528,6 +528,31 @@ export const OpenClawSchema = z
       })
       .strict()
       .optional(),
+    security: z
+      .object({
+        promptInjection: z
+          .object({
+            detect: z.boolean().optional(),
+            wrap: z.boolean().optional(),
+            log: z.boolean().optional(),
+            channels: z
+              .record(
+                z.string(),
+                z
+                  .object({
+                    detect: z.boolean().optional(),
+                    wrap: z.boolean().optional(),
+                    log: z.boolean().optional(),
+                  })
+                  .strict(),
+              )
+              .optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {

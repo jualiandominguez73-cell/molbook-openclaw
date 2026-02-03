@@ -905,8 +905,83 @@ async function maybeProbeGateway(params: {
       ok: res.ok,
       error: res.ok ? null : res.error,
       close: res.close ? { code: res.close.code, reason: res.close.reason } : null,
-    },
+    };
   };
+}
+
+function collectPromptInjectionFindings(cfg: OpenClawConfig): SecurityAuditFinding[] {
+  const findings: SecurityAuditFinding[] = [];
+  const piConfig = cfg.security?.promptInjection;
+
+  if (!piConfig) {
+    findings.push({
+      checkId: "security.prompt_injection.disabled",
+      severity: "warn",
+      title: "Prompt injection detection not configured",
+      detail:
+        "No prompt injection protection is configured. Direct channel messages are not checked for injection attacks.",
+      remediation:
+        'Consider enabling prompt injection detection: set security.promptInjection.detect=true in config. See docs for details.',
+    });
+    return findings;
+  }
+
+  const detectEnabled = piConfig.detect === true;
+  const wrapEnabled = piConfig.wrap === true;
+  const hasChannelOverrides = piConfig.channels && Object.keys(piConfig.channels).length > 0;
+
+  if (detectEnabled) {
+    if (wrapEnabled) {
+      findings.push({
+        checkId: "security.prompt_injection.enabled_with_wrap",
+        severity: "info",
+        title: "Prompt injection detection enabled with wrapping",
+        detail: `Prompt injection detection is enabled globally with content wrapping. Suspicious messages will be flagged and wrapped with security warnings before being processed.${hasChannelOverrides ? " Per-channel overrides are configured." : ""}`,
+      });
+    } else {
+      findings.push({
+        checkId: "security.prompt_injection.enabled_no_wrap",
+        severity: "info",
+        title: "Prompt injection detection enabled (detection only)",
+        detail: `Prompt injection detection is enabled globally but content wrapping is disabled. Suspicious messages will be logged but passed to the agent unchanged.${hasChannelOverrides ? " Per-channel overrides are configured." : ""}`,
+        remediation:
+          "To enable content wrapping (recommended), set security.promptInjection.wrap=true",
+      });
+    }
+  } else {
+    findings.push({
+      checkId: "security.prompt_injection.disabled",
+      severity: "warn",
+      title: "Prompt injection detection disabled",
+      detail:
+        "Prompt injection detection is explicitly disabled. Direct channel messages are not checked for injection attacks.",
+      remediation:
+        'To enable protection, set security.promptInjection.detect=true',
+    });
+  }
+
+  // Check for specific channel configurations
+  if (piConfig.channels) {
+    for (const [channel, channelConfig] of Object.entries(piConfig.channels)) {
+      if (channelConfig?.detect === true && channelConfig?.wrap === true) {
+        findings.push({
+          checkId: `security.prompt_injection.channel.${channel}.enabled`,
+          severity: "info",
+          title: `Prompt injection protection enabled for ${channel}`,
+          detail: `${channel} channel has prompt injection detection and wrapping enabled.`,
+        });
+      } else if (channelConfig?.detect === true) {
+        findings.push({
+          checkId: `security.prompt_injection.channel.${channel}.detection_only`,
+          severity: "info",
+          title: `Prompt injection detection enabled for ${channel} (no wrap)`,
+          detail: `${channel} channel has prompt injection detection enabled but wrapping is disabled.`,
+        });
+      }
+    }
+  }
+
+  return findings;
 }
 
 export async function runSecurityAudit(opts: SecurityAuditOptions): Promise<SecurityAuditReport> {

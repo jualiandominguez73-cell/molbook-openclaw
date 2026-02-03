@@ -17,7 +17,7 @@ import {
   recordPendingHistoryEntryIfEnabled,
   type HistoryEntry,
 } from "../auto-reply/reply/history.js";
-import { finalizeInboundContext } from "../auto-reply/reply/inbound-context.js";
+import { finalizeInboundContextWithGuard } from "../auto-reply/reply/inbound-context-guarded.js";
 import { buildMentionRegexes, matchesMentionWithExplicit } from "../auto-reply/reply/mentions.js";
 import { shouldAckReaction as shouldAckReactionGate } from "../channels/ack-reactions.js";
 import { resolveControlCommandGate } from "../channels/command-gating.js";
@@ -570,7 +570,7 @@ export const buildTelegramMessageContext = async ({
   const groupSystemPrompt =
     systemPromptParts.length > 0 ? systemPromptParts.join("\n\n") : undefined;
   const commandBody = normalizeCommandBody(rawBody, { botUsername });
-  const ctxPayload = finalizeInboundContext({
+  const ctxPayload = finalizeInboundContextWithGuard({
     Body: combinedBody,
     RawBody: rawBody,
     CommandBody: commandBody,
@@ -629,6 +629,11 @@ export const buildTelegramMessageContext = async ({
     // Originating channel for reply routing.
     OriginatingChannel: "telegram" as const,
     OriginatingTo: `telegram:${chatId}`,
+  }, {
+    config: cfg,
+    source: "telegram",
+    channel: "telegram",
+    sender: senderId || senderUsername || undefined,
   });
 
   await recordInboundSession({
