@@ -398,6 +398,12 @@ export function attachGatewayWsMessageHandler(params: {
         const sharedAuthOk =
           sharedAuthResult?.ok === true &&
           (sharedAuthResult.method === "token" || sharedAuthResult.method === "password");
+        // When skipDevicePairingForTrustedProxy is enabled and request comes through
+        // a trusted proxy with valid token/password auth, auto-approve device pairing.
+        const shouldAutoApproveForTrustedProxy =
+          configSnapshot.gateway?.auth?.skipDevicePairingForTrustedProxy === true &&
+          remoteIsTrustedProxy &&
+          sharedAuthOk;
         const rejectUnauthorized = () => {
           setHandshakeState("failed");
           logWsControl.warn(
@@ -656,7 +662,7 @@ export function attachGatewayWsMessageHandler(params: {
               role,
               scopes,
               remoteIp: reportedClientIp,
-              silent: isLocalClient,
+              silent: isLocalClient || shouldAutoApproveForTrustedProxy,
             });
             const context = buildRequestContext();
             if (pairing.request.silent === true) {
