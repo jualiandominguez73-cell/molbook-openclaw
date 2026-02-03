@@ -41,6 +41,8 @@ import {
   chunkMarkdown,
   ensureDir,
   hashText,
+  isLtmOptedIn,
+  isLtmOptedInSync,
   isMemoryPath,
   listMemoryFiles,
   normalizeExtraMemoryPaths,
@@ -412,7 +414,11 @@ export class MemoryIndexManager implements MemorySearchManager {
     const relPath = path.relative(this.workspaceDir, absPath).replace(/\\/g, "/");
     const inWorkspace =
       relPath.length > 0 && !relPath.startsWith("..") && !path.isAbsolute(relPath);
-    const allowedWorkspace = inWorkspace && isMemoryPath(relPath);
+    let ltmAllowed = false;
+    if (inWorkspace && relPath.startsWith("ltm/")) {
+      ltmAllowed = await isLtmOptedIn(this.workspaceDir);
+    }
+    const allowedWorkspace = inWorkspace && (isMemoryPath(relPath) || ltmAllowed);
     let allowedAdditional = false;
     if (!allowedWorkspace && this.settings.extraPaths.length > 0) {
       const additionalPaths = normalizeExtraMemoryPaths(
@@ -821,9 +827,15 @@ export class MemoryIndexManager implements MemorySearchManager {
     const watchPaths = new Set<string>([
       path.join(this.workspaceDir, "MEMORY.md"),
       path.join(this.workspaceDir, "memory.md"),
+      path.join(this.workspaceDir, "STM.md"),
+      path.join(this.workspaceDir, "stm.md"),
       path.join(this.workspaceDir, "memory"),
       ...additionalPaths,
     ]);
+    const ltmDir = path.join(this.workspaceDir, "ltm");
+    if (isLtmOptedInSync(this.workspaceDir)) {
+      watchPaths.add(ltmDir);
+    }
     this.watcher = chokidar.watch(Array.from(watchPaths), {
       ignoreInitial: true,
       awaitWriteFinish: {
