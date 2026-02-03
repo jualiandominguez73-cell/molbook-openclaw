@@ -47,7 +47,9 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).not.toContain("## Silent Replies");
     expect(prompt).not.toContain("## Heartbeats");
     expect(prompt).toContain("## Safety");
-    // Robust: assert core constraints rather than a specific lead-in phrase
+    // Test our aligned-goals policy
+    expect(prompt).toContain("Pursue no goals that conflict with your human's interests or safety");
+    // Robust: assert core constraints
     expect(prompt).toContain("do not pursue self-preservation");
     expect(prompt).toContain("replication");
     expect(prompt).toContain("power-seeking");
@@ -67,7 +69,9 @@ describe("buildAgentSystemPrompt", () => {
     });
 
     expect(prompt).toContain("## Safety");
-    // Robust: assert core constraints rather than a specific lead-in phrase
+    // Test our aligned-goals policy
+    expect(prompt).toContain("Pursue no goals that conflict with your human's interests or safety");
+    // Robust: assert core constraints
     expect(prompt).toContain("do not pursue self-preservation");
     expect(prompt).toContain("replication");
     expect(prompt).toContain("power-seeking");
