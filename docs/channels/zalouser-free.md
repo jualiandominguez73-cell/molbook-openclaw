@@ -23,6 +23,7 @@ For production use or official support, consider the official [Zalo Personal](/c
 The `zalouser-free` channel plugin enables OpenClaw to send and receive messages through a personal Zalo account using the open-source [zca-js](https://github.com/RFS-ADRENO/zca-js) library.
 
 **Key features:**
+
 - ✅ QR code login (no API keys needed)
 - ✅ Session persistence and auto-reconnect
 - ✅ Send/receive text messages
@@ -63,31 +64,33 @@ Add to `~/.openclaw/openclaw.json`:
     "zalouser-free": {
       accounts: {
         default: {
-          enabled: false,            // Set to true after login to auto-start
-          dmAccess: "whitelist",     // "open" or "whitelist"
-          groupAccess: "mention",    // "open", "mention", or "whitelist"
-          allowedUsers: [            // For whitelist/mention modes
+          enabled: false, // Set to true after login to auto-start
+          dmAccess: "whitelist", // "open" or "whitelist"
+          groupAccess: "mention", // "open", "mention", or "whitelist"
+          allowedUsers: [
+            // For whitelist/mention modes
             "user123",
-            "user456"
+            "user456",
           ],
-          allowedGroups: [           // For whitelist mode
-            "group789"
+          allowedGroups: [
+            // For whitelist mode
+            "group789",
           ],
-          userAgent: ""              // Optional custom user agent
-        }
-      }
-    }
+          userAgent: "", // Optional custom user agent
+        },
+      },
+    },
   },
   plugins: {
     entries: {
       "zalouser-free": {
         enabled: true,
         config: {
-          sessionPath: null          // Optional: custom session storage path
-        }
-      }
-    }
-  }
+          sessionPath: null, // Optional: custom session storage path
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -112,8 +115,8 @@ Use `"*"` in `allowedUsers` or `allowedGroups` to allow all:
 
 ```json5
 {
-  allowedUsers: ["*"],    // Allow all users
-  allowedGroups: ["*"]    // Allow all groups
+  allowedUsers: ["*"], // Allow all users
+  allowedGroups: ["*"], // Allow all groups
 }
 ```
 
@@ -133,6 +136,7 @@ openclaw zalouser-free login --qr-path /tmp/zalo-qr.png
 ```
 
 **Login flow:**
+
 1. Run the login command
 2. A QR code appears in your terminal (or saved to file)
 3. Open Zalo mobile app → Settings → Linked Devices → Scan QR code
@@ -149,11 +153,11 @@ After successful login, enable the account in your config:
     "zalouser-free": {
       accounts: {
         default: {
-          enabled: true  // Change to true
-        }
-      }
-    }
-  }
+          enabled: true, // Change to true
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -208,10 +212,10 @@ You can run multiple Zalo accounts simultaneously:
     "zalouser-free": {
       accounts: {
         personal: { enabled: false, dmAccess: "whitelist", allowedUsers: ["friend123"] },
-        work: { enabled: false, dmAccess: "open", groupAccess: "mention" }
-      }
-    }
-  }
+        work: { enabled: false, dmAccess: "open", groupAccess: "mention" },
+      },
+    },
+  },
 }
 ```
 
@@ -228,8 +232,8 @@ openclaw zalouser-free login work
 {
   accounts: {
     personal: { enabled: true },
-    work: { enabled: true }
-  }
+    work: { enabled: true },
+  },
 }
 ```
 
@@ -267,6 +271,7 @@ openclaw zalouser-free login work
 ### "Session expired" or "Login required"
 
 Run `openclaw zalouser-free login` again. Sessions may expire if:
+
 - You logged in on another device/browser
 - Zalo detected unusual activity
 - Session cookies expired
@@ -284,6 +289,7 @@ Only one web listener can run per Zalo account. If you open Zalo Web in browser 
 ### Access denied messages
 
 Check your `dmAccess`/`groupAccess` settings in config:
+
 - If using `whitelist` mode, ensure sender's user ID is in `allowedUsers`
 - If using group `whitelist`, ensure group ID is in `allowedGroups`
 - For `mention` mode, ensure bot is @mentioned in the message
@@ -291,6 +297,7 @@ Check your `dmAccess`/`groupAccess` settings in config:
 ### Account suspended/banned
 
 If your Zalo account gets suspended:
+
 1. Stop using the plugin immediately
 2. Contact Zalo support to appeal
 3. Consider using the official [Zalo Personal](/channels/zalouser) channel instead
@@ -306,14 +313,14 @@ npm install
 
 ## Differences from Official zalouser
 
-| Feature | zalouser-free | @openclaw/zalouser |
-|---------|---------------|-------------------|
-| Library | zca-js (open source) | zca binary |
-| Cost | Free | May require API costs |
-| Setup | Simple (QR login) | Requires zca-cli installation |
-| Stability | Community maintained | Official support |
-| Risk | Account suspension risk | Lower risk |
-| Access Control | dmAccess/groupAccess | dmPolicy/groupPolicy |
+| Feature        | zalouser-free           | @openclaw/zalouser            |
+| -------------- | ----------------------- | ----------------------------- |
+| Library        | zca-js (open source)    | zca binary                    |
+| Cost           | Free                    | May require API costs         |
+| Setup          | Simple (QR login)       | Requires zca-cli installation |
+| Stability      | Community maintained    | Official support              |
+| Risk           | Account suspension risk | Lower risk                    |
+| Access Control | dmAccess/groupAccess    | dmPolicy/groupPolicy          |
 
 ## Security Notes
 

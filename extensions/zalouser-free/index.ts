@@ -1,12 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /**
  * zalouser-free - Free Zalo Personal Account Plugin for OpenClaw
  * Uses zca-js library for communication
  */
 
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import type { ZaloUserFreePluginConfig } from "./src/types.js";
 import { createChannelPlugin, initSessionManager } from "./src/channel.js";
 import { setZalouserFreeRuntime } from "./src/runtime.js";
-import type { ZaloUserFreePluginConfig } from "./src/types.js";
 
 const plugin = {
   id: "zalouser-free",
@@ -21,7 +22,8 @@ const plugin = {
     setZalouserFreeRuntime(api.runtime);
 
     // Initialize shared session manager
-    const pluginConfig: ZaloUserFreePluginConfig = api.config?.plugins?.entries?.["zalouser-free"]?.config || {};
+    const pluginConfig: ZaloUserFreePluginConfig =
+      api.config?.plugins?.entries?.["zalouser-free"]?.config || {};
     const sessionManager = initSessionManager(pluginConfig.sessionPath, logger);
     sessionManager.setConfigProvider(() => api.config);
 

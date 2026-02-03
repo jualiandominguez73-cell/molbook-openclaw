@@ -8,16 +8,16 @@ import type { PluginRuntime } from "openclaw/plugin-sdk";
 let runtime: PluginRuntime | null = null;
 
 export function setZalouserFreeRuntime(next: PluginRuntime): void {
-    runtime = next;
+  runtime = next;
 }
 
 export function getZalouserFreeRuntime(): PluginRuntime {
-    if (!runtime) {
-        throw new Error("Zalouser-free runtime not initialized");
-    }
-    return runtime;
+  if (!runtime) {
+    throw new Error("Zalouser-free runtime not initialized");
+  }
+  return runtime;
 }
 
 export function hasZalouserFreeRuntime(): boolean {
-    return runtime !== null;
+  return runtime !== null;
 }
