@@ -201,9 +201,12 @@ export async function prepareSlackMessage(params: {
   const threadContext = resolveSlackThreadContext({ message, replyToMode: ctx.replyToMode });
   const threadTs = threadContext.incomingThreadTs;
   const isThreadReply = threadContext.isThreadReply;
+  // Keep session context aligned with threads started by replyToMode=all without inheriting
+  // the parent session (top-level messages should stay isolated from channel history).
+  const threadSessionId = isThreadReply ? threadTs : threadContext.messageThreadId;
   const threadKeys = resolveThreadSessionKeys({
     baseSessionKey,
-    threadId: isThreadReply ? threadTs : undefined,
+    threadId: threadSessionId,
     parentSessionKey: isThreadReply && ctx.threadInheritParent ? baseSessionKey : undefined,
   });
   const sessionKey = threadKeys.sessionKey;
