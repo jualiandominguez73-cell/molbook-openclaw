@@ -150,10 +150,7 @@ describe("gateway hooks helpers", () => {
       expect(withWhitespace.value.agentId).toBe("assistant");
     }
 
-    const withoutAgent = normalizeAgentPayload(
-      { message: "hello" },
-      { idFactory: () => "fixed" },
-    );
+    const withoutAgent = normalizeAgentPayload({ message: "hello" }, { idFactory: () => "fixed" });
     expect(withoutAgent.ok).toBe(true);
     if (withoutAgent.ok) {
       expect(withoutAgent.value.agentId).toBeUndefined();
