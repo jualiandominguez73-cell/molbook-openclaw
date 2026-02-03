@@ -23,7 +23,7 @@ describe("sanitizeToolResult", () => {
     };
     const item = sanitized.content?.[0] ?? {};
     expect(item.data).toBe("AQID");
-    expect(item.bytes).toBe(3);
+    expect(item.bytes).toBeUndefined();
     expect(item.omitted).toBeUndefined();
   });
 
