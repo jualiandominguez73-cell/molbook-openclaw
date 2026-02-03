@@ -32,6 +32,8 @@ const PREFERRED_PROVIDER_BY_AUTH_CHOICE: Partial<Record<AuthChoice, string>> = {
   "opencode-zen": "opencode",
   "xai-api-key": "xai",
   "qwen-portal": "qwen-portal",
+  "volcengine-api-key": "volcengine",
+  "byteplus-api-key": "byteplus",
   "minimax-portal": "minimax-portal",
 };
 

@@ -23,7 +23,9 @@ export type AuthChoiceGroupId =
   | "synthetic"
   | "venice"
   | "qwen"
-  | "xai";
+  | "xai"
+  | "volcengine"
+  | "byteplus";
 
 export type AuthChoiceGroup = {
   value: AuthChoiceGroupId;
@@ -55,6 +57,18 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Anthropic",
     hint: "setup-token + API key",
     choices: ["token", "apiKey"],
+  },
+  {
+    value: "byteplus",
+    label: "BytePlus",
+    hint: "BytePlus API Key",
+    choices: ["byteplus-api-key"],
+  },
+  {
+    value: "volcengine",
+    label: "Volcano Engine",
+    hint: "Volcano Engine API Key",
+    choices: ["volcengine-api-key"],
   },
   {
     value: "minimax",
@@ -225,6 +239,14 @@ export function buildAuthChoiceOptions(params: {
     value: "minimax-api-lightning",
     label: "MiniMax M2.1 Lightning",
     hint: "Faster, higher output cost",
+  });
+  options.push({
+    value: "volcengine-api-key",
+    label: "Volcano Engine API Key",
+  });
+  options.push({
+    value: "byteplus-api-key",
+    label: "BytePlus API Key",
   });
   if (params.includeSkip) {
     options.push({ value: "skip", label: "Skip for now" });

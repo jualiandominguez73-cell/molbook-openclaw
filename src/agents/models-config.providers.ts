@@ -10,6 +10,20 @@ import {
   buildCloudflareAiGatewayModelDefinition,
   resolveCloudflareAiGatewayBaseUrl,
 } from "./cloudflare-ai-gateway.js";
+import {
+  buildBytePlusModelDefinition,
+  BYTEPLUS_BASE_URL,
+  BYTEPLUS_MODEL_CATALOG,
+  BYTEPLUS_CODING_BASE_URL,
+  BYTEPLUS_CODING_MODEL_CATALOG,
+} from "./byteplus-models.js";
+import {
+  buildDoubaoModelDefinition,
+  DOUBAO_BASE_URL,
+  DOUBAO_MODEL_CATALOG,
+  DOUBAO_CODING_BASE_URL,
+  DOUBAO_CODING_MODEL_CATALOG,
+} from "./doubao-models.js";
 import { resolveAwsSdkEnvVarName, resolveEnvApiKey } from "./model-auth.js";
 import {
   buildSyntheticModelDefinition,
@@ -367,6 +381,37 @@ function buildSyntheticProvider(): ProviderConfig {
   };
 }
 
+function buildDoubaoProvider(): ProviderConfig {
+  return {
+    baseUrl: DOUBAO_BASE_URL,
+    api: "openai-completions",
+    models: DOUBAO_MODEL_CATALOG.map(buildDoubaoModelDefinition),
+  };
+}
+
+function buildDoubaoCodingProvider(): ProviderConfig {
+  return {
+    baseUrl: DOUBAO_CODING_BASE_URL,
+    api: "openai-completions",
+    models: DOUBAO_CODING_MODEL_CATALOG.map(buildDoubaoModelDefinition),
+  };
+}
+
+function buildBytePlusProvider(): ProviderConfig {
+  return {
+    baseUrl: BYTEPLUS_BASE_URL,
+    api: "openai-completions",
+    models: BYTEPLUS_MODEL_CATALOG.map(buildBytePlusModelDefinition),
+  };
+}
+
+function buildBytePlusCodingProvider(): ProviderConfig {
+  return {
+    baseUrl: BYTEPLUS_CODING_BASE_URL,
+    api: "openai-completions",
+    models: BYTEPLUS_CODING_MODEL_CATALOG.map(buildBytePlusModelDefinition),
+  };
+}
 export function buildXiaomiProvider(): ProviderConfig {
   return {
     baseUrl: XIAOMI_BASE_URL,
@@ -455,6 +500,30 @@ export async function resolveImplicitProviders(params: {
     };
   }
 
+  // Volcano Engine provider
+  const volcengineKey =
+    resolveEnvApiKeyVarName("volcengine") ??
+    resolveApiKeyFromProfiles({ provider: "volcengine", store: authStore });
+  if (volcengineKey) {
+    providers.volcengine = { ...buildDoubaoProvider(), apiKey: volcengineKey };
+    providers["volcengine-plan"] = {
+      ...buildDoubaoCodingProvider(),
+      apiKey: volcengineKey,
+    };
+  }
+
+  // BytePlus provider
+  const byteplusKey =
+    resolveEnvApiKeyVarName("byteplus") ??
+    resolveApiKeyFromProfiles({ provider: "byteplus", store: authStore });
+  if (byteplusKey) {
+    providers.byteplus = { ...buildBytePlusProvider(), apiKey: byteplusKey };
+    providers["byteplus-plan"] = {
+      ...buildBytePlusCodingProvider(),
+      apiKey: byteplusKey,
+    };
+  }
+
   const xiaomiKey =
     resolveEnvApiKeyVarName("xiaomi") ??
     resolveApiKeyFromProfiles({ provider: "xiaomi", store: authStore });
@@ -506,7 +575,9 @@ export async function resolveImplicitCopilotProvider(params: {
   env?: NodeJS.ProcessEnv;
 }): Promise<ProviderConfig | null> {
   const env = params.env ?? process.env;
-  const authStore = ensureAuthProfileStore(params.agentDir, { allowKeychainPrompt: false });
+  const authStore = ensureAuthProfileStore(params.agentDir, {
+    allowKeychainPrompt: false,
+  });
   const hasProfile = listProfilesForProvider(authStore, "github-copilot").length > 0;
   const envToken = env.COPILOT_GITHUB_TOKEN ?? env.GH_TOKEN ?? env.GITHUB_TOKEN;
   const githubToken = (envToken ?? "").trim();
@@ -577,7 +648,10 @@ export async function resolveImplicitBedrockProvider(params: {
   }
 
   const region = discoveryConfig?.region ?? env.AWS_REGION ?? env.AWS_DEFAULT_REGION ?? "us-east-1";
-  const models = await discoverBedrockModels({ region, config: discoveryConfig });
+  const models = await discoverBedrockModels({
+    region,
+    config: discoveryConfig,
+  });
   if (models.length === 0) {
     return null;
   }
