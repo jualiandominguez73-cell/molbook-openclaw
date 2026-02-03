@@ -336,32 +336,32 @@ export async function handleToolsInvokeHttpRequest(
     args,
   });
 
-  // Build HTTP context for hooks (redact sensitive, normalize multi-value)
-  const safeHeaders: Record<string, string> = {};
-  for (const [key, value] of Object.entries(req.headers)) {
-    const lowerKey = key.toLowerCase();
-    if (lowerKey === "authorization" || lowerKey === "cookie" || lowerKey === "x-api-key") {
-      safeHeaders[key] = "[REDACTED]";
-    } else if (typeof value === "string") {
-      safeHeaders[key] = value;
-    } else if (Array.isArray(value)) {
-      // Join multi-value headers (e.g., x-forwarded-for, set-cookie)
-      safeHeaders[key] = value.join(", ");
-    }
-  }
-  const httpCtx: PluginHookHttpContext = {
-    httpMethod: req.method || "POST",
-    httpPath: "/tools/invoke",
-    httpHeaders: safeHeaders,
-    clientIp: req.socket?.remoteAddress,
-    requestId,
-  };
-
   // ==========================================================================
   // SECURITY: Run http_tool_invoke hook before execution
   // ==========================================================================
   const hookRunner = getGlobalHookRunner();
+  // Build HTTP context only when hooks are enabled (avoid overhead otherwise)
+  let httpCtx: PluginHookHttpContext | undefined;
   if (hookRunner) {
+    const safeHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === "authorization" || lowerKey === "cookie" || lowerKey === "x-api-key") {
+        safeHeaders[key] = "[REDACTED]";
+      } else if (typeof value === "string") {
+        safeHeaders[key] = value;
+      } else if (Array.isArray(value)) {
+        // Join multi-value headers (e.g., x-forwarded-for, set-cookie)
+        safeHeaders[key] = value.join(", ");
+      }
+    }
+    httpCtx = {
+      httpMethod: req.method || "POST",
+      httpPath: "/tools/invoke",
+      httpHeaders: safeHeaders,
+      clientIp: req.socket?.remoteAddress,
+      requestId,
+    };
     try {
       const preHook = await hookRunner.runHttpToolInvoke(
         {
@@ -420,7 +420,7 @@ export async function handleToolsInvokeHttpRequest(
             durationMs,
             success: true,
           },
-          httpCtx,
+          httpCtx!, // httpCtx is always defined when hookRunner exists
         );
 
         if (postHook?.block) {
