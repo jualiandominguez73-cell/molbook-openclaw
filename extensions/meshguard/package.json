@@ -1,0 +1,17 @@
+{
+  "name": "@openclaw/meshguard",
+  "version": "0.1.0",
+  "description": "MeshGuard AI governance extension for OpenClaw",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "echo 'TypeScript compilation handled by OpenClaw build'"
+  },
+  "dependencies": {
+    "yaml": "^2.3.4",
+    "zod": "^3.22.4"
+  },
+  "peerDependencies": {
+    "openclaw": "*"
+  }
+}
