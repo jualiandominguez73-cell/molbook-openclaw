@@ -13,7 +13,13 @@ export type MemoryConfig = {
   autoRecall?: boolean;
 };
 
-export const MEMORY_CATEGORIES = ["preference", "fact", "decision", "entity", "other"] as const;
+export const MEMORY_CATEGORIES = [
+  "preference",
+  "fact",
+  "decision",
+  "entity",
+  "other",
+] as const;
 export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 
 const DEFAULT_MODEL = "text-embedding-3-small";
@@ -51,7 +57,11 @@ const EMBEDDING_DIMENSIONS: Record<string, number> = {
   "text-embedding-3-large": 3072,
 };
 
-function assertAllowedKeys(value: Record<string, unknown>, allowed: string[], label: string) {
+function assertAllowedKeys(
+  value: Record<string, unknown>,
+  allowed: string[],
+  label: string,
+) {
   const unknown = Object.keys(value).filter((key) => !allowed.includes(key));
   if (unknown.length === 0) {
     return;
@@ -78,7 +88,8 @@ function resolveEnvVars(value: string): string {
 }
 
 function resolveEmbeddingModel(embedding: Record<string, unknown>): string {
-  const model = typeof embedding.model === "string" ? embedding.model : DEFAULT_MODEL;
+  const model =
+    typeof embedding.model === "string" ? embedding.model : DEFAULT_MODEL;
   vectorDimsForModel(model);
   return model;
 }
@@ -89,7 +100,11 @@ export const memoryConfigSchema = {
       throw new Error("memory config required");
     }
     const cfg = value as Record<string, unknown>;
-    assertAllowedKeys(cfg, ["embedding", "dbPath", "autoCapture", "autoRecall"], "memory config");
+    assertAllowedKeys(
+      cfg,
+      ["embedding", "dbPath", "autoCapture", "autoRecall"],
+      "memory config",
+    );
 
     const embedding = cfg.embedding as Record<string, unknown> | undefined;
     if (!embedding || typeof embedding.apiKey !== "string") {

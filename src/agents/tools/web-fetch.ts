@@ -237,7 +237,10 @@ function wrapWebFetchContent(
   let truncated = truncateText(value, maxInner);
   let wrappedText = includeWarning
     ? wrapWebContent(truncated.text, "web_fetch")
-    : wrapExternalContent(truncated.text, { source: "web_fetch", includeWarning: false });
+    : wrapExternalContent(truncated.text, {
+        source: "web_fetch",
+        includeWarning: false,
+      });
 
   if (wrappedText.length > maxChars) {
     const excess = wrappedText.length - maxChars;
@@ -245,7 +248,10 @@ function wrapWebFetchContent(
     truncated = truncateText(value, adjustedMaxInner);
     wrappedText = includeWarning
       ? wrapWebContent(truncated.text, "web_fetch")
-      : wrapExternalContent(truncated.text, { source: "web_fetch", includeWarning: false });
+      : wrapExternalContent(truncated.text, {
+          source: "web_fetch",
+          includeWarning: false,
+        });
   }
 
   return {
@@ -260,7 +266,10 @@ function wrapWebFetchField(value: string | undefined): string | undefined {
   if (!value) {
     return value;
   }
-  return wrapExternalContent(value, { source: "web_fetch", includeWarning: false });
+  return wrapExternalContent(value, {
+    source: "web_fetch",
+    includeWarning: false,
+  });
 }
 
 function normalizeContentType(value: string | null | undefined): string | undefined {
@@ -511,7 +520,10 @@ async function runWebFetch(params: {
           title = readable.title;
           extractor = "readability";
         } else {
-          const firecrawl = await tryFirecrawlFallback({ ...params, url: finalUrl });
+          const firecrawl = await tryFirecrawlFallback({
+            ...params,
+            url: finalUrl,
+          });
           if (firecrawl) {
             text = firecrawl.text;
             title = firecrawl.title;
@@ -625,7 +637,10 @@ export function createWebFetchTool(options?: {
   const readabilityEnabled = resolveFetchReadabilityEnabled(fetch);
   const firecrawl = resolveFirecrawlConfig(fetch);
   const firecrawlApiKey = resolveFirecrawlApiKey(firecrawl);
-  const firecrawlEnabled = resolveFirecrawlEnabled({ firecrawl, apiKey: firecrawlApiKey });
+  const firecrawlEnabled = resolveFirecrawlEnabled({
+    firecrawl,
+    apiKey: firecrawlApiKey,
+  });
   const firecrawlBaseUrl = resolveFirecrawlBaseUrl(firecrawl);
   const firecrawlOnlyMainContent = resolveFirecrawlOnlyMainContent(firecrawl);
   const firecrawlMaxAgeMs = resolveFirecrawlMaxAgeMsOrDefault(firecrawl);

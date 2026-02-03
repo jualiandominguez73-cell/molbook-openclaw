@@ -20,8 +20,13 @@ export function createSlackMessageHandler(params: {
   account: ResolvedSlackAccount;
 }): SlackMessageHandler {
   const { ctx, account } = params;
-  const debounceMs = resolveInboundDebounceMs({ cfg: ctx.cfg, channel: "slack" });
-  const threadTsResolver = createSlackThreadTsResolver({ client: ctx.app.client });
+  const debounceMs = resolveInboundDebounceMs({
+    cfg: ctx.cfg,
+    channel: "slack",
+  });
+  const threadTsResolver = createSlackThreadTsResolver({
+    client: ctx.app.client,
+  });
 
   const debouncer = createInboundDebouncer<{
     message: SlackMessageEvent;
@@ -111,7 +116,10 @@ export function createSlackMessageHandler(params: {
     if (ctx.markMessageSeen(message.channel, message.ts)) {
       return;
     }
-    const resolvedMessage = await threadTsResolver.resolve({ message, source: opts.source });
+    const resolvedMessage = await threadTsResolver.resolve({
+      message,
+      source: opts.source,
+    });
     await debouncer.enqueue({ message: resolvedMessage, opts });
   };
 }

@@ -62,7 +62,9 @@ describe("buildEmbeddedRunPayloads", () => {
   });
 
   it("suppresses raw error JSON from fallback assistant text", () => {
-    const lastAssistant = makeAssistant({ content: [{ type: "text", text: errorJsonPretty }] });
+    const lastAssistant = makeAssistant({
+      content: [{ type: "text", text: errorJsonPretty }],
+    });
     const payloads = buildEmbeddedRunPayloads({
       assistantTexts: [],
       toolMetas: [],
@@ -182,7 +184,11 @@ describe("buildEmbeddedRunPayloads", () => {
       assistantTexts: [],
       toolMetas: [],
       lastAssistant: undefined,
-      lastToolError: { toolName: "message", meta: "reply", error: "text required" },
+      lastToolError: {
+        toolName: "message",
+        meta: "reply",
+        error: "text required",
+      },
       sessionKey: "session:telegram",
       inlineToolResultsAllowed: false,
       verboseLevel: "off",

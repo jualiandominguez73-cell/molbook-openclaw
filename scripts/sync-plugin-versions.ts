@@ -7,7 +7,9 @@ type PackageJson = {
 };
 
 const rootPackagePath = resolve("package.json");
-const rootPackage = JSON.parse(readFileSync(rootPackagePath, "utf8")) as PackageJson;
+const rootPackage = JSON.parse(
+  readFileSync(rootPackagePath, "utf8"),
+) as PackageJson;
 const targetVersion = rootPackage.version;
 
 if (!targetVersion) {
@@ -15,8 +17,8 @@ if (!targetVersion) {
 }
 
 const extensionsDir = resolve("extensions");
-const dirs = readdirSync(extensionsDir, { withFileTypes: true }).filter((entry) =>
-  entry.isDirectory(),
+const dirs = readdirSync(extensionsDir, { withFileTypes: true }).filter(
+  (entry) => entry.isDirectory(),
 );
 
 const updated: string[] = [];

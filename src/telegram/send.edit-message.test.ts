@@ -26,7 +26,10 @@ describe("editMessageTelegram", () => {
   });
 
   it("keeps existing buttons when buttons is undefined (no reply_markup)", async () => {
-    botApi.editMessageText.mockResolvedValue({ message_id: 1, chat: { id: "123" } });
+    botApi.editMessageText.mockResolvedValue({
+      message_id: 1,
+      chat: { id: "123" },
+    });
 
     await editMessageTelegram("123", 1, "hi", {
       token: "tok",
@@ -42,7 +45,10 @@ describe("editMessageTelegram", () => {
   });
 
   it("removes buttons when buttons is empty (reply_markup.inline_keyboard = [])", async () => {
-    botApi.editMessageText.mockResolvedValue({ message_id: 1, chat: { id: "123" } });
+    botApi.editMessageText.mockResolvedValue({
+      message_id: 1,
+      chat: { id: "123" },
+    });
 
     await editMessageTelegram("123", 1, "hi", {
       token: "tok",

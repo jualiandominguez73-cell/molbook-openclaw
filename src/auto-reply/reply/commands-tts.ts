@@ -152,7 +152,9 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
     });
     return {
       shouldContinue: false,
-      reply: { text: `❌ Error generating audio: ${result.error ?? "unknown error"}` },
+      reply: {
+        text: `❌ Error generating audio: ${result.error ?? "unknown error"}`,
+      },
     };
   }
 

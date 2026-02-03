@@ -393,7 +393,9 @@ describe("gateway server chat", () => {
       }
 
       {
-        registerAgentRunContext("run-tool-off", { sessionKey: "agent:main:main" });
+        registerAgentRunContext("run-tool-off", {
+          sessionKey: "agent:main:main",
+        });
 
         emitAgentEvent({
           runId: "run-tool-off",

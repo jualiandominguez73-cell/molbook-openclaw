@@ -1,4 +1,8 @@
-import type { RuntimeEnv, ReplyPayload, OpenClawConfig } from "openclaw/plugin-sdk";
+import type {
+  RuntimeEnv,
+  ReplyPayload,
+  OpenClawConfig,
+} from "openclaw/plugin-sdk";
 import { format } from "node:util";
 import { getTlonRuntime } from "../runtime.js";
 import { normalizeShip, parseChannelNest } from "../targets.js";
@@ -40,12 +44,15 @@ function resolveChannelAuthorization(
     | undefined;
   const rules = tlonConfig?.authorization?.channelRules ?? {};
   const rule = rules[channelNest];
-  const allowedShips = rule?.allowedShips ?? tlonConfig?.defaultAuthorizedShips ?? [];
+  const allowedShips =
+    rule?.allowedShips ?? tlonConfig?.defaultAuthorizedShips ?? [];
   const mode = rule?.mode ?? "restricted";
   return { mode, allowedShips };
 }
 
-export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<void> {
+export async function monitorTlonProvider(
+  opts: MonitorTlonOpts = {},
+): Promise<void> {
   const core = getTlonRuntime();
   const cfg = core.config.loadConfig();
   if (cfg.channels?.tlon?.enabled === false) {
@@ -53,7 +60,8 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
   }
 
   const logger = core.logging.getChildLogger({ module: "tlon-auto-reply" });
-  const formatRuntimeMessage = (...args: Parameters<RuntimeEnv["log"]>) => format(...args);
+  const formatRuntimeMessage = (...args: Parameters<RuntimeEnv["log"]>) =>
+    format(...args);
   const runtime: RuntimeEnv = opts.runtime ?? {
     log: (...args) => {
       logger.info(formatRuntimeMessage(...args));
@@ -89,7 +97,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
       },
     });
   } catch (error) {
-    runtime.error?.(`[tlon] Failed to authenticate: ${error?.message ?? String(error)}`);
+    runtime.error?.(
+      `[tlon] Failed to authenticate: ${error?.message ?? String(error)}`,
+    );
     throw error;
   }
 
@@ -103,13 +113,17 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         groupChannels = discoveredChannels;
       }
     } catch (error) {
-      runtime.error?.(`[tlon] Auto-discovery failed: ${error?.message ?? String(error)}`);
+      runtime.error?.(
+        `[tlon] Auto-discovery failed: ${error?.message ?? String(error)}`,
+      );
     }
   }
 
   if (groupChannels.length === 0 && account.groupChannels.length > 0) {
     groupChannels = account.groupChannels;
-    runtime.log?.(`[tlon] Using manual groupChannels config: ${groupChannels.join(", ")}`);
+    runtime.log?.(
+      `[tlon] Using manual groupChannels config: ${groupChannels.join(", ")}`,
+    );
   }
 
   if (groupChannels.length > 0) {
@@ -156,91 +170,102 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         timestamp: memo.sent || Date.now(),
       });
     } catch (error) {
-      runtime.error?.(`[tlon] Error handling DM: ${error?.message ?? String(error)}`);
+      runtime.error?.(
+        `[tlon] Error handling DM: ${error?.message ?? String(error)}`,
+      );
     }
   };
 
   // oxlint-disable-next-line typescript/no-explicit-any
-  const handleIncomingGroupMessage = (channelNest: string) => async (update: any) => {
-    try {
-      const parsed = parseChannelNest(channelNest);
-      if (!parsed) {
-        return;
-      }
-
-      const essay = update?.response?.post?.["r-post"]?.set?.essay;
-      const memo = update?.response?.post?.["r-post"]?.reply?.["r-reply"]?.set?.memo;
-      if (!essay && !memo) {
-        return;
-      }
-
-      const content = memo || essay;
-      const isThreadReply = Boolean(memo);
-      const messageId = isThreadReply
-        ? update?.response?.post?.["r-post"]?.reply?.id
-        : update?.response?.post?.id;
-
-      if (!processedTracker.mark(messageId)) {
-        return;
-      }
-
-      const senderShip = normalizeShip(content.author ?? "");
-      if (!senderShip || senderShip === botShipName) {
-        return;
-      }
-
-      const messageText = extractMessageText(content.content);
-      if (!messageText) {
-        return;
-      }
-
-      cacheMessage(channelNest, {
-        author: senderShip,
-        content: messageText,
-        timestamp: content.sent || Date.now(),
-        id: messageId,
-      });
-
-      const mentioned = isBotMentioned(messageText, botShipName);
-      if (!mentioned) {
-        return;
-      }
-
-      const { mode, allowedShips } = resolveChannelAuthorization(cfg, channelNest);
-      if (mode === "restricted") {
-        if (allowedShips.length === 0) {
-          runtime.log?.(`[tlon] Access denied: ${senderShip} in ${channelNest} (no allowlist)`);
+  const handleIncomingGroupMessage =
+    (channelNest: string) => async (update: any) => {
+      try {
+        const parsed = parseChannelNest(channelNest);
+        if (!parsed) {
           return;
         }
-        const normalizedAllowed = allowedShips.map(normalizeShip);
-        if (!normalizedAllowed.includes(senderShip)) {
-          runtime.log?.(
-            `[tlon] Access denied: ${senderShip} in ${channelNest} (allowed: ${allowedShips.join(", ")})`,
-          );
+
+        const essay = update?.response?.post?.["r-post"]?.set?.essay;
+        const memo =
+          update?.response?.post?.["r-post"]?.reply?.["r-reply"]?.set?.memo;
+        if (!essay && !memo) {
           return;
         }
+
+        const content = memo || essay;
+        const isThreadReply = Boolean(memo);
+        const messageId = isThreadReply
+          ? update?.response?.post?.["r-post"]?.reply?.id
+          : update?.response?.post?.id;
+
+        if (!processedTracker.mark(messageId)) {
+          return;
+        }
+
+        const senderShip = normalizeShip(content.author ?? "");
+        if (!senderShip || senderShip === botShipName) {
+          return;
+        }
+
+        const messageText = extractMessageText(content.content);
+        if (!messageText) {
+          return;
+        }
+
+        cacheMessage(channelNest, {
+          author: senderShip,
+          content: messageText,
+          timestamp: content.sent || Date.now(),
+          id: messageId,
+        });
+
+        const mentioned = isBotMentioned(messageText, botShipName);
+        if (!mentioned) {
+          return;
+        }
+
+        const { mode, allowedShips } = resolveChannelAuthorization(
+          cfg,
+          channelNest,
+        );
+        if (mode === "restricted") {
+          if (allowedShips.length === 0) {
+            runtime.log?.(
+              `[tlon] Access denied: ${senderShip} in ${channelNest} (no allowlist)`,
+            );
+            return;
+          }
+          const normalizedAllowed = allowedShips.map(normalizeShip);
+          if (!normalizedAllowed.includes(senderShip)) {
+            runtime.log?.(
+              `[tlon] Access denied: ${senderShip} in ${channelNest} (allowed: ${allowedShips.join(", ")})`,
+            );
+            return;
+          }
+        }
+
+        const seal = isThreadReply
+          ? update?.response?.post?.["r-post"]?.reply?.["r-reply"]?.set?.seal
+          : update?.response?.post?.["r-post"]?.set?.seal;
+
+        const parentId = seal?.["parent-id"] || seal?.parent || null;
+
+        await processMessage({
+          messageId: messageId ?? "",
+          senderShip,
+          messageText,
+          isGroup: true,
+          groupChannel: channelNest,
+          groupName: `${parsed.hostShip}/${parsed.channelName}`,
+          timestamp: content.sent || Date.now(),
+          parentId,
+        });
+      } catch (error) {
+        runtime.error?.(
+          `[tlon] Error handling group message: ${error?.message ?? String(error)}`,
+        );
       }
-
-      const seal = isThreadReply
-        ? update?.response?.post?.["r-post"]?.reply?.["r-reply"]?.set?.seal
-        : update?.response?.post?.["r-post"]?.set?.seal;
-
-      const parentId = seal?.["parent-id"] || seal?.parent || null;
-
-      await processMessage({
-        messageId: messageId ?? "",
-        senderShip,
-        messageText,
-        isGroup: true,
-        groupChannel: channelNest,
-        groupName: `${parsed.hostShip}/${parsed.channelName}`,
-        timestamp: content.sent || Date.now(),
-        parentId,
-      });
-    } catch (error) {
-      runtime.error?.(`[tlon] Error handling group message: ${error?.message ?? String(error)}`);
-    }
-  };
+    };
 
   const processMessage = async (params: {
     messageId: string;
@@ -252,7 +277,15 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     timestamp: number;
     parentId?: string | null;
   }) => {
-    const { messageId, senderShip, isGroup, groupChannel, groupName, timestamp, parentId } = params;
+    const {
+      messageId,
+      senderShip,
+      isGroup,
+      groupChannel,
+      groupName,
+      timestamp,
+      parentId,
+    } = params;
     let messageText = params.messageText;
 
     if (isGroup && groupChannel && isSummarizationRequest(messageText)) {
@@ -285,7 +318,8 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
 
         const historyText = history
           .map(
-            (msg) => `[${new Date(msg.timestamp).toLocaleString()}] ${msg.author}: ${msg.content}`,
+            (msg) =>
+              `[${new Date(msg.timestamp).toLocaleString()}] ${msg.author}: ${msg.content}`,
           )
           .join("\n");
 
@@ -310,7 +344,12 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
             });
           }
         } else {
-          await sendDm({ api: api, fromShip: botShipName, toShip: senderShip, text: errorMsg });
+          await sendDm({
+            api: api,
+            fromShip: botShipName,
+            toShip: senderShip,
+            text: errorMsg,
+          });
         }
         return;
       }
@@ -359,7 +398,10 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
       cfg,
       route.agentId,
     ).responsePrefix;
-    const humanDelay = core.channel.reply.resolveHumanDelayConfig(cfg, route.agentId);
+    const humanDelay = core.channel.reply.resolveHumanDelayConfig(
+      cfg,
+      route.agentId,
+    );
 
     await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
       ctx: ctxPayload,
@@ -374,7 +416,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
           }
 
           const showSignature =
-            account.showModelSignature ?? cfg.channels?.tlon?.showModelSignature ?? false;
+            account.showModelSignature ??
+            cfg.channels?.tlon?.showModelSignature ??
+            false;
           if (showSignature) {
             const modelInfo =
               payload.metadata?.model ||
@@ -398,7 +442,12 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
               replyToId: parentId ?? undefined,
             });
           } else {
-            await sendDm({ api: api, fromShip: botShipName, toShip: senderShip, text: replyText });
+            await sendDm({
+              api: api,
+              fromShip: botShipName,
+              toShip: senderShip,
+              text: replyText,
+            });
           }
         },
         onError: (err, info) => {
@@ -430,7 +479,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         path: `/${channelNest}`,
         event: handleIncomingGroupMessage(channelNest),
         err: (error) => {
-          runtime.error?.(`[tlon] Group subscription error for ${channelNest}: ${String(error)}`);
+          runtime.error?.(
+            `[tlon] Group subscription error for ${channelNest}: ${String(error)}`,
+          );
         },
         quit: () => {
           runtime.log?.(`[tlon] Group subscription ended for ${channelNest}`);
@@ -456,7 +507,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         path: `/dm/${dmShip}`,
         event: handleIncomingDM,
         err: (error) => {
-          runtime.error?.(`[tlon] DM subscription error for ${dmShip}: ${String(error)}`);
+          runtime.error?.(
+            `[tlon] DM subscription error for ${dmShip}: ${String(error)}`,
+          );
         },
         quit: () => {
           runtime.log?.(`[tlon] DM subscription ended for ${dmShip}`);
@@ -488,7 +541,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         }
       }
     } catch (error) {
-      runtime.error?.(`[tlon] Channel refresh failed: ${error?.message ?? String(error)}`);
+      runtime.error?.(
+        `[tlon] Channel refresh failed: ${error?.message ?? String(error)}`,
+      );
     }
   }
 
@@ -503,7 +558,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
         runtime.log?.(`[tlon] Found ${dmShips.length} DM conversation(s)`);
       }
     } catch (error) {
-      runtime.error?.(`[tlon] Failed to fetch DM list: ${error?.message ?? String(error)}`);
+      runtime.error?.(
+        `[tlon] Failed to fetch DM list: ${error?.message ?? String(error)}`,
+      );
     }
 
     for (const dmShip of dmShips) {
@@ -514,7 +571,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
       await subscribeToChannel(channelNest);
     }
 
-    runtime.log?.("[tlon] All subscriptions registered, connecting to SSE stream...");
+    runtime.log?.(
+      "[tlon] All subscriptions registered, connecting to SSE stream...",
+    );
     await api.connect();
     runtime.log?.("[tlon] Connected! All subscriptions active");
 
@@ -522,7 +581,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
       () => {
         if (!opts.abortSignal?.aborted) {
           refreshChannelSubscriptions().catch((error) => {
-            runtime.error?.(`[tlon] Channel refresh error: ${error?.message ?? String(error)}`);
+            runtime.error?.(
+              `[tlon] Channel refresh error: ${error?.message ?? String(error)}`,
+            );
           });
         }
       },
@@ -547,7 +608,9 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts = {}): Promise<v
     try {
       await api?.close();
     } catch (error) {
-      runtime.error?.(`[tlon] Cleanup error: ${error?.message ?? String(error)}`);
+      runtime.error?.(
+        `[tlon] Cleanup error: ${error?.message ?? String(error)}`,
+      );
     }
   }
 }

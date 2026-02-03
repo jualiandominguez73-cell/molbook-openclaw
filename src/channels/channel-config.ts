@@ -117,7 +117,10 @@ export function resolveChannelEntryMatchWithFallback<T>(params: {
 
   const parentKeys = params.parentKeys ?? [];
   if (parentKeys.length > 0) {
-    const parent = resolveChannelEntryMatch({ entries: params.entries, keys: parentKeys });
+    const parent = resolveChannelEntryMatch({
+      entries: params.entries,
+      keys: parentKeys,
+    });
     if (parent.entry && parent.key) {
       return {
         ...direct,

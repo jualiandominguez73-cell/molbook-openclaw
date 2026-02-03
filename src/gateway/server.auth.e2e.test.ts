@@ -299,7 +299,11 @@ describe("gateway server auth/connect", () => {
     let port: number;
 
     beforeAll(async () => {
-      testState.gatewayAuth = { mode: "token", token: "secret", allowTailscale: true };
+      testState.gatewayAuth = {
+        mode: "token",
+        token: "secret",
+        allowTailscale: true,
+      };
       port = await getFreePort();
       server = await startGatewayServer(port);
     });

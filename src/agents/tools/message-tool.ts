@@ -43,7 +43,9 @@ function buildSendSchema(options: { includeButtons: boolean; includeCards: boole
       }),
     ),
     effect: Type.Optional(
-      Type.String({ description: "Alias for effectId (e.g., invisible-ink, balloons)." }),
+      Type.String({
+        description: "Alias for effectId (e.g., invisible-ink, balloons).",
+      }),
     ),
     media: Type.Optional(Type.String()),
     filename: Type.Optional(Type.String()),
@@ -132,7 +134,9 @@ function buildPollSchema() {
 function buildChannelTargetSchema() {
   return {
     channelId: Type.Optional(
-      Type.String({ description: "Channel id filter (search/thread list/event create)." }),
+      Type.String({
+        description: "Channel id filter (search/thread list/event create).",
+      }),
     ),
     channelIds: Type.Optional(
       Type.Array(Type.String({ description: "Channel id filter (repeatable)." })),
@@ -370,7 +374,11 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         for (const key of ["filePath", "path"] as const) {
           const raw = readStringParam(params, key, { trim: false });
           if (raw) {
-            await assertSandboxPath({ filePath: raw, cwd: sandboxRoot, root: sandboxRoot });
+            await assertSandboxPath({
+              filePath: raw,
+              cwd: sandboxRoot,
+              root: sandboxRoot,
+            });
           }
         }
       }
@@ -415,7 +423,10 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         gateway,
         toolContext,
         agentId: options?.agentSessionKey
-          ? resolveSessionAgentId({ sessionKey: options.agentSessionKey, config: cfg })
+          ? resolveSessionAgentId({
+              sessionKey: options.agentSessionKey,
+              config: cfg,
+            })
           : undefined,
         abortSignal: signal,
       });

@@ -58,7 +58,9 @@ describe("gateway server cron", () => {
     testState.cronStorePath = path.join(dir, "cron", "jobs.json");
     testState.sessionConfig = { mainKey: "primary" };
     testState.cronEnabled = false;
-    await fs.mkdir(path.dirname(testState.cronStorePath), { recursive: true });
+    await fs.mkdir(path.dirname(testState.cronStorePath), {
+      recursive: true,
+    });
     await fs.writeFile(testState.cronStorePath, JSON.stringify({ version: 1, jobs: [] }));
 
     const { server, ws } = await startServerWithClient();
@@ -164,7 +166,12 @@ describe("gateway server cron", () => {
       const mergeUpdateRes = await rpcReq(ws, "cron.update", {
         id: mergeJobId,
         patch: {
-          payload: { kind: "agentTurn", deliver: true, channel: "telegram", to: "19098680" },
+          payload: {
+            kind: "agentTurn",
+            deliver: true,
+            channel: "telegram",
+            to: "19098680",
+          },
         },
       });
       expect(mergeUpdateRes.ok).toBe(true);

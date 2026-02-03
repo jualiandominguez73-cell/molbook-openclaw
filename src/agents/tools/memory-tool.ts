@@ -128,7 +128,12 @@ export function createMemoryGetTool(options: {
         return jsonResult(result);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        return jsonResult({ path: relPath, text: "", disabled: true, error: message });
+        return jsonResult({
+          path: relPath,
+          text: "",
+          disabled: true,
+          error: message,
+        });
       }
     },
   };

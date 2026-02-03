@@ -219,7 +219,11 @@ export async function initSessionState(params: {
     resetOverride: channelReset,
   });
   const freshEntry = entry
-    ? evaluateSessionFreshness({ updatedAt: entry.updatedAt, now, policy: resetPolicy }).fresh
+    ? evaluateSessionFreshness({
+        updatedAt: entry.updatedAt,
+        now,
+        policy: resetPolicy,
+      }).fresh
     : false;
 
   if (!isNewSession && freshEntry) {

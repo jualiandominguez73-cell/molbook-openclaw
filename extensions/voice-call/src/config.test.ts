@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { validateProviderConfig, resolveVoiceCallConfig, type VoiceCallConfig } from "./config.js";
+import {
+  validateProviderConfig,
+  resolveVoiceCallConfig,
+  type VoiceCallConfig,
+} from "./config.js";
 
-function createBaseConfig(provider: "telnyx" | "twilio" | "plivo" | "mock"): VoiceCallConfig {
+function createBaseConfig(
+  provider: "telnyx" | "twilio" | "plivo" | "mock",
+): VoiceCallConfig {
   return {
     enabled: true,
     provider,

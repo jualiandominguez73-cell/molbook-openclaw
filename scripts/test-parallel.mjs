@@ -20,10 +20,15 @@ const runs = [
 
 const children = new Set();
 const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-const isMacOS = process.platform === "darwin" || process.env.RUNNER_OS === "macOS";
-const isWindows = process.platform === "win32" || process.env.RUNNER_OS === "Windows";
+const isMacOS =
+  process.platform === "darwin" || process.env.RUNNER_OS === "macOS";
+const isWindows =
+  process.platform === "win32" || process.env.RUNNER_OS === "Windows";
 const isWindowsCi = isCI && isWindows;
-const shardOverride = Number.parseInt(process.env.OPENCLAW_TEST_SHARDS ?? "", 10);
+const shardOverride = Number.parseInt(
+  process.env.OPENCLAW_TEST_SHARDS ?? "",
+  10,
+);
 const shardCount = isWindowsCi
   ? Number.isFinite(shardOverride) && shardOverride > 1
     ? shardOverride
@@ -32,11 +37,20 @@ const shardCount = isWindowsCi
 const windowsCiArgs = isWindowsCi
   ? ["--no-file-parallelism", "--dangerouslyIgnoreUnhandledErrors"]
   : [];
-const overrideWorkers = Number.parseInt(process.env.OPENCLAW_TEST_WORKERS ?? "", 10);
+const overrideWorkers = Number.parseInt(
+  process.env.OPENCLAW_TEST_WORKERS ?? "",
+  10,
+);
 const resolvedOverride =
-  Number.isFinite(overrideWorkers) && overrideWorkers > 0 ? overrideWorkers : null;
-const parallelRuns = isWindowsCi ? [] : runs.filter((entry) => entry.name !== "gateway");
-const serialRuns = isWindowsCi ? runs : runs.filter((entry) => entry.name === "gateway");
+  Number.isFinite(overrideWorkers) && overrideWorkers > 0
+    ? overrideWorkers
+    : null;
+const parallelRuns = isWindowsCi
+  ? []
+  : runs.filter((entry) => entry.name !== "gateway");
+const serialRuns = isWindowsCi
+  ? runs
+  : runs.filter((entry) => entry.name === "gateway");
 const localWorkers = Math.max(4, Math.min(16, os.cpus().length));
 const parallelCount = Math.max(1, parallelRuns.length);
 const perRunWorkers = Math.max(1, Math.floor(localWorkers / parallelCount));
@@ -54,7 +68,13 @@ const WARNING_SUPPRESSION_FLAGS = [
 const runOnce = (entry, extraArgs = []) =>
   new Promise((resolve) => {
     const args = maxWorkers
-      ? [...entry.args, "--maxWorkers", String(maxWorkers), ...windowsCiArgs, ...extraArgs]
+      ? [
+          ...entry.args,
+          "--maxWorkers",
+          String(maxWorkers),
+          ...windowsCiArgs,
+          ...extraArgs,
+        ]
       : [...entry.args, ...windowsCiArgs, ...extraArgs];
     const nodeOptions = process.env.NODE_OPTIONS ?? "";
     const nextNodeOptions = WARNING_SUPPRESSION_FLAGS.reduce(
@@ -63,7 +83,11 @@ const runOnce = (entry, extraArgs = []) =>
     );
     const child = spawn(pnpm, args, {
       stdio: "inherit",
-      env: { ...process.env, VITEST_GROUP: entry.name, NODE_OPTIONS: nextNodeOptions },
+      env: {
+        ...process.env,
+        VITEST_GROUP: entry.name,
+        NODE_OPTIONS: nextNodeOptions,
+      },
       shell: process.platform === "win32",
     });
     children.add(child);
@@ -79,7 +103,10 @@ const run = async (entry) => {
   }
   for (let shardIndex = 1; shardIndex <= shardCount; shardIndex += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const code = await runOnce(entry, ["--shard", `${shardIndex}/${shardCount}`]);
+    const code = await runOnce(entry, [
+      "--shard",
+      `${shardIndex}/${shardCount}`,
+    ]);
     if (code !== 0) {
       return code;
     }

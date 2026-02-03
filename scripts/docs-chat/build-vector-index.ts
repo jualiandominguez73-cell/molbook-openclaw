@@ -17,7 +17,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { Embeddings } from "./rag/embeddings.js";
-import { createStore, detectStoreMode, type DocsChunk } from "./rag/store-factory.js";
+import {
+  createStore,
+  detectStoreMode,
+  type DocsChunk,
+} from "./rag/store-factory.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "../..");
@@ -123,7 +127,10 @@ function splitLargeChunk(chunk: RawChunk): RawChunk[] {
         ) {
           flushChunk(sentenceBuffer);
           // Overlap from previous sentence buffer
-          const overlapStart = Math.max(0, sentenceBuffer.length - OVERLAP_CHARS);
+          const overlapStart = Math.max(
+            0,
+            sentenceBuffer.length - OVERLAP_CHARS,
+          );
           sentenceBuffer = sentenceBuffer.slice(overlapStart).trim();
         }
         sentenceBuffer += (sentenceBuffer ? " " : "") + sentence;

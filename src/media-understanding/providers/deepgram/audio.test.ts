@@ -27,7 +27,10 @@ describe("transcribeDeepgramAudio", () => {
     resolvePinnedHostnameWithPolicySpy = vi
       .spyOn(ssrf, "resolvePinnedHostnameWithPolicy")
       .mockImplementation((hostname, params) =>
-        resolvePinnedHostnameWithPolicy(hostname, { ...params, lookupFn: lookupMock }),
+        resolvePinnedHostnameWithPolicy(hostname, {
+          ...params,
+          lookupFn: lookupMock,
+        }),
       );
   });
 

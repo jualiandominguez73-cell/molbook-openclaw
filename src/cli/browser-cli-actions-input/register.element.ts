@@ -102,7 +102,11 @@ export function registerBrowserElementCommands(
         const result = await callBrowserAct({
           parent,
           profile,
-          body: { kind: "press", key, targetId: opts.targetId?.trim() || undefined },
+          body: {
+            kind: "press",
+            key,
+            targetId: opts.targetId?.trim() || undefined,
+          },
         });
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify(result, null, 2));
@@ -126,7 +130,11 @@ export function registerBrowserElementCommands(
         const result = await callBrowserAct({
           parent,
           profile,
-          body: { kind: "hover", ref, targetId: opts.targetId?.trim() || undefined },
+          body: {
+            kind: "hover",
+            ref,
+            targetId: opts.targetId?.trim() || undefined,
+          },
         });
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify(result, null, 2));

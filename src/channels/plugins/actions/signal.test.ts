@@ -18,7 +18,9 @@ describe("signalMessageActions", () => {
 
   it("hides react when reactions are disabled", () => {
     const cfg = {
-      channels: { signal: { account: "+15550001111", actions: { reactions: false } } },
+      channels: {
+        signal: { account: "+15550001111", actions: { reactions: false } },
+      },
     } as OpenClawConfig;
     expect(signalMessageActions.listActions({ cfg })).toEqual(["send"]);
   });
@@ -44,7 +46,9 @@ describe("signalMessageActions", () => {
 
   it("blocks reactions when action gate is disabled", async () => {
     const cfg = {
-      channels: { signal: { account: "+15550001111", actions: { reactions: false } } },
+      channels: {
+        signal: { account: "+15550001111", actions: { reactions: false } },
+      },
     } as OpenClawConfig;
 
     await expect(

@@ -15,7 +15,10 @@ const providerId = "telegram";
 function readTelegramSendParams(params: Record<string, unknown>) {
   const to = readStringParam(params, "to", { required: true });
   const mediaUrl = readStringParam(params, "media", { trim: false });
-  const message = readStringParam(params, "message", { required: !mediaUrl, allowEmpty: true });
+  const message = readStringParam(params, "message", {
+    required: !mediaUrl,
+    allowEmpty: true,
+  });
   const caption = readStringParam(params, "caption", { allowEmpty: true });
   const content = message || caption || "";
   const replyTo = readStringParam(params, "replyTo");
@@ -149,7 +152,10 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
         required: true,
         integer: true,
       });
-      const message = readStringParam(params, "message", { required: true, allowEmpty: false });
+      const message = readStringParam(params, "message", {
+        required: true,
+        allowEmpty: false,
+      });
       const buttons = params.buttons;
       return await handleTelegramAction(
         {
@@ -170,8 +176,12 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
       // Accept stickerId (array from shared schema) and use first element as fileId
       const stickerIds = readStringArrayParam(params, "stickerId");
       const fileId = stickerIds?.[0] ?? readStringParam(params, "fileId", { required: true });
-      const replyToMessageId = readNumberParam(params, "replyTo", { integer: true });
-      const messageThreadId = readNumberParam(params, "threadId", { integer: true });
+      const replyToMessageId = readNumberParam(params, "replyTo", {
+        integer: true,
+      });
+      const messageThreadId = readNumberParam(params, "threadId", {
+        integer: true,
+      });
       return await handleTelegramAction(
         {
           action: "sendSticker",

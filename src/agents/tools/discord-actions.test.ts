@@ -102,7 +102,9 @@ describe("handleDiscordMessagingAction", () => {
       },
       enableAllActions,
     );
-    expect(reactMessageDiscord).toHaveBeenCalledWith("C1", "M1", "✅", { accountId: "ops" });
+    expect(reactMessageDiscord).toHaveBeenCalledWith("C1", "M1", "✅", {
+      accountId: "ops",
+    });
   });
 
   it("removes reactions on empty emoji", async () => {
@@ -189,7 +191,9 @@ describe("handleDiscordMessagingAction", () => {
       { guildId: "G1", channelId: "C1", messageId: "M1" },
       enableAllActions,
     );
-    const payload = result.details as { message?: { timestampMs?: number; timestampUtc?: string } };
+    const payload = result.details as {
+      message?: { timestampMs?: number; timestampUtc?: string };
+    };
 
     const expectedMs = Date.parse("2026-01-15T11:00:00.000Z");
     expect(payload.message?.timestampMs).toBe(expectedMs);
@@ -225,7 +229,9 @@ describe("handleDiscordMessagingAction", () => {
       enableAllActions,
     );
     const payload = result.details as {
-      results?: { messages?: Array<Array<{ timestampMs?: number; timestampUtc?: string }>> };
+      results?: {
+        messages?: Array<Array<{ timestampMs?: number; timestampUtc?: string }>>;
+      };
     };
 
     const expectedMs = Date.parse("2026-01-15T13:00:00.000Z");
@@ -275,7 +281,9 @@ describe("handleDiscordGuildAction - channel management", () => {
       { guildId: "G1", accountId: "ops" },
       channelInfoEnabled,
     );
-    expect(listGuildChannelsDiscord).toHaveBeenCalledWith("G1", { accountId: "ops" });
+    expect(listGuildChannelsDiscord).toHaveBeenCalledWith("G1", {
+      accountId: "ops",
+    });
   });
 
   it("edits a channel", async () => {

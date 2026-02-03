@@ -62,7 +62,11 @@ export async function handleDiscordGuildAction(
       const presence = getPresence(accountId, userId);
       const activities = presence?.activities ?? undefined;
       const status = presence?.status ?? undefined;
-      return jsonResult({ ok: true, member, ...(presence ? { status, activities } : {}) });
+      return jsonResult({
+        ok: true,
+        member,
+        ...(presence ? { status, activities } : {}),
+      });
     }
     case "roleInfo": {
       if (!isActionEnabled("roleInfo")) {
@@ -495,7 +499,9 @@ export async function handleDiscordGuildAction(
       });
       const targetId = readStringParam(params, "targetId", { required: true });
       if (accountId) {
-        await removeChannelPermissionDiscord(channelId, targetId, { accountId });
+        await removeChannelPermissionDiscord(channelId, targetId, {
+          accountId,
+        });
       } else {
         await removeChannelPermissionDiscord(channelId, targetId);
       }

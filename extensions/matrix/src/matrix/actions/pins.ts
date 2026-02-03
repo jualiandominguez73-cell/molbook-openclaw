@@ -17,9 +17,16 @@ export async function pinMatrixMessage(
   try {
     const resolvedRoom = await resolveMatrixRoomId(client, roomId);
     const current = await readPinnedEvents(client, resolvedRoom);
-    const next = current.includes(messageId) ? current : [...current, messageId];
+    const next = current.includes(messageId)
+      ? current
+      : [...current, messageId];
     const payload: RoomPinnedEventsEventContent = { pinned: next };
-    await client.sendStateEvent(resolvedRoom, EventType.RoomPinnedEvents, "", payload);
+    await client.sendStateEvent(
+      resolvedRoom,
+      EventType.RoomPinnedEvents,
+      "",
+      payload,
+    );
     return { pinned: next };
   } finally {
     if (stopOnDone) {
@@ -39,7 +46,12 @@ export async function unpinMatrixMessage(
     const current = await readPinnedEvents(client, resolvedRoom);
     const next = current.filter((id) => id !== messageId);
     const payload: RoomPinnedEventsEventContent = { pinned: next };
-    await client.sendStateEvent(resolvedRoom, EventType.RoomPinnedEvents, "", payload);
+    await client.sendStateEvent(
+      resolvedRoom,
+      EventType.RoomPinnedEvents,
+      "",
+      payload,
+    );
     return { pinned: next };
   } finally {
     if (stopOnDone) {

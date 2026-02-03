@@ -15,7 +15,10 @@ const distBundled = path.join(projectRoot, "dist", "hooks", "bundled");
 
 function copyHookMetadata() {
   if (!fs.existsSync(srcBundled)) {
-    console.warn("[copy-hook-metadata] Source directory not found:", srcBundled);
+    console.warn(
+      "[copy-hook-metadata] Source directory not found:",
+      srcBundled,
+    );
     return;
   }
 

@@ -6,7 +6,12 @@ import { normalizeDiscordSlug } from "./monitor/allow-list.js";
 import { normalizeDiscordToken } from "./token.js";
 
 type DiscordGuild = { id: string; name: string };
-type DiscordUser = { id: string; username: string; global_name?: string; bot?: boolean };
+type DiscordUser = {
+  id: string;
+  username: string;
+  global_name?: string;
+  bot?: boolean;
+};
 type DiscordMember = { user: DiscordUser; nick?: string | null };
 type DiscordChannel = { id: string; name?: string | null };
 
@@ -21,7 +26,10 @@ function buildUserRank(user: DiscordUser): number {
 export async function listDiscordDirectoryGroupsLive(
   params: DirectoryConfigParams,
 ): Promise<ChannelDirectoryEntry[]> {
-  const account = resolveDiscordAccount({ cfg: params.cfg, accountId: params.accountId });
+  const account = resolveDiscordAccount({
+    cfg: params.cfg,
+    accountId: params.accountId,
+  });
   const token = normalizeDiscordToken(account.token);
   if (!token) {
     return [];
@@ -59,7 +67,10 @@ export async function listDiscordDirectoryGroupsLive(
 export async function listDiscordDirectoryPeersLive(
   params: DirectoryConfigParams,
 ): Promise<ChannelDirectoryEntry[]> {
-  const account = resolveDiscordAccount({ cfg: params.cfg, accountId: params.accountId });
+  const account = resolveDiscordAccount({
+    cfg: params.cfg,
+    accountId: params.accountId,
+  });
   const token = normalizeDiscordToken(account.token);
   if (!token) {
     return [];

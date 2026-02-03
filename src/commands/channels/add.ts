@@ -180,8 +180,10 @@ export async function channelsAddCommand(
     return;
   }
   const accountId =
-    plugin.setup.resolveAccountId?.({ cfg: nextConfig, accountId: opts.account }) ??
-    normalizeAccountId(opts.account);
+    plugin.setup.resolveAccountId?.({
+      cfg: nextConfig,
+      accountId: opts.account,
+    }) ?? normalizeAccountId(opts.account);
   const useEnv = opts.useEnv === true;
   const initialSyncLimit =
     typeof opts.initialSyncLimit === "number"

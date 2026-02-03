@@ -44,7 +44,9 @@ export function createGatewayReloadHandlers(params: {
     plan: GatewayReloadPlan,
     nextConfig: ReturnType<typeof loadConfig>,
   ) => {
-    setGatewaySigusr1RestartPolicy({ allowExternal: nextConfig.commands?.restart === true });
+    setGatewaySigusr1RestartPolicy({
+      allowExternal: nextConfig.commands?.restart === true,
+    });
     const state = params.getState();
     const nextState = { ...state };
 
@@ -144,7 +146,9 @@ export function createGatewayReloadHandlers(params: {
     plan: GatewayReloadPlan,
     nextConfig: ReturnType<typeof loadConfig>,
   ) => {
-    setGatewaySigusr1RestartPolicy({ allowExternal: nextConfig.commands?.restart === true });
+    setGatewaySigusr1RestartPolicy({
+      allowExternal: nextConfig.commands?.restart === true,
+    });
     const reasons = plan.restartReasons.length
       ? plan.restartReasons.join(", ")
       : plan.changedPaths.join(", ");

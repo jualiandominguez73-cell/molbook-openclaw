@@ -175,7 +175,10 @@ export async function monitorWebChannel(
       account,
     });
 
-    const inboundDebounceMs = resolveInboundDebounceMs({ cfg, channel: "whatsapp" });
+    const inboundDebounceMs = resolveInboundDebounceMs({
+      cfg,
+      channel: "whatsapp",
+    });
     const shouldDebounce = (msg: WebInboundMsg) => {
       if (msg.mediaPath || msg.mediaType) {
         return false;

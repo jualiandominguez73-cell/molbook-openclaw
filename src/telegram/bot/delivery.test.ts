@@ -248,7 +248,11 @@ describe("deliverReplies", () => {
 
     await deliverReplies({
       replies: [
-        { mediaUrl: "https://example.com/note.ogg", text: "Hello there", audioAsVoice: true },
+        {
+          mediaUrl: "https://example.com/note.ogg",
+          text: "Hello there",
+          audioAsVoice: true,
+        },
       ],
       chatId: "123",
       token: "tok",
@@ -283,7 +287,13 @@ describe("deliverReplies", () => {
 
     await expect(
       deliverReplies({
-        replies: [{ mediaUrl: "https://example.com/note.ogg", text: "Hello", audioAsVoice: true }],
+        replies: [
+          {
+            mediaUrl: "https://example.com/note.ogg",
+            text: "Hello",
+            audioAsVoice: true,
+          },
+        ],
         chatId: "123",
         token: "tok",
         runtime,

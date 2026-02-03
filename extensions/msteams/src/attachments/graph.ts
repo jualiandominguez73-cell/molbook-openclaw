@@ -29,7 +29,10 @@ type GraphAttachment = {
   content?: unknown;
 };
 
-function readNestedString(value: unknown, keys: Array<string | number>): string | undefined {
+function readNestedString(
+  value: unknown,
+  keys: Array<string | number>,
+): string | undefined {
   let current: unknown = value;
   for (const key of keys) {
     if (!isRecord(current)) {
@@ -37,7 +40,9 @@ function readNestedString(value: unknown, keys: Array<string | number>): string 
     }
     current = current[key as keyof typeof current];
   }
-  return typeof current === "string" && current.trim() ? current.trim() : undefined;
+  return typeof current === "string" && current.trim()
+    ? current.trim()
+    : undefined;
 }
 
 export function buildMSTeamsGraphMessageUrls(params: {
@@ -62,7 +67,8 @@ export function buildMSTeamsGraphMessageUrls(params: {
   pushCandidate(readNestedString(params.channelData, ["messageId"]));
   pushCandidate(readNestedString(params.channelData, ["teamsMessageId"]));
 
-  const replyToId = typeof params.replyToId === "string" ? params.replyToId.trim() : "";
+  const replyToId =
+    typeof params.replyToId === "string" ? params.replyToId.trim() : "";
 
   if (conversationType === "channel") {
     const teamId =
@@ -97,7 +103,9 @@ export function buildMSTeamsGraphMessageUrls(params: {
     return Array.from(new Set(urls));
   }
 
-  const chatId = params.conversationId?.trim() || readNestedString(params.channelData, ["chatId"]);
+  const chatId =
+    params.conversationId?.trim() ||
+    readNestedString(params.channelData, ["chatId"]);
   if (!chatId) {
     return [];
   }
@@ -172,7 +180,8 @@ async function downloadGraphHostedContent(params: {
 
   const out: MSTeamsInboundMedia[] = [];
   for (const item of hosted.items) {
-    const contentBytes = typeof item.contentBytes === "string" ? item.contentBytes : "";
+    const contentBytes =
+      typeof item.contentBytes === "string" ? item.contentBytes : "";
     if (!contentBytes) {
       continue;
     }
@@ -227,7 +236,9 @@ export async function downloadMSTeamsGraphMedia(params: {
   const messageUrl = params.messageUrl;
   let accessToken: string;
   try {
-    accessToken = await params.tokenProvider.getAccessToken("https://graph.microsoft.com");
+    accessToken = await params.tokenProvider.getAccessToken(
+      "https://graph.microsoft.com",
+    );
   } catch {
     return { media: [], messageUrl, tokenError: true };
   }
@@ -278,18 +289,24 @@ export async function downloadMSTeamsGraphMedia(params: {
                 headerMime: spRes.headers.get("content-type") ?? undefined,
                 filePath: name,
               });
-              const originalFilename = params.preserveFilenames ? name : undefined;
-              const saved = await getMSTeamsRuntime().channel.media.saveMediaBuffer(
-                buffer,
-                mime ?? "application/octet-stream",
-                "inbound",
-                params.maxBytes,
-                originalFilename,
-              );
+              const originalFilename = params.preserveFilenames
+                ? name
+                : undefined;
+              const saved =
+                await getMSTeamsRuntime().channel.media.saveMediaBuffer(
+                  buffer,
+                  mime ?? "application/octet-stream",
+                  "inbound",
+                  params.maxBytes,
+                  originalFilename,
+                );
               sharePointMedia.push({
                 path: saved.path,
                 contentType: saved.contentType,
-                placeholder: inferPlaceholder({ contentType: saved.contentType, fileName: name }),
+                placeholder: inferPlaceholder({
+                  contentType: saved.contentType,
+                  fileName: name,
+                }),
               });
               downloadedReferenceUrls.add(shareUrl);
             }

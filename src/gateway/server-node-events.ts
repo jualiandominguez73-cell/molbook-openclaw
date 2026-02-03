@@ -238,7 +238,10 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
         }
       }
 
-      enqueueSystemEvent(text, { sessionKey, contextKey: runId ? `exec:${runId}` : "exec" });
+      enqueueSystemEvent(text, {
+        sessionKey,
+        contextKey: runId ? `exec:${runId}` : "exec",
+      });
       requestHeartbeatNow({ reason: "exec-event" });
       return;
     }

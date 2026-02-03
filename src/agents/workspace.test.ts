@@ -9,7 +9,11 @@ import {
 describe("loadWorkspaceBootstrapFiles", () => {
   it("includes MEMORY.md when present", async () => {
     const tempDir = await makeTempWorkspace("openclaw-workspace-");
-    await writeWorkspaceFile({ dir: tempDir, name: "MEMORY.md", content: "memory" });
+    await writeWorkspaceFile({
+      dir: tempDir,
+      name: "MEMORY.md",
+      content: "memory",
+    });
 
     const files = await loadWorkspaceBootstrapFiles(tempDir);
     const memoryEntries = files.filter((file) =>
@@ -23,7 +27,11 @@ describe("loadWorkspaceBootstrapFiles", () => {
 
   it("includes memory.md when MEMORY.md is absent", async () => {
     const tempDir = await makeTempWorkspace("openclaw-workspace-");
-    await writeWorkspaceFile({ dir: tempDir, name: "memory.md", content: "alt" });
+    await writeWorkspaceFile({
+      dir: tempDir,
+      name: "memory.md",
+      content: "alt",
+    });
 
     const files = await loadWorkspaceBootstrapFiles(tempDir);
     const memoryEntries = files.filter((file) =>

@@ -37,7 +37,9 @@ export type ExecApprovalResolved = {
   ts: number;
 };
 
-type ForwardTarget = ExecApprovalForwardTarget & { source: "session" | "target" };
+type ForwardTarget = ExecApprovalForwardTarget & {
+  source: "session" | "target";
+};
 
 type PendingApproval = {
   request: ExecApprovalRequest;
@@ -175,7 +177,10 @@ function defaultResolveSessionTarget(params: {
   if (!entry) {
     return null;
   }
-  const target = resolveSessionDeliveryTarget({ entry, requestedChannel: "last" });
+  const target = resolveSessionDeliveryTarget({
+    entry,
+    requestedChannel: "last",
+  });
   if (!target.channel || !target.to) {
     return null;
   }
@@ -277,7 +282,12 @@ export function createExecApprovalForwarder(
         }
         pending.delete(request.id);
         const expiredText = buildExpiredMessage(request);
-        await deliverToTargets({ cfg, targets: entry.targets, text: expiredText, deliver });
+        await deliverToTargets({
+          cfg,
+          targets: entry.targets,
+          text: expiredText,
+          deliver,
+        });
       })();
     }, expiresInMs);
     timeoutId.unref?.();

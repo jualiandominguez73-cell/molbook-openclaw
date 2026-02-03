@@ -99,7 +99,10 @@ export async function registerPluginHooksFromDir(
       continue;
     }
 
-    const eligible = shouldIncludeHook({ entry: normalizedEntry, config: api.config });
+    const eligible = shouldIncludeHook({
+      entry: normalizedEntry,
+      config: api.config,
+    });
     api.registerHook(events, handler, {
       entry: normalizedEntry,
       register: eligible,

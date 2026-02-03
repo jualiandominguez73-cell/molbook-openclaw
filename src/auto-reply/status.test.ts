@@ -468,7 +468,11 @@ describe("buildCommandsMessagePaginated", () => {
 
   it("includes plugin commands in the paginated list", () => {
     listPluginCommands.mockReturnValue([
-      { name: "plugin_cmd", description: "Plugin command", pluginId: "demo-plugin" },
+      {
+        name: "plugin_cmd",
+        description: "Plugin command",
+        pluginId: "demo-plugin",
+      },
     ]);
     const result = buildCommandsMessagePaginated(
       {

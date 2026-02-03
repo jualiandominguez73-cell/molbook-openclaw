@@ -28,7 +28,12 @@ const rootSchema = {
       type: "boolean",
     },
     bind: {
-      anyOf: [{ const: "auto" }, { const: "lan" }, { const: "tailnet" }, { const: "loopback" }],
+      anyOf: [
+        { const: "auto" },
+        { const: "lan" },
+        { const: "tailnet" },
+        { const: "loopback" },
+      ],
     },
   },
 };
@@ -58,7 +63,10 @@ describe("config form renderer", () => {
     }
     tokenInput.value = "abc123";
     tokenInput.dispatchEvent(new Event("input", { bubbles: true }));
-    expect(onPatch).toHaveBeenCalledWith(["gateway", "auth", "token"], "abc123");
+    expect(onPatch).toHaveBeenCalledWith(
+      ["gateway", "auth", "token"],
+      "abc123",
+    );
 
     const tokenButton = Array.from(
       container.querySelectorAll<HTMLButtonElement>(".cfg-segmented__btn"),

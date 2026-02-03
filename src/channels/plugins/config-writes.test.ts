@@ -23,7 +23,13 @@ describe("resolveChannelConfigWrites", () => {
         },
       },
     };
-    expect(resolveChannelConfigWrites({ cfg, channelId: "slack", accountId: "work" })).toBe(false);
+    expect(
+      resolveChannelConfigWrites({
+        cfg,
+        channelId: "slack",
+        accountId: "work",
+      }),
+    ).toBe(false);
   });
 
   it("matches account ids case-insensitively", () => {
@@ -37,6 +43,12 @@ describe("resolveChannelConfigWrites", () => {
         },
       },
     };
-    expect(resolveChannelConfigWrites({ cfg, channelId: "slack", accountId: "work" })).toBe(false);
+    expect(
+      resolveChannelConfigWrites({
+        cfg,
+        channelId: "slack",
+        accountId: "work",
+      }),
+    ).toBe(false);
   });
 });

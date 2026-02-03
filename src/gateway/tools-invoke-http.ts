@@ -86,7 +86,9 @@ function mergeActionIntoArgsIfSupported(params: {
     return args;
   }
   // TypeBox schemas are plain objects; many tools define an `action` property.
-  const schemaObj = toolSchema as { properties?: Record<string, unknown> } | null;
+  const schemaObj = toolSchema as {
+    properties?: Record<string, unknown>;
+  } | null;
   const hasAction = Boolean(
     schemaObj &&
     typeof schemaObj === "object" &&
@@ -102,7 +104,11 @@ function mergeActionIntoArgsIfSupported(params: {
 export async function handleToolsInvokeHttpRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  opts: { auth: ResolvedGatewayAuth; maxBodyBytes?: number; trustedProxies?: string[] },
+  opts: {
+    auth: ResolvedGatewayAuth;
+    maxBodyBytes?: number;
+    trustedProxies?: string[];
+  },
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
   if (url.pathname !== "/tools/invoke") {
@@ -192,7 +198,10 @@ export async function handleToolsInvokeHttpRequest(
     if (!policy?.allow || !Array.isArray(alsoAllow) || alsoAllow.length === 0) {
       return policy;
     }
-    return { ...policy, allow: Array.from(new Set([...policy.allow, ...alsoAllow])) };
+    return {
+      ...policy,
+      allow: Array.from(new Set([...policy.allow, ...alsoAllow])),
+    };
   };
 
   const profilePolicyWithAlsoAllow = mergeAlsoAllow(profilePolicy, profileAlsoAllow);
@@ -319,7 +328,10 @@ export async function handleToolsInvokeHttpRequest(
   } catch (err) {
     sendJson(res, 400, {
       ok: false,
-      error: { type: "tool_error", message: err instanceof Error ? err.message : String(err) },
+      error: {
+        type: "tool_error",
+        message: err instanceof Error ? err.message : String(err),
+      },
     });
   }
 

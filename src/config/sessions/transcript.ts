@@ -64,7 +64,9 @@ async function ensureSessionHeader(params: {
   if (fs.existsSync(params.sessionFile)) {
     return;
   }
-  await fs.promises.mkdir(path.dirname(params.sessionFile), { recursive: true });
+  await fs.promises.mkdir(path.dirname(params.sessionFile), {
+    recursive: true,
+  });
   const header = {
     type: "session",
     version: CURRENT_SESSION_VERSION,

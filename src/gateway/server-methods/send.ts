@@ -176,7 +176,10 @@ export const sendHandlers: GatewayRequestHandlers = {
           mirror: providedSessionKey
             ? {
                 sessionKey: providedSessionKey,
-                agentId: resolveSessionAgentId({ sessionKey: providedSessionKey, config: cfg }),
+                agentId: resolveSessionAgentId({
+                  sessionKey: providedSessionKey,
+                  config: cfg,
+                }),
                 text: mirrorText || message,
                 mediaUrls: mirrorMediaUrls.length > 0 ? mirrorMediaUrls : undefined,
               }
@@ -228,7 +231,11 @@ export const sendHandlers: GatewayRequestHandlers = {
           ok: false,
           error,
         });
-        return { ok: false, error, meta: { channel, error: formatForLog(err) } };
+        return {
+          ok: false,
+          error,
+          meta: { channel, error: formatForLog(err) },
+        };
       }
     })();
 

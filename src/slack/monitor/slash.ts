@@ -325,8 +325,14 @@ export function registerSlackMonitorSlashCommands(params: {
         commandAuthorized = resolveCommandAuthorizedFromAuthorizers({
           useAccessGroups: ctx.useAccessGroups,
           authorizers: [
-            { configured: effectiveAllowFromLower.length > 0, allowed: ownerAllowed },
-            { configured: channelUsersAllowlistConfigured, allowed: channelUserAllowed },
+            {
+              configured: effectiveAllowFromLower.length > 0,
+              allowed: ownerAllowed,
+            },
+            {
+              configured: channelUsersAllowlistConfigured,
+              allowed: channelUserAllowed,
+            },
           ],
         });
         if (ctx.useAccessGroups && !commandAuthorized) {

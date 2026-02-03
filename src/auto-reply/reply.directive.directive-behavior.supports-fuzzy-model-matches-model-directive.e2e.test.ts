@@ -66,7 +66,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/model kimi", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model kimi",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -157,7 +162,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/model moonshot/kimi", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model moonshot/kimi",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -200,7 +210,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       await getReplyFromConfig(
-        { Body: "/model minimax", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model minimax",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -245,7 +260,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       await getReplyFromConfig(
-        { Body: "/model minimax/m2.1", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model minimax/m2.1",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {

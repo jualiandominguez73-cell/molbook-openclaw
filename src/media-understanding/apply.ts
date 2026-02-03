@@ -217,7 +217,10 @@ function decodeLegacyText(buffer: Buffer): string {
   return output;
 }
 
-function getTextStats(text: string): { printableRatio: number; wordishRatio: number } {
+function getTextStats(text: string): {
+  printableRatio: number;
+  wordishRatio: number;
+} {
   if (!text) {
     return { printableRatio: 0, wordishRatio: 0 };
   }

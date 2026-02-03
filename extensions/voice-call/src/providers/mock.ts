@@ -53,7 +53,9 @@ export class MockProvider implements VoiceCallProvider {
     }
   }
 
-  private normalizeEvent(evt: Partial<NormalizedEvent>): NormalizedEvent | null {
+  private normalizeEvent(
+    evt: Partial<NormalizedEvent>,
+  ): NormalizedEvent | null {
     if (!evt.type || !evt.callId) {
       return null;
     }
@@ -99,7 +101,9 @@ export class MockProvider implements VoiceCallProvider {
       }
 
       case "call.silence": {
-        const payload = evt as Partial<NormalizedEvent & { durationMs?: number }>;
+        const payload = evt as Partial<
+          NormalizedEvent & { durationMs?: number }
+        >;
         return {
           ...base,
           type: evt.type,
@@ -117,7 +121,9 @@ export class MockProvider implements VoiceCallProvider {
       }
 
       case "call.ended": {
-        const payload = evt as Partial<NormalizedEvent & { reason?: EndReason }>;
+        const payload = evt as Partial<
+          NormalizedEvent & { reason?: EndReason }
+        >;
         return {
           ...base,
           type: evt.type,
@@ -126,7 +132,9 @@ export class MockProvider implements VoiceCallProvider {
       }
 
       case "call.error": {
-        const payload = evt as Partial<NormalizedEvent & { error?: string; retryable?: boolean }>;
+        const payload = evt as Partial<
+          NormalizedEvent & { error?: string; retryable?: boolean }
+        >;
         return {
           ...base,
           type: evt.type,

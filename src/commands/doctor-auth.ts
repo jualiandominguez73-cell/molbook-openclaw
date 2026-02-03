@@ -113,7 +113,9 @@ export async function maybeRemoveDeprecatedCliAuthProfiles(
   cfg: OpenClawConfig,
   prompter: DoctorPrompter,
 ): Promise<OpenClawConfig> {
-  const store = ensureAuthProfileStore(undefined, { allowKeychainPrompt: false });
+  const store = ensureAuthProfileStore(undefined, {
+    allowKeychainPrompt: false,
+  });
   const deprecated = new Set<string>();
   if (store.profiles[CLAUDE_CLI_PROFILE_ID] || cfg.auth?.profiles?.[CLAUDE_CLI_PROFILE_ID]) {
     deprecated.add(CLAUDE_CLI_PROFILE_ID);

@@ -1,7 +1,10 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import crypto from "node:crypto";
 import { resolveBlueBubblesAccount } from "./accounts.js";
-import { blueBubblesFetchWithTimeout, buildBlueBubblesApiUrl } from "./types.js";
+import {
+  blueBubblesFetchWithTimeout,
+  buildBlueBubblesApiUrl,
+} from "./types.js";
 
 export type BlueBubblesChatOpts = {
   serverUrl?: string;
@@ -41,10 +44,16 @@ export async function markBlueBubblesChatRead(
     path: `/api/v1/chat/${encodeURIComponent(trimmed)}/read`,
     password,
   });
-  const res = await blueBubblesFetchWithTimeout(url, { method: "POST" }, opts.timeoutMs);
+  const res = await blueBubblesFetchWithTimeout(
+    url,
+    { method: "POST" },
+    opts.timeoutMs,
+  );
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles read failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles read failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -70,7 +79,9 @@ export async function sendBlueBubblesTyping(
   );
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles typing failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles typing failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -81,7 +92,10 @@ export async function sendBlueBubblesTyping(
 export async function editBlueBubblesMessage(
   messageGuid: string,
   newText: string,
-  opts: BlueBubblesChatOpts & { partIndex?: number; backwardsCompatMessage?: string } = {},
+  opts: BlueBubblesChatOpts & {
+    partIndex?: number;
+    backwardsCompatMessage?: string;
+  } = {},
 ): Promise<void> {
   const trimmedGuid = messageGuid.trim();
   if (!trimmedGuid) {
@@ -101,7 +115,8 @@ export async function editBlueBubblesMessage(
 
   const payload = {
     editedMessage: trimmedText,
-    backwardsCompatibilityMessage: opts.backwardsCompatMessage ?? `Edited to: ${trimmedText}`,
+    backwardsCompatibilityMessage:
+      opts.backwardsCompatMessage ?? `Edited to: ${trimmedText}`,
     partIndex: typeof opts.partIndex === "number" ? opts.partIndex : 0,
   };
 
@@ -117,7 +132,9 @@ export async function editBlueBubblesMessage(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles edit failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles edit failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -157,7 +174,9 @@ export async function unsendBlueBubblesMessage(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles unsend failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles unsend failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -193,7 +212,9 @@ export async function renameBlueBubblesChat(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles rename failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles rename failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -233,7 +254,9 @@ export async function addBlueBubblesParticipant(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles addParticipant failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles addParticipant failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -298,11 +321,17 @@ export async function leaveBlueBubblesChat(
     password,
   });
 
-  const res = await blueBubblesFetchWithTimeout(url, { method: "POST" }, opts.timeoutMs);
+  const res = await blueBubblesFetchWithTimeout(
+    url,
+    { method: "POST" },
+    opts.timeoutMs,
+  );
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles leaveChat failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles leaveChat failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }
 
@@ -339,10 +368,14 @@ export async function setGroupIconBlueBubbles(
   // Add file field named "icon" as per API spec
   parts.push(encoder.encode(`--${boundary}\r\n`));
   parts.push(
-    encoder.encode(`Content-Disposition: form-data; name="icon"; filename="${filename}"\r\n`),
+    encoder.encode(
+      `Content-Disposition: form-data; name="icon"; filename="${filename}"\r\n`,
+    ),
   );
   parts.push(
-    encoder.encode(`Content-Type: ${opts.contentType ?? "application/octet-stream"}\r\n\r\n`),
+    encoder.encode(
+      `Content-Type: ${opts.contentType ?? "application/octet-stream"}\r\n\r\n`,
+    ),
   );
   parts.push(buffer);
   parts.push(encoder.encode("\r\n"));
@@ -373,6 +406,8 @@ export async function setGroupIconBlueBubbles(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    throw new Error(`BlueBubbles setGroupIcon failed (${res.status}): ${errorText || "unknown"}`);
+    throw new Error(
+      `BlueBubbles setGroupIcon failed (${res.status}): ${errorText || "unknown"}`,
+    );
   }
 }

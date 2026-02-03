@@ -82,7 +82,9 @@ describe("readFirstUserMessageFromTranscript", () => {
       JSON.stringify({ type: "session", version: 1, id: sessionId }),
       JSON.stringify({ message: { role: "system", content: "System prompt" } }),
       JSON.stringify({ message: { role: "assistant", content: "Greeting" } }),
-      JSON.stringify({ message: { role: "user", content: "First user question" } }),
+      JSON.stringify({
+        message: { role: "user", content: "First user question" },
+      }),
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
@@ -122,7 +124,9 @@ describe("readFirstUserMessageFromTranscript", () => {
     const customPath = path.join(tmpDir, "custom-transcript.jsonl");
     const lines = [
       JSON.stringify({ type: "session", version: 1, id: sessionId }),
-      JSON.stringify({ message: { role: "user", content: "Custom file message" } }),
+      JSON.stringify({
+        message: { role: "user", content: "Custom file message" },
+      }),
     ];
     fs.writeFileSync(customPath, lines.join("\n"), "utf-8");
 
@@ -133,7 +137,11 @@ describe("readFirstUserMessageFromTranscript", () => {
   test("trims whitespace from message content", () => {
     const sessionId = "test-session-7";
     const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
-    const lines = [JSON.stringify({ message: { role: "user", content: "  Padded message  " } })];
+    const lines = [
+      JSON.stringify({
+        message: { role: "user", content: "  Padded message  " },
+      }),
+    ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
     const result = readFirstUserMessageFromTranscript(sessionId, storePath);
@@ -186,8 +194,12 @@ describe("readLastMessagePreviewFromTranscript", () => {
     const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
     const lines = [
       JSON.stringify({ message: { role: "user", content: "First user" } }),
-      JSON.stringify({ message: { role: "assistant", content: "First assistant" } }),
-      JSON.stringify({ message: { role: "user", content: "Last user message" } }),
+      JSON.stringify({
+        message: { role: "assistant", content: "First assistant" },
+      }),
+      JSON.stringify({
+        message: { role: "user", content: "Last user message" },
+      }),
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
@@ -200,7 +212,9 @@ describe("readLastMessagePreviewFromTranscript", () => {
     const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
     const lines = [
       JSON.stringify({ message: { role: "user", content: "User question" } }),
-      JSON.stringify({ message: { role: "assistant", content: "Final assistant reply" } }),
+      JSON.stringify({
+        message: { role: "assistant", content: "Final assistant reply" },
+      }),
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
@@ -283,7 +297,11 @@ describe("readLastMessagePreviewFromTranscript", () => {
   test("uses sessionFile parameter when provided", () => {
     const sessionId = "test-last-custom";
     const customPath = path.join(tmpDir, "custom-last.jsonl");
-    const lines = [JSON.stringify({ message: { role: "user", content: "Custom file last" } })];
+    const lines = [
+      JSON.stringify({
+        message: { role: "user", content: "Custom file last" },
+      }),
+    ];
     fs.writeFileSync(customPath, lines.join("\n"), "utf-8");
 
     const result = readLastMessagePreviewFromTranscript(sessionId, storePath, customPath);
@@ -294,7 +312,9 @@ describe("readLastMessagePreviewFromTranscript", () => {
     const sessionId = "test-last-trim";
     const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
     const lines = [
-      JSON.stringify({ message: { role: "assistant", content: "  Padded response  " } }),
+      JSON.stringify({
+        message: { role: "assistant", content: "  Padded response  " },
+      }),
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
@@ -306,7 +326,9 @@ describe("readLastMessagePreviewFromTranscript", () => {
     const sessionId = "test-last-skip-empty";
     const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
     const lines = [
-      JSON.stringify({ message: { role: "assistant", content: "Has content" } }),
+      JSON.stringify({
+        message: { role: "assistant", content: "Has content" },
+      }),
       JSON.stringify({ message: { role: "user", content: "" } }),
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
@@ -318,12 +340,18 @@ describe("readLastMessagePreviewFromTranscript", () => {
   test("reads from end of large file (16KB window)", () => {
     const sessionId = "test-last-large";
     const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
-    const padding = JSON.stringify({ message: { role: "user", content: "x".repeat(500) } });
+    const padding = JSON.stringify({
+      message: { role: "user", content: "x".repeat(500) },
+    });
     const lines: string[] = [];
     for (let i = 0; i < 50; i++) {
       lines.push(padding);
     }
-    lines.push(JSON.stringify({ message: { role: "assistant", content: "Last in large file" } }));
+    lines.push(
+      JSON.stringify({
+        message: { role: "assistant", content: "Last in large file" },
+      }),
+    );
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
     const result = readLastMessagePreviewFromTranscript(sessionId, storePath);
@@ -364,9 +392,14 @@ describe("readSessionPreviewItemsFromTranscript", () => {
       JSON.stringify({ message: { role: "user", content: "Hello" } }),
       JSON.stringify({ message: { role: "assistant", content: "Hi" } }),
       JSON.stringify({
-        message: { role: "assistant", content: [{ type: "toolcall", name: "weather" }] },
+        message: {
+          role: "assistant",
+          content: [{ type: "toolcall", name: "weather" }],
+        },
       }),
-      JSON.stringify({ message: { role: "assistant", content: "Forecast ready" } }),
+      JSON.stringify({
+        message: { role: "assistant", content: "Forecast ready" },
+      }),
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 

@@ -35,7 +35,9 @@ export async function noteMacLaunchAgentOverrides() {
 
 async function launchctlGetenv(name: string): Promise<string | undefined> {
   try {
-    const result = await execFileAsync("/bin/launchctl", ["getenv", name], { encoding: "utf8" });
+    const result = await execFileAsync("/bin/launchctl", ["getenv", name], {
+      encoding: "utf8",
+    });
     const value = String(result.stdout ?? "").trim();
     return value.length > 0 ? value : undefined;
   } catch {

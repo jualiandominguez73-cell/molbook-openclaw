@@ -25,7 +25,9 @@ function detectPackageManager(ua = process.env.npm_config_user_agent ?? "") {
   return "unknown";
 }
 
-function shouldApplyPnpmPatchedDependenciesFallback(pm = detectPackageManager()) {
+function shouldApplyPnpmPatchedDependenciesFallback(
+  pm = detectPackageManager(),
+) {
   // pnpm already applies pnpm.patchedDependencies itself; re-applying would fail.
   return pm !== "pnpm";
 }
@@ -116,7 +118,9 @@ function parsePatch(patchText) {
 
     while (i < lines.length && lines[i].startsWith("@@")) {
       const header = lines[i];
-      const match = /^@@\s+(-\d+(?:,\d+)?)\s+(\+\d+(?:,\d+)?)\s+@@/.exec(header);
+      const match = /^@@\s+(-\d+(?:,\d+)?)\s+(\+\d+(?:,\d+)?)\s+@@/.exec(
+        header,
+      );
       if (!match) {
         throw new Error(`invalid hunk header: ${header}`);
       }
@@ -248,7 +252,10 @@ function applyPatchToFile(targetDir, filePatch) {
 
 function applyPatchSet({ patchText, targetDir }) {
   let resolvedTarget = path.resolve(targetDir);
-  if (!fs.existsSync(resolvedTarget) || !fs.statSync(resolvedTarget).isDirectory()) {
+  if (
+    !fs.existsSync(resolvedTarget) ||
+    !fs.statSync(resolvedTarget).isDirectory()
+  ) {
     console.warn(`[postinstall] skip missing target: ${resolvedTarget}`);
     return;
   }
@@ -293,11 +300,15 @@ function trySetupCompletion(repoRoot) {
   try {
     // Run with OPENCLAW_SKIP_POSTINSTALL to avoid any weird recursion,
     // though distinct from this script.
-    spawnSync(process.execPath, [binPath, "completion", "--install", "--yes", "--write-state"], {
-      cwd: repoRoot,
-      stdio: "inherit",
-      env: { ...process.env, OPENCLAW_SKIP_POSTINSTALL: "1" },
-    });
+    spawnSync(
+      process.execPath,
+      [binPath, "completion", "--install", "--yes", "--write-state"],
+      {
+        cwd: repoRoot,
+        stdio: "inherit",
+        env: { ...process.env, OPENCLAW_SKIP_POSTINSTALL: "1" },
+      },
+    );
   } catch {
     // Ignore errors
   }

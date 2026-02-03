@@ -11,7 +11,9 @@ type MockResponse = {
   json?: () => Promise<unknown>;
 };
 
-function makeHeaders(map: Record<string, string>): { get: (key: string) => string | null } {
+function makeHeaders(map: Record<string, string>): {
+  get: (key: string) => string | null;
+} {
   return {
     get: (key) => map[key.toLowerCase()] ?? null,
   };
@@ -121,7 +123,9 @@ describe("web_fetch extraction fallbacks", () => {
       sandboxed: false,
     });
 
-    const result = await tool?.execute?.("call", { url: "https://example.com/plain" });
+    const result = await tool?.execute?.("call", {
+      url: "https://example.com/plain",
+    });
     const details = result?.details as {
       text?: string;
       contentType?: string;
@@ -157,14 +161,20 @@ describe("web_fetch extraction fallbacks", () => {
       config: {
         tools: {
           web: {
-            fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false }, maxChars: 2000 },
+            fetch: {
+              cacheTtlMinutes: 0,
+              firecrawl: { enabled: false },
+              maxChars: 2000,
+            },
           },
         },
       },
       sandboxed: false,
     });
 
-    const result = await tool?.execute?.("call", { url: "https://example.com/long" });
+    const result = await tool?.execute?.("call", {
+      url: "https://example.com/long",
+    });
     const details = result?.details as { text?: string; truncated?: boolean };
 
     expect(details.text?.length).toBeLessThanOrEqual(2000);
@@ -188,14 +198,20 @@ describe("web_fetch extraction fallbacks", () => {
       config: {
         tools: {
           web: {
-            fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false }, maxChars: 100 },
+            fetch: {
+              cacheTtlMinutes: 0,
+              firecrawl: { enabled: false },
+              maxChars: 100,
+            },
           },
         },
       },
       sandboxed: false,
     });
 
-    const result = await tool?.execute?.("call", { url: "https://example.com/short" });
+    const result = await tool?.execute?.("call", {
+      url: "https://example.com/short",
+    });
     const details = result?.details as { text?: string; truncated?: boolean };
 
     expect(details.text?.length).toBeLessThanOrEqual(100);
@@ -232,7 +248,9 @@ describe("web_fetch extraction fallbacks", () => {
       sandboxed: false,
     });
 
-    const result = await tool?.execute?.("call", { url: "https://example.com/empty" });
+    const result = await tool?.execute?.("call", {
+      url: "https://example.com/empty",
+    });
     const details = result?.details as { extractor?: string; text?: string };
     expect(details.extractor).toBe("firecrawl");
     expect(details.text).toContain("firecrawl content");
@@ -249,7 +267,11 @@ describe("web_fetch extraction fallbacks", () => {
       config: {
         tools: {
           web: {
-            fetch: { readability: false, cacheTtlMinutes: 0, firecrawl: { enabled: false } },
+            fetch: {
+              readability: false,
+              cacheTtlMinutes: 0,
+              firecrawl: { enabled: false },
+            },
           },
         },
       },
@@ -278,7 +300,10 @@ describe("web_fetch extraction fallbacks", () => {
       config: {
         tools: {
           web: {
-            fetch: { cacheTtlMinutes: 0, firecrawl: { apiKey: "firecrawl-test" } },
+            fetch: {
+              cacheTtlMinutes: 0,
+              firecrawl: { apiKey: "firecrawl-test" },
+            },
           },
         },
       },
@@ -310,14 +335,19 @@ describe("web_fetch extraction fallbacks", () => {
       config: {
         tools: {
           web: {
-            fetch: { cacheTtlMinutes: 0, firecrawl: { apiKey: "firecrawl-test" } },
+            fetch: {
+              cacheTtlMinutes: 0,
+              firecrawl: { apiKey: "firecrawl-test" },
+            },
           },
         },
       },
       sandboxed: false,
     });
 
-    const result = await tool?.execute?.("call", { url: "https://example.com/blocked" });
+    const result = await tool?.execute?.("call", {
+      url: "https://example.com/blocked",
+    });
     const details = result?.details as { extractor?: string; text?: string };
     expect(details.extractor).toBe("firecrawl");
     expect(details.text).toContain("firecrawl fallback");
@@ -411,7 +441,10 @@ describe("web_fetch extraction fallbacks", () => {
       config: {
         tools: {
           web: {
-            fetch: { cacheTtlMinutes: 0, firecrawl: { apiKey: "firecrawl-test" } },
+            fetch: {
+              cacheTtlMinutes: 0,
+              firecrawl: { apiKey: "firecrawl-test" },
+            },
           },
         },
       },
@@ -420,7 +453,9 @@ describe("web_fetch extraction fallbacks", () => {
 
     let message = "";
     try {
-      await tool?.execute?.("call", { url: "https://example.com/firecrawl-error" });
+      await tool?.execute?.("call", {
+        url: "https://example.com/firecrawl-error",
+      });
     } catch (error) {
       message = (error as Error).message;
     }

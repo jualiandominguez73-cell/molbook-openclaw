@@ -31,7 +31,12 @@ export { normalizeOutboundPayloads } from "./payloads.js";
 type SendMatrixMessage = (
   to: string,
   text: string,
-  opts?: { mediaUrl?: string; replyToId?: string; threadId?: string; timeoutMs?: number },
+  opts?: {
+    mediaUrl?: string;
+    replyToId?: string;
+    threadId?: string;
+    timeoutMs?: number;
+  },
 ) => Promise<{ messageId: string; roomId: string }>;
 
 export type OutboundSendDeps = {
@@ -288,7 +293,9 @@ export async function deliverOutboundPayloads(params: {
         ? markdownToSignalTextChunks(text, Number.POSITIVE_INFINITY, {
             tableMode: signalTableMode,
           })
-        : markdownToSignalTextChunks(text, textLimit, { tableMode: signalTableMode });
+        : markdownToSignalTextChunks(text, textLimit, {
+            tableMode: signalTableMode,
+          });
     if (signalChunks.length === 0 && text) {
       signalChunks = [{ text, styles: [] }];
     }

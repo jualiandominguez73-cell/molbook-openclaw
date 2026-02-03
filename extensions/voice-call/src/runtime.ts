@@ -44,7 +44,9 @@ function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
   const allowNgrokFreeTierLoopbackBypass =
     config.tunnel?.provider === "ngrok" &&
     isLoopbackBind(config.serve?.bind) &&
-    (config.tunnel?.allowNgrokFreeTierLoopbackBypass || config.tunnel?.allowNgrokFreeTier || false);
+    (config.tunnel?.allowNgrokFreeTierLoopbackBypass ||
+      config.tunnel?.allowNgrokFreeTier ||
+      false);
 
   switch (config.provider) {
     case "telnyx":
@@ -63,7 +65,9 @@ function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
           allowNgrokFreeTierLoopbackBypass,
           publicUrl: config.publicUrl,
           skipVerification: config.skipSignatureVerification,
-          streamPath: config.streaming?.enabled ? config.streaming.streamPath : undefined,
+          streamPath: config.streaming?.enabled
+            ? config.streaming.streamPath
+            : undefined,
         },
       );
     case "plivo":
@@ -81,7 +85,9 @@ function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
     case "mock":
       return new MockProvider();
     default:
-      throw new Error(`Unsupported voice-call provider: ${String(config.provider)}`);
+      throw new Error(
+        `Unsupported voice-call provider: ${String(config.provider)}`,
+      );
   }
 }
 
@@ -107,12 +113,19 @@ export async function createVoiceCallRuntime(params: {
 
   const validation = validateProviderConfig(config);
   if (!validation.valid) {
-    throw new Error(`Invalid voice-call config: ${validation.errors.join("; ")}`);
+    throw new Error(
+      `Invalid voice-call config: ${validation.errors.join("; ")}`,
+    );
   }
 
   const provider = resolveProvider(config);
   const manager = new CallManager(config);
-  const webhookServer = new VoiceCallWebhookServer(config, manager, provider, coreConfig);
+  const webhookServer = new VoiceCallWebhookServer(
+    config,
+    manager,
+    provider,
+    coreConfig,
+  );
 
   const localUrl = await webhookServer.start();
 
@@ -120,7 +133,11 @@ export async function createVoiceCallRuntime(params: {
   let publicUrl: string | null = config.publicUrl ?? null;
   let tunnelResult: TunnelResult | null = null;
 
-  if (!publicUrl && config.tunnel?.provider && config.tunnel.provider !== "none") {
+  if (
+    !publicUrl &&
+    config.tunnel?.provider &&
+    config.tunnel.provider !== "none"
+  ) {
     try {
       tunnelResult = await startTunnel({
         provider: config.tunnel.provider,
@@ -166,7 +183,9 @@ export async function createVoiceCallRuntime(params: {
         );
       }
     } else {
-      log.warn("[voice-call] Telephony TTS unavailable; streaming TTS disabled");
+      log.warn(
+        "[voice-call] Telephony TTS unavailable; streaming TTS disabled",
+      );
     }
 
     const mediaHandler = webhookServer.getMediaStreamHandler();

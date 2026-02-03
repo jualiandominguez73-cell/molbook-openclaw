@@ -179,7 +179,12 @@ describe("directive behavior", () => {
       vi.mocked(runEmbeddedPiAgent).mockReset();
 
       const res = await getReplyFromConfig(
-        { Body: "/verbose on", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/verbose on",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -203,7 +208,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/verbose off", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/verbose off",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {

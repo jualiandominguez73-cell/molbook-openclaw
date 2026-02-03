@@ -35,7 +35,9 @@ async function fetchMatrixMediaBuffer(params: {
     }
     return { buffer: Buffer.from(buffer) };
   } catch (err) {
-    throw new Error(`Matrix media download failed: ${String(err)}`, { cause: err });
+    throw new Error(`Matrix media download failed: ${String(err)}`, {
+      cause: err,
+    });
   }
 }
 
@@ -75,7 +77,10 @@ export async function downloadMatrixMedia(params: {
   placeholder: string;
 } | null> {
   let fetched: { buffer: Buffer; headerType?: string } | null;
-  if (typeof params.sizeBytes === "number" && params.sizeBytes > params.maxBytes) {
+  if (
+    typeof params.sizeBytes === "number" &&
+    params.sizeBytes > params.maxBytes
+  ) {
     throw new Error("Matrix media exceeds configured size limit");
   }
 

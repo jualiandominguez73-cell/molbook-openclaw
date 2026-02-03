@@ -106,7 +106,11 @@ describe("Nix integration (U3, U5, U9)", () => {
           JSON.stringify(
             {
               id: "demo-plugin",
-              configSchema: { type: "object", additionalProperties: false, properties: {} },
+              configSchema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+              },
             },
             null,
             2,

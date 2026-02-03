@@ -160,7 +160,9 @@ export class TelnyxProvider implements VoiceCallProvider {
     let callId = "";
     if (data.payload?.client_state) {
       try {
-        callId = Buffer.from(data.payload.client_state, "base64").toString("utf8");
+        callId = Buffer.from(data.payload.client_state, "base64").toString(
+          "utf8",
+        );
       } catch {
         // Fallback if not valid Base64
         callId = data.payload.client_state;
@@ -309,10 +311,13 @@ export class TelnyxProvider implements VoiceCallProvider {
    * Start transcription (STT) via Telnyx.
    */
   async startListening(input: StartListeningInput): Promise<void> {
-    await this.apiRequest(`/calls/${input.providerCallId}/actions/transcription_start`, {
-      command_id: crypto.randomUUID(),
-      language: input.language || "en",
-    });
+    await this.apiRequest(
+      `/calls/${input.providerCallId}/actions/transcription_start`,
+      {
+        command_id: crypto.randomUUID(),
+        language: input.language || "en",
+      },
+    );
   }
 
   /**

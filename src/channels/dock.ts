@@ -382,7 +382,9 @@ function buildDockFromPlugin(plugin: ChannelPlugin): ChannelDock {
       ? { textChunkLimit: plugin.outbound.textChunkLimit }
       : undefined,
     streaming: plugin.streaming
-      ? { blockStreamingCoalesceDefaults: plugin.streaming.blockStreamingCoalesceDefaults }
+      ? {
+          blockStreamingCoalesceDefaults: plugin.streaming.blockStreamingCoalesceDefaults,
+        }
       : undefined,
     elevated: plugin.elevated,
     config: plugin.config
@@ -398,7 +400,11 @@ function buildDockFromPlugin(plugin: ChannelPlugin): ChannelDock {
   };
 }
 
-function listPluginDockEntries(): Array<{ id: ChannelId; dock: ChannelDock; order?: number }> {
+function listPluginDockEntries(): Array<{
+  id: ChannelId;
+  dock: ChannelDock;
+  order?: number;
+}> {
   const registry = requireActivePluginRegistry();
   const entries: Array<{ id: ChannelId; dock: ChannelDock; order?: number }> = [];
   const seen = new Set<string>();

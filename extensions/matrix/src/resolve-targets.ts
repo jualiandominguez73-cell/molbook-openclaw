@@ -4,7 +4,10 @@ import type {
   ChannelResolveResult,
   RuntimeEnv,
 } from "openclaw/plugin-sdk";
-import { listMatrixDirectoryGroupsLive, listMatrixDirectoryPeersLive } from "./directory-live.js";
+import {
+  listMatrixDirectoryGroupsLive,
+  listMatrixDirectoryPeersLive,
+} from "./directory-live.js";
 
 function pickBestGroupMatch(
   matches: ChannelDirectoryEntry[],
@@ -58,7 +61,8 @@ export async function resolveMatrixTargets(params: {
           resolved: Boolean(best?.id),
           id: best?.id,
           name: best?.name,
-          note: matches.length > 1 ? "multiple matches; chose first" : undefined,
+          note:
+            matches.length > 1 ? "multiple matches; chose first" : undefined,
         });
       } catch (err) {
         params.runtime?.error?.(`matrix resolve failed: ${String(err)}`);

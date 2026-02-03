@@ -525,7 +525,10 @@ async function dispatchDiscordCommandInteraction(params: {
   if (!user) {
     return;
   }
-  const sender = resolveDiscordSenderIdentity({ author: user, pluralkitInfo: null });
+  const sender = resolveDiscordSenderIdentity({
+    author: user,
+    pluralkitInfo: null,
+  });
   const channel = interaction.channel;
   const channelType = channel?.type;
   const isDirectMessage = channelType === ChannelType.DM;
@@ -650,7 +653,9 @@ async function dispatchDiscordCommandInteraction(params: {
             );
           }
         } else {
-          await respond("You are not authorized to use this command.", { ephemeral: true });
+          await respond("You are not authorized to use this command.", {
+            ephemeral: true,
+          });
         }
         return;
       }
@@ -680,7 +685,9 @@ async function dispatchDiscordCommandInteraction(params: {
       modeWhenAccessGroupsOff: "configured",
     });
     if (!commandAuthorized) {
-      await respond("You are not authorized to use this command.", { ephemeral: true });
+      await respond("You are not authorized to use this command.", {
+        ephemeral: true,
+      });
       return;
     }
   }

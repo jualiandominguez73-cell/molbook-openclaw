@@ -65,7 +65,12 @@ describe("directive behavior", () => {
       vi.mocked(runEmbeddedPiAgent).mockReset();
 
       const res = await getReplyFromConfig(
-        { Body: "/verbose", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/verbose",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -90,7 +95,12 @@ describe("directive behavior", () => {
       vi.mocked(runEmbeddedPiAgent).mockReset();
 
       const res = await getReplyFromConfig(
-        { Body: "/reasoning", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/reasoning",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {

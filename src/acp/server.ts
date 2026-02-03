@@ -20,7 +20,10 @@ export function serveAcpGateway(opts: AcpServerOptions = {}): void {
 
   const isRemoteMode = cfg.gateway?.mode === "remote";
   const remote = isRemoteMode ? cfg.gateway?.remote : undefined;
-  const auth = resolveGatewayAuth({ authConfig: cfg.gateway?.auth, env: process.env });
+  const auth = resolveGatewayAuth({
+    authConfig: cfg.gateway?.auth,
+    env: process.env,
+  });
 
   const token =
     opts.gatewayToken ??

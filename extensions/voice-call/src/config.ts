@@ -23,7 +23,12 @@ export const E164Schema = z
  * - "pairing": Unknown callers can request pairing (future)
  * - "open": Accept all inbound calls (dangerous!)
  */
-export const InboundPolicySchema = z.enum(["disabled", "allowlist", "pairing", "open"]);
+export const InboundPolicySchema = z.enum([
+  "disabled",
+  "allowlist",
+  "pairing",
+  "open",
+]);
 export type InboundPolicy = z.infer<typeof InboundPolicySchema>;
 
 // -----------------------------------------------------------------------------
@@ -185,7 +190,9 @@ export const VoiceCallTailscaleConfigSchema = z
   })
   .strict()
   .default({ mode: "off", path: "/voice/webhook" });
-export type VoiceCallTailscaleConfig = z.infer<typeof VoiceCallTailscaleConfigSchema>;
+export type VoiceCallTailscaleConfig = z.infer<
+  typeof VoiceCallTailscaleConfigSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Tunnel Configuration (unified ngrok/tailscale)
@@ -200,7 +207,9 @@ export const VoiceCallTunnelConfigSchema = z
      * - "tailscale-serve": Tailscale serve (private to tailnet)
      * - "tailscale-funnel": Tailscale funnel (public HTTPS)
      */
-    provider: z.enum(["none", "ngrok", "tailscale-serve", "tailscale-funnel"]).default("none"),
+    provider: z
+      .enum(["none", "ngrok", "tailscale-serve", "tailscale-funnel"])
+      .default("none"),
     /** ngrok auth token (optional, enables longer sessions and more features) */
     ngrokAuthToken: z.string().min(1).optional(),
     /** ngrok custom domain (paid feature, e.g., "myapp.ngrok.io") */
@@ -274,7 +283,9 @@ export const VoiceCallStreamingConfigSchema = z
     vadThreshold: 0.5,
     streamPath: "/voice/stream",
   });
-export type VoiceCallStreamingConfig = z.infer<typeof VoiceCallStreamingConfigSchema>;
+export type VoiceCallStreamingConfig = z.infer<
+  typeof VoiceCallStreamingConfigSchema
+>;
 
 // -----------------------------------------------------------------------------
 // Main Voice Call Configuration
@@ -378,29 +389,37 @@ export type VoiceCallConfig = z.infer<typeof VoiceCallConfigSchema>;
  * Resolves the configuration by merging environment variables into missing fields.
  * Returns a new configuration object with environment variables applied.
  */
-export function resolveVoiceCallConfig(config: VoiceCallConfig): VoiceCallConfig {
+export function resolveVoiceCallConfig(
+  config: VoiceCallConfig,
+): VoiceCallConfig {
   const resolved = JSON.parse(JSON.stringify(config)) as VoiceCallConfig;
 
   // Telnyx
   if (resolved.provider === "telnyx") {
     resolved.telnyx = resolved.telnyx ?? {};
-    resolved.telnyx.apiKey = resolved.telnyx.apiKey ?? process.env.TELNYX_API_KEY;
-    resolved.telnyx.connectionId = resolved.telnyx.connectionId ?? process.env.TELNYX_CONNECTION_ID;
-    resolved.telnyx.publicKey = resolved.telnyx.publicKey ?? process.env.TELNYX_PUBLIC_KEY;
+    resolved.telnyx.apiKey =
+      resolved.telnyx.apiKey ?? process.env.TELNYX_API_KEY;
+    resolved.telnyx.connectionId =
+      resolved.telnyx.connectionId ?? process.env.TELNYX_CONNECTION_ID;
+    resolved.telnyx.publicKey =
+      resolved.telnyx.publicKey ?? process.env.TELNYX_PUBLIC_KEY;
   }
 
   // Twilio
   if (resolved.provider === "twilio") {
     resolved.twilio = resolved.twilio ?? {};
-    resolved.twilio.accountSid = resolved.twilio.accountSid ?? process.env.TWILIO_ACCOUNT_SID;
-    resolved.twilio.authToken = resolved.twilio.authToken ?? process.env.TWILIO_AUTH_TOKEN;
+    resolved.twilio.accountSid =
+      resolved.twilio.accountSid ?? process.env.TWILIO_ACCOUNT_SID;
+    resolved.twilio.authToken =
+      resolved.twilio.authToken ?? process.env.TWILIO_AUTH_TOKEN;
   }
 
   // Plivo
   if (resolved.provider === "plivo") {
     resolved.plivo = resolved.plivo ?? {};
     resolved.plivo.authId = resolved.plivo.authId ?? process.env.PLIVO_AUTH_ID;
-    resolved.plivo.authToken = resolved.plivo.authToken ?? process.env.PLIVO_AUTH_TOKEN;
+    resolved.plivo.authToken =
+      resolved.plivo.authToken ?? process.env.PLIVO_AUTH_TOKEN;
   }
 
   // Tunnel Config
@@ -409,9 +428,13 @@ export function resolveVoiceCallConfig(config: VoiceCallConfig): VoiceCallConfig
     allowNgrokFreeTierLoopbackBypass: false,
   };
   resolved.tunnel.allowNgrokFreeTierLoopbackBypass =
-    resolved.tunnel.allowNgrokFreeTierLoopbackBypass || resolved.tunnel.allowNgrokFreeTier || false;
-  resolved.tunnel.ngrokAuthToken = resolved.tunnel.ngrokAuthToken ?? process.env.NGROK_AUTHTOKEN;
-  resolved.tunnel.ngrokDomain = resolved.tunnel.ngrokDomain ?? process.env.NGROK_DOMAIN;
+    resolved.tunnel.allowNgrokFreeTierLoopbackBypass ||
+    resolved.tunnel.allowNgrokFreeTier ||
+    false;
+  resolved.tunnel.ngrokAuthToken =
+    resolved.tunnel.ngrokAuthToken ?? process.env.NGROK_AUTHTOKEN;
+  resolved.tunnel.ngrokDomain =
+    resolved.tunnel.ngrokDomain ?? process.env.NGROK_DOMAIN;
 
   return resolved;
 }

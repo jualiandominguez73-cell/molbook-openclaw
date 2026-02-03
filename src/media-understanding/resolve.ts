@@ -107,7 +107,10 @@ export function resolveModelEntries(params: {
   const { cfg, capability, config } = params;
   const sharedModels = cfg.tools?.media?.models ?? [];
   const entries = [
-    ...(config?.models ?? []).map((entry) => ({ entry, source: "capability" as const })),
+    ...(config?.models ?? []).map((entry) => ({
+      entry,
+      source: "capability" as const,
+    })),
     ...sharedModels.map((entry) => ({ entry, source: "shared" as const })),
   ];
   if (entries.length === 0) {
@@ -120,7 +123,10 @@ export function resolveModelEntries(params: {
         entry.capabilities && entry.capabilities.length > 0
           ? entry.capabilities
           : source === "shared"
-            ? resolveEntryCapabilities({ entry, providerRegistry: params.providerRegistry })
+            ? resolveEntryCapabilities({
+                entry,
+                providerRegistry: params.providerRegistry,
+              })
             : undefined;
       if (!caps || caps.length === 0) {
         if (source === "shared") {

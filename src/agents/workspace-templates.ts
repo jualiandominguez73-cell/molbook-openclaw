@@ -37,7 +37,11 @@ export async function resolveWorkspaceTemplateDir(opts?: {
     const argv1 = opts?.argv1 ?? process.argv[1];
     const cwd = opts?.cwd ?? process.cwd();
 
-    const packageRoot = await resolveOpenClawPackageRoot({ moduleUrl, argv1, cwd });
+    const packageRoot = await resolveOpenClawPackageRoot({
+      moduleUrl,
+      argv1,
+      cwd,
+    });
     const candidates = [
       packageRoot ? path.join(packageRoot, "docs", "reference", "templates") : null,
       cwd ? path.resolve(cwd, "docs", "reference", "templates") : null,

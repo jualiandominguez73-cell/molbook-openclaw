@@ -35,7 +35,8 @@ export function scheduleChatScroll(host: ScrollHost, force = false) {
         return container;
       }
     }
-    return (document.scrollingElement ?? document.documentElement) as HTMLElement | null;
+    return (document.scrollingElement ??
+      document.documentElement) as HTMLElement | null;
   };
   // Wait for Lit render to complete, then scroll
   void host.updateComplete.then(() => {
@@ -45,13 +46,16 @@ export function scheduleChatScroll(host: ScrollHost, force = false) {
       if (!target) {
         return;
       }
-      const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+      const distanceFromBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
 
       // force=true only overrides when we haven't auto-scrolled yet (initial load).
       // After initial load, respect the user's scroll position.
       const effectiveForce = force && !host.chatHasAutoScrolled;
       const shouldStick =
-        effectiveForce || host.chatUserNearBottom || distanceFromBottom < NEAR_BOTTOM_THRESHOLD;
+        effectiveForce ||
+        host.chatUserNearBottom ||
+        distanceFromBottom < NEAR_BOTTOM_THRESHOLD;
 
       if (!shouldStick) {
         // User is scrolled up — flag that new content arrived below.
@@ -114,7 +118,8 @@ export function handleChatScroll(host: ScrollHost, event: Event) {
   if (!container) {
     return;
   }
-  const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  const distanceFromBottom =
+    container.scrollHeight - container.scrollTop - container.clientHeight;
   host.chatUserNearBottom = distanceFromBottom < NEAR_BOTTOM_THRESHOLD;
   // Clear the "new messages below" indicator when user scrolls back to bottom.
   if (host.chatUserNearBottom) {
@@ -127,7 +132,8 @@ export function handleLogsScroll(host: ScrollHost, event: Event) {
   if (!container) {
     return;
   }
-  const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  const distanceFromBottom =
+    container.scrollHeight - container.scrollTop - container.clientHeight;
   host.logsAtBottom = distanceFromBottom < 80;
 }
 

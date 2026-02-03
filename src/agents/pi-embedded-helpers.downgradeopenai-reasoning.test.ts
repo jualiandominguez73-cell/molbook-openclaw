@@ -10,7 +10,10 @@ describe("downgradeOpenAIReasoningBlocks", () => {
           {
             type: "thinking",
             thinking: "internal reasoning",
-            thinkingSignature: JSON.stringify({ id: "rs_123", type: "reasoning" }),
+            thinkingSignature: JSON.stringify({
+              id: "rs_123",
+              type: "reasoning",
+            }),
           },
           { type: "text", text: "answer" },
         ],
@@ -28,7 +31,10 @@ describe("downgradeOpenAIReasoningBlocks", () => {
         content: [
           {
             type: "thinking",
-            thinkingSignature: JSON.stringify({ id: "rs_abc", type: "reasoning" }),
+            thinkingSignature: JSON.stringify({
+              id: "rs_abc",
+              type: "reasoning",
+            }),
           },
         ],
       },

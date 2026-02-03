@@ -197,7 +197,10 @@ export function createOpenClawCodingTools(options?: {
     if (!policy?.allow || !Array.isArray(alsoAllow) || alsoAllow.length === 0) {
       return policy;
     }
-    return { ...policy, allow: Array.from(new Set([...policy.allow, ...alsoAllow])) };
+    return {
+      ...policy,
+      allow: Array.from(new Set([...policy.allow, ...alsoAllow])),
+    };
   };
 
   const profilePolicyWithAlsoAllow = mergeAlsoAllow(profilePolicy, profileAlsoAllow);

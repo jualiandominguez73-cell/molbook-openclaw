@@ -6,7 +6,11 @@ import { formatDocsLink } from "../terminal/links.js";
 import { theme } from "../terminal/theme.js";
 import { addGatewayClientOptions, callGatewayFromCli } from "./gateway-rpc.js";
 
-type SystemEventOpts = GatewayRpcOpts & { text?: string; mode?: string; json?: boolean };
+type SystemEventOpts = GatewayRpcOpts & {
+  text?: string;
+  mode?: string;
+  json?: boolean;
+};
 
 const normalizeWakeMode = (raw: unknown) => {
   const mode = typeof raw === "string" ? raw.trim() : "";

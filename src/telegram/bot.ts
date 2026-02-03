@@ -469,7 +469,10 @@ export function createTelegramBot(opts: TelegramBotOptions) {
       const dmThreadId = !isGroup ? messageThreadId : undefined;
       const threadKeys =
         dmThreadId != null
-          ? resolveThreadSessionKeys({ baseSessionKey, threadId: String(dmThreadId) })
+          ? resolveThreadSessionKeys({
+              baseSessionKey,
+              threadId: String(dmThreadId),
+            })
           : null;
       const sessionKey = threadKeys?.sessionKey ?? baseSessionKey;
 

@@ -1,4 +1,7 @@
-import type { MSTeamsAttachmentLike, MSTeamsHtmlAttachmentSummary } from "./types.js";
+import type {
+  MSTeamsAttachmentLike,
+  MSTeamsHtmlAttachmentSummary,
+} from "./types.js";
 import {
   ATTACHMENT_TAG_RE,
   extractHtmlFromAttachment,

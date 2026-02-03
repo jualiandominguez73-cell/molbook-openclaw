@@ -47,7 +47,8 @@ export async function initiateCall(
 
   const callId = crypto.randomUUID();
   const from =
-    ctx.config.fromNumber || (ctx.provider?.name === "mock" ? "+15550000000" : undefined);
+    ctx.config.fromNumber ||
+    (ctx.provider?.name === "mock" ? "+15550000000" : undefined);
   if (!from) {
     return { callId: "", success: false, error: "fromNumber not configured" };
   }
@@ -78,7 +79,9 @@ export async function initiateCall(
     if (mode === "notify" && initialMessage) {
       const pollyVoice = mapVoiceToPolly(ctx.config.tts?.openai?.voice);
       inlineTwiml = generateNotifyTwiml(initialMessage, pollyVoice);
-      console.log(`[voice-call] Using inline TwiML for notify mode (voice: ${pollyVoice})`);
+      console.log(
+        `[voice-call] Using inline TwiML for notify mode (voice: ${pollyVoice})`,
+      );
     }
 
     const result = await ctx.provider.initiateCall({
@@ -134,7 +137,10 @@ export async function speak(
 
     addTranscriptEntry(call, "bot", text);
 
-    const voice = ctx.provider?.name === "twilio" ? ctx.config.tts?.openai?.voice : undefined;
+    const voice =
+      ctx.provider?.name === "twilio"
+        ? ctx.config.tts?.openai?.voice
+        : undefined;
     await ctx.provider.playTts({
       callId,
       providerCallId: call.providerCallId,
@@ -144,7 +150,10 @@ export async function speak(
 
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -158,7 +167,9 @@ export async function speakInitialMessage(
     providerCallId,
   });
   if (!call) {
-    console.warn(`[voice-call] speakInitialMessage: no call found for ${providerCallId}`);
+    console.warn(
+      `[voice-call] speakInitialMessage: no call found for ${providerCallId}`,
+    );
     return;
   }
 
@@ -166,7 +177,9 @@ export async function speakInitialMessage(
   const mode = (call.metadata?.mode as CallMode) ?? "conversation";
 
   if (!initialMessage) {
-    console.log(`[voice-call] speakInitialMessage: no initial message for ${call.callId}`);
+    console.log(
+      `[voice-call] speakInitialMessage: no initial message for ${call.callId}`,
+    );
     return;
   }
 
@@ -176,16 +189,22 @@ export async function speakInitialMessage(
     persistCallRecord(ctx.storePath, call);
   }
 
-  console.log(`[voice-call] Speaking initial message for call ${call.callId} (mode: ${mode})`);
+  console.log(
+    `[voice-call] Speaking initial message for call ${call.callId} (mode: ${mode})`,
+  );
   const result = await speak(ctx, call.callId, initialMessage);
   if (!result.success) {
-    console.warn(`[voice-call] Failed to speak initial message: ${result.error}`);
+    console.warn(
+      `[voice-call] Failed to speak initial message: ${result.error}`,
+    );
     return;
   }
 
   if (mode === "notify") {
     const delaySec = ctx.config.outbound.notifyHangupDelaySec;
-    console.log(`[voice-call] Notify mode: auto-hangup in ${delaySec}s for call ${call.callId}`);
+    console.log(
+      `[voice-call] Notify mode: auto-hangup in ${delaySec}s for call ${call.callId}`,
+    );
     setTimeout(async () => {
       const currentCall = ctx.activeCalls.get(call.callId);
       if (currentCall && !TerminalStates.has(currentCall.state)) {
@@ -218,16 +237,25 @@ export async function continueCall(
     transitionState(call, "listening");
     persistCallRecord(ctx.storePath, call);
 
-    await ctx.provider.startListening({ callId, providerCallId: call.providerCallId });
+    await ctx.provider.startListening({
+      callId,
+      providerCallId: call.providerCallId,
+    });
 
     const transcript = await waitForFinalTranscript(ctx, callId);
 
     // Best-effort: stop listening after final transcript.
-    await ctx.provider.stopListening({ callId, providerCallId: call.providerCallId });
+    await ctx.provider.stopListening({
+      callId,
+      providerCallId: call.providerCallId,
+    });
 
     return { success: true, transcript };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   } finally {
     clearTranscriptWaiter(ctx, callId);
   }
@@ -270,6 +298,9 @@ export async function endCall(
 
     return { success: true };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }

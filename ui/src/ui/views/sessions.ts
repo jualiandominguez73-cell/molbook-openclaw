@@ -57,7 +57,9 @@ function isBinaryThinkingProvider(provider?: string | null): boolean {
 }
 
 function resolveThinkLevelOptions(provider?: string | null): readonly string[] {
-  return isBinaryThinkingProvider(provider) ? BINARY_THINK_LEVELS : THINK_LEVELS;
+  return isBinaryThinkingProvider(provider)
+    ? BINARY_THINK_LEVELS
+    : THINK_LEVELS;
 }
 
 function resolveThinkLevelDisplay(value: string, isBinary: boolean): string {
@@ -70,7 +72,10 @@ function resolveThinkLevelDisplay(value: string, isBinary: boolean): string {
   return "on";
 }
 
-function resolveThinkLevelPatchValue(value: string, isBinary: boolean): string | null {
+function resolveThinkLevelPatchValue(
+  value: string,
+  isBinary: boolean,
+): string | null {
   if (!value) {
     return null;
   }
@@ -90,9 +95,15 @@ export function renderSessions(props: SessionsProps) {
       <div class="row" style="justify-content: space-between;">
         <div>
           <div class="card-title">Sessions</div>
-          <div class="card-sub">Active session keys and per-session overrides.</div>
+          <div class="card-sub">
+            Active session keys and per-session overrides.
+          </div>
         </div>
-        <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
+        <button
+          class="btn"
+          ?disabled=${props.loading}
+          @click=${props.onRefresh}
+        >
           ${props.loading ? "Loading…" : "Refresh"}
         </button>
       </div>
@@ -154,11 +165,11 @@ export function renderSessions(props: SessionsProps) {
         </label>
       </div>
 
-      ${
-        props.error
-          ? html`<div class="callout danger" style="margin-top: 12px;">${props.error}</div>`
-          : nothing
-      }
+      ${props.error
+        ? html`<div class="callout danger" style="margin-top: 12px;">
+            ${props.error}
+          </div>`
+        : nothing}
 
       <div class="muted" style="margin-top: 12px;">
         ${props.result ? `Store: ${props.result.path}` : ""}
@@ -176,15 +187,17 @@ export function renderSessions(props: SessionsProps) {
           <div>Reasoning</div>
           <div>Actions</div>
         </div>
-        ${
-          rows.length === 0
-            ? html`
-                <div class="muted">No sessions found.</div>
-              `
-            : rows.map((row) =>
-                renderRow(row, props.basePath, props.onPatch, props.onDelete, props.loading),
-              )
-        }
+        ${rows.length === 0
+          ? html` <div class="muted">No sessions found.</div> `
+          : rows.map((row) =>
+              renderRow(
+                row,
+                props.basePath,
+                props.onPatch,
+                props.onDelete,
+                props.loading,
+              ),
+            )}
       </div>
     </section>
   `;
@@ -212,9 +225,11 @@ function renderRow(
 
   return html`
     <div class="table-row">
-      <div class="mono">${
-        canLink ? html`<a href=${chatUrl} class="session-link">${displayName}</a>` : displayName
-      }</div>
+      <div class="mono">
+        ${canLink
+          ? html`<a href=${chatUrl} class="session-link">${displayName}</a>`
+          : displayName}
+      </div>
       <div>
         <input
           .value=${row.label ?? ""}
@@ -236,11 +251,17 @@ function renderRow(
           @change=${(e: Event) => {
             const value = (e.target as HTMLSelectElement).value;
             onPatch(row.key, {
-              thinkingLevel: resolveThinkLevelPatchValue(value, isBinaryThinking),
+              thinkingLevel: resolveThinkLevelPatchValue(
+                value,
+                isBinaryThinking,
+              ),
             });
           }}
         >
-          ${thinkLevels.map((level) => html`<option value=${level}>${level || "inherit"}</option>`)}
+          ${thinkLevels.map(
+            (level) =>
+              html`<option value=${level}>${level || "inherit"}</option>`,
+          )}
         </select>
       </div>
       <div>
@@ -253,7 +274,8 @@ function renderRow(
           }}
         >
           ${VERBOSE_LEVELS.map(
-            (level) => html`<option value=${level.value}>${level.label}</option>`,
+            (level) =>
+              html`<option value=${level.value}>${level.label}</option>`,
           )}
         </select>
       </div>
@@ -267,12 +289,17 @@ function renderRow(
           }}
         >
           ${REASONING_LEVELS.map(
-            (level) => html`<option value=${level}>${level || "inherit"}</option>`,
+            (level) =>
+              html`<option value=${level}>${level || "inherit"}</option>`,
           )}
         </select>
       </div>
       <div>
-        <button class="btn danger" ?disabled=${disabled} @click=${() => onDelete(row.key)}>
+        <button
+          class="btn danger"
+          ?disabled=${disabled}
+          @click=${() => onDelete(row.key)}
+        >
           Delete
         </button>
       </div>

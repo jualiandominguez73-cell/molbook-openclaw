@@ -118,7 +118,9 @@ export function registerBrowserCookiesAndStorageCommands(
         const parent = parentOpts(cmd2);
         const profile = parent?.browserProfile;
         try {
-          const result = await callBrowserRequest<{ values?: Record<string, string> }>(
+          const result = await callBrowserRequest<{
+            values?: Record<string, string>;
+          }>(
             parent,
             {
               method: "GET",

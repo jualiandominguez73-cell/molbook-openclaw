@@ -201,7 +201,11 @@ export async function pushMessageLine(
 export async function replyMessageLine(
   replyToken: string,
   messages: Message[],
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<void> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -233,7 +237,11 @@ export async function replyMessageLine(
 export async function pushMessagesLine(
   to: string,
   messages: Message[],
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<LineSendResult> {
   if (messages.length === 0) {
     throw new Error("Message must be non-empty for LINE sends");
@@ -295,7 +303,11 @@ export async function pushImageMessage(
   to: string,
   originalContentUrl: string,
   previewImageUrl?: string,
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<LineSendResult> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -343,7 +355,11 @@ export async function pushLocationMessage(
     latitude: number;
     longitude: number;
   },
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<LineSendResult> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -387,7 +403,11 @@ export async function pushFlexMessage(
   to: string,
   altText: string,
   contents: FlexContainer,
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<LineSendResult> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -439,7 +459,11 @@ export async function pushFlexMessage(
 export async function pushTemplateMessage(
   to: string,
   template: TemplateMessage,
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<LineSendResult> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -481,7 +505,11 @@ export async function pushTextMessageWithQuickReplies(
   to: string,
   text: string,
   quickReplyLabels: string[],
-  opts: { channelAccessToken?: string; accountId?: string; verbose?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    verbose?: boolean;
+  } = {},
 ): Promise<LineSendResult> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -552,7 +580,11 @@ export function createTextMessageWithQuickReplies(
  */
 export async function showLoadingAnimation(
   chatId: string,
-  opts: { channelAccessToken?: string; accountId?: string; loadingSeconds?: number } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    loadingSeconds?: number;
+  } = {},
 ): Promise<void> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
@@ -582,7 +614,11 @@ export async function showLoadingAnimation(
  */
 export async function getUserProfile(
   userId: string,
-  opts: { channelAccessToken?: string; accountId?: string; useCache?: boolean } = {},
+  opts: {
+    channelAccessToken?: string;
+    accountId?: string;
+    useCache?: boolean;
+  } = {},
 ): Promise<{ displayName: string; pictureUrl?: string } | null> {
   const useCache = opts.useCache ?? true;
 

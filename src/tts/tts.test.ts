@@ -257,7 +257,9 @@ describe("tts", () => {
 
     it("uses summaryModel override when configured", async () => {
       const cfg = {
-        agents: { defaults: { model: { primary: "anthropic/claude-opus-4-5" } } },
+        agents: {
+          defaults: { model: { primary: "anthropic/claude-opus-4-5" } },
+        },
         messages: { tts: { summaryModel: "openai/gpt-4.1-mini" } },
       };
       const config = resolveTtsConfig(cfg);
@@ -441,7 +443,11 @@ describe("tts", () => {
         tts: {
           auto: "inbound",
           provider: "openai",
-          openai: { apiKey: "test-key", model: "gpt-4o-mini-tts", voice: "alloy" },
+          openai: {
+            apiKey: "test-key",
+            model: "gpt-4o-mini-tts",
+            voice: "alloy",
+          },
         },
       },
     };

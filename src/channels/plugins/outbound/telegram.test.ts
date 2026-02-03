@@ -30,7 +30,11 @@ describe("telegramOutbound.sendPayload", () => {
         textMode: "html",
       }),
     );
-    expect(result).toEqual({ channel: "telegram", messageId: "m1", chatId: "c1" });
+    expect(result).toEqual({
+      channel: "telegram",
+      messageId: "m1",
+      chatId: "c1",
+    });
   });
 
   it("sends media payloads and attaches buttons only to first", async () => {
@@ -75,6 +79,10 @@ describe("telegramOutbound.sendPayload", () => {
       }),
     );
     expect(secondOpts?.buttons).toBeUndefined();
-    expect(result).toEqual({ channel: "telegram", messageId: "m2", chatId: "c1" });
+    expect(result).toEqual({
+      channel: "telegram",
+      messageId: "m2",
+      chatId: "c1",
+    });
   });
 });

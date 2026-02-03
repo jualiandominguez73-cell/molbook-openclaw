@@ -362,7 +362,10 @@ export async function installPluginFromFile(params: {
   const targetFile = path.join(extensionsDir, `${safeFileName(pluginId)}${path.extname(filePath)}`);
 
   if (mode === "install" && (await fileExists(targetFile))) {
-    return { ok: false, error: `plugin already exists: ${targetFile} (delete it first)` };
+    return {
+      ok: false,
+      error: `plugin already exists: ${targetFile} (delete it first)`,
+    };
   }
 
   if (dryRun) {

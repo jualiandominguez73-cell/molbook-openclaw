@@ -17,7 +17,10 @@ function cleanupExpired(entry: CacheEntry): void {
   }
 }
 
-export function recordMSTeamsSentMessage(conversationId: string, messageId: string): void {
+export function recordMSTeamsSentMessage(
+  conversationId: string,
+  messageId: string,
+): void {
   if (!conversationId || !messageId) {
     return;
   }
@@ -33,7 +36,10 @@ export function recordMSTeamsSentMessage(conversationId: string, messageId: stri
   }
 }
 
-export function wasMSTeamsMessageSent(conversationId: string, messageId: string): boolean {
+export function wasMSTeamsMessageSent(
+  conversationId: string,
+  messageId: string,
+): boolean {
   const entry = sentMessages.get(conversationId);
   if (!entry) {
     return false;

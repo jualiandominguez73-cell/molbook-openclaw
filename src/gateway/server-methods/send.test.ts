@@ -4,7 +4,10 @@ import { sendHandlers } from "./send.js";
 
 const mocks = vi.hoisted(() => ({
   deliverOutboundPayloads: vi.fn(),
-  appendAssistantMessageToSessionTranscript: vi.fn(async () => ({ ok: true, sessionFile: "x" })),
+  appendAssistantMessageToSessionTranscript: vi.fn(async () => ({
+    ok: true,
+    sessionFile: "x",
+  })),
   recordSessionMetaFromInbound: vi.fn(async () => ({ ok: true })),
 }));
 

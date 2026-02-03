@@ -19,7 +19,10 @@ describe("resolveGatewayStateDir", () => {
   });
 
   it("uses OPENCLAW_STATE_DIR when provided", () => {
-    const env = { HOME: "/Users/test", OPENCLAW_STATE_DIR: "/var/lib/openclaw" };
+    const env = {
+      HOME: "/Users/test",
+      OPENCLAW_STATE_DIR: "/var/lib/openclaw",
+    };
     expect(resolveGatewayStateDir(env)).toBe(path.resolve("/var/lib/openclaw"));
   });
 

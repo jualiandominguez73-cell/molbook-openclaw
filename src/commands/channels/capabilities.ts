@@ -281,7 +281,10 @@ function formatProbeLines(channelId: string, probe: unknown): string[] {
 async function buildDiscordPermissions(params: {
   account: { token?: string; accountId?: string };
   target?: string;
-}): Promise<{ target?: DiscordTargetSummary; report?: DiscordPermissionsReport }> {
+}): Promise<{
+  target?: DiscordTargetSummary;
+  report?: DiscordPermissionsReport;
+}> {
   const target = summarizeDiscordTarget(params.target?.trim());
   if (!target) {
     return {};
@@ -374,7 +377,10 @@ async function resolveChannelReports(params: {
           cfg,
         });
       } catch (err) {
-        probe = { ok: false, error: err instanceof Error ? err.message : String(err) };
+        probe = {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
       }
     }
 

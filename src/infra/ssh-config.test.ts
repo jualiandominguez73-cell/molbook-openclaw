@@ -49,7 +49,11 @@ describe("ssh-config", () => {
 
   it("resolves ssh config via ssh -G", async () => {
     const { resolveSshConfig } = await import("./ssh-config.js");
-    const config = await resolveSshConfig({ user: "me", host: "alias", port: 22 });
+    const config = await resolveSshConfig({
+      user: "me",
+      host: "alias",
+      port: 22,
+    });
     expect(config?.user).toBe("steipete");
     expect(config?.host).toBe("peters-mac-studio-1.sheep-coho.ts.net");
     expect(config?.port).toBe(2222);
@@ -77,7 +81,11 @@ describe("ssh-config", () => {
     });
 
     const { resolveSshConfig } = await import("./ssh-config.js");
-    const config = await resolveSshConfig({ user: "me", host: "bad-host", port: 22 });
+    const config = await resolveSshConfig({
+      user: "me",
+      host: "bad-host",
+      port: 22,
+    });
     expect(config).toBeNull();
   });
 });

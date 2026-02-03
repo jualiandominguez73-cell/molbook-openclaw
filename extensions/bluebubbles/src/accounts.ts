@@ -1,6 +1,9 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "openclaw/plugin-sdk";
-import { normalizeBlueBubblesServerUrl, type BlueBubblesAccountConfig } from "./types.js";
+import {
+  normalizeBlueBubblesServerUrl,
+  type BlueBubblesAccountConfig,
+} from "./types.js";
 
 export type ResolvedBlueBubblesAccount = {
   accountId: string;
@@ -27,7 +30,9 @@ export function listBlueBubblesAccountIds(cfg: OpenClawConfig): string[] {
   return ids.toSorted((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultBlueBubblesAccountId(cfg: OpenClawConfig): string {
+export function resolveDefaultBlueBubblesAccountId(
+  cfg: OpenClawConfig,
+): string {
   const ids = listBlueBubblesAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) {
     return DEFAULT_ACCOUNT_ID;
@@ -70,7 +75,9 @@ export function resolveBlueBubblesAccount(params: {
   const serverUrl = merged.serverUrl?.trim();
   const password = merged.password?.trim();
   const configured = Boolean(serverUrl && password);
-  const baseUrl = serverUrl ? normalizeBlueBubblesServerUrl(serverUrl) : undefined;
+  const baseUrl = serverUrl
+    ? normalizeBlueBubblesServerUrl(serverUrl)
+    : undefined;
   return {
     accountId,
     enabled: baseEnabled !== false && accountEnabled,
@@ -81,7 +88,9 @@ export function resolveBlueBubblesAccount(params: {
   };
 }
 
-export function listEnabledBlueBubblesAccounts(cfg: OpenClawConfig): ResolvedBlueBubblesAccount[] {
+export function listEnabledBlueBubblesAccounts(
+  cfg: OpenClawConfig,
+): ResolvedBlueBubblesAccount[] {
   return listBlueBubblesAccountIds(cfg)
     .map((accountId) => resolveBlueBubblesAccount({ cfg, accountId }))
     .filter((account) => account.enabled);

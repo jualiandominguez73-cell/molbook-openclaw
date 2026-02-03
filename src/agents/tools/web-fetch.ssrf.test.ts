@@ -4,7 +4,9 @@ import * as ssrf from "../../infra/net/ssrf.js";
 const lookupMock = vi.fn();
 const resolvePinnedHostname = ssrf.resolvePinnedHostname;
 
-function makeHeaders(map: Record<string, string>): { get: (key: string) => string | null } {
+function makeHeaders(map: Record<string, string>): {
+  get: (key: string) => string | null;
+} {
   return {
     get: (key) => map[key.toLowerCase()] ?? null,
   };
@@ -78,7 +80,9 @@ describe("web_fetch SSRF protection", () => {
     const { createWebFetchTool } = await import("./web-tools.js");
     const tool = createWebFetchTool({
       config: {
-        tools: { web: { fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false } } } },
+        tools: {
+          web: { fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false } } },
+        },
       },
     });
 
@@ -107,7 +111,9 @@ describe("web_fetch SSRF protection", () => {
     const { createWebFetchTool } = await import("./web-tools.js");
     const tool = createWebFetchTool({
       config: {
-        tools: { web: { fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false } } } },
+        tools: {
+          web: { fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false } } },
+        },
       },
     });
 
@@ -129,7 +135,10 @@ describe("web_fetch SSRF protection", () => {
       config: {
         tools: {
           web: {
-            fetch: { cacheTtlMinutes: 0, firecrawl: { apiKey: "firecrawl-test" } },
+            fetch: {
+              cacheTtlMinutes: 0,
+              firecrawl: { apiKey: "firecrawl-test" },
+            },
           },
         },
       },
@@ -151,11 +160,15 @@ describe("web_fetch SSRF protection", () => {
     const { createWebFetchTool } = await import("./web-tools.js");
     const tool = createWebFetchTool({
       config: {
-        tools: { web: { fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false } } } },
+        tools: {
+          web: { fetch: { cacheTtlMinutes: 0, firecrawl: { enabled: false } } },
+        },
       },
     });
 
-    const result = await tool?.execute?.("call", { url: "https://example.com" });
+    const result = await tool?.execute?.("call", {
+      url: "https://example.com",
+    });
     expect(result?.details).toMatchObject({
       status: 200,
       extractor: "raw",

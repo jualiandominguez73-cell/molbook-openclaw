@@ -1,4 +1,7 @@
-import { buildBlueBubblesApiUrl, blueBubblesFetchWithTimeout } from "./types.js";
+import {
+  buildBlueBubblesApiUrl,
+  blueBubblesFetchWithTimeout,
+} from "./types.js";
 
 export type BlueBubblesProbe = {
   ok: boolean;
@@ -17,7 +20,10 @@ export type BlueBubblesServerInfo = {
 };
 
 /** Cache server info by account ID to avoid repeated API calls */
-const serverInfoCache = new Map<string, { info: BlueBubblesServerInfo; expires: number }>();
+const serverInfoCache = new Map<
+  string,
+  { info: BlueBubblesServerInfo; expires: number }
+>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 function buildCacheKey(accountId?: string): string {
@@ -46,16 +52,30 @@ export async function fetchBlueBubblesServerInfo(params: {
     return cached.info;
   }
 
-  const url = buildBlueBubblesApiUrl({ baseUrl, path: "/api/v1/server/info", password });
+  const url = buildBlueBubblesApiUrl({
+    baseUrl,
+    path: "/api/v1/server/info",
+    password,
+  });
   try {
-    const res = await blueBubblesFetchWithTimeout(url, { method: "GET" }, params.timeoutMs ?? 5000);
+    const res = await blueBubblesFetchWithTimeout(
+      url,
+      { method: "GET" },
+      params.timeoutMs ?? 5000,
+    );
     if (!res.ok) {
       return null;
     }
-    const payload = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    const payload = (await res.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null;
     const data = payload?.data as BlueBubblesServerInfo | undefined;
     if (data) {
-      serverInfoCache.set(cacheKey, { info: data, expires: Date.now() + CACHE_TTL_MS });
+      serverInfoCache.set(cacheKey, {
+        info: data,
+        expires: Date.now() + CACHE_TTL_MS,
+      });
     }
     return data ?? null;
   } catch {
@@ -67,7 +87,9 @@ export async function fetchBlueBubblesServerInfo(params: {
  * Get cached server info synchronously (for use in listActions).
  * Returns null if not cached or expired.
  */
-export function getCachedBlueBubblesServerInfo(accountId?: string): BlueBubblesServerInfo | null {
+export function getCachedBlueBubblesServerInfo(
+  accountId?: string,
+): BlueBubblesServerInfo | null {
   const cacheKey = buildCacheKey(accountId);
   const cached = serverInfoCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) {
@@ -118,9 +140,17 @@ export async function probeBlueBubbles(params: {
   if (!password) {
     return { ok: false, error: "password not configured" };
   }
-  const url = buildBlueBubblesApiUrl({ baseUrl, path: "/api/v1/ping", password });
+  const url = buildBlueBubblesApiUrl({
+    baseUrl,
+    path: "/api/v1/ping",
+    password,
+  });
   try {
-    const res = await blueBubblesFetchWithTimeout(url, { method: "GET" }, params.timeoutMs);
+    const res = await blueBubblesFetchWithTimeout(
+      url,
+      { method: "GET" },
+      params.timeoutMs,
+    );
     if (!res.ok) {
       return { ok: false, status: res.status, error: `HTTP ${res.status}` };
     }

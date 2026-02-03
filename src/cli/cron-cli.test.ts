@@ -189,7 +189,9 @@ describe("cron cli", () => {
 
     const updateCall = callGatewayFromCli.mock.calls.find((call) => call[0] === "cron.update");
     const patch = updateCall?.[2] as {
-      patch?: { payload?: { kind?: string; model?: string; thinking?: string } };
+      patch?: {
+        payload?: { kind?: string; model?: string; thinking?: string };
+      };
     };
 
     expect(patch?.patch?.payload?.kind).toBe("agentTurn");
@@ -238,7 +240,9 @@ describe("cron cli", () => {
     program.exitOverride();
     registerCronCli(program);
 
-    await program.parseAsync(["cron", "edit", "job-1", "--no-deliver"], { from: "user" });
+    await program.parseAsync(["cron", "edit", "job-1", "--no-deliver"], {
+      from: "user",
+    });
 
     const updateCall = callGatewayFromCli.mock.calls.find((call) => call[0] === "cron.update");
     const patch = updateCall?.[2] as {

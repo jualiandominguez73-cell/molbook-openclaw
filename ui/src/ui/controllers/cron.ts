@@ -63,7 +63,8 @@ export function buildCronSchedule(form: CronFormState) {
       throw new Error("Invalid interval amount.");
     }
     const unit = form.everyUnit;
-    const mult = unit === "minutes" ? 60_000 : unit === "hours" ? 3_600_000 : 86_400_000;
+    const mult =
+      unit === "minutes" ? 60_000 : unit === "hours" ? 3_600_000 : 86_400_000;
     return { kind: "every" as const, everyMs: amount * mult };
   }
   const expr = form.cronExpr.trim();
@@ -129,7 +130,8 @@ export async function addCronJob(state: CronState) {
       wakeMode: state.cronForm.wakeMode,
       payload,
       isolation:
-        state.cronForm.postToMainPrefix.trim() && state.cronForm.sessionTarget === "isolated"
+        state.cronForm.postToMainPrefix.trim() &&
+        state.cronForm.sessionTarget === "isolated"
           ? { postToMainPrefix: state.cronForm.postToMainPrefix.trim() }
           : undefined,
     };
@@ -152,14 +154,21 @@ export async function addCronJob(state: CronState) {
   }
 }
 
-export async function toggleCronJob(state: CronState, job: CronJob, enabled: boolean) {
+export async function toggleCronJob(
+  state: CronState,
+  job: CronJob,
+  enabled: boolean,
+) {
   if (!state.client || !state.connected || state.cronBusy) {
     return;
   }
   state.cronBusy = true;
   state.cronError = null;
   try {
-    await state.client.request("cron.update", { id: job.id, patch: { enabled } });
+    await state.client.request("cron.update", {
+      id: job.id,
+      patch: { enabled },
+    });
     await loadCronJobs(state);
     await loadCronStatus(state);
   } catch (err) {

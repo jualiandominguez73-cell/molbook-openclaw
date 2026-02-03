@@ -15,7 +15,10 @@ describe("resolveTelegramForumThreadId", () => {
 
   it("returns undefined for non-forum groups without messageThreadId", () => {
     expect(
-      resolveTelegramForumThreadId({ isForum: false, messageThreadId: undefined }),
+      resolveTelegramForumThreadId({
+        isForum: false,
+        messageThreadId: undefined,
+      }),
     ).toBeUndefined();
     expect(
       resolveTelegramForumThreadId({ isForum: undefined, messageThreadId: 99 }),
@@ -23,7 +26,12 @@ describe("resolveTelegramForumThreadId", () => {
   });
 
   it("returns General topic (1) for forum groups without messageThreadId", () => {
-    expect(resolveTelegramForumThreadId({ isForum: true, messageThreadId: undefined })).toBe(1);
+    expect(
+      resolveTelegramForumThreadId({
+        isForum: true,
+        messageThreadId: undefined,
+      }),
+    ).toBe(1);
     expect(resolveTelegramForumThreadId({ isForum: true, messageThreadId: null })).toBe(1);
   });
 
@@ -75,7 +83,12 @@ describe("normalizeForwardedContext", () => {
     const ctx = normalizeForwardedContext({
       forward_origin: {
         type: "user",
-        sender_user: { first_name: "Ada", last_name: "Lovelace", username: "ada", id: 42 },
+        sender_user: {
+          first_name: "Ada",
+          last_name: "Lovelace",
+          username: "ada",
+          id: 42,
+        },
         date: 123,
       },
       // oxlint-disable-next-line typescript/no-explicit-any
@@ -91,7 +104,11 @@ describe("normalizeForwardedContext", () => {
 
   it("handles hidden forward_origin names", () => {
     const ctx = normalizeForwardedContext({
-      forward_origin: { type: "hidden_user", sender_user_name: "Hidden Name", date: 456 },
+      forward_origin: {
+        type: "hidden_user",
+        sender_user_name: "Hidden Name",
+        date: 456,
+      },
       // oxlint-disable-next-line typescript/no-explicit-any
     } as any);
     expect(ctx).not.toBeNull();

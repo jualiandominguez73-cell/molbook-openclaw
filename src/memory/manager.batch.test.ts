@@ -18,7 +18,10 @@ vi.mock("./embeddings.js", () => ({
     },
     openAi: {
       baseUrl: "https://api.openai.com/v1",
-      headers: { Authorization: "Bearer test", "Content-Type": "application/json" },
+      headers: {
+        Authorization: "Bearer test",
+        "Content-Type": "application/json",
+      },
       model: "text-embedding-3-small",
     },
   }),
@@ -106,7 +109,11 @@ describe("memory indexing with OpenAI batches", () => {
       }
       if (url.endsWith("/batches/batch_1")) {
         return new Response(
-          JSON.stringify({ id: "batch_1", status: "completed", output_file_id: "file_out" }),
+          JSON.stringify({
+            id: "batch_1",
+            status: "completed",
+            output_file_id: "file_out",
+          }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
@@ -218,7 +225,11 @@ describe("memory indexing with OpenAI batches", () => {
       }
       if (url.endsWith("/batches/batch_1")) {
         return new Response(
-          JSON.stringify({ id: "batch_1", status: "completed", output_file_id: "file_out" }),
+          JSON.stringify({
+            id: "batch_1",
+            status: "completed",
+            output_file_id: "file_out",
+          }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
@@ -319,7 +330,11 @@ describe("memory indexing with OpenAI batches", () => {
       }
       if (url.endsWith("/batches/batch_1")) {
         return new Response(
-          JSON.stringify({ id: "batch_1", status: "completed", output_file_id: "file_out" }),
+          JSON.stringify({
+            id: "batch_1",
+            status: "completed",
+            output_file_id: "file_out",
+          }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }

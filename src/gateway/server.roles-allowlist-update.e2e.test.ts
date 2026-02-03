@@ -119,7 +119,10 @@ describe("gateway role enforcement", () => {
     await new Promise<void>((resolve) => nodeWs.once("open", resolve));
 
     try {
-      const eventRes = await rpcReq(ws, "node.event", { event: "test", payload: { ok: true } });
+      const eventRes = await rpcReq(ws, "node.event", {
+        event: "test",
+        payload: { ok: true },
+      });
       expect(eventRes.ok).toBe(false);
       expect(eventRes.error?.message ?? "").toContain("unauthorized role");
 
@@ -213,11 +216,9 @@ describe("gateway node command allowlist", () => {
     };
 
     const getConnectedNodeId = async () => {
-      const listRes = await rpcReq<{ nodes?: Array<{ nodeId: string; connected?: boolean }> }>(
-        ws,
-        "node.list",
-        {},
-      );
+      const listRes = await rpcReq<{
+        nodes?: Array<{ nodeId: string; connected?: boolean }>;
+      }>(ws, "node.list", {});
       const nodeId = listRes.payload?.nodes?.find((node) => node.connected)?.nodeId ?? "";
       expect(nodeId).toBeTruthy();
       return nodeId;

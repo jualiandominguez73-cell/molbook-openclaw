@@ -58,7 +58,9 @@ describe("browser extension install", () => {
         (cmd) => cmd.parent?.opts?.() as { json?: boolean },
       );
 
-      await program.parseAsync(["browser", "extension", "path"], { from: "user" });
+      await program.parseAsync(["browser", "extension", "path"], {
+        from: "user",
+      });
 
       expect(copyToClipboard).toHaveBeenCalledWith(dir);
     } finally {

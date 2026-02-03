@@ -101,7 +101,9 @@ describe("memory cli", () => {
     const program = new Command();
     program.name("test");
     registerMemoryCli(program);
-    await program.parseAsync(["memory", "status", "--agent", "main"], { from: "user" });
+    await program.parseAsync(["memory", "status", "--agent", "main"], {
+      from: "user",
+    });
 
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector: unavailable"));
     expect(log).toHaveBeenCalledWith(expect.stringContaining("Vector error: load failed"));
@@ -168,7 +170,9 @@ describe("memory cli", () => {
     const program = new Command();
     program.name("test");
     registerMemoryCli(program);
-    await program.parseAsync(["memory", "status", "--verbose"], { from: "user" });
+    await program.parseAsync(["memory", "status", "--verbose"], {
+      from: "user",
+    });
 
     expect(isVerbose()).toBe(true);
   });
@@ -242,7 +246,11 @@ describe("memory cli", () => {
     await program.parseAsync(["memory", "status", "--index"], { from: "user" });
 
     expect(sync).toHaveBeenCalledWith(
-      expect.objectContaining({ reason: "cli", force: false, progress: expect.any(Function) }),
+      expect.objectContaining({
+        reason: "cli",
+        force: false,
+        progress: expect.any(Function),
+      }),
     );
     expect(probeEmbeddingAvailability).toHaveBeenCalled();
     expect(close).toHaveBeenCalled();
@@ -267,7 +275,11 @@ describe("memory cli", () => {
     await program.parseAsync(["memory", "index"], { from: "user" });
 
     expect(sync).toHaveBeenCalledWith(
-      expect.objectContaining({ reason: "cli", force: false, progress: expect.any(Function) }),
+      expect.objectContaining({
+        reason: "cli",
+        force: false,
+        progress: expect.any(Function),
+      }),
     );
     expect(close).toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith("Memory index updated (main).");
@@ -294,7 +306,11 @@ describe("memory cli", () => {
     await program.parseAsync(["memory", "index"], { from: "user" });
 
     expect(sync).toHaveBeenCalledWith(
-      expect.objectContaining({ reason: "cli", force: false, progress: expect.any(Function) }),
+      expect.objectContaining({
+        reason: "cli",
+        force: false,
+        progress: expect.any(Function),
+      }),
     );
     expect(close).toHaveBeenCalled();
     expect(error).toHaveBeenCalledWith(

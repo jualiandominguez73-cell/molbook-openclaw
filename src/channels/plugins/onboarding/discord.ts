@@ -462,7 +462,10 @@ export const discordOnboardingAdapter: ChannelOnboardingAdapter = {
             );
           }
         }
-        const allowlistEntries: Array<{ guildKey: string; channelKey?: string }> = [];
+        const allowlistEntries: Array<{
+          guildKey: string;
+          channelKey?: string;
+        }> = [];
         for (const entry of resolved) {
           const guildKey =
             entry.guildId ??
@@ -474,7 +477,10 @@ export const discordOnboardingAdapter: ChannelOnboardingAdapter = {
           if (!channelKey && guildKey === "*") {
             continue;
           }
-          allowlistEntries.push({ guildKey, ...(channelKey ? { channelKey } : {}) });
+          allowlistEntries.push({
+            guildKey,
+            ...(channelKey ? { channelKey } : {}),
+          });
         }
         next = setDiscordGroupPolicy(next, discordAccountId, "allowlist");
         next = setDiscordGuildChannelAllowlist(next, discordAccountId, allowlistEntries);

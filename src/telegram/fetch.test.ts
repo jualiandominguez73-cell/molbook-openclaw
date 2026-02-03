@@ -10,7 +10,10 @@ describe("resolveTelegramFetch", () => {
       setDefaultAutoSelectFamily,
     }));
     const mod = await import("./fetch.js");
-    return { resolveTelegramFetch: mod.resolveTelegramFetch, setDefaultAutoSelectFamily };
+    return {
+      resolveTelegramFetch: mod.resolveTelegramFetch,
+      setDefaultAutoSelectFamily,
+    };
   };
 
   afterEach(() => {

@@ -50,7 +50,10 @@ describe("resolveTaskScriptPath", () => {
   });
 
   it("uses profile-specific path when OPENCLAW_PROFILE is set to a custom value", () => {
-    const env = { USERPROFILE: "C:\\Users\\test", OPENCLAW_PROFILE: "jbphoenix" };
+    const env = {
+      USERPROFILE: "C:\\Users\\test",
+      OPENCLAW_PROFILE: "jbphoenix",
+    };
     expect(resolveTaskScriptPath(env)).toBe(
       path.join("C:\\Users\\test", ".openclaw-jbphoenix", "gateway.cmd"),
     );
@@ -80,7 +83,10 @@ describe("resolveTaskScriptPath", () => {
   });
 
   it("trims whitespace from OPENCLAW_PROFILE", () => {
-    const env = { USERPROFILE: "C:\\Users\\test", OPENCLAW_PROFILE: "  myprofile  " };
+    const env = {
+      USERPROFILE: "C:\\Users\\test",
+      OPENCLAW_PROFILE: "  myprofile  ",
+    };
     expect(resolveTaskScriptPath(env)).toBe(
       path.join("C:\\Users\\test", ".openclaw-myprofile", "gateway.cmd"),
     );

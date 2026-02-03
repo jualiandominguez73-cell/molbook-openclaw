@@ -275,7 +275,10 @@ export async function doctorCommand(
 
   const shouldWriteConfig = prompter.shouldRepair || configResult.shouldWriteConfig;
   if (shouldWriteConfig) {
-    cfg = applyWizardMetadata(cfg, { command: "doctor", mode: resolveMode(cfg) });
+    cfg = applyWizardMetadata(cfg, {
+      command: "doctor",
+      mode: resolveMode(cfg),
+    });
     await writeConfigFile(cfg);
     logConfigUpdated(runtime);
     const backupPath = `${CONFIG_PATH}.bak`;

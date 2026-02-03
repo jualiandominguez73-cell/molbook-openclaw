@@ -358,7 +358,10 @@ function truncateOutput(raw: string, maxChars: number): { text: string; truncate
   if (raw.length <= maxChars) {
     return { text: raw, truncated: false };
   }
-  return { text: `... (truncated) ${raw.slice(raw.length - maxChars)}`, truncated: true };
+  return {
+    text: `... (truncated) ${raw.slice(raw.length - maxChars)}`,
+    truncated: true,
+  };
 }
 
 function redactExecApprovals(file: ExecApprovalsFile): ExecApprovalsFile {
@@ -755,11 +758,21 @@ async function handleInvoke(
       if (allowedProfiles.length > 0) {
         if (pathValue !== "/profiles") {
           const profileToCheck = requestedProfile || resolved.defaultProfile;
-          if (!isProfileAllowed({ allowProfiles: allowedProfiles, profile: profileToCheck })) {
+          if (
+            !isProfileAllowed({
+              allowProfiles: allowedProfiles,
+              profile: profileToCheck,
+            })
+          ) {
             throw new Error("INVALID_REQUEST: browser profile not allowed");
           }
         } else if (requestedProfile) {
-          if (!isProfileAllowed({ allowProfiles: allowedProfiles, profile: requestedProfile })) {
+          if (
+            !isProfileAllowed({
+              allowProfiles: allowedProfiles,
+              profile: requestedProfile,
+            })
+          ) {
             throw new Error("INVALID_REQUEST: browser profile not allowed");
           }
         }
@@ -913,7 +926,11 @@ async function handleInvoke(
       security === "allowlist" && analysisOk ? allowlistEval.allowlistSatisfied : false;
     segments = allowlistEval.segments;
   } else {
-    const analysis = analyzeArgvCommand({ argv, cwd: params.cwd ?? undefined, env });
+    const analysis = analyzeArgvCommand({
+      argv,
+      cwd: params.cwd ?? undefined,
+      env,
+    });
     const allowlistEval = evaluateExecAllowlist({
       analysis,
       allowlist: approvals.allowlist,
@@ -946,7 +963,10 @@ async function handleInvoke(
       sessionKey: sessionKey ?? null,
       approvalDecision,
     };
-    const response = await runViaMacAppExecHost({ approvals, request: execRequest });
+    const response = await runViaMacAppExecHost({
+      approvals,
+      request: execRequest,
+    });
     if (!response) {
       if (execHostEnforced || !execHostFallbackAllowed) {
         await sendNodeEvent(
@@ -1026,7 +1046,10 @@ async function handleInvoke(
     );
     await sendInvokeResult(client, frame, {
       ok: false,
-      error: { code: "UNAVAILABLE", message: "SYSTEM_RUN_DISABLED: security=deny" },
+      error: {
+        code: "UNAVAILABLE",
+        message: "SYSTEM_RUN_DISABLED: security=deny",
+      },
     });
     return;
   }
@@ -1057,7 +1080,10 @@ async function handleInvoke(
     );
     await sendInvokeResult(client, frame, {
       ok: false,
-      error: { code: "UNAVAILABLE", message: "SYSTEM_RUN_DENIED: approval required" },
+      error: {
+        code: "UNAVAILABLE",
+        message: "SYSTEM_RUN_DENIED: approval required",
+      },
     });
     return;
   }
@@ -1086,7 +1112,10 @@ async function handleInvoke(
     );
     await sendInvokeResult(client, frame, {
       ok: false,
-      error: { code: "UNAVAILABLE", message: "SYSTEM_RUN_DENIED: allowlist miss" },
+      error: {
+        code: "UNAVAILABLE",
+        message: "SYSTEM_RUN_DENIED: allowlist miss",
+      },
     });
     return;
   }
@@ -1122,7 +1151,10 @@ async function handleInvoke(
     );
     await sendInvokeResult(client, frame, {
       ok: false,
-      error: { code: "UNAVAILABLE", message: "PERMISSION_MISSING: screenRecording" },
+      error: {
+        code: "UNAVAILABLE",
+        message: "PERMISSION_MISSING: screenRecording",
+      },
     });
     return;
   }

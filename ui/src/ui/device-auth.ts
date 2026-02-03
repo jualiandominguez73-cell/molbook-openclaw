@@ -104,7 +104,10 @@ export function storeDeviceAuthToken(params: {
   return entry;
 }
 
-export function clearDeviceAuthToken(params: { deviceId: string; role: string }) {
+export function clearDeviceAuthToken(params: {
+  deviceId: string;
+  role: string;
+}) {
   const store = readStore();
   if (!store || store.deviceId !== params.deviceId) {
     return;

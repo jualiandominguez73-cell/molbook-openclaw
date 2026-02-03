@@ -28,7 +28,8 @@ vi.mock("./utils/markdown.js", () => ({
 }));
 
 vi.mock("./utils/twitch.js", () => ({
-  normalizeTwitchChannel: (channel: string) => channel.toLowerCase().replace(/^#/, ""),
+  normalizeTwitchChannel: (channel: string) =>
+    channel.toLowerCase().replace(/^#/, ""),
   missingTargetError: (channel: string, hint: string) =>
     `Missing target for ${channel}. Provide ${hint}`,
 }));
@@ -218,7 +219,10 @@ describe("outbound", () => {
     it("should throw when no channel specified", async () => {
       const { getAccountConfig } = await import("./config.js");
 
-      const accountWithoutChannel = { ...mockAccount, channel: undefined as unknown as string };
+      const accountWithoutChannel = {
+        ...mockAccount,
+        channel: undefined as unknown as string,
+      };
       vi.mocked(getAccountConfig).mockReturnValue(accountWithoutChannel);
 
       await expect(

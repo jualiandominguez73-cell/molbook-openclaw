@@ -5,8 +5,15 @@ import {
   type GatewayClientMode,
   type GatewayClientName,
 } from "../../../src/gateway/protocol/client-info.js";
-import { clearDeviceAuthToken, loadDeviceAuthToken, storeDeviceAuthToken } from "./device-auth";
-import { loadOrCreateDeviceIdentity, signDevicePayload } from "./device-identity";
+import {
+  clearDeviceAuthToken,
+  loadDeviceAuthToken,
+  storeDeviceAuthToken,
+} from "./device-auth";
+import {
+  loadOrCreateDeviceIdentity,
+  signDevicePayload,
+} from "./device-identity";
 import { generateUUID } from "./uuid";
 
 export type GatewayEventFrame = {
@@ -96,7 +103,9 @@ export class GatewayBrowserClient {
     }
     this.ws = new WebSocket(this.opts.url);
     this.ws.addEventListener("open", () => this.queueConnect());
-    this.ws.addEventListener("message", (ev) => this.handleMessage(String(ev.data ?? "")));
+    this.ws.addEventListener("message", (ev) =>
+      this.handleMessage(String(ev.data ?? "")),
+    );
     this.ws.addEventListener("close", (ev) => {
       const reason = String(ev.reason ?? "");
       this.ws = null;
@@ -142,7 +151,9 @@ export class GatewayBrowserClient {
 
     const scopes = ["operator.admin", "operator.approvals", "operator.pairing"];
     const role = "operator";
-    let deviceIdentity: Awaited<ReturnType<typeof loadOrCreateDeviceIdentity>> | null = null;
+    let deviceIdentity: Awaited<
+      ReturnType<typeof loadOrCreateDeviceIdentity>
+    > | null = null;
     let canFallbackToShared = false;
     let authToken = this.opts.token;
 
@@ -186,7 +197,10 @@ export class GatewayBrowserClient {
         token: authToken ?? null,
         nonce,
       });
-      const signature = await signDevicePayload(deviceIdentity.privateKey, payload);
+      const signature = await signDevicePayload(
+        deviceIdentity.privateKey,
+        payload,
+      );
       device = {
         id: deviceIdentity.deviceId,
         publicKey: deviceIdentity.publicKey,
@@ -248,7 +262,8 @@ export class GatewayBrowserClient {
       const evt = parsed as GatewayEventFrame;
       if (evt.event === "connect.challenge") {
         const payload = evt.payload as { nonce?: unknown } | undefined;
-        const nonce = payload && typeof payload.nonce === "string" ? payload.nonce : null;
+        const nonce =
+          payload && typeof payload.nonce === "string" ? payload.nonce : null;
         if (nonce) {
           this.connectNonce = nonce;
           void this.sendConnect();

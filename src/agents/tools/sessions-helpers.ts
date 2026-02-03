@@ -285,7 +285,12 @@ export async function resolveSessionReference(params: {
     alias: params.alias,
     mainKey: params.mainKey,
   });
-  return { ok: true, key: resolvedKey, displayKey, resolvedViaSessionId: false };
+  return {
+    ok: true,
+    key: resolvedKey,
+    displayKey,
+    resolvedViaSessionId: false,
+  };
 }
 
 export function classifySessionKind(params: {

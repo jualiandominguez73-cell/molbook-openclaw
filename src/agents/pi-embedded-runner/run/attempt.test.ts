@@ -4,7 +4,11 @@ import { describe, expect, it } from "vitest";
 import { injectHistoryImagesIntoMessages } from "./attempt.js";
 
 describe("injectHistoryImagesIntoMessages", () => {
-  const image: ImageContent = { type: "image", data: "abc", mimeType: "image/png" };
+  const image: ImageContent = {
+    type: "image",
+    data: "abc",
+    mimeType: "image/png",
+  };
 
   it("injects history images and converts string content", () => {
     const messages: AgentMessage[] = [
@@ -18,7 +22,11 @@ describe("injectHistoryImagesIntoMessages", () => {
 
     expect(didMutate).toBe(true);
     expect(Array.isArray(messages[0]?.content)).toBe(true);
-    const content = messages[0]?.content as Array<{ type: string; text?: string; data?: string }>;
+    const content = messages[0]?.content as Array<{
+      type: string;
+      text?: string;
+      data?: string;
+    }>;
     expect(content).toHaveLength(2);
     expect(content[0]?.type).toBe("text");
     expect(content[1]).toMatchObject({ type: "image", data: "abc" });

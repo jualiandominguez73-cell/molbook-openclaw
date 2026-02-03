@@ -34,7 +34,8 @@ export const zaloMessageActions: ChannelMessageActionAdapter = {
     if (!to) {
       return null;
     }
-    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : undefined;
+    const accountId =
+      typeof args.accountId === "string" ? args.accountId.trim() : undefined;
     return { to, accountId };
   },
   handleAction: async ({ action, params, cfg, accountId }) => {
@@ -62,6 +63,8 @@ export const zaloMessageActions: ChannelMessageActionAdapter = {
       return jsonResult({ ok: true, to, messageId: result.messageId });
     }
 
-    throw new Error(`Action ${action} is not supported for provider ${providerId}.`);
+    throw new Error(
+      `Action ${action} is not supported for provider ${providerId}.`,
+    );
   },
 };

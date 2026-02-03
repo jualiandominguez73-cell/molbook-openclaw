@@ -64,7 +64,9 @@ describe("/approve command", () => {
       commands: { text: true },
       channels: { whatsapp: { allowFrom: ["*"] } },
     } as OpenClawConfig;
-    const params = buildParams("/approve abc allow-once", cfg, { SenderId: "123" });
+    const params = buildParams("/approve abc allow-once", cfg, {
+      SenderId: "123",
+    });
 
     const mockCallGateway = vi.mocked(callGateway);
     mockCallGateway.mockResolvedValueOnce({ ok: true });

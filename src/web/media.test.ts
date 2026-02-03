@@ -262,7 +262,9 @@ describe("web media loading", () => {
 
     for (const size of sizes) {
       const raw = buildDeterministicBytes(size * size * 4);
-      pngBuffer = await sharp(raw, { raw: { width: size, height: size, channels: 4 } })
+      pngBuffer = await sharp(raw, {
+        raw: { width: size, height: size, channels: 4 },
+      })
         .png()
         .toBuffer();
       smallestPng = await optimizeImageToPng(pngBuffer, 1);

@@ -22,7 +22,10 @@ describe("createLineWebhookMiddleware", () => {
     const onEvents = vi.fn(async () => {});
     const secret = "secret";
     const rawBody = JSON.stringify({ events: [{ type: "message" }] });
-    const middleware = createLineWebhookMiddleware({ channelSecret: secret, onEvents });
+    const middleware = createLineWebhookMiddleware({
+      channelSecret: secret,
+      onEvents,
+    });
 
     const req = {
       headers: { "x-line-signature": sign(rawBody, secret) },
@@ -42,7 +45,10 @@ describe("createLineWebhookMiddleware", () => {
     const onEvents = vi.fn(async () => {});
     const secret = "secret";
     const rawBody = JSON.stringify({ events: [{ type: "follow" }] });
-    const middleware = createLineWebhookMiddleware({ channelSecret: secret, onEvents });
+    const middleware = createLineWebhookMiddleware({
+      channelSecret: secret,
+      onEvents,
+    });
 
     const req = {
       headers: { "x-line-signature": sign(rawBody, secret) },
@@ -62,7 +68,10 @@ describe("createLineWebhookMiddleware", () => {
     const onEvents = vi.fn(async () => {});
     const secret = "secret";
     const rawBody = "not json";
-    const middleware = createLineWebhookMiddleware({ channelSecret: secret, onEvents });
+    const middleware = createLineWebhookMiddleware({
+      channelSecret: secret,
+      onEvents,
+    });
 
     const req = {
       headers: { "x-line-signature": sign(rawBody, secret) },
@@ -82,7 +91,10 @@ describe("createLineWebhookMiddleware", () => {
     const onEvents = vi.fn(async () => {});
     const secret = "secret";
     const rawBody = JSON.stringify({ events: [{ type: "message" }] });
-    const middleware = createLineWebhookMiddleware({ channelSecret: secret, onEvents });
+    const middleware = createLineWebhookMiddleware({
+      channelSecret: secret,
+      onEvents,
+    });
 
     const req = {
       headers: { "x-line-signature": "invalid-signature" },
@@ -103,7 +115,10 @@ describe("createLineWebhookMiddleware", () => {
     const correctSecret = "correct-secret";
     const wrongSecret = "wrong-secret";
     const rawBody = JSON.stringify({ events: [{ type: "message" }] });
-    const middleware = createLineWebhookMiddleware({ channelSecret: correctSecret, onEvents });
+    const middleware = createLineWebhookMiddleware({
+      channelSecret: correctSecret,
+      onEvents,
+    });
 
     const req = {
       headers: { "x-line-signature": sign(rawBody, wrongSecret) },

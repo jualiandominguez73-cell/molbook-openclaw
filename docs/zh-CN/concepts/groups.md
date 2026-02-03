@@ -91,7 +91,14 @@ otherwise -> reply
       tools: {
         // If allow is non-empty, everything else is blocked (deny still wins).
         allow: ["group:messaging", "group:sessions"],
-        deny: ["group:runtime", "group:fs", "group:ui", "nodes", "cron", "gateway"],
+        deny: [
+          "group:runtime",
+          "group:fs",
+          "group:ui",
+          "nodes",
+          "cron",
+          "gateway",
+        ],
       },
     },
   },

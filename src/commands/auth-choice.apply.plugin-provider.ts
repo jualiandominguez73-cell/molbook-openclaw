@@ -88,7 +88,9 @@ function applyDefaultModel(cfg: OpenClawConfig, model: string): OpenClawConfig {
         models,
         model: {
           ...(existingModel && typeof existingModel === "object" && "fallbacks" in existingModel
-            ? { fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks }
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
             : undefined),
           primary: model,
         },
@@ -123,7 +125,10 @@ export async function applyAuthChoicePluginProvider(
   const workspaceDir =
     resolveAgentWorkspaceDir(nextConfig, agentId) ?? resolveDefaultAgentWorkspaceDir();
 
-  const providers = resolvePluginProviders({ config: nextConfig, workspaceDir });
+  const providers = resolvePluginProviders({
+    config: nextConfig,
+    workspaceDir,
+  });
   const provider = resolveProviderMatch(providers, options.providerId);
   if (!provider) {
     await params.prompter.note(

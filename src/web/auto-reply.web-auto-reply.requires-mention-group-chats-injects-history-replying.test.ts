@@ -346,7 +346,10 @@ describe("web auto-reply", () => {
       sendMedia,
     });
 
-    const payload = resolver.mock.calls[0]?.[0] as { From?: string; To?: string };
+    const payload = resolver.mock.calls[0]?.[0] as {
+      From?: string;
+      To?: string;
+    };
     expect(payload.From).toBe("123@g.us");
     expect(payload.To).toBe("+2");
   });

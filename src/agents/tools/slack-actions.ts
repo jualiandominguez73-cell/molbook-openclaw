@@ -56,7 +56,9 @@ function resolveThreadTsFromContext(
     return undefined;
   }
 
-  const parsedTarget = parseSlackTarget(targetChannel, { defaultKind: "channel" });
+  const parsedTarget = parseSlackTarget(targetChannel, {
+    defaultKind: "channel",
+  });
   if (!parsedTarget || parsedTarget.kind !== "channel") {
     return undefined;
   }

@@ -307,7 +307,11 @@ export function resolveDiscordChannelConfigWithFallback(params: {
         }
       : undefined,
   );
-  return resolveChannelMatchConfig(match, resolveDiscordChannelConfigEntry) ?? { allowed: false };
+  return (
+    resolveChannelMatchConfig(match, resolveDiscordChannelConfigEntry) ?? {
+      allowed: false,
+    }
+  );
 }
 
 export function resolveDiscordShouldRequireMention(params: {

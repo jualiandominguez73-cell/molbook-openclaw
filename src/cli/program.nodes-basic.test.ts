@@ -102,7 +102,9 @@ describe("cli program (nodes basics)", () => {
     });
     const program = buildProgram();
     runtime.log.mockClear();
-    await program.parseAsync(["nodes", "list", "--connected"], { from: "user" });
+    await program.parseAsync(["nodes", "list", "--connected"], {
+      from: "user",
+    });
 
     expect(callGateway).toHaveBeenCalledWith(expect.objectContaining({ method: "node.list" }));
     const output = runtime.log.mock.calls.map((c) => String(c[0] ?? "")).join("\n");

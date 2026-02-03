@@ -182,7 +182,10 @@ export async function monitorLineProvider(
 
       // Show loading animation while processing (non-blocking, best-effort)
       const stopLoading = shouldShowLoading
-        ? startLineLoadingKeepalive({ userId: ctx.userId!, accountId: ctx.accountId })
+        ? startLineLoadingKeepalive({
+            userId: ctx.userId!,
+            accountId: ctx.accountId,
+          })
         : null;
 
       const displayName = await displayNamePromise;
@@ -203,7 +206,9 @@ export async function monitorLineProvider(
 
               // Show loading animation before each delivery (non-blocking)
               if (ctx.userId && !ctx.isGroup) {
-                void showLoadingAnimation(ctx.userId, { accountId: ctx.accountId }).catch(() => {});
+                void showLoadingAnimation(ctx.userId, {
+                  accountId: ctx.accountId,
+                }).catch(() => {});
               }
 
               const { replyTokenUsed: nextReplyTokenUsed } = await deliverLineAutoReply({
@@ -263,7 +268,12 @@ export async function monitorLineProvider(
           try {
             await replyMessageLine(
               replyToken,
-              [{ type: "text", text: "Sorry, I encountered an error processing your message." }],
+              [
+                {
+                  type: "text",
+                  text: "Sorry, I encountered an error processing your message.",
+                },
+              ],
               { accountId: ctx.accountId },
             );
           } catch (replyErr) {

@@ -187,7 +187,11 @@ export async function buildStatusReply(params: {
   let subagentsLine: string | undefined;
   if (sessionKey) {
     const { mainKey, alias } = resolveMainSessionAlias(cfg);
-    const requesterKey = resolveInternalSessionKey({ key: sessionKey, alias, mainKey });
+    const requesterKey = resolveInternalSessionKey({
+      key: sessionKey,
+      alias,
+      mainKey,
+    });
     const runs = listSubagentRunsForRequester(requesterKey);
     const verboseEnabled = resolvedVerboseLevel && resolvedVerboseLevel !== "off";
     if (runs.length > 0) {

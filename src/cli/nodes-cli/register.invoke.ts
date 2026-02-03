@@ -225,7 +225,9 @@ export function registerNodesInvokeCommands(nodes: Command) {
 
           const nodeEnv = env ? { ...env } : undefined;
           if (nodeEnv) {
-            applyPathPrepend(nodeEnv, execDefaults?.pathPrepend, { requireExisting: true });
+            applyPathPrepend(nodeEnv, execDefaults?.pathPrepend, {
+              requireExisting: true,
+            });
           }
 
           let approvedByAsk = false;

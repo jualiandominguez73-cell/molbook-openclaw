@@ -37,7 +37,10 @@ function ensureExecutable(targetPath) {
   }
 }
 
-function isGitAvailable({ repoRoot = getRepoRoot(), runGit = runGitCommand } = {}) {
+function isGitAvailable({
+  repoRoot = getRepoRoot(),
+  runGit = runGitCommand,
+} = {}) {
   const result = runGit(["--version"], { cwd: repoRoot, stdio: "ignore" });
   return result.status === 0;
 }
@@ -99,6 +102,9 @@ export {
   setupGitHooks,
 };
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   setupGitHooks();
 }

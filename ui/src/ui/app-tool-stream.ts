@@ -92,7 +92,9 @@ function formatToolOutput(value: unknown): string | null {
   return `${truncated.text}\n\n… truncated (${truncated.total} chars, showing first ${truncated.text.length}).`;
 }
 
-function buildToolStreamMessage(entry: ToolStreamEntry): Record<string, unknown> {
+function buildToolStreamMessage(
+  entry: ToolStreamEntry,
+): Record<string, unknown> {
   const content: Array<Record<string, unknown>> = [];
   content.push({
     type: "toolcall",
@@ -174,7 +176,10 @@ type CompactionHost = ToolStreamHost & {
 
 const COMPACTION_TOAST_DURATION_MS = 5000;
 
-export function handleCompactionEvent(host: CompactionHost, payload: AgentEventPayload) {
+export function handleCompactionEvent(
+  host: CompactionHost,
+  payload: AgentEventPayload,
+) {
   const data = payload.data ?? {};
   const phase = typeof data.phase === "string" ? data.phase : "";
 
@@ -204,7 +209,10 @@ export function handleCompactionEvent(host: CompactionHost, payload: AgentEventP
   }
 }
 
-export function handleAgentEvent(host: ToolStreamHost, payload?: AgentEventPayload) {
+export function handleAgentEvent(
+  host: ToolStreamHost,
+  payload?: AgentEventPayload,
+) {
   if (!payload) {
     return;
   }
@@ -218,7 +226,8 @@ export function handleAgentEvent(host: ToolStreamHost, payload?: AgentEventPaylo
   if (payload.stream !== "tool") {
     return;
   }
-  const sessionKey = typeof payload.sessionKey === "string" ? payload.sessionKey : undefined;
+  const sessionKey =
+    typeof payload.sessionKey === "string" ? payload.sessionKey : undefined;
   if (sessionKey && sessionKey !== host.sessionKey) {
     return;
   }

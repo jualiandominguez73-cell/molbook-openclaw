@@ -201,8 +201,13 @@ describe("createFollowupRunner messaging tool dedupe", () => {
       "sessions.json",
     );
     const sessionKey = "main";
-    const sessionEntry: SessionEntry = { sessionId: "session", updatedAt: Date.now() };
-    const sessionStore: Record<string, SessionEntry> = { [sessionKey]: sessionEntry };
+    const sessionEntry: SessionEntry = {
+      sessionId: "session",
+      updatedAt: Date.now(),
+    };
+    const sessionStore: Record<string, SessionEntry> = {
+      [sessionKey]: sessionEntry,
+    };
     await saveSessionStore(storePath, sessionStore);
 
     const onBlockReply = vi.fn(async () => {});

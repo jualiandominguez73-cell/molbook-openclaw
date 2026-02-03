@@ -117,7 +117,10 @@ export type TelegramNetworkErrorContext = "polling" | "send" | "webhook" | "unkn
 
 export function isRecoverableTelegramNetworkError(
   err: unknown,
-  options: { context?: TelegramNetworkErrorContext; allowMessageMatch?: boolean } = {},
+  options: {
+    context?: TelegramNetworkErrorContext;
+    allowMessageMatch?: boolean;
+  } = {},
 ): boolean {
   if (!err) {
     return false;

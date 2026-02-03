@@ -321,7 +321,11 @@ function trimCell(cell: TableCell): TableCell {
     const sliceStart = Math.max(0, span.start - start);
     const sliceEnd = Math.min(trimmedLength, span.end - start);
     if (sliceEnd > sliceStart) {
-      trimmedStyles.push({ start: sliceStart, end: sliceEnd, style: span.style });
+      trimmedStyles.push({
+        start: sliceStart,
+        end: sliceEnd,
+        style: span.style,
+      });
     }
   }
   const trimmedLinks: MarkdownLinkSpan[] = [];
@@ -386,7 +390,11 @@ function renderTableAsBullets(state: RenderState) {
         appendCell(state, rowLabel);
         const labelEnd = state.text.length;
         if (labelEnd > labelStart) {
-          state.styles.push({ start: labelStart, end: labelEnd, style: "bold" });
+          state.styles.push({
+            start: labelStart,
+            end: labelEnd,
+            style: "bold",
+          });
         }
         state.text += "\n";
       }

@@ -46,7 +46,11 @@ describe("config pruning defaults", () => {
           {
             auth: {
               profiles: {
-                "anthropic:me": { provider: "anthropic", mode: "oauth", email: "me@example.com" },
+                "anthropic:me": {
+                  provider: "anthropic",
+                  mode: "oauth",
+                  email: "me@example.com",
+                },
               },
             },
             agents: { defaults: {} },

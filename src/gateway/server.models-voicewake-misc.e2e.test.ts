@@ -57,7 +57,10 @@ const whatsappOutbound: ChannelOutboundAdapter = {
     if (!deps?.sendWhatsApp) {
       throw new Error("Missing sendWhatsApp dep");
     }
-    return { channel: "whatsapp", ...(await deps.sendWhatsApp(to, text, { mediaUrl })) };
+    return {
+      channel: "whatsapp",
+      ...(await deps.sendWhatsApp(to, text, { mediaUrl })),
+    };
   },
 };
 
@@ -185,10 +188,11 @@ describe("gateway server models + voicewake", () => {
 
     const nodeWs = new WebSocket(`ws://127.0.0.1:${port}`);
     await new Promise<void>((resolve) => nodeWs.once("open", resolve));
-    const firstEventP = onceMessage<{ type: "event"; event: string; payload?: unknown }>(
-      nodeWs,
-      (o) => o.type === "event" && o.event === "voicewake.changed",
-    );
+    const firstEventP = onceMessage<{
+      type: "event";
+      event: string;
+      payload?: unknown;
+    }>(nodeWs, (o) => o.type === "event" && o.event === "voicewake.changed");
     await connectOk(nodeWs, {
       role: "node",
       client: {
@@ -207,10 +211,11 @@ describe("gateway server models + voicewake", () => {
       "computer",
     ]);
 
-    const broadcastP = onceMessage<{ type: "event"; event: string; payload?: unknown }>(
-      nodeWs,
-      (o) => o.type === "event" && o.event === "voicewake.changed",
-    );
+    const broadcastP = onceMessage<{
+      type: "event";
+      event: string;
+      payload?: unknown;
+    }>(nodeWs, (o) => o.type === "event" && o.event === "voicewake.changed");
     const setRes = await rpcReq<{ triggers: string[] }>(ws, "voicewake.set", {
       triggers: ["openclaw", "computer"],
     });

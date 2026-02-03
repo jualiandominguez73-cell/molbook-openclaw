@@ -295,7 +295,11 @@ export async function agentCommand(
         ) {
           const { updated } = applyModelOverrideToSessionEntry({
             entry,
-            selection: { provider: defaultProvider, model: defaultModel, isDefault: true },
+            selection: {
+              provider: defaultProvider,
+              model: defaultModel,
+              isDefault: true,
+            },
           });
           if (updated) {
             sessionStore[sessionKey] = entry;

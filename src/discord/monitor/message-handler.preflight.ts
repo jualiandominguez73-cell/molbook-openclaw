@@ -432,7 +432,10 @@ export async function preflightDiscordMessage(
       useAccessGroups,
       authorizers: [
         { configured: ownerAllowList != null, allowed: ownerOk },
-        { configured: Array.isArray(channelUsers) && channelUsers.length > 0, allowed: usersOk },
+        {
+          configured: Array.isArray(channelUsers) && channelUsers.length > 0,
+          allowed: usersOk,
+        },
       ],
       modeWhenAccessGroupsOff: "configured",
       allowTextCommands,

@@ -58,7 +58,9 @@ describe("fetchWithSlackAuth", () => {
     // First call: redirect response from Slack
     const redirectResponse = new Response(null, {
       status: 302,
-      headers: { location: "https://cdn.slack-edge.com/presigned-url?sig=abc123" },
+      headers: {
+        location: "https://cdn.slack-edge.com/presigned-url?sig=abc123",
+      },
     });
 
     // Second call: actual file content from CDN
@@ -288,7 +290,10 @@ describe("resolveSlackMedia", () => {
     const result = await resolveSlackMedia({
       files: [
         { url_private: "https://files.slack.com/first.jpg", name: "first.jpg" },
-        { url_private: "https://files.slack.com/second.jpg", name: "second.jpg" },
+        {
+          url_private: "https://files.slack.com/second.jpg",
+          name: "second.jpg",
+        },
       ],
       token: "xoxb-test-token",
       maxBytes: 1024 * 1024,

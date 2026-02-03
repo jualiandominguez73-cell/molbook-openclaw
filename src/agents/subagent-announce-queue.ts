@@ -119,7 +119,10 @@ function scheduleAnnounceDrain(key: string) {
             continue;
           }
           const items = queue.items.splice(0, queue.items.length);
-          const summary = buildQueueSummaryPrompt({ state: queue, noun: "announce" });
+          const summary = buildQueueSummaryPrompt({
+            state: queue,
+            noun: "announce",
+          });
           const prompt = buildCollectPrompt({
             title: "[Queued announce messages while agent was busy]",
             items,
@@ -134,7 +137,10 @@ function scheduleAnnounceDrain(key: string) {
           continue;
         }
 
-        const summaryPrompt = buildQueueSummaryPrompt({ state: queue, noun: "announce" });
+        const summaryPrompt = buildQueueSummaryPrompt({
+          state: queue,
+          noun: "announce",
+        });
         if (summaryPrompt) {
           const next = queue.items.shift();
           if (!next) {

@@ -78,7 +78,11 @@ describe("exec PATH login shell merge", () => {
     shellPathMock.mockClear();
     shellPathMock.mockReturnValue("/custom/bin:/opt/bin");
 
-    const tool = createExecTool({ host: "gateway", security: "full", ask: "off" });
+    const tool = createExecTool({
+      host: "gateway",
+      security: "full",
+      ask: "off",
+    });
     const result = await tool.execute("call1", { command: "echo $PATH" });
     const entries = normalizePathEntries(result.content.find((c) => c.type === "text")?.text);
 
@@ -97,7 +101,11 @@ describe("exec PATH login shell merge", () => {
     const shellPathMock = vi.mocked(getShellPathFromLoginShell);
     shellPathMock.mockClear();
 
-    const tool = createExecTool({ host: "gateway", security: "full", ask: "off" });
+    const tool = createExecTool({
+      host: "gateway",
+      security: "full",
+      ask: "off",
+    });
 
     await expect(
       tool.execute("call1", {
@@ -113,7 +121,11 @@ describe("exec PATH login shell merge", () => {
 describe("exec host env validation", () => {
   it("blocks LD_/DYLD_ env vars on host execution", async () => {
     const { createExecTool } = await import("./bash-tools.exec.js");
-    const tool = createExecTool({ host: "gateway", security: "full", ask: "off" });
+    const tool = createExecTool({
+      host: "gateway",
+      security: "full",
+      ask: "off",
+    });
 
     await expect(
       tool.execute("call1", {

@@ -193,7 +193,10 @@ export async function runEmbeddedAttempt(
         config: params.config,
         sessionKey: params.sessionKey,
         sessionId: params.sessionId,
-        warn: makeBootstrapWarn({ sessionLabel, warn: (message) => log.warn(message) }),
+        warn: makeBootstrapWarn({
+          sessionLabel,
+          warn: (message) => log.warn(message),
+        }),
       });
     const workspaceNotes = hookAdjustedBootstrapFiles.some(
       (file) => file.name === DEFAULT_BOOTSTRAP_FILENAME && !file.missing,
@@ -239,7 +242,10 @@ export async function runEmbeddedAttempt(
           hasRepliedRef: params.hasRepliedRef,
           modelHasVision,
         });
-    const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
+    const tools = sanitizeToolsForGoogle({
+      tools: toolsRaw,
+      provider: params.provider,
+    });
     logToolSchemasForGoogle({ tools, provider: params.provider });
 
     const machineName = await getMachineDisplayName();
@@ -453,7 +459,10 @@ export async function runEmbeddedAttempt(
       });
 
       // Add client tools (OpenResponses hosted tools) to customTools
-      let clientToolCallDetected: { name: string; params: Record<string, unknown> } | null = null;
+      let clientToolCallDetected: {
+        name: string;
+        params: Record<string, unknown>;
+      } | null = null;
       const clientToolDefs = params.clientTools
         ? toClientToolDefinitions(
             params.clientTools,
@@ -802,7 +811,11 @@ export async function runEmbeddedAttempt(
           // Only pass images option if there are actually images to pass
           // This avoids potential issues with models that don't expect the images parameter
           if (imageResult.images.length > 0) {
-            await abortable(activeSession.prompt(effectivePrompt, { images: imageResult.images }));
+            await abortable(
+              activeSession.prompt(effectivePrompt, {
+                images: imageResult.images,
+              }),
+            );
           } else {
             await abortable(activeSession.prompt(effectivePrompt));
           }

@@ -40,7 +40,11 @@ type SlackListUsersResponse = {
   response_metadata?: { next_cursor?: string };
 };
 
-function parseSlackUserInput(raw: string): { id?: string; name?: string; email?: string } {
+function parseSlackUserInput(raw: string): {
+  id?: string;
+  name?: string;
+  email?: string;
+} {
   const trimmed = raw.trim();
   if (!trimmed) {
     return {};

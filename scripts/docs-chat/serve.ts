@@ -9,7 +9,11 @@
  */
 import http from "node:http";
 import { Embeddings } from "./rag/embeddings.js";
-import { createStore, type IDocsStore, type StoreMode } from "./rag/store-factory.js";
+import {
+  createStore,
+  type IDocsStore,
+  type StoreMode,
+} from "./rag/store-factory.js";
 import { Retriever } from "./rag/retriever-factory.js";
 
 const port = Number(process.env.PORT || 3001);
@@ -19,7 +23,8 @@ const RATE_LIMIT = Number(process.env.RATE_LIMIT || 20); // requests per window
 const RATE_WINDOW_MS = Number(process.env.RATE_WINDOW_MS || 60_000); // 1 minute
 const TRUST_PROXY = process.env.TRUST_PROXY === "1"; // only trust X-Forwarded-For behind a proxy
 // CORS: comma-separated allowed origins, or "*" for any (local dev only)
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()) ?? [];
+const ALLOWED_ORIGINS =
+  process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()) ?? [];
 const MAX_MESSAGE_LENGTH = 2000; // characters
 const MAX_BODY_SIZE = 8192; // bytes
 
@@ -39,14 +44,22 @@ setInterval(() => {
 /**
  * Check if an IP is rate limited. Returns remaining requests or -1 if blocked.
  */
-function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
+function checkRateLimit(ip: string): {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
+} {
   const now = Date.now();
   const record = rateLimitStore.get(ip);
 
   if (!record || now > record.resetAt) {
     // New window
     rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return { allowed: true, remaining: RATE_LIMIT - 1, resetAt: now + RATE_WINDOW_MS };
+    return {
+      allowed: true,
+      remaining: RATE_LIMIT - 1,
+      resetAt: now + RATE_WINDOW_MS,
+    };
   }
 
   if (record.count >= RATE_LIMIT) {
@@ -54,7 +67,11 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
   }
 
   record.count++;
-  return { allowed: true, remaining: RATE_LIMIT - record.count, resetAt: record.resetAt };
+  return {
+    allowed: true,
+    remaining: RATE_LIMIT - record.count,
+    resetAt: record.resetAt,
+  };
 }
 
 /**
@@ -96,7 +113,10 @@ function getCorsHeaders(req: http.IncomingMessage): Record<string, string> {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
-  if (origin && (ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin))) {
+  if (
+    origin &&
+    (ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin))
+  ) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;
@@ -108,7 +128,10 @@ function sendJson(
   body: Record<string, unknown>,
   req: http.IncomingMessage,
 ) {
-  res.writeHead(status, { ...getCorsHeaders(req), "Content-Type": "application/json" });
+  res.writeHead(status, {
+    ...getCorsHeaders(req),
+    "Content-Type": "application/json",
+  });
   res.end(JSON.stringify(body));
 }
 
@@ -193,9 +216,14 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
     return;
   }
   if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
-    sendJson(res, 400, {
-      error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)`,
-    }, req);
+    sendJson(
+      res,
+      400,
+      {
+        error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+      },
+      req,
+    );
     return;
   }
   message = trimmedMessage;
@@ -272,10 +300,15 @@ const server = http.createServer(async (req, res) => {
       if (!rateCheck.allowed) {
         const retryAfter = Math.ceil((rateCheck.resetAt - Date.now()) / 1000);
         res.setHeader("Retry-After", retryAfter);
-        sendJson(res, 429, {
-          error: "Too many requests. Please wait before trying again.",
-          retryAfter,
-        }, req);
+        sendJson(
+          res,
+          429,
+          {
+            error: "Too many requests. Please wait before trying again.",
+            retryAfter,
+          },
+          req,
+        );
         return;
       }
     }
@@ -296,7 +329,8 @@ async function main() {
 
   server.listen(port, async () => {
     const count = await store.count();
-    const modeName = storeMode === "upstash" ? "Upstash Vector" : "LanceDB (local)";
+    const modeName =
+      storeMode === "upstash" ? "Upstash Vector" : "LanceDB (local)";
     console.error(
       `docs-chat API (${modeName}) running at http://localhost:${port} (chunks: ${count})`,
     );

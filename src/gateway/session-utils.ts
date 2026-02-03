@@ -700,7 +700,11 @@ export function listSessionsFromStore(params: {
         }
       }
     }
-    return { ...rest, derivedTitle, lastMessagePreview } satisfies GatewaySessionRow;
+    return {
+      ...rest,
+      derivedTitle,
+      lastMessagePreview,
+    } satisfies GatewaySessionRow;
   });
 
   return {

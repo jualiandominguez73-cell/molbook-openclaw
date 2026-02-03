@@ -133,7 +133,11 @@ describe("runReplyAgent typing (heartbeat)", () => {
       const sessionId = "session";
       const storePath = path.join(stateDir, "sessions", "sessions.json");
       const transcriptPath = sessions.resolveSessionTranscriptPath(sessionId);
-      const sessionEntry = { sessionId, updatedAt: Date.now(), sessionFile: transcriptPath };
+      const sessionEntry = {
+        sessionId,
+        updatedAt: Date.now(),
+        sessionFile: transcriptPath,
+      };
       const sessionStore = { main: sessionEntry };
 
       await fs.mkdir(path.dirname(storePath), { recursive: true });
@@ -182,7 +186,11 @@ describe("runReplyAgent typing (heartbeat)", () => {
       const sessionId = "session";
       const storePath = path.join(stateDir, "sessions", "sessions.json");
       const transcriptPath = sessions.resolveSessionTranscriptPath(sessionId);
-      const sessionEntry = { sessionId, updatedAt: Date.now(), sessionFile: transcriptPath };
+      const sessionEntry = {
+        sessionId,
+        updatedAt: Date.now(),
+        sessionFile: transcriptPath,
+      };
       const sessionStore = { main: sessionEntry };
 
       await fs.mkdir(path.dirname(storePath), { recursive: true });
@@ -236,7 +244,11 @@ describe("runReplyAgent typing (heartbeat)", () => {
       const sessionId = "session";
       const storePath = path.join(stateDir, "sessions", "sessions.json");
       const transcriptPath = sessions.resolveSessionTranscriptPath(sessionId);
-      const sessionEntry = { sessionId, updatedAt: Date.now(), sessionFile: transcriptPath };
+      const sessionEntry = {
+        sessionId,
+        updatedAt: Date.now(),
+        sessionFile: transcriptPath,
+      };
       const sessionStore = { main: sessionEntry };
 
       await fs.mkdir(path.dirname(storePath), { recursive: true });
@@ -245,7 +257,12 @@ describe("runReplyAgent typing (heartbeat)", () => {
       await fs.writeFile(transcriptPath, "ok", "utf-8");
 
       runEmbeddedPiAgentMock.mockImplementationOnce(async () => ({
-        payloads: [{ text: "Message ordering conflict - please try again.", isError: true }],
+        payloads: [
+          {
+            text: "Message ordering conflict - please try again.",
+            isError: true,
+          },
+        ],
         meta: {
           durationMs: 1,
           error: {

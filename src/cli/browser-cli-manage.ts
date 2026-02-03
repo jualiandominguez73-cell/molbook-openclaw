@@ -168,7 +168,10 @@ export function registerBrowserManageCommands(
       const parent = parentOpts(cmd);
       const profile = parent?.browserProfile;
       await runBrowserCommand(async () => {
-        const result = await callBrowserRequest<{ running: boolean; tabs: BrowserTab[] }>(
+        const result = await callBrowserRequest<{
+          running: boolean;
+          tabs: BrowserTab[];
+        }>(
           parent,
           {
             method: "GET",
@@ -203,7 +206,10 @@ export function registerBrowserManageCommands(
       const parent = parentOpts(cmd);
       const profile = parent?.browserProfile;
       await runBrowserCommand(async () => {
-        const result = await callBrowserRequest<{ ok: true; tabs: BrowserTab[] }>(
+        const result = await callBrowserRequest<{
+          ok: true;
+          tabs: BrowserTab[];
+        }>(
           parent,
           {
             method: "POST",
@@ -460,7 +466,15 @@ export function registerBrowserManageCommands(
     .option("--cdp-url <url>", "CDP URL for remote Chrome (http/https)")
     .option("--driver <driver>", "Profile driver (openclaw|extension). Default: openclaw")
     .action(
-      async (opts: { name: string; color?: string; cdpUrl?: string; driver?: string }, cmd) => {
+      async (
+        opts: {
+          name: string;
+          color?: string;
+          cdpUrl?: string;
+          driver?: string;
+        },
+        cmd,
+      ) => {
         const parent = parentOpts(cmd);
         await runBrowserCommand(async () => {
           const result = await callBrowserRequest<BrowserCreateProfileResult>(

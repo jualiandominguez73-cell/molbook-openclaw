@@ -159,7 +159,10 @@ class FallbackMemoryManager implements MemorySearchManager {
     if (fallback) {
       return await fallback.probeEmbeddingAvailability();
     }
-    return { ok: false, error: this.lastError ?? "memory embeddings unavailable" };
+    return {
+      ok: false,
+      error: this.lastError ?? "memory embeddings unavailable",
+    };
   }
 
   async probeVectorAvailability() {

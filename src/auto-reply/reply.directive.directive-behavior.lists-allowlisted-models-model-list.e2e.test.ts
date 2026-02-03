@@ -66,7 +66,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/model list", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model list",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -135,7 +140,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/model list", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model list",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -177,7 +187,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/models minimax", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/models minimax",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -217,7 +232,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       const res = await getReplyFromConfig(
-        { Body: "/model list", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model list",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -245,7 +265,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       await getReplyFromConfig(
-        { Body: "/model openai/gpt-4.1-mini", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model openai/gpt-4.1-mini",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {
@@ -275,7 +300,12 @@ describe("directive behavior", () => {
       const storePath = path.join(home, "sessions.json");
 
       await getReplyFromConfig(
-        { Body: "/model Opus", From: "+1222", To: "+1222", CommandAuthorized: true },
+        {
+          Body: "/model Opus",
+          From: "+1222",
+          To: "+1222",
+          CommandAuthorized: true,
+        },
         {},
         {
           agents: {

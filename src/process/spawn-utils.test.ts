@@ -54,7 +54,12 @@ describe("spawnWithFallback", () => {
       spawnWithFallback({
         argv: ["missing"],
         options: { stdio: ["pipe", "pipe", "pipe"] },
-        fallbacks: [{ label: "safe-stdin", options: { stdio: ["ignore", "pipe", "pipe"] } }],
+        fallbacks: [
+          {
+            label: "safe-stdin",
+            options: { stdio: ["ignore", "pipe", "pipe"] },
+          },
+        ],
         spawnImpl: spawnMock,
       }),
     ).rejects.toThrow(/ENOENT/);

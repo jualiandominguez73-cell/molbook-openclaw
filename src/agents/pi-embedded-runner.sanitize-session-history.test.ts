@@ -49,7 +49,10 @@ describe("sanitizeSessionHistory", () => {
     expect(helpers.sanitizeSessionMessagesImages).toHaveBeenCalledWith(
       mockMessages,
       "session:history",
-      expect.objectContaining({ sanitizeMode: "full", sanitizeToolCallIds: true }),
+      expect.objectContaining({
+        sanitizeMode: "full",
+        sanitizeToolCallIds: true,
+      }),
     );
   });
 
@@ -90,7 +93,10 @@ describe("sanitizeSessionHistory", () => {
     expect(helpers.sanitizeSessionMessagesImages).toHaveBeenCalledWith(
       mockMessages,
       "session:history",
-      expect.objectContaining({ sanitizeMode: "full", sanitizeToolCallIds: false }),
+      expect.objectContaining({
+        sanitizeMode: "full",
+        sanitizeToolCallIds: false,
+      }),
     );
   });
 
@@ -108,7 +114,10 @@ describe("sanitizeSessionHistory", () => {
     expect(helpers.sanitizeSessionMessagesImages).toHaveBeenCalledWith(
       mockMessages,
       "session:history",
-      expect.objectContaining({ sanitizeMode: "images-only", sanitizeToolCallIds: false }),
+      expect.objectContaining({
+        sanitizeMode: "images-only",
+        sanitizeToolCallIds: false,
+      }),
     );
   });
 
@@ -183,7 +192,11 @@ describe("sanitizeSessionHistory", () => {
   });
 
   it("does not downgrade openai reasoning when the model has not changed", async () => {
-    const sessionEntries: Array<{ type: string; customType: string; data: unknown }> = [
+    const sessionEntries: Array<{
+      type: string;
+      customType: string;
+      data: unknown;
+    }> = [
       {
         type: "custom",
         customType: "model-snapshot",
@@ -208,7 +221,10 @@ describe("sanitizeSessionHistory", () => {
           {
             type: "thinking",
             thinking: "reasoning",
-            thinkingSignature: JSON.stringify({ id: "rs_test", type: "reasoning" }),
+            thinkingSignature: JSON.stringify({
+              id: "rs_test",
+              type: "reasoning",
+            }),
           },
         ],
       },
@@ -227,7 +243,11 @@ describe("sanitizeSessionHistory", () => {
   });
 
   it("downgrades openai reasoning only when the model changes", async () => {
-    const sessionEntries: Array<{ type: string; customType: string; data: unknown }> = [
+    const sessionEntries: Array<{
+      type: string;
+      customType: string;
+      data: unknown;
+    }> = [
       {
         type: "custom",
         customType: "model-snapshot",

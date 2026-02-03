@@ -192,7 +192,10 @@ function safeJsonStringify(value: unknown): string | null {
         return { name: val.name, message: val.message, stack: val.stack };
       }
       if (val instanceof Uint8Array) {
-        return { type: "Uint8Array", data: Buffer.from(val).toString("base64") };
+        return {
+          type: "Uint8Array",
+          data: Buffer.from(val).toString("base64"),
+        };
       }
       return val;
     });
