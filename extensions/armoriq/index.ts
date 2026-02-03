@@ -270,9 +270,51 @@ function sha256Hex(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function findPlanStepIndex(plan: Record<string, unknown>, toolName: string): number | null {
+function isSubsetValue(needle: unknown, haystack: unknown): boolean {
+  if (needle === haystack) {
+    return true;
+  }
+  if (typeof needle !== typeof haystack) {
+    return false;
+  }
+  if (needle && typeof needle === "object") {
+    if (Array.isArray(needle)) {
+      if (!Array.isArray(haystack) || needle.length !== haystack.length) {
+        return false;
+      }
+      for (let idx = 0; idx < needle.length; idx += 1) {
+        if (!isSubsetValue(needle[idx], (haystack as unknown[])[idx])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (!haystack || typeof haystack !== "object" || Array.isArray(haystack)) {
+      return false;
+    }
+    const haystackRecord = haystack as Record<string, unknown>;
+    for (const [key, value] of Object.entries(needle as Record<string, unknown>)) {
+      if (!(key in haystackRecord)) {
+        return false;
+      }
+      if (!isSubsetValue(value, haystackRecord[key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+function findPlanStepIndices(
+  plan: Record<string, unknown>,
+  toolName: string,
+  toolParams?: Record<string, unknown>,
+): { matches: number[]; paramMatches: number[] } {
   const steps = Array.isArray(plan.steps) ? plan.steps : [];
   const normalizedTool = normalizeToolName(toolName);
+  const matches: number[] = [];
+  const paramMatches: number[] = [];
   for (let idx = 0; idx < steps.length; idx += 1) {
     const step = steps[idx];
     if (!step || typeof step !== "object") {
@@ -284,11 +326,22 @@ function findPlanStepIndex(plan: Record<string, unknown>, toolName: string): num
         : typeof (step as { tool?: unknown }).tool === "string"
           ? String((step as { tool?: unknown }).tool)
           : "";
-    if (normalizeToolName(action) === normalizedTool) {
-      return idx;
+    if (normalizeToolName(action) !== normalizedTool) {
+      continue;
+    }
+    matches.push(idx);
+    if (toolParams) {
+      const metadata = (step as { metadata?: unknown }).metadata;
+      const inputs =
+        metadata && typeof metadata === "object" && !Array.isArray(metadata)
+          ? (metadata as Record<string, unknown>).inputs
+          : undefined;
+      if (inputs && isPlainObject(inputs) && isSubsetValue(inputs, toolParams)) {
+        paramMatches.push(idx);
+      }
     }
   }
-  return null;
+  return { matches, paramMatches };
 }
 
 function readStepProofsFromToken(tokenObj: Record<string, unknown>): unknown[] | null {
@@ -335,6 +388,18 @@ function resolveStepProofEntry(
   return null;
 }
 
+function parseStepIndexFromPath(path?: string): number | null {
+  if (!path) {
+    return null;
+  }
+  const match = path.match(/\/steps\/\[(\d+)\]/);
+  if (!match) {
+    return null;
+  }
+  const index = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(index) ? index : null;
+}
+
 function resolveCsrgProofsFromToken(params: {
   intentTokenRaw: string;
   plan: Record<string, unknown>;
@@ -356,9 +421,46 @@ function resolveCsrgProofsFromToken(params: {
     return null;
   }
   const steps = Array.isArray(params.plan.steps) ? params.plan.steps : [];
-  const stepIndex = findPlanStepIndex(params.plan, params.toolName) ?? 0;
-  const entry = resolveStepProofEntry(stepProofs, stepIndex);
-  if (!entry?.proof || !Array.isArray(entry.proof)) {
+  const toolParams = isPlainObject(params.toolParams) ? params.toolParams : undefined;
+  const { matches, paramMatches } = findPlanStepIndices(params.plan, params.toolName, toolParams);
+  if (matches.length === 0) {
+    return null;
+  }
+  const resolvedEntries: Array<{
+    stepIndex: number;
+    proof?: unknown;
+    path?: string;
+    valueDigest?: string;
+  }> = [];
+  for (let idx = 0; idx < stepProofs.length; idx += 1) {
+    const entry = resolveStepProofEntry(stepProofs, idx);
+    if (!entry?.proof || !Array.isArray(entry.proof)) {
+      continue;
+    }
+    const stepIndexFromPath = parseStepIndexFromPath(entry.path);
+    if (stepIndexFromPath === null) {
+      continue;
+    }
+    resolvedEntries.push({ stepIndex: stepIndexFromPath, ...entry });
+  }
+
+  let stepIndex: number | null = null;
+  let entry: { proof?: unknown; path?: string; valueDigest?: string } | null = null;
+  const entriesMatchingTool = resolvedEntries.filter((resolved) =>
+    matches.includes(resolved.stepIndex),
+  );
+  if (entriesMatchingTool.length === 1) {
+    stepIndex = entriesMatchingTool[0].stepIndex;
+    entry = entriesMatchingTool[0];
+  } else if (paramMatches.length === 1) {
+    stepIndex = paramMatches[0];
+    entry = resolveStepProofEntry(stepProofs, stepIndex);
+  } else if (matches.length === 1) {
+    stepIndex = matches[0];
+    entry = resolveStepProofEntry(stepProofs, stepIndex);
+  }
+
+  if (stepIndex === null || !entry?.proof || !Array.isArray(entry.proof)) {
     return null;
   }
   const path = entry.path ?? `/steps/[${stepIndex}]/action`;
@@ -937,64 +1039,7 @@ export default function register(api: OpenClawPluginApi) {
       };
     }
 
-    let cached = planCache.get(runKey);
-    if (!cached && toolCtx.runId?.startsWith("http-")) {
-      const client = getClient(cfg, identity);
-      const sanitizedParams = sanitizeParams(event.params ?? {}, cfg);
-      const plan = {
-        steps: [
-          {
-            action: event.toolName,
-            mcp: "openclaw",
-            description: `Authorize tool ${event.toolName}`,
-            metadata: { inputs: sanitizedParams },
-          },
-        ],
-        metadata: { goal: `Authorize tool ${event.toolName}` },
-      };
-      try {
-        const planCapture = client.capturePlan(
-          "openclaw",
-          `Authorize tool ${event.toolName}`,
-          plan,
-          {
-            sessionKey: toolCtx.sessionKey,
-            messageChannel: toolCtx.messageChannel,
-            accountId: toolCtx.accountId,
-            senderId: toolCtx.senderId,
-            senderName: toolCtx.senderName,
-            senderUsername: toolCtx.senderUsername,
-            senderE164: toolCtx.senderE164,
-            runId: toolCtx.runId,
-          },
-        );
-        const token = await client.getIntentToken(planCapture, cfg.policy, cfg.validitySeconds);
-        const tokenRaw = JSON.stringify(token);
-        const tokenParsed = extractPlanFromIntentToken(tokenRaw);
-        const tokenPlan = tokenParsed?.plan ?? plan;
-        cached = {
-          token,
-          tokenRaw,
-          tokenPlan,
-          plan: tokenPlan,
-          allowedActions: extractAllowedActions(tokenPlan),
-          createdAt: Date.now(),
-          expiresAt:
-            typeof tokenParsed?.expiresAt === "number"
-              ? tokenParsed.expiresAt
-              : typeof token.expiresAt === "number"
-                ? token.expiresAt
-                : undefined,
-        };
-        planCache.set(runKey, cached);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return {
-          block: true,
-          blockReason: `ArmorIQ authorization failed: ${message}`,
-        };
-      }
-    }
+    const cached = planCache.get(runKey);
 
     if (!cached) {
       return {
