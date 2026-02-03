@@ -7,7 +7,6 @@ import { getShellEnvAppliedKeys } from "../infra/shell-env.js";
 import {
   type AuthProfileStore,
   ensureAuthProfileStore,
-  invalidateOAuthToken,
   listProfilesForProvider,
   resolveApiKeyForProfile,
   resolveAuthProfileOrder,

@@ -156,22 +156,43 @@ async function tryResolveOAuthProfile(params: {
  * Call this when receiving a 401 from the provider, indicating the token
  * was revoked server-side before the local expires timestamp.
  */
-export function invalidateOAuthToken(params: { profileId: string; agentDir?: string }): void {
-  const store = ensureAuthProfileStore(params.agentDir);
-  const cred = store.profiles[params.profileId];
-  if (!cred || cred.type !== "oauth") {
-    return;
+export async function invalidateOAuthToken(params: {
+  profileId: string;
+  agentDir?: string;
+}): Promise<void> {
+  const authPath = resolveAuthStorePath(params.agentDir);
+  ensureAuthStoreFile(authPath);
+
+  let release: (() => Promise<void>) | undefined;
+  try {
+    release = await lockfile.lock(authPath, {
+      ...AUTH_STORE_LOCK_OPTIONS,
+    });
+
+    const store = ensureAuthProfileStore(params.agentDir);
+    const cred = store.profiles[params.profileId];
+    if (!cred || cred.type !== "oauth") {
+      return;
+    }
+    // Set expires to 0 to force refresh on next use
+    store.profiles[params.profileId] = {
+      ...cred,
+      expires: 0,
+    };
+    saveAuthProfileStore(store, params.agentDir);
+    log.info("invalidated OAuth token due to server rejection", {
+      profileId: params.profileId,
+      agentDir: params.agentDir,
+    });
+  } finally {
+    if (release) {
+      try {
+        await release();
+      } catch {
+        // ignore unlock errors
+      }
+    }
   }
-  // Set expires to 0 to force refresh on next use
-  store.profiles[params.profileId] = {
-    ...cred,
-    expires: 0,
-  };
-  saveAuthProfileStore(store, params.agentDir);
-  log.info("invalidated OAuth token due to server rejection", {
-    profileId: params.profileId,
-    agentDir: params.agentDir,
-  });
 }
 
 export async function resolveApiKeyForProfile(params: {
