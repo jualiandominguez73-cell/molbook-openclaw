@@ -326,7 +326,14 @@ export async function restartSystemdService({
 export async function isSystemdServiceEnabled(args: {
   env?: Record<string, string | undefined>;
 }): Promise<boolean> {
-  await assertSystemdAvailable();
+  try {
+    await assertSystemdAvailable();
+  } catch {
+    // If systemd user services are unavailable (e.g., missing DBUS_SESSION_BUS_ADDRESS
+    // or XDG_RUNTIME_DIR in SSH sessions, WSL, or certain terminals), the service
+    // cannot be enabled.
+    return false;
+  }
   const serviceName = resolveSystemdServiceName(args.env ?? {});
   const unitName = `${serviceName}.service`;
   const res = await execSystemctl(["--user", "is-enabled", unitName]);
