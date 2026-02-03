@@ -1,10 +1,11 @@
 #!/usr/bin/env -S node --import tsx
 
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { ArmorIQClient, type IntentToken } from "@armoriq/sdk";
 
 type SegmentId = "5a" | "5b" | "5c" | "5d";
-
 const demoDir = resolve("aiqdemo");
 const dotenvPath = join(demoDir, ".env");
 const promptsPath = join(demoDir, "prompts.md");
@@ -47,7 +48,7 @@ Usage:
 Notes:
   - setup ensures aiqdemo assets exist.
   - prompts prints the prompt sheet from aiqdemo/prompts.md.
-  - invoke runs /tools/invoke segments (requires env vars).
+  - invoke runs /tools/invoke segments (requires env vars; 5B/5D mint IAP tokens).
 `);
 }
 
@@ -158,6 +159,180 @@ function requireEnv(name: string): string {
   return value.trim();
 }
 
+function readEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readEnvAny(names: string[]): string | undefined {
+  for (const name of names) {
+    const value = readEnv(name);
+    if (value) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function requireEnvAny(names: string[]): string {
+  const value = readEnvAny(names);
+  if (!value) {
+    throw new Error(`Missing required env var: ${names.join(" or ")}`);
+  }
+  return value;
+}
+
+function readNumberEnv(name: string): number | undefined {
+  const value = readEnv(name);
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function readJsonObject(name: string): Record<string, unknown> | undefined {
+  const value = readEnv(name);
+  if (!value) {
+    return undefined;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error(`Invalid JSON in ${name}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${name} must be a JSON object`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function buildIntentPlan(toolName: string, params: Record<string, unknown>): Record<string, unknown> {
+  return {
+    steps: [
+      {
+        action: toolName,
+        mcp: "openclaw",
+        description: `Authorize tool ${toolName}`,
+        metadata: { inputs: params },
+      },
+    ],
+    metadata: { goal: `Authorize tool ${toolName}` },
+  };
+}
+
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function resolveStepProof(token: IntentToken, stepIndex: number): {
+  proof?: unknown;
+  path?: string;
+  valueDigest?: string;
+} {
+  const entry = token.stepProofs?.[stepIndex];
+  if (!entry) {
+    return {};
+  }
+  if (Array.isArray(entry)) {
+    return { proof: entry };
+  }
+  if (typeof entry === "object") {
+    const record = entry as Record<string, unknown>;
+    const proof = Array.isArray(record.proof) ? record.proof : undefined;
+    const path = readString(record.path) ?? undefined;
+    const valueDigest =
+      readString(record.value_digest) ??
+      readString(record.valueDigest) ??
+      readString(record.csrg_value_digest) ??
+      undefined;
+    return { proof, path, valueDigest };
+  }
+  return {};
+}
+
+function buildSdkClient(): ArmorIQClient {
+  const apiKey = requireEnvAny(["AIQ_DEMO_ARMORIQ_API_KEY", "ARMORIQ_API_KEY"]);
+  const userId = requireEnvAny(["AIQ_DEMO_USER_ID", "USER_ID"]);
+  const agentId = requireEnvAny(["AIQ_DEMO_AGENT_ID", "AGENT_ID"]);
+  const contextId = readEnvAny(["AIQ_DEMO_CONTEXT_ID", "CONTEXT_ID"]) ?? "default";
+  const backendEndpoint = readEnvAny([
+    "AIQ_DEMO_IAP_BACKEND_URL",
+    "IAP_BACKEND_URL",
+    "BACKEND_ENDPOINT",
+    "CONMAP_AUTO_URL",
+  ]);
+  const iapEndpoint = readEnvAny(["AIQ_DEMO_IAP_ENDPOINT", "IAP_ENDPOINT"]);
+  const proxyEndpoint = readEnvAny(["AIQ_DEMO_PROXY_ENDPOINT", "PROXY_ENDPOINT"]);
+
+  return new ArmorIQClient({
+    apiKey,
+    userId,
+    agentId,
+    contextId,
+    backendEndpoint,
+    iapEndpoint,
+    proxyEndpoint,
+  });
+}
+
+async function mintIntentToken(toolName: string, params: Record<string, unknown>): Promise<IntentToken> {
+  const policy =
+    readJsonObject("AIQ_DEMO_INTENT_POLICY") ?? readJsonObject("AIQ_DEMO_POLICY") ?? undefined;
+  const validitySeconds = readNumberEnv("AIQ_DEMO_INTENT_VALIDITY_SECONDS") ?? 60;
+  const plan = buildIntentPlan(toolName, params);
+
+  const client = buildSdkClient();
+  const planCapture = client.capturePlan(
+    "openclaw",
+    `Authorize tool ${toolName}`,
+    plan,
+    {
+      messageChannel: readEnv("AIQ_DEMO_MESSAGE_CHANNEL"),
+    },
+  );
+  try {
+    return await client.getIntentToken(planCapture, policy, validitySeconds);
+  } finally {
+    if (typeof client.close === "function") {
+      await client.close();
+    }
+  }
+}
+
+function buildCsrgHeaders(
+  token: IntentToken,
+  toolName: string,
+  stepIndex: number,
+): { path: string; proof: string; valueDigest: string } | null {
+  const { proof, path, valueDigest } = resolveStepProof(token, stepIndex);
+  if (!proof || !Array.isArray(proof) || proof.length === 0) {
+    return null;
+  }
+  const steps = Array.isArray(token.rawToken?.plan?.steps)
+    ? (token.rawToken.plan.steps as Array<Record<string, unknown>>)
+    : [];
+  const step = steps[stepIndex] ?? {};
+  const action =
+    typeof step.action === "string"
+      ? step.action
+      : typeof step.tool === "string"
+        ? step.tool
+        : toolName;
+  const resolvedPath = path ?? `/steps/[${stepIndex}]/action`;
+  const resolvedDigest = valueDigest ?? sha256Hex(JSON.stringify(action));
+  return {
+    path: resolvedPath,
+    proof: JSON.stringify(proof),
+    valueDigest: resolvedDigest,
+  };
+}
+
 async function runInvoke() {
   const gatewayUrl = process.env.AIQ_DEMO_GATEWAY_URL?.trim() || "http://localhost:18789";
   const gatewayToken = requireEnv("AIQ_DEMO_GATEWAY_TOKEN");
@@ -203,26 +378,51 @@ async function runInvoke() {
       continue;
     }
     if (segment === "5b") {
-      const intentToken = requireEnv("AIQ_DEMO_INTENT_TOKEN");
-      await runSegment("5b", { ...baseHeaders, "x-armoriq-intent-token": intentToken });
-      continue;
+      try {
+        const intentToken = await mintIntentToken(requestBody.tool, requestBody.args);
+        await runSegment("5b", {
+          ...baseHeaders,
+          "x-armoriq-intent-token": JSON.stringify(intentToken),
+        });
+        continue;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Segment 5B: no intent captured (${message})`);
+        console.log("\nSegment 5B");
+        console.log("Status: skipped");
+        console.log("No intent captured from IAP.");
+        continue;
+      }
     }
     if (segment === "5c") {
       await runSegment("5c", { ...baseHeaders, "x-openclaw-run-id": "demo-no-plan" });
       continue;
     }
     if (segment === "5d") {
-      const csrgJwt = requireEnv("AIQ_DEMO_CSRG_JWT");
-      const csrgPath = requireEnv("AIQ_DEMO_CSRG_PATH");
-      const csrgProof = requireEnv("AIQ_DEMO_CSRG_PROOF");
-      const csrgDigest = requireEnv("AIQ_DEMO_CSRG_VALUE_DIGEST");
-      await runSegment("5d", {
-        ...baseHeaders,
-        "x-armoriq-intent-token": csrgJwt,
-        "x-csrg-path": csrgPath,
-        "x-csrg-proof": csrgProof,
-        "x-csrg-value-digest": csrgDigest,
-      });
+      try {
+        const intentToken = await mintIntentToken(requestBody.tool, requestBody.args);
+        const csrgHeaders = buildCsrgHeaders(intentToken, requestBody.tool, 0);
+        if (!csrgHeaders) {
+          console.error("Segment 5D: no CSRG proofs returned from IAP.");
+          console.log("\nSegment 5D");
+          console.log("Status: skipped");
+          console.log("No CSRG proofs captured from IAP.");
+          continue;
+        }
+        await runSegment("5d", {
+          ...baseHeaders,
+          "x-armoriq-intent-token": JSON.stringify(intentToken),
+          "x-csrg-path": csrgHeaders.path,
+          "x-csrg-proof": csrgHeaders.proof,
+          "x-csrg-value-digest": csrgHeaders.valueDigest,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Segment 5D: no intent captured (${message})`);
+        console.log("\nSegment 5D");
+        console.log("Status: skipped");
+        console.log("No intent captured from IAP.");
+      }
       continue;
     }
   }

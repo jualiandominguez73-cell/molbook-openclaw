@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
@@ -62,6 +63,8 @@ type IdentityBundle = {
 
 type PlanCacheEntry = {
   token: unknown;
+  tokenRaw?: string;
+  tokenPlan?: Record<string, unknown>;
   plan: Record<string, unknown>;
   allowedActions: Set<string>;
   createdAt: number;
@@ -259,6 +262,113 @@ function validateCsrgProofHeaders(
   return null;
 }
 
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function findPlanStepIndex(plan: Record<string, unknown>, toolName: string): number | null {
+  const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  const normalizedTool = normalizeToolName(toolName);
+  for (let idx = 0; idx < steps.length; idx += 1) {
+    const step = steps[idx];
+    if (!step || typeof step !== "object") {
+      continue;
+    }
+    const action =
+      typeof (step as { action?: unknown }).action === "string"
+        ? String((step as { action?: unknown }).action)
+        : typeof (step as { tool?: unknown }).tool === "string"
+          ? String((step as { tool?: unknown }).tool)
+          : "";
+    if (normalizeToolName(action) === normalizedTool) {
+      return idx;
+    }
+  }
+  return null;
+}
+
+function readStepProofsFromToken(tokenObj: Record<string, unknown>): unknown[] | null {
+  if (Array.isArray(tokenObj.stepProofs)) {
+    return tokenObj.stepProofs;
+  }
+  if (Array.isArray((tokenObj as { step_proofs?: unknown }).step_proofs)) {
+    return (tokenObj as { step_proofs?: unknown[] }).step_proofs ?? null;
+  }
+  const rawToken = tokenObj.rawToken;
+  if (rawToken && typeof rawToken === "object") {
+    if (Array.isArray((rawToken as { stepProofs?: unknown }).stepProofs)) {
+      return (rawToken as { stepProofs?: unknown[] }).stepProofs ?? null;
+    }
+    if (Array.isArray((rawToken as { step_proofs?: unknown }).step_proofs)) {
+      return (rawToken as { step_proofs?: unknown[] }).step_proofs ?? null;
+    }
+  }
+  return null;
+}
+
+function resolveStepProofEntry(
+  stepProofs: unknown[],
+  stepIndex: number,
+): { proof?: unknown; path?: string; valueDigest?: string } | null {
+  const entry = stepProofs[stepIndex];
+  if (!entry) {
+    return null;
+  }
+  if (Array.isArray(entry)) {
+    return { proof: entry };
+  }
+  if (typeof entry === "object") {
+    const record = entry as Record<string, unknown>;
+    const proof = Array.isArray(record.proof) ? record.proof : undefined;
+    const path = readString(record.path) ?? readString(record.csrg_path) ?? undefined;
+    const valueDigest =
+      readString(record.value_digest) ??
+      readString(record.valueDigest) ??
+      readString(record.csrg_value_digest) ??
+      undefined;
+    return { proof, path, valueDigest };
+  }
+  return null;
+}
+
+function resolveCsrgProofsFromToken(params: {
+  intentTokenRaw: string;
+  plan: Record<string, unknown>;
+  toolName: string;
+  toolParams: unknown;
+}): CsrgProofHeaders | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(params.intentTokenRaw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+  const tokenObj = parsed as Record<string, unknown>;
+  const stepProofs = readStepProofsFromToken(tokenObj);
+  if (!stepProofs || stepProofs.length === 0) {
+    return null;
+  }
+  const steps = Array.isArray(params.plan.steps) ? params.plan.steps : [];
+  const stepIndex = findPlanStepIndex(params.plan, params.toolName) ?? 0;
+  const entry = resolveStepProofEntry(stepProofs, stepIndex);
+  if (!entry?.proof || !Array.isArray(entry.proof)) {
+    return null;
+  }
+  const path = entry.path ?? `/steps/[${stepIndex}]/action`;
+  const stepObj = steps[stepIndex];
+  const action =
+    typeof (stepObj as { action?: unknown }).action === "string"
+      ? String((stepObj as { action?: unknown }).action)
+      : typeof (stepObj as { tool?: unknown }).tool === "string"
+        ? String((stepObj as { tool?: unknown }).tool)
+        : params.toolName;
+  const valueDigest = entry.valueDigest ?? sha256Hex(JSON.stringify(action));
+  return { path, proof: entry.proof, valueDigest };
+}
+
 function extractAllowedActions(plan: Record<string, unknown>): Set<string> {
   const allowed = new Set<string>();
   const steps = Array.isArray(plan.steps) ? plan.steps : [];
@@ -313,6 +423,41 @@ function extractPlanFromIntentToken(raw: string): {
         ? ((tokenObj.token as Record<string, unknown>).expires_at as number)
         : undefined;
   return { plan: planCandidate, expiresAt };
+}
+
+function checkIntentTokenPlan(params: {
+  intentTokenRaw: string;
+  toolName: string;
+  toolParams: unknown;
+}): { matched: boolean; blockReason?: string; params?: unknown; plan?: Record<string, unknown> } {
+  const parsed = extractPlanFromIntentToken(params.intentTokenRaw);
+  if (!parsed) {
+    return { matched: false };
+  }
+  if (parsed.expiresAt && Date.now() / 1000 > parsed.expiresAt) {
+    return { matched: true, blockReason: "ArmorIQ intent token expired", plan: parsed.plan };
+  }
+  const allowedActions = extractAllowedActions(parsed.plan);
+  const normalizedTool = normalizeToolName(params.toolName);
+  if (!allowedActions.has(normalizedTool)) {
+    return {
+      matched: true,
+      blockReason: `ArmorIQ intent drift: tool not in plan (${params.toolName})`,
+      plan: parsed.plan,
+    };
+  }
+  const step = findPlanStep(parsed.plan, params.toolName);
+  if (step) {
+    const toolParams = isPlainObject(params.toolParams) ? params.toolParams : {};
+    if (!isParamsAllowedByPlan(step, toolParams)) {
+      return {
+        matched: true,
+        blockReason: `ArmorIQ intent mismatch: parameters not allowed for ${params.toolName}`,
+        plan: parsed.plan,
+      };
+    }
+  }
+  return { matched: true, params: params.toolParams, plan: parsed.plan };
 }
 
 function buildToolList(tools?: Array<{ name: string; description?: string }>): string {
@@ -643,12 +788,22 @@ export default function register(api: OpenClawPluginApi) {
         runId: ctx.runId,
       });
       const token = await client.getIntentToken(planCapture, cfg.policy, cfg.validitySeconds);
+      const tokenRaw = JSON.stringify(token);
+      const tokenParsed = extractPlanFromIntentToken(tokenRaw);
+      const tokenPlan = tokenParsed?.plan ?? plan;
       planCache.set(runKey, {
         token,
-        plan,
-        allowedActions: extractAllowedActions(plan),
+        tokenRaw,
+        tokenPlan,
+        plan: tokenPlan,
+        allowedActions: extractAllowedActions(tokenPlan),
         createdAt: Date.now(),
-        expiresAt: typeof token.expiresAt === "number" ? token.expiresAt : undefined,
+        expiresAt:
+          typeof tokenParsed?.expiresAt === "number"
+            ? tokenParsed.expiresAt
+            : typeof token.expiresAt === "number"
+              ? token.expiresAt
+              : undefined,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -673,34 +828,69 @@ export default function register(api: OpenClawPluginApi) {
     const normalizedTool = normalizeToolName(event.toolName);
     const toolCtx = ctx as ToolContext;
     const intentTokenRaw = readString(toolCtx.intentTokenRaw);
-
-    if (intentTokenRaw) {
-      const parsed = extractPlanFromIntentToken(intentTokenRaw);
-      if (parsed) {
-        if (parsed.expiresAt && Date.now() / 1000 > parsed.expiresAt) {
-          return {
-            block: true,
-            blockReason: "ArmorIQ intent token expired",
-          };
-        }
-        const allowedActions = extractAllowedActions(parsed.plan);
-        if (!allowedActions.has(normalizedTool)) {
-          return {
-            block: true,
-            blockReason: `ArmorIQ intent drift: tool not in plan (${event.toolName})`,
-          };
-        }
-        const step = findPlanStep(parsed.plan, event.toolName);
-        if (step) {
-          const params = isPlainObject(event.params) ? event.params : {};
-          if (!isParamsAllowedByPlan(step, params)) {
+    const verifyWithCsrg = async (
+      tokenRaw: string,
+      plan: Record<string, unknown>,
+    ): Promise<{ block: true; blockReason: string } | null> => {
+      const proofParse = parseCsrgProofHeaders(toolCtx);
+      if (proofParse.error) {
+        return { block: true, blockReason: proofParse.error };
+      }
+      let proofs = proofParse.proofs;
+      if (!proofs) {
+        proofs = resolveCsrgProofsFromToken({
+          intentTokenRaw: tokenRaw,
+          plan,
+          toolName: event.toolName,
+          toolParams: event.params,
+        });
+      }
+      const proofError = validateCsrgProofHeaders(
+        proofs,
+        verificationService.csrgProofsRequired(),
+      );
+      if (proofError) {
+        return { block: true, blockReason: proofError };
+      }
+      if (proofs && verificationService.csrgVerifyIsEnabled()) {
+        try {
+          const verifyResult = await verificationService.verifyStep(
+            tokenRaw,
+            proofs,
+            event.toolName,
+          );
+          if (!verifyResult.allowed) {
             return {
               block: true,
-              blockReason: `ArmorIQ intent mismatch: parameters not allowed for ${event.toolName}`,
+              blockReason: verifyResult.reason || "ArmorIQ intent verification denied",
             };
           }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return {
+            block: true,
+            blockReason: `ArmorIQ intent verification failed: ${message}`,
+          };
         }
-        return { params: event.params };
+      }
+      return null;
+    };
+
+    if (intentTokenRaw) {
+      const tokenCheck = checkIntentTokenPlan({
+        intentTokenRaw,
+        toolName: event.toolName,
+        toolParams: event.params,
+      });
+      if (tokenCheck.matched) {
+        if (tokenCheck.blockReason) {
+          return { block: true, blockReason: tokenCheck.blockReason };
+        }
+        const csrgResult = await verifyWithCsrg(intentTokenRaw, tokenCheck.plan ?? {});
+        if (csrgResult) {
+          return csrgResult;
+        }
+        return { params: tokenCheck.params ?? event.params };
       }
 
       const proofParse = parseCsrgProofHeaders(toolCtx);
@@ -715,26 +905,11 @@ export default function register(api: OpenClawPluginApi) {
         return { block: true, blockReason: proofError };
       }
 
-      try {
-        const verifyResult = await verificationService.verifyStep(
-          intentTokenRaw,
-          proofParse.proofs,
-          event.toolName,
-        );
-        if (!verifyResult.allowed) {
-          return {
-            block: true,
-            blockReason: verifyResult.reason || "ArmorIQ intent verification denied",
-          };
-        }
-        return { params: event.params };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return {
-          block: true,
-          blockReason: `ArmorIQ intent verification failed: ${message}`,
-        };
+      const csrgResult = await verifyWithCsrg(intentTokenRaw, { steps: [] });
+      if (csrgResult) {
+        return csrgResult;
       }
+      return { params: event.params };
     }
 
     if (!cfg.apiKey) {
@@ -789,12 +964,22 @@ export default function register(api: OpenClawPluginApi) {
           },
         );
         const token = await client.getIntentToken(planCapture, cfg.policy, cfg.validitySeconds);
+        const tokenRaw = JSON.stringify(token);
+        const tokenParsed = extractPlanFromIntentToken(tokenRaw);
+        const tokenPlan = tokenParsed?.plan ?? plan;
         cached = {
           token,
-          plan,
-          allowedActions: extractAllowedActions(plan),
+          tokenRaw,
+          tokenPlan,
+          plan: tokenPlan,
+          allowedActions: extractAllowedActions(tokenPlan),
           createdAt: Date.now(),
-          expiresAt: typeof token.expiresAt === "number" ? token.expiresAt : undefined,
+          expiresAt:
+            typeof tokenParsed?.expiresAt === "number"
+              ? tokenParsed.expiresAt
+              : typeof token.expiresAt === "number"
+                ? token.expiresAt
+                : undefined,
         };
         planCache.set(runKey, cached);
       } catch (err) {
@@ -817,6 +1002,28 @@ export default function register(api: OpenClawPluginApi) {
       return {
         block: true,
         blockReason: cached.error,
+      };
+    }
+
+    if (cached.tokenRaw) {
+      const tokenCheck = checkIntentTokenPlan({
+        intentTokenRaw: cached.tokenRaw,
+        toolName: event.toolName,
+        toolParams: event.params,
+      });
+      if (tokenCheck.matched) {
+        if (tokenCheck.blockReason) {
+          return { block: true, blockReason: tokenCheck.blockReason };
+        }
+        const csrgResult = await verifyWithCsrg(cached.tokenRaw, tokenCheck.plan ?? {});
+        if (csrgResult) {
+          return csrgResult;
+        }
+        return { params: tokenCheck.params ?? event.params };
+      }
+      return {
+        block: true,
+        blockReason: "ArmorIQ intent token missing plan",
       };
     }
 

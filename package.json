@@ -205,6 +205,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@armoriq/sdk": "file:../armoriq-sdk-customer-ts",
     "@grammyjs/types": "^3.23.0",
     "@lit-labs/signals": "^0.2.0",
     "@lit/context": "^1.1.6",

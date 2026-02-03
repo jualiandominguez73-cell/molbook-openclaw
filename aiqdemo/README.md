@@ -37,11 +37,15 @@ Environment variables:
 
 - `AIQ_DEMO_GATEWAY_URL` (default `http://localhost:18789`)
 - `AIQ_DEMO_GATEWAY_TOKEN` (required)
-- `AIQ_DEMO_INTENT_TOKEN` (segment 5B)
-- `AIQ_DEMO_CSRG_JWT` (segment 5D)
-- `AIQ_DEMO_CSRG_PATH` (segment 5D)
-- `AIQ_DEMO_CSRG_PROOF` (segment 5D, JSON array string)
-- `AIQ_DEMO_CSRG_VALUE_DIGEST` (segment 5D)
+- `AIQ_DEMO_ARMORIQ_API_KEY` or `ARMORIQ_API_KEY` (segment 5B auto-mint)
+- `AIQ_DEMO_USER_ID` or `USER_ID` (segment 5B auto-mint)
+- `AIQ_DEMO_AGENT_ID` or `AGENT_ID` (segment 5B auto-mint)
+- `AIQ_DEMO_CONTEXT_ID` or `CONTEXT_ID` (segment 5B auto-mint, default `default`)
+- `AIQ_DEMO_IAP_BACKEND_URL` or `IAP_BACKEND_URL` or `BACKEND_ENDPOINT` (segment 5B auto-mint)
+- `AIQ_DEMO_IAP_ENDPOINT` or `IAP_ENDPOINT` (segment 5B/5D auto-mint, optional)
+- `AIQ_DEMO_PROXY_ENDPOINT` or `PROXY_ENDPOINT` (segment 5B/5D auto-mint, optional)
+- `AIQ_DEMO_INTENT_POLICY` (or `AIQ_DEMO_POLICY`) (segment 5B auto-mint, JSON object string)
+- `AIQ_DEMO_INTENT_VALIDITY_SECONDS` (segment 5B auto-mint, default `60`)
 - `AIQ_DEMO_MESSAGE_CHANNEL` (optional, sets `x-openclaw-message-channel`)
 
 ## Expected Results
@@ -54,3 +58,7 @@ Environment variables:
 - Segment 5B: allowed only if `web_fetch` is in the token plan.
 - Segment 5C: blocked (missing plan).
 - Segment 5D: allowed only if IAP `verify-step` allows and CSRG proofs validate.
+  - Segment 5D auto-uses CSRG proofs from the IAP-issued token. If no proofs are returned,
+    the segment is skipped with "No CSRG proofs captured from IAP."
+  - If the token does not include a CSRG value digest, the demo computes a sha256 of the
+    JSON-stringified action name (same as the SDK).

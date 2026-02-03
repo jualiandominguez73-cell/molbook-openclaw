@@ -178,6 +178,9 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@armoriq/sdk':
+        specifier: file:../armoriq-sdk-customer-ts
+        version: file:../armoriq-sdk-customer-ts
       '@grammyjs/types':
         specifier: ^3.23.0
         version: 3.23.0
