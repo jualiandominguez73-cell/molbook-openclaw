@@ -325,7 +325,7 @@ export async function resolveMessagingTarget(params: {
     if (!trimmed) return false;
     const lookup = plugin?.messaging?.targetResolver?.looksLikeId;
     if (lookup) return lookup(trimmed, normalized);
-    if (/^(channel|group|user):/i.test(trimmed)) return true;
+    if (/^(channel|group|user|signal):/i.test(trimmed)) return true;
     if (/^[@#]/.test(trimmed)) return true;
     if (/^\+?\d{6,}$/.test(trimmed)) {
       // BlueBubbles/iMessage phone numbers should usually resolve via the directory to a DM chat,
