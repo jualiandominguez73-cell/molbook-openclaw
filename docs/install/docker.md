@@ -51,6 +51,7 @@ Optional env vars:
 - `OPENCLAW_DOCKER_APT_PACKAGES` — install extra apt packages during build
 - `OPENCLAW_EXTRA_MOUNTS` — add extra host bind mounts
 - `OPENCLAW_HOME_VOLUME` — persist `/home/node` in a named volume
+- `CLI_ONLY=true` — run without publishing gateway/bridge host ports
 
 After it finishes:
 
@@ -74,11 +75,15 @@ docker compose up -d openclaw-gateway
 ```
 
 Note: run `docker compose ...` from the repo root. If you enabled
-`OPENCLAW_EXTRA_MOUNTS` or `OPENCLAW_HOME_VOLUME`, the setup script writes
-`docker-compose.extra.yml`; include it when running Compose elsewhere:
+`OPENCLAW_EXTRA_MOUNTS`/`OPENCLAW_HOME_VOLUME` and/or `CLI_ONLY=true`, include
+the generated extra compose files when running Compose elsewhere:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.extra.yml <command>
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.extra.yml \
+  -f docker-compose.cli-only.yml \
+  <command>
 ```
 
 ### Control UI token + pairing (Docker)

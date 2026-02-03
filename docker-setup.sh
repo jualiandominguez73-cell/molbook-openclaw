@@ -4,9 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 EXTRA_COMPOSE_FILE="$ROOT_DIR/docker-compose.extra.yml"
+CLI_ONLY_COMPOSE_FILE="$ROOT_DIR/docker-compose.cli-only.yml"
 IMAGE_NAME="${OPENCLAW_IMAGE:-openclaw:local}"
 EXTRA_MOUNTS="${OPENCLAW_EXTRA_MOUNTS:-}"
 HOME_VOLUME_NAME="${OPENCLAW_HOME_VOLUME:-}"
+CLI_ONLY_RAW="${CLI_ONLY:-}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -52,6 +54,13 @@ export OPENCLAW_GATEWAY_TOKEN
 
 COMPOSE_FILES=("$COMPOSE_FILE")
 COMPOSE_ARGS=()
+
+is_true() {
+  case "$1" in
+  [Tt][Rr][Uu][Ee] | 1 | [Yy][Ee][Ss] | [Yy] | [Oo][Nn]) return 0 ;;
+  *) return 1 ;;
+  esac
+}
 
 write_extra_compose() {
   local home_volume="$1"
@@ -114,6 +123,9 @@ if [[ -n "$HOME_VOLUME_NAME" || ${#VALID_MOUNTS[@]} -gt 0 ]]; then
   write_extra_compose "$HOME_VOLUME_NAME" "${VALID_MOUNTS[@]}"
   COMPOSE_FILES+=("$EXTRA_COMPOSE_FILE")
 fi
+if is_true "$CLI_ONLY_RAW"; then
+  COMPOSE_FILES+=("$CLI_ONLY_COMPOSE_FILE")
+fi
 for compose_file in "${COMPOSE_FILES[@]}"; do
   COMPOSE_ARGS+=("-f" "$compose_file")
 done
@@ -168,6 +180,7 @@ upsert_env "$ENV_FILE" \
   OPENCLAW_IMAGE \
   OPENCLAW_EXTRA_MOUNTS \
   OPENCLAW_HOME_VOLUME \
+  CLI_ONLY \
   OPENCLAW_DOCKER_APT_PACKAGES
 
 echo "==> Building Docker image: $IMAGE_NAME"
