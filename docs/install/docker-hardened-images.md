@@ -38,6 +38,8 @@ Replace the standard Node.js base image with DHI:
 FROM dhi.io/node:22-debian12-dev AS builder
 
 # Install Bun (required for build scripts)
+# Note: Use your preferred Bun installation method with checksum verification
+# See: https://bun.sh/docs/installation
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
@@ -100,12 +102,12 @@ See [Docker Hub DHI catalog](https://hub.docker.com/u/dhi) for all available ima
 
 ### What's Removed (Distroless)
 
-DHI runtime images don't include:
+DHI **runtime** images don't include:
 - Shell (bash, sh)
 - Package managers (apt, apk)
 - Debugging tools (curl, wget, git)
 
-This is intentional for security. Use multi-stage builds to install dependencies in the dev stage.
+DHI **dev** images (e.g., `dhi.io/node:22-debian12-dev`) include build tools for the builder stage. Use multi-stage builds: install dependencies in the dev stage, copy artifacts to the minimal runtime stage.
 
 ### Debugging
 
@@ -144,7 +146,7 @@ set -e
 
 VERSION=${1:-"latest"}
 
-echo "🦞 Rebuilding OpenClaw with DHI"
+echo "Rebuilding OpenClaw with DHI"
 echo "Version: $VERSION"
 
 # Checkout target version
@@ -159,7 +161,7 @@ docker build -t openclaw:dhi -f Dockerfile .
 
 # Verify
 docker images openclaw:dhi
-echo "✅ Build complete"
+echo "Build complete"
 ```
 
 Usage:
