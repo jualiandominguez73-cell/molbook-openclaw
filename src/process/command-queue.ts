@@ -157,10 +157,10 @@ export function getLaneCount(): number {
 }
 
 /**
- * Check if a lane is idle (no queued tasks and no active tasks).
+ * Check if a lane is idle (no queued tasks, no active tasks, and not draining).
  */
 function isLaneIdle(state: LaneState): boolean {
-  return state.queue.length === 0 && state.active === 0;
+  return state.queue.length === 0 && state.active === 0 && !state.draining;
 }
 
 /**
@@ -168,8 +168,8 @@ function isLaneIdle(state: LaneState): boolean {
  * Only removes if the lane exists and is idle (no queued or active tasks).
  * Returns true if the lane was removed, false otherwise.
  */
-export function removeLane(lane: string): boolean {
-  const cleaned = lane.trim() || CommandLane.Main;
+export function removeLane(lane?: string): boolean {
+  const cleaned = (lane ?? "").trim() || CommandLane.Main;
   // Never remove the main lane - it should always exist
   if (cleaned === (CommandLane.Main as string)) {
     return false;
