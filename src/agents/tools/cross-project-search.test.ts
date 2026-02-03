@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crossProjectSearchSchema, validateCrossProjectSearch } from "./cross-project-search.js";
+import { validateCrossProjectSearch } from "./cross-project-search.js";
 
 describe("crossProjectSearchSchema", () => {
   it("validates correct input", () => {

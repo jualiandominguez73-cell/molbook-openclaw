@@ -26,7 +26,7 @@ export function validateCrossProjectSearch(input: unknown): {
       const errors = [...Value.Errors(crossProjectSearchSchema, cleaned)];
       return { valid: false, error: errors[0]?.message ?? "Invalid input" };
     }
-    return { valid: true, data: cleaned as CrossProjectSearchInput };
+    return { valid: true, data: cleaned };
   } catch (err) {
     return { valid: false, error: String(err) };
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIdentityContext, type IdentityContextParams } from "./identity-context.js";
+import { buildIdentityContext } from "./identity-context.js";
 
 describe("buildIdentityContext", () => {
   it("builds identity block with all fields", () => {

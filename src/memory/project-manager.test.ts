@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ProjectMemoryManager } from "./project-manager.js";
 import type { ProjectConfig } from "./project-scope.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMentionContext, type MentionContextParams } from "./mention-context.js";
+import { buildMentionContext } from "./mention-context.js";
 
 describe("buildMentionContext", () => {
   it("detects direct mention", () => {
