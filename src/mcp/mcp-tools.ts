@@ -96,6 +96,17 @@ function detectAuthRequired(server: McpServerConfig): boolean {
   return false;
 }
 
+function getTransportHint(server: McpServerConfig): string {
+  if (server.transport === "http") {
+    return "[HTTP]";
+  } else if (server.transport === "sse") {
+    return "[SSE]";
+  } else if (server.transport === "stdio") {
+    return "[Local]";
+  }
+  return "[Unknown]";
+}
+
 function coerceHeaders(headers: Record<string, string> | undefined): HeadersInit | undefined {
   if (!headers) {
     return undefined;
@@ -455,4 +466,5 @@ export const __testing = {
   ensureAgentState,
   getOrCreateConnection,
   detectAuthRequired,
+  getTransportHint,
 };

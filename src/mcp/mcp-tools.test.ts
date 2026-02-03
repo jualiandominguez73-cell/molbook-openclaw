@@ -13,6 +13,8 @@ const {
   agentStates,
   ensureAgentState,
   getOrCreateConnection,
+  detectAuthRequired,
+  getTransportHint,
 } = __testing;
 
 // ---------------------------------------------------------------------------
@@ -1618,6 +1620,26 @@ describe("detectAuthRequired", () => {
       env: { API_KEY: "secret" },
     };
     expect(__testing.detectAuthRequired(config)).toBe(true);
+  });
+});
+
+describe("getTransportHint", () => {
+  it("returns [HTTP] for HTTP transport", () => {
+    const config = { transport: "http" as const, url: "http://example.com" };
+    expect(__testing.getTransportHint(config)).toBe("[HTTP]");
+  });
+
+  it("returns [SSE] for SSE transport", () => {
+    const config = { transport: "sse" as const, url: "http://example.com" };
+    expect(__testing.getTransportHint(config)).toBe("[SSE]");
+  });
+
+  it("returns [Local] for STDIO transport", () => {
+    const config = {
+      transport: "stdio" as const,
+      command: "node",
+    };
+    expect(__testing.getTransportHint(config)).toBe("[Local]");
   });
 });
 
