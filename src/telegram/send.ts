@@ -179,18 +179,32 @@ export function buildInlineKeyboard(
   if (!buttons?.length) {
     return undefined;
   }
+
   const rows = buttons
     .map((row) =>
       row
-        .filter((button) => button?.text && (button?.callback_data || button?.url))
-        .map((button): InlineKeyboardButton => {
-          if (button.url) {
-            return { text: button.text, url: button.url };
+        .map((button): InlineKeyboardButton | null => {
+          const text = button?.text?.trim();
+          if (!text) {
+            return null;
           }
-          return { text: button.text, callback_data: button.callback_data ?? "" };
-        }),
+
+          const url = button?.url?.trim();
+          if (url) {
+            return { text, url };
+          }
+
+          const callbackData = button?.callback_data?.trim();
+          if (callbackData) {
+            return { text, callback_data: callbackData };
+          }
+
+          return null;
+        })
+        .filter((button): button is InlineKeyboardButton => button != null),
     )
     .filter((row) => row.length > 0);
+
   if (rows.length === 0) {
     return undefined;
   }
