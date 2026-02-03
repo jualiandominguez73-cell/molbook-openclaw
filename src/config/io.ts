@@ -534,7 +534,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
 
   // Output: Moved function logic.
 
-  async function writeConfigFile(cfg: OpenClawConfig, template?: OpenClawConfig) {
+  async function writeConfigFile(cfg: OpenClawConfig, template?: unknown) {
     clearConfigCache();
     const validated = validateConfigObjectWithPlugins(cfg);
     if (!validated.ok) {
@@ -672,10 +672,7 @@ export async function readConfigFileSnapshot(): Promise<ConfigFileSnapshot> {
   return await createConfigIO().readConfigFileSnapshot();
 }
 
-export async function writeConfigFile(
-  cfg: OpenClawConfig,
-  template?: OpenClawConfig,
-): Promise<void> {
+export async function writeConfigFile(cfg: OpenClawConfig, template?: unknown): Promise<void> {
   clearConfigCache();
   await createConfigIO().writeConfigFile(cfg, template);
 }
