@@ -1,5 +1,12 @@
-﻿import { describe, expect, it } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as ssrf from "../../../infra/net/ssrf.js";
 import { transcribeSarvamAudio, DEFAULT_SARVAM_AUDIO_MODEL } from "./audio.js";
+
+const resolvePinnedHostname = ssrf.resolvePinnedHostname;
+const resolvePinnedHostnameWithPolicy = ssrf.resolvePinnedHostnameWithPolicy;
+const lookupMock = vi.fn();
+let resolvePinnedHostnameSpy: ReturnType<typeof vi.spyOn> | null = null;
+let resolvePinnedHostnameWithPolicySpy: ReturnType<typeof vi.spyOn> | null = null;
 
 const resolveRequestUrl = (input: Request | string | URL) => {
   if (typeof input === "string") {
@@ -12,6 +19,26 @@ const resolveRequestUrl = (input: Request | string | URL) => {
 };
 
 describe("transcribeSarvamAudio", () => {
+  beforeEach(() => {
+    lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    resolvePinnedHostnameSpy = vi
+      .spyOn(ssrf, "resolvePinnedHostname")
+      .mockImplementation((hostname) => resolvePinnedHostname(hostname, lookupMock));
+    resolvePinnedHostnameWithPolicySpy = vi
+      .spyOn(ssrf, "resolvePinnedHostnameWithPolicy")
+      .mockImplementation((hostname, params) =>
+        resolvePinnedHostnameWithPolicy(hostname, { ...params, lookupFn: lookupMock }),
+      );
+  });
+
+  afterEach(() => {
+    lookupMock.mockReset();
+    resolvePinnedHostnameSpy?.mockRestore();
+    resolvePinnedHostnameWithPolicySpy?.mockRestore();
+    resolvePinnedHostnameSpy = null;
+    resolvePinnedHostnameWithPolicySpy = null;
+  });
+
   it("builds the expected request with default options", async () => {
     let seenUrl: string | null = null;
     let seenInit: RequestInit | undefined;
@@ -287,5 +314,3 @@ describe("transcribeSarvamAudio", () => {
     expect(result.text).toBe("hello world");
   });
 });
-
-
