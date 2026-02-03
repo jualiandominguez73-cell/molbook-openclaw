@@ -22,8 +22,9 @@ const TELEGRAM_SECRET_HEADER = "x-telegram-bot-api-secret-token";
 /**
  * Timing-safe comparison for webhook secrets.
  * Prevents timing side-channel attacks (CWE-208).
+ * Exported for testing purposes.
  */
-function safeEqualSecret(received: string, expected: string): boolean {
+export function safeEqualSecret(received: string, expected: string): boolean {
   const receivedBuffer = Buffer.from(received, "utf-8");
   const expectedBuffer = Buffer.from(expected, "utf-8");
 
@@ -83,7 +84,9 @@ export async function startTelegramWebhook(opts: {
 
     // Validate webhook secret using timing-safe comparison (CWE-208 fix)
     if (opts.secret) {
-      const receivedSecret = req.headers[TELEGRAM_SECRET_HEADER];
+      const rawSecret = req.headers[TELEGRAM_SECRET_HEADER];
+      // Normalize header: reject arrays (duplicated headers) and non-strings
+      const receivedSecret = Array.isArray(rawSecret) ? rawSecret[0] : rawSecret;
       if (typeof receivedSecret !== "string" || !safeEqualSecret(receivedSecret, opts.secret)) {
         res.writeHead(401);
         res.end("Unauthorized");
