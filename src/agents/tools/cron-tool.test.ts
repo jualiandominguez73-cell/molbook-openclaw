@@ -282,23 +282,20 @@ describe("cron tool", () => {
     expect(call.method).toBe("cron.add");
   });
 
-  it.each([NaN, Infinity, -Infinity])(
-    "rejects invalid atMs value: %s",
-    async (invalidValue) => {
-      const tool = createCronTool();
+  it.each([NaN, Infinity, -Infinity])("rejects invalid atMs value: %s", async (invalidValue) => {
+    const tool = createCronTool();
 
-      await expect(
-        tool.execute("call-invalid", {
-          action: "add",
-          job: {
-            name: "reminder",
-            schedule: { kind: "at", atMs: invalidValue },
-            payload: { kind: "systemEvent", text: "Should fail" },
-          },
-        }),
-      ).rejects.toThrow(/schedule\.atMs must be a valid finite number/);
+    await expect(
+      tool.execute("call-invalid", {
+        action: "add",
+        job: {
+          name: "reminder",
+          schedule: { kind: "at", atMs: invalidValue },
+          payload: { kind: "systemEvent", text: "Should fail" },
+        },
+      }),
+    ).rejects.toThrow(/schedule\.atMs must be a valid finite number/);
 
-      expect(callGatewayMock).not.toHaveBeenCalled();
-    },
-  );
+    expect(callGatewayMock).not.toHaveBeenCalled();
+  });
 });
