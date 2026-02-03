@@ -82,6 +82,26 @@
   line-height: 1.5;
 }
 
+/* Sidebar images */
+.sidebar-images {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sidebar-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.sidebar-image:hover {
+  opacity: 0.9;
+}
+
 .sidebar-markdown pre {
   background: rgba(0, 0, 0, 0.12);
   border-radius: 4px;

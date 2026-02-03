@@ -843,9 +843,11 @@ export function renderApp(state: AppViewState) {
                 // Sidebar props for tool output viewing
                 sidebarOpen: state.sidebarOpen,
                 sidebarContent: state.sidebarContent,
+                sidebarImages: state.sidebarImages,
                 sidebarError: state.sidebarError,
                 splitRatio: state.splitRatio,
-                onOpenSidebar: (content: string) => state.handleOpenSidebar(content),
+                onOpenSidebar: (content: string, images?: Array<{ url: string; alt?: string }>) =>
+                  state.handleOpenSidebar(content, images),
                 onCloseSidebar: () => state.handleCloseSidebar(),
                 onSplitRatioChange: (ratio: number) => state.handleSplitRatioChange(ratio),
                 assistantName: state.assistantName,

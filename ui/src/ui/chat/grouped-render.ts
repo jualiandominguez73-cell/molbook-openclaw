@@ -30,13 +30,19 @@ function extractImages(message: unknown): ImageBlock[] {
       const b = block as Record<string, unknown>;
 
       if (b.type === "image") {
-        // Handle source object format (from sendChatMessage)
+        // Handle source object format (from sendChatMessage - Anthropic format)
         const source = b.source as Record<string, unknown> | undefined;
         if (source?.type === "base64" && typeof source.data === "string") {
           const data = source.data;
           const mediaType = (source.media_type as string) || "image/png";
           // If data is already a data URL, use it directly
           const url = data.startsWith("data:") ? data : `data:${mediaType};base64,${data}`;
+          images.push({ url });
+        } else if (typeof b.data === "string" && b.data.length > 0) {
+          // Handle tool result format: { type: "image", data: base64, mimeType: "image/png" }
+          const data = b.data;
+          const mimeType = typeof b.mimeType === "string" ? b.mimeType : "image/png";
+          const url = data.startsWith("data:") ? data : `data:${mimeType};base64,${data}`;
           images.push({ url });
         } else if (typeof b.url === "string") {
           images.push({ url: b.url });
@@ -52,6 +58,15 @@ function extractImages(message: unknown): ImageBlock[] {
   }
 
   return images;
+}
+
+/**
+ * Check if a tool result message contains images.
+ * Used to decide whether to render tool results even when showThinking is off.
+ */
+export function hasToolResultImages(message: unknown): boolean {
+  const images = extractImages(message);
+  return images.length > 0;
 }
 
 export function renderReadingIndicatorGroup(assistant?: AssistantIdentity) {
@@ -72,7 +87,7 @@ export function renderReadingIndicatorGroup(assistant?: AssistantIdentity) {
 export function renderStreamingGroup(
   text: string,
   startedAt: number,
-  onOpenSidebar?: (content: string) => void,
+  onOpenSidebar?: (content: string, images?: Array<{ url: string; alt?: string }>) => void,
   assistant?: AssistantIdentity,
 ) {
   const timestamp = new Date(startedAt).toLocaleTimeString([], {
@@ -106,7 +121,7 @@ export function renderStreamingGroup(
 export function renderMessageGroup(
   group: MessageGroup,
   opts: {
-    onOpenSidebar?: (content: string) => void;
+    onOpenSidebar?: (content: string, images?: Array<{ url: string; alt?: string }>) => void;
     showReasoning: boolean;
     assistantName?: string;
     assistantAvatar?: string | null;
@@ -218,7 +233,7 @@ function renderMessageImages(images: ImageBlock[]) {
 function renderGroupedMessage(
   message: unknown,
   opts: { isStreaming: boolean; showReasoning: boolean },
-  onOpenSidebar?: (content: string) => void,
+  onOpenSidebar?: (content: string, images?: Array<{ url: string; alt?: string }>) => void,
 ) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
@@ -251,8 +266,19 @@ function renderGroupedMessage(
     .filter(Boolean)
     .join(" ");
 
-  if (!markdown && hasToolCards && isToolResult) {
+  // Tool results with only tool cards (no markdown, no images) - render cards only
+  if (!markdown && hasToolCards && isToolResult && !hasImages) {
     return html`${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}`;
+  }
+
+  // Tool results with images - render both cards and images
+  if (!markdown && hasToolCards && isToolResult && hasImages) {
+    return html`
+      <div class="${bubbleClasses}">
+        ${renderMessageImages(images)}
+        ${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}
+      </div>
+    `;
   }
 
   if (!markdown && !hasToolCards && !hasImages) {

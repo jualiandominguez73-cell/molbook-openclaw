@@ -8,6 +8,7 @@ import {
   renderMessageGroup,
   renderReadingIndicatorGroup,
   renderStreamingGroup,
+  hasToolResultImages,
 } from "../chat/grouped-render";
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer";
 import { icons } from "../icons";
@@ -46,6 +47,7 @@ export type ChatProps = {
   // Sidebar state
   sidebarOpen?: boolean;
   sidebarContent?: string | null;
+  sidebarImages?: Array<{ url: string; alt?: string }>;
   sidebarError?: string | null;
   splitRatio?: number;
   assistantName: string;
@@ -64,7 +66,7 @@ export type ChatProps = {
   onAbort?: () => void;
   onQueueRemove: (id: string) => void;
   onNewSession: () => void;
-  onOpenSidebar?: (content: string) => void;
+  onOpenSidebar?: (content: string, images?: Array<{ url: string; alt?: string }>) => void;
   onCloseSidebar?: () => void;
   onSplitRatioChange?: (ratio: number) => void;
   onChatScroll?: (event: Event) => void;
@@ -110,45 +112,159 @@ function generateAttachmentId(): string {
   return `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Allowed file types for upload
+const ALLOWED_FILE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+];
+
+const MAX_FILE_SIZE_MB = 25;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+export function isAllowedFileType(mimeType: string): boolean {
+  return ALLOWED_FILE_TYPES.includes(mimeType) || mimeType.startsWith("image/");
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function processFile(file: File, props: ChatProps): void {
+  if (!props.onAttachmentsChange) {
+    return;
+  }
+
+  if (!isAllowedFileType(file.type)) {
+    console.warn(`File type not allowed: ${file.type}`);
+    return;
+  }
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    console.warn(`File too large: ${formatFileSize(file.size)} (max ${MAX_FILE_SIZE_MB}MB)`);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    const dataUrl = reader.result as string;
+    const newAttachment: ChatAttachment = {
+      id: generateAttachmentId(),
+      dataUrl,
+      mimeType: file.type,
+      fileName: file.name,
+      fileSize: file.size,
+    };
+    const current = props.attachments ?? [];
+    props.onAttachmentsChange?.([...current, newAttachment]);
+  });
+  reader.readAsDataURL(file);
+}
+
 function handlePaste(e: ClipboardEvent, props: ChatProps) {
   const items = e.clipboardData?.items;
   if (!items || !props.onAttachmentsChange) {
     return;
   }
 
-  const imageItems: DataTransferItem[] = [];
+  const fileItems: DataTransferItem[] = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (item.type.startsWith("image/")) {
-      imageItems.push(item);
+    if (item.kind === "file") {
+      fileItems.push(item);
     }
   }
 
-  if (imageItems.length === 0) {
+  if (fileItems.length === 0) {
     return;
   }
 
   e.preventDefault();
 
-  for (const item of imageItems) {
+  for (const item of fileItems) {
     const file = item.getAsFile();
     if (!file) {
       continue;
     }
-
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      const dataUrl = reader.result as string;
-      const newAttachment: ChatAttachment = {
-        id: generateAttachmentId(),
-        dataUrl,
-        mimeType: file.type,
-      };
-      const current = props.attachments ?? [];
-      props.onAttachmentsChange?.([...current, newAttachment]);
-    });
-    reader.readAsDataURL(file);
+    processFile(file, props);
   }
+}
+
+function handleFileDrop(e: DragEvent, props: ChatProps): void {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (!props.onAttachmentsChange) {
+    return;
+  }
+
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) {
+    return;
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    processFile(files[i], props);
+  }
+}
+
+function handleDragOver(e: DragEvent): void {
+  e.preventDefault();
+  e.stopPropagation();
+  const target = e.currentTarget as HTMLElement;
+  target.classList.add("chat-compose--dragover");
+}
+
+function handleDragLeave(e: DragEvent): void {
+  e.preventDefault();
+  e.stopPropagation();
+  const target = e.currentTarget as HTMLElement;
+  target.classList.remove("chat-compose--dragover");
+}
+
+function handleFileInputChange(e: Event, props: ChatProps): void {
+  const input = e.target as HTMLInputElement;
+  const files = input.files;
+  if (!files || files.length === 0) {
+    return;
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    processFile(files[i], props);
+  }
+
+  // Reset input so the same file can be selected again
+  input.value = "";
+}
+
+function isImageMimeType(mimeType: string): boolean {
+  return mimeType.startsWith("image/");
+}
+
+function getFileIcon(mimeType: string): string {
+  if (mimeType === "application/pdf") {
+    return "📄";
+  }
+  if (mimeType.startsWith("text/")) {
+    return "📝";
+  }
+  if (mimeType === "application/json") {
+    return "📋";
+  }
+  return "📎";
 }
 
 function renderAttachmentPreview(props: ChatProps) {
@@ -159,14 +275,34 @@ function renderAttachmentPreview(props: ChatProps) {
 
   return html`
     <div class="chat-attachments">
-      ${attachments.map(
-        (att) => html`
-          <div class="chat-attachment">
-            <img
-              src=${att.dataUrl}
-              alt="Attachment preview"
-              class="chat-attachment__img"
-            />
+      ${attachments.map((att) => {
+        const isImage = isImageMimeType(att.mimeType);
+        const fileName = att.fileName || "Attachment";
+        const fileSize = att.fileSize ? formatFileSize(att.fileSize) : "";
+
+        return html`
+          <div class="chat-attachment ${isImage ? "" : "chat-attachment--file"}">
+            ${
+              isImage
+                ? html`
+                  <img
+                    src=${att.dataUrl}
+                    alt=${fileName}
+                    class="chat-attachment__img"
+                  />
+                `
+                : html`
+                  <div class="chat-attachment__file">
+                    <span class="chat-attachment__icon">${getFileIcon(att.mimeType)}</span>
+                    <div class="chat-attachment__info">
+                      <span class="chat-attachment__name" title=${fileName}>
+                        ${fileName.length > 20 ? fileName.slice(0, 17) + "..." : fileName}
+                      </span>
+                      ${fileSize ? html`<span class="chat-attachment__size">${fileSize}</span>` : nothing}
+                    </div>
+                  </div>
+                `
+            }
             <button
               class="chat-attachment__remove"
               type="button"
@@ -179,8 +315,8 @@ function renderAttachmentPreview(props: ChatProps) {
               ${icons.x}
             </button>
           </div>
-        `,
-      )}
+        `;
+      })}
     </div>
   `;
 }
@@ -200,8 +336,8 @@ export function renderChat(props: ChatProps) {
   const hasAttachments = (props.attachments?.length ?? 0) > 0;
   const composePlaceholder = props.connected
     ? hasAttachments
-      ? "Add a message or paste more images..."
-      : "Message (↩ to send, Shift+↩ for line breaks, paste images)"
+      ? "Add a message or drop more files..."
+      : "Message (↩ send, Shift+↩ newline, drag & drop or paste files)"
     : "Connect to the gateway to start chatting…";
 
   const splitRatio = props.splitRatio ?? 0.6;
@@ -296,6 +432,7 @@ export function renderChat(props: ChatProps) {
               <div class="chat-sidebar">
                 ${renderMarkdownSidebar({
                   content: props.sidebarContent ?? null,
+                  images: props.sidebarImages,
                   error: props.sidebarError ?? null,
                   onClose: props.onCloseSidebar!,
                   onViewRawText: () => {
@@ -357,9 +494,41 @@ export function renderChat(props: ChatProps) {
           : nothing
       }
 
-      <div class="chat-compose">
+      <div
+        class="chat-compose"
+        @dragover=${handleDragOver}
+        @dragleave=${handleDragLeave}
+        @drop=${(e: DragEvent) => {
+          handleDragLeave(e);
+          handleFileDrop(e, props);
+        }}
+      >
+        <div class="chat-compose__dropzone">
+          <span class="chat-compose__dropzone-text">Drop files here</span>
+        </div>
         ${renderAttachmentPreview(props)}
         <div class="chat-compose__row">
+          <input
+            type="file"
+            id="chat-file-input"
+            class="chat-compose__file-input"
+            multiple
+            accept=${ALLOWED_FILE_TYPES.join(",")}
+            @change=${(e: Event) => handleFileInputChange(e, props)}
+          />
+          <button
+            class="btn chat-compose__attach"
+            type="button"
+            title="Attach files"
+            aria-label="Attach files"
+            ?disabled=${!props.connected}
+            @click=${() => {
+              const input = document.getElementById("chat-file-input") as HTMLInputElement;
+              input?.click();
+            }}
+          >
+            ${icons.paperclip}
+          </button>
           <label class="field chat-compose__field">
             <span>Message</span>
             <textarea
@@ -478,8 +647,11 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
     const msg = history[i];
     const normalized = normalizeMessage(msg);
 
+    // Skip tool results unless showThinking is on OR the result contains images
     if (!props.showThinking && normalized.role.toLowerCase() === "toolresult") {
-      continue;
+      if (!hasToolResultImages(msg)) {
+        continue;
+      }
     }
 
     items.push({

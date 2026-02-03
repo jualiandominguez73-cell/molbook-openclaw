@@ -1,5 +1,5 @@
 import { html, nothing } from "lit";
-import type { ToolCard } from "../types/chat-types";
+import type { ToolCard, ToolCardImage } from "../types/chat-types";
 import { icons } from "../icons";
 import { formatToolDetail, resolveToolDisplay } from "../tool-display";
 import { TOOL_INLINE_THRESHOLD } from "./constants";
@@ -42,24 +42,38 @@ export function extractToolCards(message: unknown): ToolCard[] {
       (typeof m.tool_name === "string" && m.tool_name) ||
       "tool";
     const text = extractTextCached(message) ?? undefined;
-    cards.push({ kind: "result", name, text });
+    const images = extractToolImages(m.content);
+    cards.push({ kind: "result", name, text, images: images.length > 0 ? images : undefined });
   }
 
   return cards;
 }
 
-export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: string) => void) {
+export function renderToolCardSidebar(
+  card: ToolCard,
+  onOpenSidebar?: (content: string, images?: Array<{ url: string; alt?: string }>) => void,
+) {
   const display = resolveToolDisplay({ name: card.name, args: card.args });
   const detail = formatToolDetail(display);
   const hasText = Boolean(card.text?.trim());
+  const hasImages = Boolean(card.images?.length);
 
   const canClick = Boolean(onOpenSidebar);
   const handleClick = canClick
     ? () => {
+        const images = hasImages ? card.images : undefined;
+
         if (hasText) {
-          onOpenSidebar!(formatToolOutputForSidebar(card.text!));
+          onOpenSidebar!(formatToolOutputForSidebar(card.text!), images);
           return;
         }
+
+        if (hasImages) {
+          // Images only, no text content
+          onOpenSidebar!("", images);
+          return;
+        }
+
         const info = `## ${display.label}\n\n${
           detail ? `**Command:** \`${detail}\`\n\n` : ""
         }*No output — tool completed successfully.*`;
@@ -70,7 +84,8 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
   const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
   const showCollapsed = hasText && !isShort;
   const showInline = hasText && isShort;
-  const isEmpty = !hasText;
+  const isEmpty = !hasText && !hasImages;
+  const hasContent = hasText || hasImages;
 
   return html`
     <div
@@ -97,7 +112,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
         </div>
         ${
           canClick
-            ? html`<span class="chat-tool-card__action">${hasText ? "View" : ""} ${icons.check}</span>`
+            ? html`<span class="chat-tool-card__action">${hasContent ? "View" : ""} ${icons.check}</span>`
             : nothing
         }
         ${isEmpty && !canClick ? html`<span class="chat-tool-card__status">${icons.check}</span>` : nothing}
@@ -153,4 +168,42 @@ function extractToolText(item: Record<string, unknown>): string | undefined {
     return item.content;
   }
   return undefined;
+}
+
+function extractToolImages(content: unknown): ToolCardImage[] {
+  if (!Array.isArray(content)) {
+    return [];
+  }
+  const images: ToolCardImage[] = [];
+  for (const block of content) {
+    if (typeof block !== "object" || block === null) {
+      continue;
+    }
+    const b = block as Record<string, unknown>;
+    if (b.type === "image") {
+      // Handle source object format (Anthropic format)
+      const source = b.source as Record<string, unknown> | undefined;
+      if (source?.type === "base64" && typeof source.data === "string") {
+        const data = source.data;
+        const mediaType = (source.media_type as string) || "image/png";
+        const url = data.startsWith("data:") ? data : `data:${mediaType};base64,${data}`;
+        images.push({ url });
+      } else if (typeof b.data === "string" && b.data.length > 0) {
+        // Handle tool result format: { type: "image", data: base64, mimeType: "image/png" }
+        const data = b.data;
+        const mimeType = typeof b.mimeType === "string" ? b.mimeType : "image/png";
+        const url = data.startsWith("data:") ? data : `data:${mimeType};base64,${data}`;
+        images.push({ url });
+      } else if (typeof b.url === "string") {
+        images.push({ url: b.url });
+      }
+    } else if (b.type === "image_url") {
+      // OpenAI format
+      const imageUrl = b.image_url as Record<string, unknown> | undefined;
+      if (typeof imageUrl?.url === "string") {
+        images.push({ url: imageUrl.url });
+      }
+    }
+  }
+  return images;
 }

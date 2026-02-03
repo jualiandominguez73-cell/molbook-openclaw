@@ -138,6 +138,7 @@ export class OpenClawApp extends LitElement {
   // Sidebar state for tool output viewing
   @state() sidebarOpen = false;
   @state() sidebarContent: string | null = null;
+  @state() sidebarImages: Array<{ url: string; alt?: string }> = [];
   @state() sidebarError: string | null = null;
   @state() splitRatio = this.settings.splitRatio;
 
@@ -477,12 +478,13 @@ export class OpenClawApp extends LitElement {
   }
 
   // Sidebar handlers for tool output viewing
-  handleOpenSidebar(content: string) {
+  handleOpenSidebar(content: string, images?: Array<{ url: string; alt?: string }>) {
     if (this.sidebarCloseTimer != null) {
       window.clearTimeout(this.sidebarCloseTimer);
       this.sidebarCloseTimer = null;
     }
     this.sidebarContent = content;
+    this.sidebarImages = images ?? [];
     this.sidebarError = null;
     this.sidebarOpen = true;
   }
@@ -498,6 +500,7 @@ export class OpenClawApp extends LitElement {
         return;
       }
       this.sidebarContent = null;
+      this.sidebarImages = [];
       this.sidebarError = null;
       this.sidebarCloseTimer = null;
     }, 200);

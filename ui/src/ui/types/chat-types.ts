@@ -35,9 +35,15 @@ export type NormalizedMessage = {
 };
 
 /** Tool card representation for tool calls and results */
+export type ToolCardImage = {
+  url: string;
+  alt?: string;
+};
+
 export type ToolCard = {
   kind: "call" | "result";
   name: string;
   args?: unknown;
   text?: string;
+  images?: ToolCardImage[];
 };

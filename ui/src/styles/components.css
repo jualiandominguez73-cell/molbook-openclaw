@@ -1372,6 +1372,151 @@
   align-self: end;
 }
 
+.chat-compose__row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* Hidden file input */
+.chat-compose__file-input {
+  display: none;
+}
+
+/* Attach button */
+.chat-compose__attach {
+  flex-shrink: 0;
+  padding: 10px;
+  height: 44px;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-compose__attach svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Drag & drop overlay */
+.chat-compose {
+  position: relative;
+}
+
+.chat-compose__dropzone {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: var(--primary);
+  opacity: 0.9;
+  border-radius: var(--radius-lg);
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.chat-compose--dragover .chat-compose__dropzone {
+  display: flex;
+}
+
+.chat-compose__dropzone-text {
+  color: var(--primary-foreground);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* Attachment previews */
+.chat-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.chat-attachment {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.chat-attachment__img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+}
+
+.chat-attachment--file {
+  width: auto;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.chat-attachment__file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  padding-right: 32px;
+}
+
+.chat-attachment__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.chat-attachment__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.chat-attachment__name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-attachment__size {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.chat-attachment__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.chat-attachment__remove:hover {
+  opacity: 1;
+}
+
+.chat-attachment__remove svg {
+  width: 12px;
+  height: 12px;
+}
+
 @media (max-width: 900px) {
   .chat-session {
     min-width: 180px;
