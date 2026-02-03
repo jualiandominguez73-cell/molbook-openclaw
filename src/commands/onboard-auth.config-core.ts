@@ -1,4 +1,5 @@
 import type { OpenClawConfig } from "../config/config.js";
+import type { ModelApi } from "../config/types.models.js";
 import {
   buildErnieProvider,
   buildXiaomiProvider,
@@ -532,16 +533,22 @@ export function applyErnieProviderConfig(cfg: OpenClawConfig): OpenClawConfig {
         ? existingModels
         : [...existingModels, ...defaultModels]
       : defaultModels;
-  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as Record<
-    string,
-    unknown
-  > as { apiKey?: string };
+  const {
+    apiKey: existingApiKey,
+    baseUrl: existingBaseUrl,
+    api: existingApi,
+    ...existingProviderRest
+  } = (existingProvider ?? {}) as Record<string, unknown> as {
+    apiKey?: string;
+    baseUrl?: string;
+    api?: ModelApi;
+  };
   const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
   const normalizedApiKey = resolvedApiKey?.trim();
   providers.ernie = {
     ...existingProviderRest,
-    baseUrl: ERNIE_BASE_URL,
-    api: "openai-completions",
+    baseUrl: existingBaseUrl ?? ERNIE_BASE_URL,
+    api: existingApi ?? "openai-completions",
     ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
     models: mergedModels.length > 0 ? mergedModels : defaultProvider.models,
   };
