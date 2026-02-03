@@ -205,6 +205,13 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
     }
 
     if (action === "read") {
+      const gate = createActionGate(cfg.channels?.telegram?.actions);
+      if (!gate("readHistory", false)) {
+        throw new Error(
+          "Telegram action 'read' is disabled. Set channels.telegram.actions.readHistory=true to enable.",
+        );
+      }
+
       // Note: This reads from local history persisted by the Telegram provider.
       const chatId =
         readStringOrNumberParam(params, "chatId") ??

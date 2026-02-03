@@ -125,13 +125,17 @@ async function openDb(params: { env?: NodeJS.ProcessEnv }): Promise<DbHandle> {
 
   const pruneByChat = db.prepare(`
     DELETE FROM telegram_messages
-    WHERE id NOT IN (
-      SELECT id FROM telegram_messages
-      WHERE account_id = ? AND chat_id = ? AND COALESCE(thread_id, '') = COALESCE(?, '')
-      ORDER BY date_ms DESC, id DESC
-      LIMIT ?
-    )
-    AND account_id = ? AND chat_id = ? AND COALESCE(thread_id, '') = COALESCE(?, '');
+    WHERE account_id = ?
+      AND chat_id = ?
+      AND COALESCE(thread_id, '') = COALESCE(?, '')
+      AND id NOT IN (
+        SELECT id FROM telegram_messages
+        WHERE account_id = ?
+          AND chat_id = ?
+          AND COALESCE(thread_id, '') = COALESCE(?, '')
+        ORDER BY date_ms DESC, id DESC
+        LIMIT ?
+      );
   `);
 
   const readRecent = db.prepare(`
@@ -148,8 +152,9 @@ async function openDb(params: { env?: NodeJS.ProcessEnv }): Promise<DbHandle> {
            sender_id, sender_username, sender_name, text, was_mention, is_group, session_key
     FROM telegram_messages
     WHERE account_id = ? AND chat_id = ? AND COALESCE(thread_id, '') = COALESCE(?, '')
-      AND (message_id IS NULL OR message_id < ?)
-    ORDER BY date_ms DESC, id DESC
+      AND message_id IS NOT NULL
+      AND message_id < ?
+    ORDER BY message_id DESC, date_ms DESC, id DESC
     LIMIT ?;
   `);
 
@@ -207,10 +212,10 @@ export async function recordTelegramHistoryMessage(params: {
       params.accountId,
       String(params.chatId),
       params.threadId != null ? String(params.threadId) : null,
-      maxMessagesPerChat,
       params.accountId,
       String(params.chatId),
       params.threadId != null ? String(params.threadId) : null,
+      maxMessagesPerChat,
     );
   }
 }
