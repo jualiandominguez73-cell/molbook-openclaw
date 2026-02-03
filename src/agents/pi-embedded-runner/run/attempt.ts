@@ -389,7 +389,7 @@ export async function runEmbeddedAttempt(
       skillsPrompt,
       tools,
     });
-    const systemPromptOverride = createSystemPromptOverride(appendPrompt);
+    const systemPromptOverride = appendPrompt;
     const systemPromptText = systemPromptOverride;
 
     const sessionLock = await acquireSessionWriteLock({
