@@ -358,8 +358,7 @@ function getOperationType(toolName: string, params: unknown): "read" | "write" |
     case "exec": {
       // exec can be read, write, or execute depending on command
       const cmd = (params as { command?: string })?.command ?? "";
-      const hasRedirection = /(^|\s)\d*>>?\s*\S/.test(cmd) || /\S>>?\S/.test(cmd);
-      if (hasRedirection) {
+      if (hasUnquotedRedirection(cmd)) {
         return "write";
       }
       if (/\b(cat|head|tail|less|more|grep|awk|sed)\b/.test(cmd)) {
@@ -376,6 +375,37 @@ function getOperationType(toolName: string, params: unknown): "read" | "write" |
     default:
       return null;
   }
+}
+
+function hasUnquotedRedirection(command: string): boolean {
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+
+  for (let i = 0; i < command.length; i += 1) {
+    const ch = command[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\" && !inSingle) {
+      escaped = true;
+      continue;
+    }
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle;
+      continue;
+    }
+    if (ch === "\"" && !inSingle) {
+      inDouble = !inDouble;
+      continue;
+    }
+    if (!inSingle && !inDouble && ch === ">") {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
