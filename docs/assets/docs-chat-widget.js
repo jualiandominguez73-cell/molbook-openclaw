@@ -1,15 +1,12 @@
 (() => {
   if (document.getElementById("docs-chat-root")) return;
 
-  // Select API URL: prefer explicit config, else localhost for dev, else production
-  const hostname = window.location.hostname;
-  const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
   // Determine if we're on the docs site or embedded elsewhere
-  const isDocsSite = hostname.includes("docs.openclaw") || hostname.endsWith(".mintlify.app");
-  const assetsBase = isDocsSite || isLocal ? "" : "https://docs.openclaw.ai";
-  const apiBase =
-    window.DOCS_CHAT_API_URL ||
-    (isLocal ? "http://localhost:3001" : "https://claw-api.openknot.ai/api");
+  const hostname = window.location.hostname;
+  const isDocsSite = hostname === "localhost" || hostname === "127.0.0.1" ||
+    hostname.includes("docs.openclaw") || hostname.endsWith(".mintlify.app");
+  const assetsBase = isDocsSite ? "" : "https://docs.openclaw.ai";
+  const apiBase = window.DOCS_CHAT_API_URL || "https://claw-api.openknot.ai/api";
 
   // Load vendored @create-markdown/preview@0.1.0 for markdown rendering
   // Uses script tag + global to avoid ES module issues with Mintlify's bundler
