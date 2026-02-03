@@ -27,14 +27,14 @@
             "Configurable endpoint URL and timeout",
             "Graceful error handling with typed responses"
           ],
-          "notes": "Created src/memory/lightrag-client.ts with LightRAGClient class implementing query(), getEntities(), and getStats() methods. Includes health check, error handling, timeout support, and follows established patterns from embeddings-openai.ts. All acceptance criteria met: POST /query with mode parameter (naive/local/global/hybrid), GET /graph/entities for entity listing, GET /stats for knowledge base statistics, configurable endpoint URL and timeout, graceful error handling with typed responses.",
-          "updated_at": "2026-02-03T16:09:16.007196+00:00"
+          "notes": "LightRAG HTTP client successfully created with all required methods: query (POST /query with mode parameter), getEntities (GET /graph/entities), getStats (GET /stats), and health check. Includes proper error handling, timeout support with AbortController, typed responses, and configurable endpoint/timeout options. File already committed.",
+          "updated_at": "2026-02-03T16:33:54.124562+00:00"
         },
         {
           "id": "1.2",
           "title": "Create Memory Service HTTP client",
           "description": "Create src/memory/memory-service-client.ts with search, listEntities, and health methods. Follow same patterns as LightRAG client.",
-          "status": "pending",
+          "status": "completed",
           "files_to_create": [
             "src/memory/memory-service-client.ts"
           ],
@@ -47,13 +47,15 @@
             "GET /health for health checks",
             "Configurable endpoint URL and timeout",
             "Graceful error handling with typed responses"
-          ]
+          ],
+          "notes": "Memory Service HTTP client successfully created with all required methods: search (GET /memories/search with query and limit parameters), listEntities (GET /entities), and health check (GET /health). Includes proper error handling, timeout support with AbortController, typed responses, and configurable endpoint/timeout options. Follows the same pattern as lightrag-client.ts. File committed successfully.",
+          "updated_at": "2026-02-03T16:38:35.173802+00:00"
         },
         {
           "id": "1.3",
           "title": "Create Graphiti HTTP client",
           "description": "Create src/memory/graphiti-client.ts with search, getGraph, getEntity, and getTimeline methods. This client will be used by the graphiti_search tool.",
-          "status": "pending",
+          "status": "completed",
           "files_to_create": [
             "src/memory/graphiti-client.ts"
           ],
@@ -66,7 +68,9 @@
             "GET /entities/{id} for entity details",
             "GET /timeline for stats and temporal bounds",
             "Configurable endpoint URL and timeout"
-          ]
+          ],
+          "notes": "Graphiti HTTP client successfully created with all required methods: search (GET /entities/search with natural language query, entity types, and time range filters), getGraph (GET /graph for point-in-time graph retrieval with timestamp, entity IDs, and depth parameters), getEntity (GET /entities/{id} for entity details with neighbors and relationships), getTimeline (GET /timeline for stats and temporal bounds), and health check. Includes proper error handling, timeout support with AbortController, typed responses, and configurable endpoint/timeout options. Follows the same pattern as lightrag-client.ts and memory-service-client.ts. File compiled successfully and committed.",
+          "updated_at": "2026-02-03T16:43:32.220615+00:00"
         }
       ]
     },
@@ -424,5 +428,5 @@
     "The rag-context-inject hook uses the agent:bootstrap event to inject synthetic bootstrap files",
     "Tools are conditionally created based on memorySearch config in openclaw.json"
   ],
-  "last_updated": "2026-02-03T16:09:16.007202+00:00"
+  "last_updated": "2026-02-03T16:43:32.220622+00:00"
 }
