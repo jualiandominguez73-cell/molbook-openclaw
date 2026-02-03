@@ -136,10 +136,10 @@ openclaw models list | grep flock
 
 | Model ID                         | Params (Total / Active) | Context | Key Capabilities                                     |
 | -------------------------------- | ----------------------- | ------- | ---------------------------------------------------- |
-| `qwen3-235b-a22b-thinking-2507`  | 235B / 22B              | 262K    | Deep reasoning (thinking mode always on)             |
-| `qwen3-235b-a22b-instruct-2507`  | 235B / 22B              | 262K    | General instruction following, conversation          |
-| `qwen3-235b-a22b-thinking-qwfin` | 235B / 22B              | 262K    | AI Arena fine-tune for Web3/finance tasks            |
-| `qwen3-30b-a3b-instruct-2507`    | 30.5B / 3.3B            | 262K    | Lightweight general-purpose, efficient               |
+| `qwen3-235b-a22b-thinking-2507`  | 235B / 22B              | 256K    | Deep reasoning (thinking mode always on)             |
+| `qwen3-235b-a22b-instruct-2507`  | 235B / 22B              | 256K    | General instruction following, conversation          |
+| `qwen3-235b-a22b-thinking-qwfin` | 235B / 22B              | 256K    | AI Arena fine-tune for Web3/finance tasks            |
+| `qwen3-30b-a3b-instruct-2507`    | 30.5B / 3.3B            | 256K    | Lightweight general-purpose, efficient               |
 | `qwen3-30b-a3b-instruct-coding`  | 30.5B / 3.3B            | 256K    | Specialized agentic coding, extendable to 1M context |
 
 The **235B** models are the flagship Qwen3 MoE models (128 experts, 8 active per token, 94 layers). The Thinking-2507 variant scores 92.3% on AIME 2025. The **QwFin** variant is a community fine-tune from FLock's AI Arena, trained via federated learning for financial and on-chain tasks.
