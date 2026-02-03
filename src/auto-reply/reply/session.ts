@@ -62,7 +62,7 @@ function resolveGroupResetConfig(params: {
   groupResolution?: GroupKeyResolution;
 }): SessionResetConfig | undefined {
   const { cfg, groupResolution } = params;
-  if (!groupResolution?.groupId) {
+  if (!groupResolution?.id) {
     return undefined;
   }
   const channel = groupResolution.channel?.toLowerCase();
@@ -75,14 +75,14 @@ function resolveGroupResetConfig(params: {
     return undefined;
   }
   // Check default account groups
-  const groupCfg = telegramCfg.groups?.[groupResolution.groupId];
+  const groupCfg = telegramCfg.groups?.[groupResolution.id];
   if (groupCfg?.session?.reset) {
     return groupCfg.session.reset;
   }
   // Check multi-account groups
   if (telegramCfg.accounts) {
     for (const account of Object.values(telegramCfg.accounts)) {
-      const accountGroupCfg = account.groups?.[groupResolution.groupId];
+      const accountGroupCfg = account.groups?.[groupResolution.id];
       if (accountGroupCfg?.session?.reset) {
         return accountGroupCfg.session.reset;
       }
