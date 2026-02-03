@@ -6,12 +6,11 @@ export const TAB_GROUPS = [
     label: "Control",
     tabs: ["overview", "channels", "instances", "sessions", "cron"],
   },
-  { label: "Agent", tabs: ["agents", "skills", "nodes"] },
+  { label: "Agent", tabs: ["skills", "nodes"] },
   { label: "Settings", tabs: ["config", "debug", "logs"] },
 ] as const;
 
 export type Tab =
-  | "agents"
   | "overview"
   | "channels"
   | "instances"
@@ -25,7 +24,6 @@ export type Tab =
   | "logs";
 
 const TAB_PATHS: Record<Tab, string> = {
-  agents: "/agents",
   overview: "/overview",
   channels: "/channels",
   instances: "/instances",
@@ -122,8 +120,6 @@ export function inferBasePathFromPathname(pathname: string): string {
 
 export function iconForTab(tab: Tab): IconName {
   switch (tab) {
-    case "agents":
-      return "folder";
     case "chat":
       return "messageSquare";
     case "overview":
@@ -153,8 +149,6 @@ export function iconForTab(tab: Tab): IconName {
 
 export function titleForTab(tab: Tab) {
   switch (tab) {
-    case "agents":
-      return "Agents";
     case "overview":
       return "Overview";
     case "channels":
@@ -184,8 +178,6 @@ export function titleForTab(tab: Tab) {
 
 export function subtitleForTab(tab: Tab) {
   switch (tab) {
-    case "agents":
-      return "Manage agent workspaces, tools, and identities.";
     case "overview":
       return "Gateway status, entry points, and a fast health read.";
     case "channels":

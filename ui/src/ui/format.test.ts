@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stripThinkingTags } from "./format.ts";
+import { stripThinkingTags } from "./format";
 
 describe("stripThinkingTags", () => {
   it("strips <think>…</think> segments", () => {

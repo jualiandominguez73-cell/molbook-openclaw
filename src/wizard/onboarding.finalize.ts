@@ -21,6 +21,7 @@ import {
   detectBrowserOpenSupport,
   formatControlUiSshHint,
   openUrl,
+  openUrlInBackground,
   probeGatewayReachable,
   waitForGatewayReachable,
   resolveControlUiLinks,
@@ -28,7 +29,6 @@ import {
 import { resolveGatewayService } from "../daemon/service.js";
 import { isSystemdUserServiceAvailable } from "../daemon/systemd.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
-import { restoreTerminalState } from "../terminal/restore.js";
 import { runTui } from "../tui/tui.js";
 import { resolveUserPath } from "../utils.js";
 
@@ -43,9 +43,7 @@ type FinalizeOnboardingOptions = {
   runtime: RuntimeEnv;
 };
 
-export async function finalizeOnboardingWizard(
-  options: FinalizeOnboardingOptions,
-): Promise<{ launchedTui: boolean }> {
+export async function finalizeOnboardingWizard(options: FinalizeOnboardingOptions) {
   const { flow, opts, baseConfig, nextConfig, settings, prompter, runtime } = options;
 
   const withWizardProgress = async <T>(
@@ -288,7 +286,6 @@ export async function finalizeOnboardingWizard(
   let controlUiOpenHint: string | undefined;
   let seededInBackground = false;
   let hatchChoice: "tui" | "web" | "later" | null = null;
-  let launchedTui = false;
 
   if (!opts.skipUi && gatewayProbe.ok) {
     if (hasBootstrap) {
@@ -324,7 +321,6 @@ export async function finalizeOnboardingWizard(
     });
 
     if (hatchChoice === "tui") {
-      restoreTerminalState("pre-onboarding tui");
       await runTui({
         url: links.wsUrl,
         token: settings.authMode === "token" ? settings.gatewayToken : undefined,
@@ -333,7 +329,17 @@ export async function finalizeOnboardingWizard(
         deliver: false,
         message: hasBootstrap ? "Wake up, my friend!" : undefined,
       });
-      launchedTui = true;
+      if (settings.authMode === "token" && settings.gatewayToken) {
+        seededInBackground = await openUrlInBackground(authedUrl);
+      }
+      if (seededInBackground) {
+        await prompter.note(
+          `Web UI seeded in the background. Open later with: ${formatCliCommand(
+            "openclaw dashboard --no-open",
+          )}`,
+          "Web UI",
+        );
+      }
     } else if (hatchChoice === "web") {
       const browserSupport = await detectBrowserOpenSupport();
       if (browserSupport.ok) {
@@ -465,6 +471,4 @@ export async function finalizeOnboardingWizard(
         ? "Onboarding complete. Web UI seeded in the background; open it anytime with the tokenized link above."
         : "Onboarding complete. Use the tokenized dashboard link above to control OpenClaw.",
   );
-
-  return { launchedTui };
 }

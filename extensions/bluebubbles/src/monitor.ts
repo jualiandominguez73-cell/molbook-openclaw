@@ -2167,9 +2167,10 @@ async function processMessage(
       sendBlueBubblesTyping(chatGuidForActions, true, {
         cfg: config,
         accountId: account.accountId,
-      }).catch((err) => {
-        runtime.error?.(`[bluebubbles] typing restart failed: ${String(err)}`);
-      });
+      })
+        .catch((err) => {
+          runtime.error?.(`[bluebubbles] typing restart failed: ${String(err)}`);
+        });
     }, typingRestartDelayMs);
   };
   try {
