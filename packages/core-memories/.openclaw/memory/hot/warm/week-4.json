@@ -1,0 +1,63 @@
+{
+  "week": "week-4",
+  "entries": [
+    {
+      "id": "mem_1769959724966_flagged",
+      "timestamp": "2026-02-01T15:28:44.966Z",
+      "summary": "Remember this: The test recovery code is TEST1234EXAMPLE5678. This is test information.",
+      "key_quotes": [],
+      "emotionalTone": "high",
+      "keywords": [
+        "recovery",
+        "code",
+        "test",
+        "information"
+      ],
+      "linkedTo": [],
+      "privacyLevel": "public",
+      "compressionMethod": "rules",
+      "memoryMdProposal": {
+        "entryId": "mem_1769959724966_flagged",
+        "timestamp": "2026-02-01T15:28:44.966Z",
+        "essence": "Remember this: The test recovery code is TEST1234EXAMPLE5678. This is test information.",
+        "section": "## Important Memories",
+        "reason": "high_emotion_tone",
+        "keywords": [
+          "recovery",
+          "code",
+          "test",
+          "information"
+        ]
+      }
+    },
+    {
+      "id": "mem_1769956129976_decision",
+      "timestamp": "2026-02-01T14:28:49.976Z",
+      "summary": "We decided to build CoreMemories with 3-layer architecture and MEMORY.md integration.",
+      "key_quotes": [],
+      "emotionalTone": "high",
+      "keywords": [
+        "decided",
+        "coreMemories",
+        "architecture",
+        "integration"
+      ],
+      "linkedTo": [],
+      "privacyLevel": "public",
+      "compressionMethod": "rules",
+      "memoryMdProposal": {
+        "entryId": "mem_1769956129976_decision",
+        "timestamp": "2026-02-01T14:28:49.976Z",
+        "essence": "We decided to build CoreMemories with 3-layer architecture and MEMORY.md integration.",
+        "section": "## Important Memories",
+        "reason": "high_emotion_tone",
+        "keywords": [
+          "decided",
+          "coreMemories",
+          "architecture",
+          "integration"
+        ]
+      }
+    }
+  ]
+}
