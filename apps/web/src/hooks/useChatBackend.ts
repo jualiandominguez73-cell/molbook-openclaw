@@ -8,7 +8,7 @@ import { usePreferencesStore } from "@/stores/usePreferencesStore";
 import { useSessionStore } from "@/stores/useSessionStore";
 import { useVercelSessionStore } from "@/stores/useVercelSessionStore";
 import { VercelAgentAdapter } from "@/integrations/vercel-ai/vercel-agent-adapter";
-import { sendChatMessage, abortChat } from "@/lib/api/sessions";
+import { useGatewaySendMessage, useAbortChat } from "@/hooks/mutations/useChatMutations";
 import { uuidv7 } from "@/lib/ids";
 import type { Agent } from "@/stores/useAgentStore";
 import type { StreamingMessage as GatewayStreamingMessage } from "@/stores/useSessionStore";
@@ -23,6 +23,8 @@ export interface ChatBackendHookResult {
   handleStop: () => Promise<void>;
   /** Whether currently streaming */
   isStreaming: boolean;
+  /** Whether a send is in progress */
+  isSending: boolean;
 }
 
 /**
@@ -37,6 +39,10 @@ export function useChatBackend(sessionKey: string, agent?: Agent): ChatBackendHo
 
   // Vercel AI store
   const vercelStore = useVercelSessionStore();
+
+  // Gateway mutations
+  const sendMessageMutation = useGatewaySendMessage(sessionKey);
+  const abortChatMutation = useAbortChat(sessionKey);
 
   // Vercel AI adapter instance (created once per agent)
   const vercelAdapterRef = React.useRef<VercelAgentAdapter | null>(null);
@@ -62,11 +68,12 @@ export function useChatBackend(sessionKey: string, agent?: Agent): ChatBackendHo
   }, [chatBackend, sessionKey, gatewayStore.streamingMessages, vercelStore.streamingMessages]);
 
   const isStreaming = streamingMessage?.isStreaming ?? false;
+  const isSending = sendMessageMutation.isPending;
 
-  // Handle sending messages (gateway implementation)
+  // Handle sending messages (gateway implementation using mutation hook)
   const handleSendGateway = React.useCallback(
     async (message: string) => {
-      if (!sessionKey) {return;}
+      if (!sessionKey) return;
 
       const idempotencyKey = uuidv7();
 
@@ -74,10 +81,8 @@ export function useChatBackend(sessionKey: string, agent?: Agent): ChatBackendHo
       gatewayStore.startStreaming(sessionKey, idempotencyKey);
 
       try {
-        const result = await sendChatMessage({
-          sessionKey,
+        const result = await sendMessageMutation.mutateAsync({
           message,
-          deliver: true,
           idempotencyKey,
         });
 
@@ -85,20 +90,19 @@ export function useChatBackend(sessionKey: string, agent?: Agent): ChatBackendHo
           gatewayStore.setCurrentRunId(sessionKey, result.runId);
         }
 
-        // Gateway streaming is handled via WebSocket events in the real implementation
-        // This is just a placeholder for the local state
+        // Streaming responses are handled via WebSocket events (useGatewayStreamHandler)
       } catch (error) {
         console.error("Failed to send message (gateway):", error);
         gatewayStore.finishStreaming(sessionKey);
       }
     },
-    [sessionKey, gatewayStore]
+    [sessionKey, gatewayStore, sendMessageMutation]
   );
 
   // Handle sending messages (Vercel AI implementation)
   const handleSendVercel = React.useCallback(
     async (message: string) => {
-      if (!sessionKey || !vercelAdapterRef.current) {return;}
+      if (!sessionKey || !vercelAdapterRef.current) return;
 
       const idempotencyKey = uuidv7();
 
@@ -149,23 +153,23 @@ export function useChatBackend(sessionKey: string, agent?: Agent): ChatBackendHo
     [chatBackend, handleSendGateway, handleSendVercel]
   );
 
-  // Handle stopping the stream (gateway)
+  // Handle stopping the stream (gateway using mutation hook)
   const handleStopGateway = React.useCallback(async () => {
-    if (!sessionKey) {return;}
+    if (!sessionKey) return;
 
     const runId = gatewayStore.getCurrentRunId(sessionKey);
     try {
-      await abortChat(sessionKey, runId ?? undefined);
+      await abortChatMutation.mutateAsync({ runId: runId ?? undefined });
     } catch (error) {
       console.error("Failed to abort chat (gateway):", error);
     } finally {
       gatewayStore.clearStreaming(sessionKey);
     }
-  }, [sessionKey, gatewayStore]);
+  }, [sessionKey, gatewayStore, abortChatMutation]);
 
   // Handle stopping the stream (Vercel AI)
   const handleStopVercel = React.useCallback(async () => {
-    if (!sessionKey) {return;}
+    if (!sessionKey) return;
 
     // For Vercel AI, we just clear the streaming state
     // (actual abort would require AbortController support)
@@ -186,5 +190,6 @@ export function useChatBackend(sessionKey: string, agent?: Agent): ChatBackendHo
     handleSend,
     handleStop,
     isStreaming,
+    isSending,
   };
 }

@@ -7,6 +7,7 @@ import {
   buildZaiSdkProvider,
   enrichProvidersWithAuthProfiles,
   resolveApiKeyFromAuthProfile,
+  resolveCcsdkModelMappings,
   resolveDefaultSdkProvider,
   resolveSdkProviders,
   resolveWellKnownProvider,
@@ -240,6 +241,7 @@ describe("resolveDefaultSdkProvider", () => {
 
   it("prefers zai provider", () => {
     const config: OpenClawConfig = {
+      agents: { defaults: { runtime: "claude" } },
       tools: {
         codingTask: {
           enabled: true,
@@ -257,6 +259,7 @@ describe("resolveDefaultSdkProvider", () => {
 
   it("falls back to anthropic if no zai", () => {
     const config: OpenClawConfig = {
+      agents: { defaults: { runtime: "claude" } },
       tools: {
         codingTask: {
           enabled: true,
@@ -274,6 +277,7 @@ describe("resolveDefaultSdkProvider", () => {
 
   it("falls back to first provider if neither zai nor anthropic", () => {
     const config: OpenClawConfig = {
+      agents: { defaults: { runtime: "claude" } },
       tools: {
         codingTask: {
           enabled: true,
@@ -459,7 +463,9 @@ describe("resolveWellKnownProvider", () => {
 describe("Per-agent provider resolution", () => {
   it("per-agent provider: 'openrouter' returns OpenRouter entry", () => {
     const config: OpenClawConfig = {
-      agents: { list: [{ id: "main", claudeSdkOptions: { provider: "openrouter" } }] },
+      agents: {
+        list: [{ id: "main", runtime: "claude", claudeSdkOptions: { provider: "openrouter" } }],
+      },
     };
     const provider = resolveDefaultSdkProvider({ config, agentId: "main" });
     expect(provider?.key).toBe("openrouter");
@@ -468,7 +474,9 @@ describe("Per-agent provider resolution", () => {
 
   it("per-agent provider: 'zai' returns z.AI entry (no API key)", () => {
     const config: OpenClawConfig = {
-      agents: { list: [{ id: "worker1", claudeSdkOptions: { provider: "zai" } }] },
+      agents: {
+        list: [{ id: "worker1", runtime: "claude", claudeSdkOptions: { provider: "zai" } }],
+      },
     };
     const provider = resolveDefaultSdkProvider({ config, agentId: "worker1" });
     expect(provider?.key).toBe("zai");
@@ -477,7 +485,9 @@ describe("Per-agent provider resolution", () => {
 
   it("per-agent provider: 'anthropic' returns Anthropic entry", () => {
     const config: OpenClawConfig = {
-      agents: { list: [{ id: "main", claudeSdkOptions: { provider: "anthropic" } }] },
+      agents: {
+        list: [{ id: "main", runtime: "claude", claudeSdkOptions: { provider: "anthropic" } }],
+      },
     };
     const provider = resolveDefaultSdkProvider({ config, agentId: "main" });
     expect(provider?.key).toBe("anthropic");
@@ -486,7 +496,9 @@ describe("Per-agent provider resolution", () => {
 
   it("per-agent provider takes precedence over tools.codingTask.providers", () => {
     const config: OpenClawConfig = {
-      agents: { list: [{ id: "main", claudeSdkOptions: { provider: "openrouter" } }] },
+      agents: {
+        list: [{ id: "main", runtime: "claude", claudeSdkOptions: { provider: "openrouter" } }],
+      },
       tools: {
         codingTask: {
           enabled: true,
@@ -502,6 +514,7 @@ describe("Per-agent provider resolution", () => {
 
   it("falls back to tools.codingTask.providers when per-agent provider is unset", () => {
     const config: OpenClawConfig = {
+      agents: { defaults: { runtime: "claude" } },
       tools: {
         codingTask: {
           enabled: true,
@@ -586,7 +599,7 @@ describe("Per-agent provider overrides", () => {
   it("per-agent claudeSdkOptions uses specified provider", () => {
     const config: OpenClawConfig = {
       agents: {
-        list: [{ id: "worker1", claudeSdkOptions: { provider: "zai" } }],
+        list: [{ id: "worker1", runtime: "claude", claudeSdkOptions: { provider: "zai" } }],
       },
     };
     const provider = resolveDefaultSdkProvider({ config, agentId: "worker1" });
@@ -596,7 +609,7 @@ describe("Per-agent provider overrides", () => {
   it("per-agent claudeSdkOptions works for main agent", () => {
     const config: OpenClawConfig = {
       agents: {
-        list: [{ id: "main", claudeSdkOptions: { provider: "openrouter" } }],
+        list: [{ id: "main", runtime: "claude", claudeSdkOptions: { provider: "openrouter" } }],
       },
     };
     const provider = resolveDefaultSdkProvider({ config, agentId: "main" });
@@ -606,6 +619,7 @@ describe("Per-agent provider overrides", () => {
   it("agents without per-agent provider fall back to tools.codingTask.providers", () => {
     const config: OpenClawConfig = {
       agents: {
+        defaults: { runtime: "claude" },
         list: [{ id: "main" }],
       },
       tools: {
@@ -624,7 +638,8 @@ describe("Per-agent provider overrides", () => {
   it("per-agent provider for non-existent agent falls back gracefully", () => {
     const config: OpenClawConfig = {
       agents: {
-        list: [{ id: "worker1", claudeSdkOptions: { provider: "zai" } }],
+        defaults: { runtime: "claude" },
+        list: [{ id: "worker1", runtime: "claude", claudeSdkOptions: { provider: "zai" } }],
       },
       tools: {
         codingTask: {
@@ -675,8 +690,8 @@ describe("Parent agent inheritance", () => {
     const config: OpenClawConfig = {
       agents: {
         list: [
-          { id: "parent", claudeSdkOptions: { provider: "zai" } },
-          { id: "child" }, // No provider specified
+          { id: "parent", runtime: "claude", claudeSdkOptions: { provider: "zai" } },
+          { id: "child", runtime: "claude" }, // No provider specified
         ],
       },
     };
@@ -692,8 +707,8 @@ describe("Parent agent inheritance", () => {
     const config: OpenClawConfig = {
       agents: {
         list: [
-          { id: "parent", claudeSdkOptions: { provider: "anthropic" } },
-          { id: "child", claudeSdkOptions: { provider: "openrouter" } },
+          { id: "parent", runtime: "claude", claudeSdkOptions: { provider: "anthropic" } },
+          { id: "child", runtime: "claude", claudeSdkOptions: { provider: "openrouter" } },
         ],
       },
     };
@@ -711,6 +726,7 @@ describe("Parent agent inheritance", () => {
         list: [
           {
             id: "parent",
+            runtime: "claude",
             claudeSdkOptions: {
               models: {
                 opus: "custom-opus",
@@ -718,7 +734,7 @@ describe("Parent agent inheritance", () => {
               },
             },
           },
-          { id: "child" },
+          { id: "child", runtime: "claude" },
         ],
       },
     };
@@ -737,6 +753,7 @@ describe("Parent agent inheritance", () => {
         list: [
           {
             id: "parent",
+            runtime: "claude",
             claudeSdkOptions: {
               models: {
                 opus: "parent-opus",
@@ -745,6 +762,7 @@ describe("Parent agent inheritance", () => {
           },
           {
             id: "child",
+            runtime: "claude",
             claudeSdkOptions: {
               models: {
                 opus: "child-opus",
@@ -766,6 +784,7 @@ describe("Parent agent inheritance", () => {
     const config: OpenClawConfig = {
       agents: {
         defaults: {
+          runtime: "claude",
           ccsdkModels: {
             opus: "global-opus",
             sonnet: "global-sonnet",

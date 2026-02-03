@@ -293,6 +293,8 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.71.1(react@19.2.4))
       '@noble/ed25519':
+        specifier: ^2.3.0
+        version: 2.3.0
         specifier: 3.0.0
         version: 3.0.0
       '@radix-ui/react-avatar':
@@ -2432,6 +2434,9 @@ packages:
   '@noble/curves@2.0.1':
     resolution: {integrity: sha512-vs1Az2OOTBiP4q0pwjW5aF0xp9n4MxVrmkFBxc6EKZc6ddYx5gaZiAsZoq0uRRXWbi3AT/sBqn05eRPtn1JCPw==}
     engines: {node: '>= 20.19.0'}
+
+  '@noble/ed25519@2.3.0':
+    resolution: {integrity: sha512-M7dvXL2B92/M7dw9+gzuydL8qn/jiqNHaoR3Q+cb1q1GHV7uwE17WCyFMG+Y+TZb5izcaXk5TdJRrDUxHXL78A==}
 
   '@noble/ed25519@3.0.0':
     resolution: {integrity: sha512-QyteqMNm0GLqfa5SoYbSC3+Pvykwpn95Zgth4MFVSMKBB75ELl9tX1LAVsN4c3HXOrakHsF2gL4zWDAYCcsnzg==}
@@ -10431,6 +10436,8 @@ snapshots:
   '@noble/curves@2.0.1':
     dependencies:
       '@noble/hashes': 2.0.1
+
+  '@noble/ed25519@2.3.0': {}
 
   '@noble/ed25519@3.0.0': {}
 

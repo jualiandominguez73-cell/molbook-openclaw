@@ -238,8 +238,8 @@ export function useGatewayStreamHandler(options: UseGatewayStreamHandlerOptions 
   );
 
   useEffect(() => {
-    if (!enabled) {return;}
-    if (!gatewayCtx) {return;}
+    if (!enabled) return;
+    if (!gatewayCtx) return;
     return gatewayCtx.addEventListener(handleEvent);
   }, [enabled, gatewayCtx, handleEvent]);
 }

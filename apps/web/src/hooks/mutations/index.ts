@@ -87,3 +87,42 @@ export {
   useUpdateAllNotifications,
 } from "./useUserSettingsMutations";
 export type { UpdateProfileParams, UpdatePreferencesParams, UpdateNotificationParams } from "./useUserSettingsMutations";
+
+// Chat (Gateway)
+export {
+  useGatewaySendMessage,
+  useAbortChat,
+  type SendMessageParams,
+  type SendMessageResult,
+  type AbortChatParams,
+} from "./useChatMutations";
+
+// Channels
+export {
+  useChannelLogout,
+  type ChannelLogoutParams,
+} from "./useChannelMutations";
+
+// Cron Jobs
+export {
+  useCreateCronJob,
+  useUpdateCronJob,
+  useDeleteCronJob,
+  useEnableCronJob,
+  useDisableCronJob,
+  useRunCronJob,
+  type CronJobCreateParams,
+  type CronJobUpdateParams,
+} from "./useCronMutations";
+
+// Skills
+export {
+  useUpdateSkill,
+  useEnableSkill,
+  useDisableSkill,
+  useInstallSkill,
+  useUninstallSkill,
+  useReloadSkills,
+  type SkillUpdateParams,
+  type SkillInstallParams,
+} from "./useSkillMutations";

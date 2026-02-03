@@ -127,3 +127,24 @@ export {
   useChatEventSubscription,
   sessionKeys,
 } from "./useSessions";
+
+// Cron Jobs
+export {
+  useCronJobs,
+  useCronJob,
+  useCronJobsByAgent,
+  useEnabledCronJobs,
+  cronKeys,
+} from "./useCron";
+export type { CronJob, CronJobListResult } from "./useCron";
+
+// Skills
+export {
+  useSkillsStatus,
+  useSkill,
+  useEnabledSkills,
+  useBuiltInSkills,
+  useCustomSkills,
+  skillKeys,
+} from "./useSkills";
+export type { Skill, SkillsStatusReport } from "./useSkills";

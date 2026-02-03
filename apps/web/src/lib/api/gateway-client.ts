@@ -8,8 +8,7 @@
  * - Device identity + signature authentication
  * - Standard frame shapes: { type: "req" | "res" | "event" }
  * - Automatic reconnection with exponential backoff
- * - Event subscriptions
- * - Connection state machine for UI integration
+ * - Event subscriptions with gap detection
  */
 
 import {
@@ -75,6 +74,7 @@ export interface GatewayEvent {
   event: string;
   payload?: unknown;
   seq?: number;
+  stateVersion?: { presence: number; health: number };
 }
 
 export interface GatewayRequestOptions {
@@ -106,6 +106,8 @@ type PendingRequest = {
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 };
+
+type EventHandler = (event: GatewayEvent) => void;
 
 const DEFAULT_GATEWAY_URL = "ws://127.0.0.1:18789";
 const DEFAULT_TIMEOUT = 30000;
@@ -165,13 +167,17 @@ class GatewayClient {
   private connectNonce: string | null = null;
   private connectSent = false;
   private lastSeq: number | null = null;
+  private helloData: GatewayHelloOk | null = null;
 
   // State listeners for React integration
   private stateListeners = new Set<(state: GatewayConnectionState) => void>();
 
-  // Credentials that can be updated from the auth modal
+  // Auth state
   private authToken: string | null = null;
   private authPassword: string | null = null;
+
+  // Subscription handlers (for direct client usage)
+  private subscribers = new Map<string, Set<EventHandler>>();
 
   constructor(config: GatewayClientConfig = {}) {
     this.config = config;
@@ -256,6 +262,32 @@ class GatewayClient {
     return this.connect();
   }
 
+  getHelloData(): GatewayHelloOk | null {
+    return this.helloData;
+  }
+
+  /**
+   * Subscribe to gateway events.
+   * @param event Event name to subscribe to, or "*" for all events
+   * @param handler Event handler function
+   * @returns Unsubscribe function
+   */
+  subscribe(event: string, handler: EventHandler): () => void {
+    let handlers = this.subscribers.get(event);
+    if (!handlers) {
+      handlers = new Set();
+      this.subscribers.set(event, handlers);
+    }
+    handlers.add(handler);
+
+    return () => {
+      handlers?.delete(handler);
+      if (handlers?.size === 0) {
+        this.subscribers.delete(event);
+      }
+    };
+  }
+
   connect(): Promise<void> {
     if (this.connectPromise) {
       return this.connectPromise;
@@ -272,7 +304,7 @@ class GatewayClient {
   }
 
   private doConnect() {
-    if (this.stopped) {return;}
+    if (this.stopped) return;
 
     const url = this.config.url || DEFAULT_GATEWAY_URL;
     this.setConnectionState({ status: "connecting" });
@@ -346,11 +378,11 @@ class GatewayClient {
   }
 
   private async sendConnect() {
-      if (this.connectSent) return;
-      this.connectSent = true;
-      this.clearConnectTimer();
+    if (this.connectSent) return;
+    this.connectSent = true;
+    this.clearConnectTimer();
 
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     // crypto.subtle is only available in secure contexts (HTTPS, localhost)
     const isSecureContext = typeof crypto !== "undefined" && !!crypto.subtle;
@@ -454,6 +486,7 @@ class GatewayClient {
         });
       }
 
+      this.helloData = hello;
       this.backoffMs = INITIAL_BACKOFF;
       this.setConnectionState({ status: "connected" });
       this.config.onHello?.(hello);
@@ -516,6 +549,13 @@ class GatewayClient {
         this.lastSeq = seq;
       }
 
+      // Notify subscribers (for direct client usage)
+      this.notifySubscribers({
+        event: evt.event,
+        payload: evt.payload,
+        seq: evt.seq,
+      });
+
       try {
         this.config.onEvent?.({
           event: evt.event,
@@ -544,8 +584,34 @@ class GatewayClient {
     }
   }
 
+  private notifySubscribers(event: GatewayEvent) {
+    // Notify specific event subscribers
+    const handlers = this.subscribers.get(event.event);
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          handler(event);
+        } catch (err) {
+          console.error(`[gateway] subscriber error for "${event.event}":`, err);
+        }
+      }
+    }
+
+    // Notify wildcard subscribers
+    const wildcardHandlers = this.subscribers.get("*");
+    if (wildcardHandlers) {
+      for (const handler of wildcardHandlers) {
+        try {
+          handler(event);
+        } catch (err) {
+          console.error("[gateway] wildcard subscriber error:", err);
+        }
+      }
+    }
+  }
+
   private scheduleReconnect() {
-    if (this.stopped || this.reconnectTimer) {return;}
+    if (this.stopped || this.reconnectTimer) return;
 
     const delay = this.backoffMs;
     this.backoffMs = Math.min(this.backoffMs * 1.7, MAX_BACKOFF);
@@ -572,6 +638,8 @@ class GatewayClient {
       this.reconnectTimer = null;
     }
 
+    this.clearConnectTimer();
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -586,6 +654,8 @@ class GatewayClient {
     this.connectPromise = null;
     this.connectResolve = null;
     this.connectReject = null;
+    this.helloData = null;
+    this.lastSeq = null;
   }
 
   async request<T = unknown>(
@@ -593,7 +663,8 @@ class GatewayClient {
     params?: unknown,
     options?: GatewayRequestOptions
   ): Promise<T> {
-    if (!this.isConnected()) {
+    // Allow connect request to be sent even when not fully connected
+    if (method !== "connect" && !this.isConnected()) {
       throw new Error("Not connected to gateway");
     }
 

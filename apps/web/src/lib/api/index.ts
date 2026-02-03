@@ -144,3 +144,55 @@ export {
   type WorktreeDeleteParams,
   type WorktreeMkdirParams,
 } from "./worktree";
+
+// Overseer API functions
+export {
+  getOverseerStatus,
+  listOverseerGoals,
+  createGoal as createOverseerGoal,
+  getGoalStatus,
+  pauseGoal,
+  resumeGoal,
+  cancelGoal,
+  deleteGoal as deleteOverseerGoal,
+  type OverseerStatusResult,
+  type OverseerGoal,
+  type OverseerGoalCreateParams,
+  type OverseerGoalCreateResult,
+  type OverseerGoalStatusResult,
+  type OverseerGoalListResult,
+} from "./overseer";
+
+// Cron API functions
+export {
+  listCronJobs,
+  getCronJob,
+  addCronJob,
+  updateCronJob,
+  removeCronJob,
+  enableCronJob,
+  disableCronJob,
+  runCronJob,
+  type CronJob,
+  type CronJobCreateParams,
+  type CronJobUpdateParams,
+  type CronJobListResult,
+  type CronJobRunResult,
+} from "./cron";
+
+// Skills API functions
+export {
+  getSkillsStatus,
+  getSkill,
+  updateSkill,
+  enableSkill,
+  disableSkill,
+  installSkill,
+  uninstallSkill,
+  reloadSkills,
+  type Skill,
+  type SkillsStatusReport,
+  type SkillUpdateParams,
+  type SkillInstallParams,
+  type SkillInstallResult,
+} from "./skills";

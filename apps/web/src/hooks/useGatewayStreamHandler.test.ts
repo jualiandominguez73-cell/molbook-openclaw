@@ -81,47 +81,33 @@ vi.mock("@/providers/GatewayProvider", () => ({
 }));
 
 vi.mock("@/stores/useSessionStore", () => {
-  const useSessionStoreMock = (selector?: (s: unknown) => unknown) => {
-    const store = {
-      ...hoisted.store.state,
-      startStreaming: hoisted.store.startStreaming,
-      setStreamingContent: hoisted.store.setStreamingContent,
-      appendStreamingContent: hoisted.store.appendStreamingContent,
-      updateToolCall: hoisted.store.updateToolCall,
-      finishStreaming: hoisted.store.finishStreaming,
-      clearStreaming: hoisted.store.clearStreaming,
-      findSessionKeyByRunId: hoisted.store.findSessionKeyByRunId,
-    };
-    return selector ? selector(store) : store;
-  };
-
-const useSessionStoreMock = Object.assign(
-  vi.fn((selector?: (s: unknown) => unknown) => {
-    const store = {
-      ...state,
-      startStreaming,
-      setStreamingContent,
-      appendStreamingContent,
-      updateToolCall,
-      finishStreaming,
-      clearStreaming,
-      findSessionKeyByRunId,
-    };
-    return selector ? selector(store) : store;
-  }),
-  {
-    getState: () => ({
-      ...state,
-      startStreaming,
-      setStreamingContent,
-      appendStreamingContent,
-      updateToolCall,
-      finishStreaming,
-      clearStreaming,
-      findSessionKeyByRunId,
+  const useSessionStoreMock = Object.assign(
+    vi.fn((selector?: (s: unknown) => unknown) => {
+      const store = {
+        ...hoisted.store.state,
+        startStreaming: hoisted.store.startStreaming,
+        setStreamingContent: hoisted.store.setStreamingContent,
+        appendStreamingContent: hoisted.store.appendStreamingContent,
+        updateToolCall: hoisted.store.updateToolCall,
+        finishStreaming: hoisted.store.finishStreaming,
+        clearStreaming: hoisted.store.clearStreaming,
+        findSessionKeyByRunId: hoisted.store.findSessionKeyByRunId,
+      };
+      return selector ? selector(store) : store;
     }),
-  },
-);
+    {
+      getState: () => ({
+        ...hoisted.store.state,
+        startStreaming: hoisted.store.startStreaming,
+        setStreamingContent: hoisted.store.setStreamingContent,
+        appendStreamingContent: hoisted.store.appendStreamingContent,
+        updateToolCall: hoisted.store.updateToolCall,
+        finishStreaming: hoisted.store.finishStreaming,
+        clearStreaming: hoisted.store.clearStreaming,
+        findSessionKeyByRunId: hoisted.store.findSessionKeyByRunId,
+      }),
+    },
+  );
 
   return { useSessionStore: useSessionStoreMock };
 });

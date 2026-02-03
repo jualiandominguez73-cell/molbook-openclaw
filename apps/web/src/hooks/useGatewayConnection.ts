@@ -12,19 +12,29 @@ import {
   type GatewayAuthCredentials,
   type GatewayEvent,
   type GatewayClientConfig,
+  type GatewayHelloOk,
 } from "@/lib/api/gateway-client";
+
+export interface GapInfo {
+  expected: number;
+  received: number;
+}
 
 export interface UseGatewayConnectionOptions {
   /** Gateway WebSocket URL (defaults to ws://127.0.0.1:18789) */
   url?: string;
   /** Authentication token */
   token?: string;
-  /** Authentication password */
+  /** Password for authentication */
   password?: string;
   /** Auto-connect on mount */
   autoConnect?: boolean;
   /** Event handler */
   onEvent?: (event: GatewayEvent) => void;
+  /** Gap detection handler */
+  onGap?: (info: GapInfo) => void;
+  /** Hello handler (called after successful connection) */
+  onHello?: (hello: GatewayHelloOk) => void;
 }
 
 export interface UseGatewayConnectionResult {
@@ -40,7 +50,7 @@ export interface UseGatewayConnectionResult {
   isConnecting: boolean;
   /** Error message if auth failed */
   authError: string | undefined;
-  /** Connection error (legacy) */
+  /** Connection error */
   error: Error | null;
   /** Authenticate with credentials and retry connection */
   authenticate: (credentials: GatewayAuthCredentials) => Promise<void>;
@@ -52,6 +62,12 @@ export interface UseGatewayConnectionResult {
   retryConnect: () => Promise<void>;
   /** Stop the gateway connection */
   disconnect: () => void;
+  /** Hello data from the gateway (features, auth info, etc.) */
+  helloData: GatewayHelloOk | null;
+  /** Number of reconnection attempts */
+  reconnectAttempts: number;
+  /** Last gap info if any sequence gaps were detected */
+  lastGap: GapInfo | null;
 }
 
 /**
@@ -63,9 +79,15 @@ export interface UseGatewayConnectionResult {
 export function useGatewayConnection(
   options: UseGatewayConnectionOptions = {}
 ): UseGatewayConnectionResult {
-  const { url, token, password, autoConnect = true, onEvent } = options;
+  const { url, token, password, autoConnect = true, onEvent, onGap, onHello } = options;
 
   const mountedRef = useRef(true);
+  const wasConnectedRef = useRef(false);
+
+  // Legacy state for backward compatibility
+  const [helloData, setHelloData] = useState<GatewayHelloOk | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [lastGap, setLastGap] = useState<GapInfo | null>(null);
 
   // Initialize client once with config
   const client = useMemo(() => {
@@ -74,9 +96,23 @@ export function useGatewayConnection(
       token,
       password,
       onEvent,
+      onHello: (hello) => {
+        if (mountedRef.current) {
+          setHelloData(hello);
+          setReconnectAttempts(0); // Reset on successful connection
+          wasConnectedRef.current = true;
+          onHello?.(hello);
+        }
+      },
+      onGap: (info) => {
+        if (mountedRef.current) {
+          setLastGap(info);
+          onGap?.(info);
+        }
+      },
     };
     return getGatewayClient(config);
-  }, [url, token, password, onEvent]);
+  }, [url, token, password, onEvent, onGap, onHello]);
 
   const [state, setState] = useState<GatewayConnectionState>(client.getConnectionState());
   const [error, setError] = useState<Error | null>(null);
@@ -86,6 +122,12 @@ export function useGatewayConnection(
     const unsubscribe = client.onStateChange((newState) => {
       if (mountedRef.current) {
         setState(newState);
+
+        // Track reconnection attempts
+        if (newState.status === "connecting" && wasConnectedRef.current) {
+          setReconnectAttempts((prev) => prev + 1);
+        }
+
         // Update error for backward compatibility
         if (newState.status === "error") {
           setError(new Error((newState as { error: string }).error));
@@ -178,6 +220,8 @@ export function useGatewayConnection(
 
   const disconnect = useCallback(() => {
     client.stop();
+    setHelloData(null);
+    wasConnectedRef.current = false;
   }, [client]);
 
   const isConnected = state.status === "connected";
@@ -198,6 +242,9 @@ export function useGatewayConnection(
     connect,
     retryConnect,
     disconnect,
+    helloData,
+    reconnectAttempts,
+    lastGap,
   };
 }
 

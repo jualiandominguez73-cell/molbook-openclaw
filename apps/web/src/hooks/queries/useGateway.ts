@@ -37,8 +37,8 @@ export function useGatewayStatus() {
   return useQuery({
     queryKey: gatewayKeys.status(),
     queryFn: getStatus,
-    staleTime: 1000 * 10, // 10 seconds
-    refetchInterval: 1000 * 30, // Auto-refresh every 30 seconds
+    staleTime: 1000 * 30, // 30 seconds
+    refetchInterval: 1000 * 60, // Auto-refresh every 60 seconds
   });
 }
 
