@@ -189,6 +189,7 @@ export const AgentDefaultsSchema = z
           .optional(),
         /** Runtime for sub-agents. "inherit" means inherit from parent agent's runtime. */
         runtime: z.enum(["pi", "claude", "inherit"]).optional(),
+        thinking: z.string().optional(),
       })
       .strict()
       .optional(),

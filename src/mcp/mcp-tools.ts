@@ -91,6 +91,96 @@ function coerceHeaders(headers: Record<string, string> | undefined): HeadersInit
   return Object.fromEntries(entries);
 }
 
+/**
+ * Detects if a server config requires authentication based on headers or environment
+ */
+function detectAuthRequired(server: McpServerConfig): boolean {
+  // Check for auth headers (SSE and HTTP transports have headers)
+  if ("headers" in server && server.headers && typeof server.headers === "object") {
+    const headers = server.headers as Record<string, unknown>;
+    const authKeys = ["authorization", "x-api-key", "x-auth-token", "token", "apikey"];
+    return authKeys.some((key) =>
+      Object.keys(headers).some((h) => h.toLowerCase().includes(key.toLowerCase())),
+    );
+  }
+
+  // Check for auth-related environment variables (STDIO transport has env)
+  if ("env" in server && server.env && typeof server.env === "object") {
+    const env = server.env as Record<string, unknown>;
+    const authKeys = ["token", "key", "secret", "password", "api_key", "auth"];
+    return authKeys.some((key) =>
+      Object.keys(env).some((e) => e.toLowerCase().includes(key.toLowerCase())),
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Gets the transport type hint for a server config
+ */
+function getTransportHint(server: McpServerConfig): string {
+  const transport = typeof server.transport === "string" ? server.transport : "stdio";
+  if (transport === "http") return "[HTTP]";
+  if (transport === "sse") return "[SSE]";
+  return "[Local]"; // stdio
+}
+
+/**
+ * Builds an enhanced tool description with context about the server and requirements
+ */
+function buildEnhancedDescription(
+  toolName: string,
+  toolDescription: string | undefined,
+  serverId: string,
+  serverLabel: string | undefined,
+  server: McpServerConfig,
+): string {
+  const hasDescription = toolDescription && toolDescription.trim().length > 0;
+  const baseDesc = hasDescription
+    ? toolDescription.trim()
+    : toolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const hints: string[] = [];
+
+  // Add transport type hint for remote servers
+  const transport = typeof server.transport === "string" ? server.transport : "stdio";
+  if (transport === "http" || transport === "sse") {
+    hints.push(getTransportHint(server));
+  }
+
+  // Add auth requirement hint
+  if (detectAuthRequired(server)) {
+    hints.push("[Requires Auth]");
+  }
+
+  const prefix = hints.length > 0 ? `${hints.join(" ")} ` : "";
+  const serverRef = serverLabel?.trim() ? `via ${serverLabel}` : `via mcp:${serverId}`;
+
+  return `${prefix}${baseDesc} (${serverRef})`;
+}
+
+/**
+ * Enhances parameter descriptions with type information when missing
+ */
+function enhanceParameterDescription(
+  param: Record<string, unknown>,
+  paramName: string,
+): Record<string, unknown> {
+  if (typeof param.description === "string" && param.description.trim().length > 0) {
+    // Already has a description
+    return param;
+  }
+
+  // Add a minimal description based on parameter name and type
+  const type = param.type || "unknown";
+  const enhanced = { ...param };
+  const displayName = paramName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  enhanced.description = `${displayName} (${type})`;
+
+  return enhanced;
+}
+
 function stringifyToolResultContent(
   block: Record<string, unknown>,
 ): AgentToolResult<unknown>["content"][number] {
@@ -293,6 +383,7 @@ function buildMcpPiTool(params: {
   serverLabel?: string;
   tool: McpRemoteToolDef;
   connection: McpConnection;
+  serverConfig?: McpServerConfig;
 }): AnyAgentTool {
   const rawName = mcpPiToolName(params.serverId, params.tool.name);
   const normalizedName = normalizeToolName(rawName);
@@ -302,7 +393,32 @@ function buildMcpPiTool(params: {
   // The Pi Agent runtime expects TypeBox-style JSON schema objects.
   // MCP servers return JSON Schema; this is compatible enough for our tool
   // validation + provider schema normalization pipeline.
-  const parameters = (params.tool.inputSchema ?? { type: "object" }) as any;
+  let parameters = (params.tool.inputSchema ?? { type: "object" }) as any;
+
+  // Phase #2: Enhance parameter descriptions
+  if (parameters.properties && typeof parameters.properties === "object") {
+    const enhanced: Record<string, unknown> = {};
+    for (const [paramName, paramDef] of Object.entries(parameters.properties)) {
+      if (paramDef && typeof paramDef === "object") {
+        enhanced[paramName] = enhanceParameterDescription(
+          paramDef as Record<string, unknown>,
+          paramName,
+        );
+      }
+    }
+    parameters = { ...parameters, properties: enhanced };
+  }
+
+  // Build enhanced description with server context and auth hints
+  const enhancedDescription = params.serverConfig
+    ? buildEnhancedDescription(
+        params.tool.name,
+        params.tool.description,
+        params.serverId,
+        params.serverLabel,
+        params.serverConfig,
+      )
+    : (params.tool.description ?? `MCP tool: ${params.tool.name}`);
 
   const execute: AnyAgentTool["execute"] = async (toolCallId, toolParams, signal) => {
     const result = await params.connection.callTool({
@@ -319,7 +435,10 @@ function buildMcpPiTool(params: {
         .filter(Boolean)
         .join("\n")
         .trim();
-      throw new Error(text || `MCP tool failed: ${params.serverId}/${params.tool.name}`);
+      // Phase #2: Enhanced error message with more context
+      const errorMsg =
+        text || `MCP tool failed: ${params.serverLabel || params.serverId}/${params.tool.name}`;
+      throw new Error(errorMsg);
     }
 
     const content = blocks.map((b) => stringifyToolResultContent(b));
@@ -329,6 +448,7 @@ function buildMcpPiTool(params: {
       details: {
         toolCallId,
         serverId: params.serverId,
+        serverLabel: params.serverLabel,
         tool: params.tool.name,
         result,
       },
@@ -338,7 +458,7 @@ function buildMcpPiTool(params: {
   return {
     name: normalizedName,
     label,
-    description: params.tool.description ?? `MCP tool: ${params.tool.name}`,
+    description: enhancedDescription,
     parameters,
     execute,
   } as AnyAgentTool;
@@ -392,6 +512,7 @@ export async function resolveMcpToolsForAgent(params: {
               serverLabel: (server as any).label,
               tool,
               connection: conn,
+              serverConfig: server,
             }),
           );
         }

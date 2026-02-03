@@ -1846,3 +1846,274 @@ describe("STDIO transport configuration", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase #1 & #2: Enhanced tool descriptions and parameters
+// ---------------------------------------------------------------------------
+
+describe("Enhanced tool descriptions (Phase #1)", () => {
+  const mockConnection = { callTool: vi.fn() } as any;
+
+  it("includes server context in fallback description", () => {
+    const server: McpServerConfig = { command: "echo" };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      serverLabel: "GitHub API",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    expect(tool.description).toContain("create issue");
+    expect(tool.description).toContain("GitHub API");
+  });
+
+  it("preserves original description when provided", () => {
+    const server: McpServerConfig = { command: "echo" };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      serverLabel: "GitHub API",
+      tool: {
+        name: "create_issue",
+        description: "Create a new GitHub issue with title and body",
+        inputSchema: {},
+      },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    expect(tool.description).toContain("Create a new GitHub issue with title and body");
+    expect(tool.description).toContain("GitHub API");
+  });
+
+  it("adds auth requirement hint for servers with auth headers", () => {
+    const server: McpServerConfig = {
+      command: "echo",
+      headers: { Authorization: "Bearer token123" },
+    };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    expect(tool.description).toContain("[Requires Auth]");
+  });
+
+  it("adds auth hint for servers with auth environment variables", () => {
+    const server: McpServerConfig = {
+      command: "echo",
+      env: { GITHUB_TOKEN: "secret" },
+    };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    expect(tool.description).toContain("[Requires Auth]");
+  });
+
+  it("adds transport type hint for HTTP servers", () => {
+    const server: McpServerConfig = {
+      transport: "http",
+      url: "https://api.example.com/mcp",
+    };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "remote_api",
+      tool: { name: "query", inputSchema: {} },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    expect(tool.description).toContain("[HTTP]");
+  });
+
+  it("adds transport type hint for SSE servers", () => {
+    const server: McpServerConfig = {
+      transport: "sse",
+      url: "https://api.example.com/events",
+    };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "events_api",
+      tool: { name: "subscribe", inputSchema: {} },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    expect(tool.description).toContain("[SSE]");
+  });
+
+  it("does not add transport hint for local STDIO servers", () => {
+    const server: McpServerConfig = {
+      command: "node",
+      args: ["server.js"],
+    };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "local_tool",
+      tool: { name: "process", inputSchema: {} },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    // Should not have [Local], [HTTP], or [SSE]
+    expect(tool.description).not.toMatch(/\[(Local|HTTP|SSE)\]/);
+  });
+
+  it("falls back to non-enhanced description when serverConfig not provided", () => {
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+    });
+
+    // Should use default description without enhancement
+    expect(tool.description).toMatch(/MCP tool: create_issue/i);
+  });
+});
+
+describe("Enhanced parameter descriptions (Phase #2)", () => {
+  const mockConnection = { callTool: vi.fn() } as any;
+
+  it("enhances parameter descriptions when missing", () => {
+    const server: McpServerConfig = { command: "echo" };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "test",
+      tool: {
+        name: "test_tool",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: { type: "string" },
+            repo: { type: "string" },
+          },
+        },
+      },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    // Parameters should be enhanced with descriptions
+    const params = tool.parameters as any;
+    expect(params.properties.owner.description).toContain("Owner");
+    expect(params.properties.repo.description).toContain("Repo");
+  });
+
+  it("preserves existing parameter descriptions", () => {
+    const server: McpServerConfig = { command: "echo" };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "test",
+      tool: {
+        name: "test_tool",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Search query string",
+            },
+          },
+        },
+      },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    const params = tool.parameters as any;
+    expect(params.properties.query.description).toBe("Search query string");
+  });
+
+  it("includes parameter type in enhanced description", () => {
+    const server: McpServerConfig = { command: "echo" };
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "test",
+      tool: {
+        name: "test_tool",
+        inputSchema: {
+          type: "object",
+          properties: {
+            count: { type: "number" },
+            enabled: { type: "boolean" },
+          },
+        },
+      },
+      connection: mockConnection,
+      serverConfig: server,
+    });
+
+    const params = tool.parameters as any;
+    expect(params.properties.count.description).toContain("number");
+    expect(params.properties.enabled.description).toContain("boolean");
+  });
+});
+
+describe("Enhanced error messages (Phase #2)", () => {
+  let mockConnection: any;
+
+  beforeEach(() => {
+    mockConnection = { callTool: vi.fn() } as any;
+  });
+
+  it("includes server label in error message", async () => {
+    mockConnection.callTool.mockResolvedValue({
+      content: [{ type: "text", text: "API error" }],
+      isError: true,
+    });
+
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      serverLabel: "GitHub API",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+    });
+
+    await expect(tool.execute("call-1", {}, undefined)).rejects.toThrow("API error");
+  });
+
+  it("includes serverId fallback in error message when label missing", async () => {
+    mockConnection.callTool.mockResolvedValue({
+      content: [],
+      isError: true,
+    });
+
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+    });
+
+    await expect(tool.execute("call-1", {}, undefined)).rejects.toThrow(/github.*create_issue/);
+  });
+
+  it("includes serverLabel in execution details", async () => {
+    mockConnection.callTool.mockResolvedValue({
+      content: [{ type: "text", text: "Success" }],
+    });
+
+    const tool = buildMcpPiTool({
+      agentId: "main",
+      serverId: "github",
+      serverLabel: "GitHub API",
+      tool: { name: "create_issue", inputSchema: {} },
+      connection: mockConnection,
+    });
+
+    const result = await tool.execute("call-1", {}, undefined);
+    expect((result.details as any).serverLabel).toBe("GitHub API");
+  });
+});

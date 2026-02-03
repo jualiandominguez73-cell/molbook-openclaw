@@ -252,6 +252,8 @@ export type AgentDefaultsConfig = {
      * - "inherit": Explicitly inherit from parent (same as not setting this)
      */
     runtime?: AgentRuntime | "inherit";
+    /** Default thinking level for spawned sub-agents (e.g. "off", "low", "medium", "high"). */
+    thinking?: string;
   };
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: {

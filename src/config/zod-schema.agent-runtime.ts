@@ -446,6 +446,7 @@ export const AgentEntrySchema = z
       })
       .strict()
       .optional(),
+    skills: z.array(z.string()).optional(),
     memorySearch: MemorySearchSchema,
     humanDelay: HumanDelaySchema.optional(),
     heartbeat: HeartbeatSchema,
@@ -467,6 +468,7 @@ export const AgentEntrySchema = z
           .optional(),
         /** Runtime for sub-agents spawned from this agent. "inherit" means inherit from this agent's runtime. */
         runtime: z.enum(["pi", "claude", "inherit"]).optional(),
+        thinking: z.string().optional(),
       })
       .strict()
       .optional(),

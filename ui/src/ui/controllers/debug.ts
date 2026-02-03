@@ -8,8 +8,7 @@ export type DebugState = {
   debugStatus: StatusSummary | null;
   debugHealth: HealthSnapshot | null;
   debugModels: unknown[];
-  debugHeartbeat: unknown | null;
-  debugCronJobs: unknown[];
+  debugHeartbeat: unknown;
   debugCallMethod: string;
   debugCallParams: string;
   debugCallResult: string | null;
@@ -17,24 +16,25 @@ export type DebugState = {
 };
 
 export async function loadDebug(state: DebugState) {
-  if (!state.client || !state.connected) return;
-  if (state.debugLoading) return;
+  if (!state.client || !state.connected) {
+    return;
+  }
+  if (state.debugLoading) {
+    return;
+  }
   state.debugLoading = true;
   try {
-    const [status, health, models, heartbeat, cronJobs] = await Promise.all([
+    const [status, health, models, heartbeat] = await Promise.all([
       state.client.request("status", {}),
       state.client.request("health", {}),
       state.client.request("models.list", {}),
       state.client.request("last-heartbeat", {}),
-      state.client.request("cron.list", {}).catch(() => ({ jobs: [] })),
     ]);
     state.debugStatus = status as StatusSummary;
     state.debugHealth = health as HealthSnapshot;
     const modelPayload = models as { models?: unknown[] } | undefined;
     state.debugModels = Array.isArray(modelPayload?.models) ? modelPayload?.models : [];
-    state.debugHeartbeat = heartbeat as unknown;
-    const cronPayload = cronJobs as { jobs?: unknown[] } | undefined;
-    state.debugCronJobs = Array.isArray(cronPayload?.jobs) ? cronPayload.jobs : [];
+    state.debugHeartbeat = heartbeat;
   } catch (err) {
     state.debugCallError = String(err);
   } finally {
@@ -42,28 +42,10 @@ export async function loadDebug(state: DebugState) {
   }
 }
 
-export async function loadDebugStatus(state: DebugState) {
-  if (!state.client || !state.connected) return;
-  try {
-    const status = await state.client.request("status", {});
-    state.debugStatus = status as StatusSummary;
-  } catch {
-    // Silently fail; status cards will show stale or N/A
-  }
-}
-
-export async function loadDebugHeartbeat(state: DebugState) {
-  if (!state.client || !state.connected) return;
-  try {
-    const heartbeat = await state.client.request("last-heartbeat", {});
-    state.debugHeartbeat = heartbeat as unknown;
-  } catch {
-    // Silently fail
-  }
-}
-
 export async function callDebugMethod(state: DebugState) {
-  if (!state.client || !state.connected) return;
+  if (!state.client || !state.connected) {
+    return;
+  }
   state.debugCallError = null;
   state.debugCallResult = null;
   try {
