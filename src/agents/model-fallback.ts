@@ -2,6 +2,8 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { FailoverReason } from "./pi-embedded-helpers.js";
 import {
   ensureAuthProfileStore,
+  getProfileCooldownRemainingMs,
+  isProfileApproachingCooldown,
   isProfileInCooldown,
   resolveAuthProfileOrder,
 } from "./auth-profiles.js";
@@ -51,6 +53,82 @@ function shouldRethrowAbort(err: unknown): boolean {
   return isAbortError(err) && !isTimeoutError(err);
 }
 
+/**
+ * Format milliseconds into a human-readable duration string.
+ */
+function formatCooldownDuration(ms: number): string {
+  if (ms <= 0) return "0s";
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  }
+  return `${seconds}s`;
+}
+
+/**
+ * Log a warning when a model is switched due to cooldown.
+ */
+function logCooldownSwitch(params: {
+  fromProvider: string;
+  fromModel: string;
+  toProvider: string;
+  toModel: string;
+  reason: "cooldown" | "approaching_cooldown" | "all_profiles_cooldown";
+  cooldownRemainingMs?: number;
+}): void {
+  const { fromProvider, fromModel, toProvider, toModel, reason, cooldownRemainingMs } = params;
+  const fromKey = `${fromProvider}/${fromModel}`;
+  const toKey = `${toProvider}/${toModel}`;
+
+  const cooldownInfo = cooldownRemainingMs
+    ? ` (cooldown: ${formatCooldownDuration(cooldownRemainingMs)})`
+    : "";
+
+  switch (reason) {
+    case "cooldown":
+      console.warn(
+        `\x1b[33m[model-fallback]\x1b[0m \x1b[33mModel ${fromKey} is in cooldown${cooldownInfo}. Switching to ${toKey}.\x1b[0m`,
+      );
+      break;
+    case "approaching_cooldown":
+      console.warn(
+        `\x1b[33m[model-fallback]\x1b[0m \x1b[33mModel ${fromKey} has accumulated errors and may enter cooldown soon. Proactively switching to ${toKey}.\x1b[0m`,
+      );
+      break;
+    case "all_profiles_cooldown":
+      console.warn(
+        `\x1b[33m[model-fallback]\x1b[0m \x1b[33mAll profiles for ${fromKey} are in cooldown${cooldownInfo}. Switching to ${toKey}.\x1b[0m`,
+      );
+      break;
+  }
+}
+
+/**
+ * Log a warning when a model enters cooldown but no fallback is available.
+ */
+function logCooldownNoFallback(params: {
+  provider: string;
+  model: string;
+  cooldownRemainingMs?: number;
+}): void {
+  const { provider, model, cooldownRemainingMs } = params;
+  const key = `${provider}/${model}`;
+  const cooldownInfo = cooldownRemainingMs
+    ? ` Cooldown remaining: ${formatCooldownDuration(cooldownRemainingMs)}.`
+    : "";
+  console.warn(
+    `\x1b[31m[model-fallback]\x1b[0m \x1b[31mModel ${key} is in cooldown and no fallback is available.${cooldownInfo}\x1b[0m`,
+  );
+}
+
 function buildAllowedModelKeys(
   cfg: OpenClawConfig | undefined,
   defaultProvider: string,
@@ -71,6 +149,77 @@ function buildAllowedModelKeys(
     keys.add(modelKey(parsed.provider, parsed.model));
   }
   return keys.size > 0 ? keys : null;
+}
+
+function resolveCodingFallbackCandidates(params: {
+  cfg: OpenClawConfig | undefined;
+  defaultProvider: string;
+  modelOverride?: string;
+}): ModelCandidate[] {
+  const aliasIndex = buildModelAliasIndex({
+    cfg: params.cfg ?? {},
+    defaultProvider: params.defaultProvider,
+  });
+  const allowlist = buildAllowedModelKeys(params.cfg, params.defaultProvider);
+  const seen = new Set<string>();
+  const candidates: ModelCandidate[] = [];
+
+  const addCandidate = (candidate: ModelCandidate, enforceAllowlist: boolean) => {
+    if (!candidate.provider || !candidate.model) {
+      return;
+    }
+    const key = modelKey(candidate.provider, candidate.model);
+    if (seen.has(key)) {
+      return;
+    }
+    if (enforceAllowlist && allowlist && !allowlist.has(key)) {
+      return;
+    }
+    seen.add(key);
+    candidates.push(candidate);
+  };
+
+  const addRaw = (raw: string, enforceAllowlist: boolean) => {
+    const resolved = resolveModelRefFromString({
+      raw: String(raw ?? ""),
+      defaultProvider: params.defaultProvider,
+      aliasIndex,
+    });
+    if (!resolved) {
+      return;
+    }
+    addCandidate(resolved.ref, enforceAllowlist);
+  };
+
+  if (params.modelOverride?.trim()) {
+    addRaw(params.modelOverride, false);
+  } else {
+    const codingModel = params.cfg?.agents?.defaults?.codingModel as
+      | { primary?: string }
+      | string
+      | undefined;
+    const primary = typeof codingModel === "string" ? codingModel.trim() : codingModel?.primary;
+    if (primary?.trim()) {
+      addRaw(primary, false);
+    }
+  }
+
+  const codingFallbacks = (() => {
+    const codingModel = params.cfg?.agents?.defaults?.codingModel as
+      | { fallbacks?: string[] }
+      | string
+      | undefined;
+    if (codingModel && typeof codingModel === "object") {
+      return codingModel.fallbacks ?? [];
+    }
+    return [];
+  })();
+
+  for (const raw of codingFallbacks) {
+    addRaw(raw, true);
+  }
+
+  return candidates;
 }
 
 function resolveImageFallbackCandidates(params: {
@@ -265,6 +414,30 @@ export async function runWithModelFallback<T>(params: {
 
       if (profileIds.length > 0 && !isAnyProfileAvailable) {
         // All profiles for this provider are in cooldown; skip without attempting
+        const maxCooldownMs = Math.max(
+          ...profileIds.map((id) => getProfileCooldownRemainingMs(authStore, id)),
+        );
+
+        // Log warning about cooldown switch if there's a next candidate
+        const nextCandidate = candidates[i + 1];
+        if (nextCandidate) {
+          logCooldownSwitch({
+            fromProvider: candidate.provider,
+            fromModel: candidate.model,
+            toProvider: nextCandidate.provider,
+            toModel: nextCandidate.model,
+            reason: "all_profiles_cooldown",
+            cooldownRemainingMs: maxCooldownMs,
+          });
+        } else {
+          // No fallback available
+          logCooldownNoFallback({
+            provider: candidate.provider,
+            model: candidate.model,
+            cooldownRemainingMs: maxCooldownMs,
+          });
+        }
+
         attempts.push({
           provider: candidate.provider,
           model: candidate.model,
@@ -272,6 +445,33 @@ export async function runWithModelFallback<T>(params: {
           reason: "rate_limit",
         });
         continue;
+      }
+
+      // Proactive switching: check if any profile is approaching cooldown
+      const isApproaching = profileIds.some((id) => isProfileApproachingCooldown(authStore, id));
+      if (isApproaching && i === 0 && candidates.length > 1) {
+        const nextCandidate = candidates[1];
+        // Check if the next candidate is available
+        const nextProfileIds = resolveAuthProfileOrder({
+          cfg: params.cfg,
+          store: authStore,
+          provider: nextCandidate.provider,
+        });
+        const isNextAvailable =
+          nextProfileIds.length === 0 ||
+          nextProfileIds.some((id) => !isProfileInCooldown(authStore, id));
+
+        if (isNextAvailable) {
+          logCooldownSwitch({
+            fromProvider: candidate.provider,
+            fromModel: candidate.model,
+            toProvider: nextCandidate.provider,
+            toModel: nextCandidate.model,
+            reason: "approaching_cooldown",
+          });
+          // Skip to the next candidate proactively
+          continue;
+        }
       }
     }
     try {
@@ -312,6 +512,22 @@ export async function runWithModelFallback<T>(params: {
         attempt: i + 1,
         total: candidates.length,
       });
+
+      // Log warning about switching to next model due to error
+      const nextCandidate = candidates[i + 1];
+      if (nextCandidate) {
+        const reasonMsg =
+          described.reason === "rate_limit"
+            ? "rate limited"
+            : described.reason === "billing"
+              ? "billing issue"
+              : described.reason === "auth"
+                ? "authentication error"
+                : "error";
+        console.warn(
+          `\x1b[33m[model-fallback]\x1b[0m \x1b[33mModel ${candidate.provider}/${candidate.model} ${reasonMsg}. Switching to ${nextCandidate.provider}/${nextCandidate.model}.\x1b[0m`,
+        );
+      }
     }
   }
 
@@ -407,4 +623,96 @@ export async function runWithImageModelFallback<T>(params: {
   throw new Error(`All image models failed (${attempts.length || candidates.length}): ${summary}`, {
     cause: lastError instanceof Error ? lastError : undefined,
   });
+}
+
+export async function runWithCodingModelFallback<T>(params: {
+  cfg: OpenClawConfig | undefined;
+  modelOverride?: string;
+  run: (provider: string, model: string) => Promise<T>;
+  onError?: (attempt: {
+    provider: string;
+    model: string;
+    error: unknown;
+    attempt: number;
+    total: number;
+  }) => void | Promise<void>;
+}): Promise<{
+  result: T;
+  provider: string;
+  model: string;
+  attempts: FallbackAttempt[];
+}> {
+  const candidates = resolveCodingFallbackCandidates({
+    cfg: params.cfg,
+    defaultProvider: DEFAULT_PROVIDER,
+    modelOverride: params.modelOverride,
+  });
+
+  // If no coding-specific models configured, fall back to default model fallback
+  if (candidates.length === 0) {
+    const primary = params.cfg
+      ? resolveConfiguredModelRef({
+          cfg: params.cfg,
+          defaultProvider: DEFAULT_PROVIDER,
+          defaultModel: DEFAULT_MODEL,
+        })
+      : { provider: DEFAULT_PROVIDER, model: DEFAULT_MODEL };
+
+    return runWithModelFallback({
+      cfg: params.cfg,
+      provider: primary.provider,
+      model: primary.model,
+      run: params.run,
+      onError: params.onError,
+    });
+  }
+
+  const attempts: FallbackAttempt[] = [];
+  let lastError: unknown;
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    const candidate = candidates[i];
+    try {
+      const result = await params.run(candidate.provider, candidate.model);
+      return {
+        result,
+        provider: candidate.provider,
+        model: candidate.model,
+        attempts,
+      };
+    } catch (err) {
+      if (shouldRethrowAbort(err)) {
+        throw err;
+      }
+      lastError = err;
+      attempts.push({
+        provider: candidate.provider,
+        model: candidate.model,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      await params.onError?.({
+        provider: candidate.provider,
+        model: candidate.model,
+        error: err,
+        attempt: i + 1,
+        total: candidates.length,
+      });
+    }
+  }
+
+  if (attempts.length <= 1 && lastError) {
+    throw lastError;
+  }
+  const summary =
+    attempts.length > 0
+      ? attempts
+          .map((attempt) => `${attempt.provider}/${attempt.model}: ${attempt.error}`)
+          .join(" | ")
+      : "unknown";
+  throw new Error(
+    `All coding models failed (${attempts.length || candidates.length}): ${summary}`,
+    {
+      cause: lastError instanceof Error ? lastError : undefined,
+    },
+  );
 }

@@ -26,6 +26,91 @@ export function isProfileInCooldown(store: AuthProfileStore, profileId: string):
 }
 
 /**
+ * Default error count threshold before suggesting proactive model switch.
+ * Cooldown triggers at errorCount >= 1, so we warn at this threshold.
+ */
+const PROACTIVE_SWITCH_ERROR_THRESHOLD = 2;
+
+/**
+ * Check if a profile is approaching cooldown based on error count.
+ * Returns true if the profile has accumulated errors that suggest
+ * switching to another model proactively before cooldown triggers.
+ */
+export function isProfileApproachingCooldown(
+  store: AuthProfileStore,
+  profileId: string,
+  threshold: number = PROACTIVE_SWITCH_ERROR_THRESHOLD,
+): boolean {
+  const stats = store.usageStats?.[profileId];
+  if (!stats) {
+    return false;
+  }
+  // Already in cooldown
+  if (isProfileInCooldown(store, profileId)) {
+    return false;
+  }
+  const errorCount = stats.errorCount ?? 0;
+  return errorCount >= threshold;
+}
+
+/**
+ * Get the remaining cooldown time in milliseconds for a profile.
+ * Returns 0 if not in cooldown, or the number of ms remaining.
+ */
+export function getProfileCooldownRemainingMs(store: AuthProfileStore, profileId: string): number {
+  const stats = store.usageStats?.[profileId];
+  if (!stats) {
+    return 0;
+  }
+  const unusableUntil = resolveProfileUnusableUntil(stats);
+  if (!unusableUntil) {
+    return 0;
+  }
+  const remaining = unusableUntil - Date.now();
+  return remaining > 0 ? remaining : 0;
+}
+
+/**
+ * Get profile health status for display/logging purposes.
+ */
+export function getProfileHealthStatus(
+  store: AuthProfileStore,
+  profileId: string,
+): {
+  status: "healthy" | "warning" | "cooldown" | "disabled";
+  errorCount: number;
+  cooldownRemainingMs: number;
+  disabledReason?: string;
+} {
+  const stats = store.usageStats?.[profileId];
+  if (!stats) {
+    return { status: "healthy", errorCount: 0, cooldownRemainingMs: 0 };
+  }
+
+  const errorCount = stats.errorCount ?? 0;
+  const cooldownRemainingMs = getProfileCooldownRemainingMs(store, profileId);
+
+  if (stats.disabledUntil && Date.now() < stats.disabledUntil) {
+    return {
+      status: "disabled",
+      errorCount,
+      cooldownRemainingMs,
+      disabledReason: stats.disabledReason,
+    };
+  }
+
+  if (cooldownRemainingMs > 0) {
+    return { status: "cooldown", errorCount, cooldownRemainingMs };
+  }
+
+  if (errorCount >= PROACTIVE_SWITCH_ERROR_THRESHOLD) {
+    return { status: "warning", errorCount, cooldownRemainingMs: 0 };
+  }
+
+  return { status: "healthy", errorCount, cooldownRemainingMs: 0 };
+}
+
+/**
  * Mark a profile as successfully used. Resets error count and updates lastUsed.
  * Uses store lock to avoid overwriting concurrent usage updates.
  */

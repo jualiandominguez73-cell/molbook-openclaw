@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "../config/config.js";
 import type { ModelCatalogEntry } from "./model-catalog.js";
+import type { TaskType } from "./task-classifier.js";
 import { resolveAgentModelPrimary } from "./agent-scope.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./defaults.js";
 import { normalizeGoogleModelId } from "./models-config.providers.js";
@@ -417,4 +418,113 @@ export function resolveHooksGmailModel(params: {
   });
 
   return resolved?.ref ?? null;
+}
+
+/**
+ * Resolve the coding-specialized model for an agent.
+ * Falls back to the default model if no coding model is configured.
+ */
+export function resolveCodingModelForAgent(params: {
+  cfg: OpenClawConfig;
+  agentId?: string;
+}): ModelRef {
+  const codingModel = params.cfg.agents?.defaults?.codingModel as
+    | { primary?: string }
+    | string
+    | undefined;
+
+  const primary =
+    typeof codingModel === "string" ? codingModel.trim() : codingModel?.primary?.trim();
+
+  if (primary) {
+    const aliasIndex = buildModelAliasIndex({
+      cfg: params.cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+    });
+
+    const resolved = resolveModelRefFromString({
+      raw: primary,
+      defaultProvider: DEFAULT_PROVIDER,
+      aliasIndex,
+    });
+
+    if (resolved) {
+      return resolved.ref;
+    }
+  }
+
+  // Fallback to the default model
+  return resolveDefaultModelForAgent(params);
+}
+
+/**
+ * Resolve the reasoning-specialized model for an agent.
+ * Uses the default model (reasoning models are typically set as primary).
+ */
+export function resolveReasoningModelForAgent(params: {
+  cfg: OpenClawConfig;
+  agentId?: string;
+}): ModelRef {
+  // For now, reasoning uses the default model since reasoning-capable
+  // models are typically set as the primary model
+  return resolveDefaultModelForAgent(params);
+}
+
+/**
+ * Resolve the image-capable model for an agent.
+ * Falls back to the default model if no image model is configured.
+ */
+export function resolveImageModelForAgent(params: {
+  cfg: OpenClawConfig;
+  agentId?: string;
+}): ModelRef {
+  const imageModel = params.cfg.agents?.defaults?.imageModel as
+    | { primary?: string }
+    | string
+    | undefined;
+
+  const primary = typeof imageModel === "string" ? imageModel.trim() : imageModel?.primary?.trim();
+
+  if (primary) {
+    const aliasIndex = buildModelAliasIndex({
+      cfg: params.cfg,
+      defaultProvider: DEFAULT_PROVIDER,
+    });
+
+    const resolved = resolveModelRefFromString({
+      raw: primary,
+      defaultProvider: DEFAULT_PROVIDER,
+      aliasIndex,
+    });
+
+    if (resolved) {
+      return resolved.ref;
+    }
+  }
+
+  // Fallback to the default model
+  return resolveDefaultModelForAgent(params);
+}
+
+/**
+ * Resolve the appropriate model based on the task type.
+ * Uses specialized models when configured, falling back to defaults.
+ */
+export function resolveModelForTaskType(params: {
+  cfg: OpenClawConfig;
+  taskType: TaskType;
+  agentId?: string;
+}): ModelRef {
+  const { cfg, taskType, agentId } = params;
+
+  switch (taskType) {
+    case "coding":
+      return resolveCodingModelForAgent({ cfg, agentId });
+    case "vision":
+      return resolveImageModelForAgent({ cfg, agentId });
+    case "reasoning":
+      return resolveReasoningModelForAgent({ cfg, agentId });
+    default:
+      return resolveDefaultModelForAgent({ cfg, agentId });
+  }
 }

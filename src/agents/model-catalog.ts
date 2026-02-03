@@ -1,3 +1,4 @@
+import { getDetectedProviderIds } from "../commands/providers/detection.js";
 import { type OpenClawConfig, loadConfig } from "../config/config.js";
 import { resolveOpenClawAgentDir } from "./agent-paths.js";
 import { ensureOpenClawModelsJson } from "./models-config.js";
@@ -123,6 +124,29 @@ export async function loadModelCatalog(params?: {
  */
 export function modelSupportsVision(entry: ModelCatalogEntry | undefined): boolean {
   return entry?.input?.includes("image") ?? false;
+}
+
+/**
+ * Load models from the catalog, filtered to only include models from detected providers.
+ * This ensures users only see models they can actually use.
+ */
+export async function loadAvailableModels(params?: {
+  config?: OpenClawConfig;
+  useCache?: boolean;
+}): Promise<ModelCatalogEntry[]> {
+  const cfg = params?.config ?? loadConfig();
+  const catalog = await loadModelCatalog({ config: cfg, useCache: params?.useCache });
+
+  // Get detected provider IDs
+  const detectedProviders = new Set(getDetectedProviderIds(cfg).map((id) => id.toLowerCase()));
+
+  // If no providers detected, return empty (or all if detection isn't working)
+  if (detectedProviders.size === 0) {
+    return catalog;
+  }
+
+  // Filter to only include models from detected providers
+  return catalog.filter((entry) => detectedProviders.has(entry.provider.toLowerCase()));
 }
 
 /**
