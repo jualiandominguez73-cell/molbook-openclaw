@@ -20,7 +20,7 @@ const OAUTH_PROVIDER_IDS = new Set<OAuthProvider>(
 );
 
 const isOAuthProvider = (provider: string): provider is OAuthProvider =>
-  OAUTH_PROVIDER_IDS.has(provider as OAuthProvider); // eslint-disable-line @typescript-eslint/no-unnecessary-type-assertion
+  OAUTH_PROVIDER_IDS.has(provider);
 
 const resolveOAuthProvider = (provider: string): OAuthProvider | null =>
   isOAuthProvider(provider) ? provider : null;
