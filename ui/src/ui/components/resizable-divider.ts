@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, css, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 /**
@@ -44,9 +44,7 @@ export class ResizableDivider extends LitElement {
   `;
 
   render() {
-    return html`
-      
-    `;
+    return nothing;
   }
 
   connectedCallback() {
