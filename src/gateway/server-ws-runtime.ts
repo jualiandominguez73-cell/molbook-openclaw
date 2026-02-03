@@ -54,7 +54,7 @@ export function attachGatewayWsHandlers(params: {
 
   setLocalGatewayDispatcher(async (opts) => {
     const req = {
-      type: "req",
+      type: "req" as const,
       id: randomUUID(),
       method: opts.method,
       params: (opts.params ?? {}) as Record<string, unknown>,
