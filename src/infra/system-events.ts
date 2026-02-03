@@ -150,4 +150,5 @@ export function hasSystemEvents(sessionKey: string) {
 
 export function resetSystemEventsForTest() {
   queues.clear();
+  globalSuppressedEvents.clear();
 }
