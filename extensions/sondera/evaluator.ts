@@ -141,17 +141,18 @@ export class CedarEvaluator {
       // Translate internal IDs to @id names
       const policyNames = this.translatePolicyIds(diagnostics?.reason);
 
-      if (decision === "deny") {
-        return {
-          decision: "DENY",
-          reason: policyNames.join(", ") || "Denied by policy",
-          policyIds: policyNames,
-        };
-      } else {
-        // "allow" or any other state
+      // Fail-closed: only explicit "allow" permits, everything else denies
+      if (decision === "allow") {
         return {
           decision: "ALLOW",
           reason: policyNames.join(", "),
+        };
+      } else {
+        // "deny", undefined, or any other state -> DENY (fail-closed)
+        return {
+          decision: "DENY",
+          reason: policyNames.join(", ") || "Denied by policy (no permit rule matched)",
+          policyIds: policyNames,
         };
       }
     } catch (err) {

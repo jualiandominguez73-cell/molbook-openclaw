@@ -53,6 +53,9 @@ export default function(api: OpenClawPluginApi) {
   const customPolicyRules = pluginConfig?.c_customRules?.trim() ?? "";
   const customPolicyPath = pluginConfig?.d_policyPath?.trim();
 
+  // Log config for debugging
+  api.logger.debug?.(`[Sondera] Config: lockdown=${blockByDefault}, policyPack=${policyPackEnabled}, openclawSystem=${openclawSystemPackEnabled}, owaspAgentic=${owaspAgenticPackEnabled}`);
+
   // Lockdown mode: rely on Cedar's implicit deny (no default policy needed)
   // When no policies match, Cedar returns DENY by default
   // This allows user's permit rules to work without being overridden by a blanket forbid
@@ -151,9 +154,16 @@ permit(principal, action, resource);
   }
 
   if (!combinedPolicy.trim()) {
-    api.logger.warn("[Sondera] No policy configured. Set policyPath or add customPolicy via config UI.");
-    api.logger.debug?.("Sondera extension loaded (inactive - no policy configured).");
-    return;
+    if (blockByDefault) {
+      // Lockdown mode with no policies: Cedar's default-deny handles everything
+      // Use empty policy set - Cedar denies when no permits match
+      api.logger.info("[Sondera] Lockdown mode enabled with no policy packs - all tools blocked by Cedar default-deny.");
+      combinedPolicy = "// Lockdown mode: Cedar default-deny (no permits)";
+    } else {
+      api.logger.warn("[Sondera] No policy configured. Set policyPath or add customPolicy via config UI.");
+      api.logger.debug?.("Sondera extension loaded (inactive - no policy configured).");
+      return;
+    }
   }
 
   // Create the Cedar evaluator
@@ -161,7 +171,8 @@ permit(principal, action, resource);
   try {
     evaluator = new CedarEvaluator(combinedPolicy);
     const totalRules = evaluator.ruleCount;
-    api.logger.debug(`[Sondera] Cedar evaluator initialized with ${totalRules} rules`);
+    const hasDefaultPermit = combinedPolicy.includes('@id("default-allow")');
+    api.logger.debug?.(`[Sondera] Cedar evaluator initialized with ${totalRules} rules (default-allow=${hasDefaultPermit})`);
   } catch (err) {
     api.logger.error(`[Sondera] Failed to initialize Cedar evaluator: ${err}`);
     api.logger.debug?.("Sondera extension loaded (inactive - policy parse error).");
@@ -175,7 +186,7 @@ permit(principal, action, resource);
   api.on("before_tool_call", async (event: PluginHookBeforeToolCallEvent, ctx: PluginHookToolContext): Promise<PluginHookBeforeToolCallResult | void> => {
     const { toolName, params } = event;
 
-    api.logger.debug(`[Sondera] before_tool_call: toolName=${toolName}`);
+    api.logger.debug?.(`[Sondera] before_tool_call: toolName=${toolName}`);
 
     const result = evaluator.evaluatePreTool(toolName, params);
     api.logger.debug?.(`[Sondera] PRE_TOOL decision for "${toolName}": ${result.decision} reason=${result.reason}`);

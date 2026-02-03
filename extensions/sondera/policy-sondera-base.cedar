@@ -172,7 +172,7 @@ when {
   (context.params.path like "*/.ssh/id_*" ||
    context.params.path like "*/.ssh/authorized_keys*" ||
    context.params.path like "*.pem" ||
-   context.params.path like "*.pk" ||)
+   context.params.path like "*.pk" ||
    context.params.path like "*.ppk")
 };
 
