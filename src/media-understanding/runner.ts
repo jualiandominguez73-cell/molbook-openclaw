@@ -1207,7 +1207,9 @@ export async function runCapability(params: {
   // Skip image understanding when the primary model supports vision natively.
   // The image will be injected directly into the model context instead.
   // However, check attachment sizes first - don't skip CLI for oversized images.
-  const MAX_NATIVE_VISION_BYTES = 5_000_000; // 5MB limit for providers like Anthropic
+  // Anthropic's limit is 5MB for base64-encoded images.
+  // Base64 adds ~33% overhead, so we check against 3.75MB (5MB / 1.33) to be safe.
+  const MAX_NATIVE_VISION_BYTES = 3_750_000; // ~3.75MB to account for base64 overhead
   let hasOversizedAttachment = false;
 
   console.error(
