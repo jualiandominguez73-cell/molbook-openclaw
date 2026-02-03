@@ -29,6 +29,31 @@ export const GEMINI_UNSUPPORTED_SCHEMA_KEYWORDS = new Set([
   "maxProperties",
 ]);
 
+/**
+ * Copies selected "meta" fields from one schema object to another.
+ *
+ * These fields (description, title, default) are informational or UX-related
+ * annotations that should survive schema transformations such as `$ref`
+ * resolution, `anyOf`/`oneOf` flattening, or keyword stripping.
+ *
+ * We intentionally:
+ * - Copy only a small, explicit allowlist of keys
+ * - Skip keys whose value is `undefined` to avoid overwriting existing values
+ *
+ * This helps preserve human-facing context while keeping the resulting schema
+ * compatible with Gemini's stricter JSON Schema subset.
+ */
+function copyMetaFields(
+  from: Record<string, unknown>,
+  to: Record<string, unknown>,
+) {
+  for (const key of ["description", "title", "default"]) {
+    if (key in from && from[key] !== undefined) {
+      to[key] = from[key];
+    }
+  }
+}
+
 // Check if an anyOf/oneOf array contains only literal values that can be flattened.
 // TypeBox Type.Literal generates { const: "value", type: "string" }.
 // Some schemas may use { enum: ["value"], type: "string" }.
@@ -198,20 +223,12 @@ function cleanSchemaForGeminiWithDefs(
       const result: Record<string, unknown> = {
         ...(cleaned as Record<string, unknown>),
       };
-      for (const key of ["description", "title", "default"]) {
-        if (key in obj && obj[key] !== undefined) {
-          result[key] = obj[key];
-        }
-      }
+      copyMetaFields(obj, result);
       return result;
     }
 
     const result: Record<string, unknown> = {};
-    for (const key of ["description", "title", "default"]) {
-      if (key in obj && obj[key] !== undefined) {
-        result[key] = obj[key];
-      }
-    }
+    copyMetaFields(obj, result);
     return result;
   }
 
@@ -240,11 +257,7 @@ function cleanSchemaForGeminiWithDefs(
         type: flattened.type,
         enum: flattened.enum,
       };
-      for (const key of ["description", "title", "default"]) {
-        if (key in obj && obj[key] !== undefined) {
-          result[key] = obj[key];
-        }
-      }
+      copyMetaFields(obj, result);
       return result;
     }
     if (stripped && nonNullVariants.length === 1) {
@@ -253,11 +266,7 @@ function cleanSchemaForGeminiWithDefs(
         const result: Record<string, unknown> = {
           ...(lone as Record<string, unknown>),
         };
-        for (const key of ["description", "title", "default"]) {
-          if (key in obj && obj[key] !== undefined) {
-            result[key] = obj[key];
-          }
-        }
+        copyMetaFields(obj, result);
         return result;
       }
       return lone;
@@ -276,11 +285,7 @@ function cleanSchemaForGeminiWithDefs(
         type: flattened.type,
         enum: flattened.enum,
       };
-      for (const key of ["description", "title", "default"]) {
-        if (key in obj && obj[key] !== undefined) {
-          result[key] = obj[key];
-        }
-      }
+      copyMetaFields(obj, result);
       return result;
     }
     if (stripped && nonNullVariants.length === 1) {
@@ -289,11 +294,7 @@ function cleanSchemaForGeminiWithDefs(
         const result: Record<string, unknown> = {
           ...(lone as Record<string, unknown>),
         };
-        for (const key of ["description", "title", "default"]) {
-          if (key in obj && obj[key] !== undefined) {
-            result[key] = obj[key];
-          }
-        }
+        copyMetaFields(obj, result);
         return result;
       }
       return lone;
