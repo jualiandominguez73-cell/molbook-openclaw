@@ -278,8 +278,8 @@ async function resolveChannelId(
   return { channelId: dmChannel.id, dm: true };
 }
 
-// Discord message flag for silent/suppress notifications (1 << 12)
-const SUPPRESS_NOTIFICATIONS_FLAG = 4096;
+// Discord message flag for silent/suppress notifications
+const SUPPRESS_NOTIFICATIONS_FLAG = 1 << 12;
 
 async function sendDiscordText(
   rest: RequestClient,
