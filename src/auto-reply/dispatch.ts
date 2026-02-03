@@ -2,6 +2,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { DispatchFromConfigResult } from "./reply/dispatch-from-config.js";
 import type { FinalizedMsgContext, MsgContext } from "./templating.js";
 import type { GetReplyOptions } from "./types.js";
+import { createInternalHookEvent, triggerInternalHook } from "../hooks/internal-hooks.js";
 import { dispatchReplyFromConfig } from "./reply/dispatch-from-config.js";
 import { finalizeInboundContext } from "./reply/inbound-context.js";
 import {
@@ -22,6 +23,34 @@ export async function dispatchInboundMessage(params: {
   replyResolver?: typeof import("./reply.js").getReplyFromConfig;
 }): Promise<DispatchInboundResult> {
   const finalized = finalizeInboundContext(params.ctx);
+
+  // Trigger message:received hook event
+  if (finalized.SessionKey) {
+    const hookEvent = createInternalHookEvent("message", "received", finalized.SessionKey, {
+      body: finalized.Body,
+      bodyForAgent: finalized.BodyForAgent,
+      rawBody: finalized.RawBody,
+      senderId: finalized.SenderId,
+      senderName: finalized.SenderName,
+      senderUsername: finalized.SenderUsername,
+      surface: finalized.Surface,
+      originatingChannel: finalized.OriginatingChannel,
+      chatType: finalized.ChatType,
+      commandAuthorized: finalized.CommandAuthorized,
+      messageSid: finalized.MessageSid,
+      provider: finalized.Provider,
+    });
+    await triggerInternalHook(hookEvent);
+
+    // Inject instructions from hooks into the AGENT INPUT (BodyForAgent)
+    // This allows the hook to pass instructions/context to the LLM invisibly.
+    // Note: event.instructions is for LLM prompt injection (separate from event.messages which goes to user)
+    if (hookEvent.instructions.length > 0) {
+      const injection = hookEvent.instructions.join("\n\n");
+      finalized.BodyForAgent = `${finalized.BodyForAgent ?? ""}\n\n${injection}`;
+    }
+  }
+
   return await dispatchReplyFromConfig({
     ctx: finalized,
     cfg: params.cfg,

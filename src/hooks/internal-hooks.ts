@@ -8,7 +8,7 @@
 import type { WorkspaceBootstrapFile } from "../agents/workspace.js";
 import type { OpenClawConfig } from "../config/config.js";
 
-export type InternalHookEventType = "command" | "session" | "agent" | "gateway";
+export type InternalHookEventType = "command" | "session" | "agent" | "gateway" | "message";
 
 export type AgentBootstrapHookContext = {
   workspaceDir: string;
@@ -38,6 +38,8 @@ export interface InternalHookEvent {
   timestamp: Date;
   /** Messages to send back to the user (hooks can push to this array) */
   messages: string[];
+  /** Instructions to inject into the LLM prompt (hooks can push to this array) */
+  instructions: string[];
 }
 
 export type InternalHookHandler = (event: InternalHookEvent) => Promise<void> | void;
@@ -163,6 +165,7 @@ export function createInternalHookEvent(
     context,
     timestamp: new Date(),
     messages: [],
+    instructions: [],
   };
 }
 
