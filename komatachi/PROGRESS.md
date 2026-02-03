@@ -6,23 +6,20 @@
 
 | Aspect | State |
 |--------|-------|
-| **Phase** | Architectural decisions clarified; ready for next component |
-| **Last completed** | Gateway analysis, scope narrowing, tech strategy decisions |
-| **Next action** | Choose next component to distill (see "Next Steps" below) |
+| **Phase** | Compaction validated; ready for next component |
+| **Last completed** | Compaction tests (44 tests passing) |
+| **Next action** | Distill Long-term Memory & Search |
 | **Blockers** | None |
 
 ### What Exists Now
 - [x] Scouting reports for 4 core areas (~20k LOC analyzed)
 - [x] Distillation principles documented (8 principles)
-- [x] Trial distillation: `src/compaction/` working
+- [x] Trial distillation: `src/compaction/` code complete
+- [x] Compaction tests (44 tests passing)
 - [x] Key architectural decisions (TypeScript+Rust, minimal viable agent, no gateway)
 
-### Open Decision Needed
-**Which component to distill next?** Candidates ranked by isolation:
-1. Long-term Memory & Search (most isolated)
-2. Context Management (builds on compaction)
-3. Agent Alignment (defines behavior)
-4. Session Management (largest, most interconnected—deferred per decision #7)
+### Current Focus: Next Component Selection
+Compaction is validated with 44 passing tests. The distillation process works. Next: apply it to Long-term Memory & Search (most isolated, different domain).
 
 ---
 
@@ -91,6 +88,27 @@ Files created:
 - `DISTILLATION.md` - Principles and process
 - `PROGRESS.md` - This file
 
+### 5. Compaction Validation (Complete)
+
+Added test infrastructure and comprehensive tests for the compaction module:
+
+| Aspect | Result |
+|--------|--------|
+| Test framework | Vitest (aligned with OpenClaw) |
+| Tests written | 44 |
+| Tests passing | 44 |
+| Coverage areas | Token estimation, tool failure extraction, file ops, error handling, edge cases |
+
+Key validations:
+- Token estimation accuracy with safety margin
+- InputTooLargeError thrown at correct thresholds
+- Tool failure extraction from various message formats
+- File operations computation (read vs modified)
+- Summarizer fallback when API fails
+- Edge cases: empty messages, no failures, content block arrays
+
+This validates both the distilled code and the distillation process itself.
+
 ---
 
 ## Key Decisions Made
@@ -102,6 +120,7 @@ Files created:
 5. **TypeScript with Rust portability** - Distill into TypeScript, but write code that converts easily to Rust. Avoid TypeScript-only tricks; verify heavy dependencies have Rust ecosystem equivalents.
 6. **Minimal viable agent** - A CLI where an agent using a Claude subscription can read and write files via tools. We'll refine this definition as we go.
 7. **No gateway for minimal scope** - Single-process CLI doesn't need inter-process communication. Design session storage and tool execution so they *could* support multi-agent later, but don't build it until needed. If/when we need multi-agent communication, prefer local-first IPC (ZeroMQ, Unix sockets) over web-oriented tech (WebSocket, HTTP). Note: ZeroMQ supports broker-less patterns (direct peer-to-peer)—a central broker may not be required at all.
+8. **Validate before advancing** - Write tests for each distilled component before moving to the next. Unvalidated foundations are risky; tests often reveal design issues early. This implements "Phase 4: Validate" from DISTILLATION.md.
 
 ---
 
@@ -134,18 +153,15 @@ Traced cross-agent communication in OpenClaw. The gateway is a WebSocket-based J
 
 ## Next Steps
 
-1. **Decide next component to distill** - Candidates:
-   - Context Management (builds on compaction work)
-   - Long-term Memory & Search (most isolated)
-   - Agent Alignment (defines agent behavior)
-   - Session Management (largest, most interconnected)
+1. ~~**Write compaction tests**~~ - Done (44 tests passing)
 
-2. **Consider technology choices** - The distilled system may use:
-   - Different language (Rust? Go?)
-   - Different storage (SQLite? Postgres?)
-   - Different architecture
+2. **Distill Long-term Memory & Search** (next)
+   - Most isolated component
+   - Different domain than compaction (tests process generalization)
+   - Clear success criteria: can embed and retrieve text
+   - Follow same process: scout -> design -> build -> validate
 
-3. **Establish testing strategy** - How do we validate behavioral equivalence?
+3. **Integration checkpoint** - After two components, verify they can compose toward minimal viable agent
 
 ---
 
@@ -162,14 +178,18 @@ komatachi/
 ├── CLAUDE.md           # Project context
 ├── DISTILLATION.md     # Principles and process
 ├── PROGRESS.md         # This file - update as work progresses
+├── package.json        # Dependencies (vitest, typescript)
+├── tsconfig.json       # TypeScript config
+├── vitest.config.ts    # Test runner config
 ├── scouting/           # Analysis of OpenClaw components
 │   ├── context-management.md
 │   ├── long-term-memory-search.md
 │   ├── agent-alignment.md
 │   └── session-management.md
 └── src/
-    └── compaction/     # First distilled module
+    └── compaction/     # First distilled module (validated)
         ├── index.ts
+        ├── index.test.ts   # 44 tests
         └── DECISIONS.md
 ```
 
