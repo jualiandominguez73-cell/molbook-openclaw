@@ -1,26 +1,14 @@
 [Unit]
-<<<<<<<< HEAD:scripts/systemd/clawdbrain-auth-monitor.service
 Description=Clawdbrain Auth Expiry Monitor
-========
-Description=OpenClaw Auth Expiry Monitor
->>>>>>>> fork/main:scripts/systemd/openclaw-auth-monitor.service
 After=network.target
 
 [Service]
 Type=oneshot
-<<<<<<<< HEAD:scripts/systemd/clawdbrain-auth-monitor.service
 ExecStart=/home/admin/clawdbrain/scripts/auth-monitor.sh
 # Configure notification channels via environment
 Environment=WARN_HOURS=2
 # Environment=NOTIFY_PHONE=+1234567890
 # Environment=NOTIFY_NTFY=clawdbrain-alerts
-========
-ExecStart=/home/admin/openclaw/scripts/auth-monitor.sh
-# Configure notification channels via environment
-Environment=WARN_HOURS=2
-# Environment=NOTIFY_PHONE=+1234567890
-# Environment=NOTIFY_NTFY=openclaw-alerts
->>>>>>>> fork/main:scripts/systemd/openclaw-auth-monitor.service
 
 [Install]
 WantedBy=default.target

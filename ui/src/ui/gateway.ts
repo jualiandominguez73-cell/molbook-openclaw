@@ -91,44 +91,54 @@ export class GatewayBrowserClient {
   }
 
   private connect() {
-    if (this.closed) return;
+    if (this.closed) {
+      return;
+    }
     this.ws = new WebSocket(this.opts.url);
-    this.ws.onopen = () => this.queueConnect();
-    this.ws.onmessage = (ev) => this.handleMessage(String(ev.data ?? ""));
-    this.ws.onclose = (ev) => {
+    this.ws.addEventListener("open", () => this.queueConnect());
+    this.ws.addEventListener("message", (ev) => this.handleMessage(String(ev.data ?? "")));
+    this.ws.addEventListener("close", (ev) => {
       const reason = String(ev.reason ?? "");
       this.ws = null;
       this.flushPending(new Error(`gateway closed (${ev.code}): ${reason}`));
       this.opts.onClose?.({ code: ev.code, reason });
       this.scheduleReconnect();
-    };
-    this.ws.onerror = () => {
+    });
+    this.ws.addEventListener("error", () => {
       // ignored; close handler will fire
-    };
+    });
   }
 
   private scheduleReconnect() {
-    if (this.closed) return;
+    if (this.closed) {
+      return;
+    }
     const delay = this.backoffMs;
     this.backoffMs = Math.min(this.backoffMs * 1.7, 15_000);
     window.setTimeout(() => this.connect(), delay);
   }
 
   private flushPending(err: Error) {
-    for (const [, p] of this.pending) p.reject(err);
+    for (const [, p] of this.pending) {
+      p.reject(err);
+    }
     this.pending.clear();
   }
 
   private async sendConnect() {
-    if (this.connectSent) return;
+    if (this.connectSent) {
+      return;
+    }
     this.connectSent = true;
-    this.clearConnectTimer();
+    if (this.connectTimer !== null) {
+      window.clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
 
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-
-    // crypto.subtle is only available in secure contexts (HTTPS, localhost)
+    // crypto.subtle is only available in secure contexts (HTTPS, localhost).
+    // Over plain HTTP, we skip device identity and fall back to token-only auth.
+    // Gateways may reject this unless gateway.controlUi.allowInsecureAuth is enabled.
     const isSecureContext = typeof crypto !== "undefined" && !!crypto.subtle;
-    // ... rest of the method continues
 
     const scopes = ["operator.admin", "operator.approvals", "operator.pairing"];
     const role = "operator";
@@ -263,15 +273,24 @@ export class GatewayBrowserClient {
     if (frame.type === "res") {
       const res = parsed as GatewayResponseFrame;
       const pending = this.pending.get(res.id);
-      if (!pending) return;
+      if (!pending) {
+        return;
+      }
       this.pending.delete(res.id);
-      if (res.ok) pending.resolve(res.payload);
-      else pending.reject(new Error(res.error?.message ?? "request failed"));
+      if (res.ok) {
+        pending.resolve(res.payload);
+      } else {
+        pending.reject(new Error(res.error?.message ?? "request failed"));
+      }
       return;
     }
   }
 
-  request<T = unknown>(method: string, params?: unknown, opts?: { timeoutMs?: number }): Promise<T> {
+  request<T = unknown>(
+    method: string,
+    params?: unknown,
+    opts?: { timeoutMs?: number },
+  ): Promise<T> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error("gateway not connected"));
     }
@@ -281,34 +300,15 @@ export class GatewayBrowserClient {
       this.pending.set(id, { resolve: (v) => resolve(v as T), reject });
     });
     this.ws.send(JSON.stringify(frame));
-
-    const timeoutMs = opts?.timeoutMs;
-    if (typeof timeoutMs === "number" && timeoutMs > 0) {
-      const timer = window.setTimeout(() => {
-        const entry = this.pending.get(id);
-        if (entry) {
-          this.pending.delete(id);
-          entry.reject(new Error(`request "${method}" timed out after ${timeoutMs}ms`));
-        }
-      }, timeoutMs);
-      // Clear timeout when the request resolves normally to avoid leaks.
-      void p.finally(() => window.clearTimeout(timer));
-    }
-
     return p;
-  }
-
-  private clearConnectTimer() {
-    if (this.connectTimer !== null) {
-      window.clearTimeout(this.connectTimer);
-      this.connectTimer = null;
-    }
   }
 
   private queueConnect() {
     this.connectNonce = null;
     this.connectSent = false;
-    this.clearConnectTimer();
+    if (this.connectTimer !== null) {
+      window.clearTimeout(this.connectTimer);
+    }
     this.connectTimer = window.setTimeout(() => {
       void this.sendConnect();
     }, 750);

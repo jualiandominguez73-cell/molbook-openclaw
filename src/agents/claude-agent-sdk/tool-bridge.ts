@@ -550,11 +550,16 @@ export async function bridgeClawdbrainToolsToMcpServer(
       // This ensures the model knows parameter names, types, required fields, and enum values.
       const inputSchema = buildZodSchemaForTool(tool);
 
+      // Phase #1: Build enhanced description for Clawdbrain tools
+      const enhancedDesc =
+        tool.description ??
+        `${toolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} (Clawdbrain native tool)`;
+
       // Use registerTool() (the recommended API) instead of deprecated tool().
       server.registerTool(
         toolName,
         {
-          description: tool.description ?? `${toolName} (Clawdbrain native tool)`,
+          description: enhancedDesc,
           inputSchema,
         },
         handler,

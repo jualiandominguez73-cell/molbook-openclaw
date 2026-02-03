@@ -351,6 +351,41 @@ export type AgentsListResult = {
   agents: GatewayAgentRow[];
 };
 
+export type AgentIdentityResult = {
+  agentId: string;
+  name: string;
+  avatar: string;
+  emoji?: string;
+};
+
+export type AgentFileEntry = {
+  name: string;
+  path: string;
+  missing: boolean;
+  size?: number;
+  updatedAtMs?: number;
+  content?: string;
+};
+
+export type AgentsFilesListResult = {
+  agentId: string;
+  workspace: string;
+  files: AgentFileEntry[];
+};
+
+export type AgentsFilesGetResult = {
+  agentId: string;
+  workspace: string;
+  file: AgentFileEntry;
+};
+
+export type AgentsFilesSetResult = {
+  ok: true;
+  agentId: string;
+  workspace: string;
+  file: AgentFileEntry;
+};
+
 export type GatewaySessionRow = {
   key: string;
   kind: "direct" | "group" | "global" | "unknown";
@@ -578,7 +613,12 @@ export type HealthChannelSummary = {
   configured?: boolean;
   linked?: boolean;
   authAgeMs?: number | null;
-  probe?: { ok?: boolean; elapsedMs?: number; bot?: { username?: string | null } | null; error?: string | null } | null;
+  probe?: {
+    ok?: boolean;
+    elapsedMs?: number;
+    bot?: { username?: string | null } | null;
+    error?: string | null;
+  } | null;
   lastProbeAt?: number | null;
   accounts?: Record<string, HealthChannelSummary>;
   [key: string]: unknown;

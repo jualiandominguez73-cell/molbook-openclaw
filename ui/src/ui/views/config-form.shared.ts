@@ -31,7 +31,9 @@ export type JsonSchema = {
 };
 
 export function schemaType(schema: JsonSchema): string | undefined {
-  if (!schema) return undefined;
+  if (!schema) {
+    return undefined;
+  }
   if (Array.isArray(schema.type)) {
     const filtered = schema.type.filter((t) => t !== "null");
     return filtered[0] ?? schema.type[0];
@@ -40,8 +42,12 @@ export function schemaType(schema: JsonSchema): string | undefined {
 }
 
 export function defaultValue(schema?: JsonSchema): unknown {
-  if (!schema) return "";
-  if (schema.default !== undefined) return schema.default;
+  if (!schema) {
+    return "";
+  }
+  if (schema.default !== undefined) {
+    return schema.default;
+  }
   const type = schemaType(schema);
   switch (type) {
     case "object":
@@ -67,12 +73,18 @@ export function pathKey(path: Array<string | number>): string {
 export function hintForPath(path: Array<string | number>, hints: ConfigUiHints) {
   const key = pathKey(path);
   const direct = hints[key];
-  if (direct) return direct;
+  if (direct) {
+    return direct;
+  }
   const segments = key.split(".");
   for (const [hintKey, hint] of Object.entries(hints)) {
-    if (!hintKey.includes("*")) continue;
+    if (!hintKey.includes("*")) {
+      continue;
+    }
     const hintSegments = hintKey.split(".");
-    if (hintSegments.length !== segments.length) continue;
+    if (hintSegments.length !== segments.length) {
+      continue;
+    }
     let match = true;
     for (let i = 0; i < segments.length; i += 1) {
       if (hintSegments[i] !== "*" && hintSegments[i] !== segments[i]) {
@@ -80,7 +92,9 @@ export function hintForPath(path: Array<string | number>, hints: ConfigUiHints) 
         break;
       }
     }
-    if (match) return hint;
+    if (match) {
+      return hint;
+    }
   }
   return undefined;
 }
@@ -130,9 +144,11 @@ export function isCompactField(schema: JsonSchema, hint?: { compact?: boolean })
   const variants = schema.anyOf ?? schema.oneOf;
   if (variants) {
     const nonNull = variants.filter(
-      (v) => !(v.type === "null" || (Array.isArray(v.type) && v.type.includes("null")))
+      (v) => !(v.type === "null" || (Array.isArray(v.type) && v.type.includes("null"))),
     );
-    const allLiterals = nonNull.every((v) => v.const !== undefined || (v.enum && v.enum.length === 1));
+    const allLiterals = nonNull.every(
+      (v) => v.const !== undefined || (v.enum && v.enum.length === 1),
+    );
     if (allLiterals && nonNull.length > 0 && nonNull.length <= 5) return true;
   }
   return false;

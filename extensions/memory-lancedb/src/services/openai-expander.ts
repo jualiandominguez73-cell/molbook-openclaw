@@ -1,17 +1,17 @@
-import OpenAI from "openai";
-import { appendFile } from "node:fs/promises";
-import { join } from "node:path";
-import { homedir } from "node:os";
 import type { ClawdbrainPluginApi } from "clawdbrain/plugin-sdk";
+import { appendFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import OpenAI from "openai";
 import type { Expander } from "../types.js";
 
-async function logTrace(api: ClawdbrainPluginApi, type: string, data: any) {
+async function logTrace(api: ClawdbrainPluginApi, type: string, data: unknown) {
   const logDir = join(homedir(), ".clawdbrain", "logs");
   const logPath = join(logDir, "memory-trace.jsonl");
   const entry = {
     timestamp: new Date().toISOString(),
     type,
-    ...data,
+    ...(data as Record<string, unknown>),
   };
   try {
     await appendFile(logPath, JSON.stringify(entry) + "\n");
@@ -35,9 +35,12 @@ export class OpenAiExpander implements Expander {
     currentPrompt: string,
     api: ClawdbrainPluginApi,
   ): Promise<string> {
-    if (history.length === 0) {return currentPrompt;}
+    if (history.length === 0) {
+      return currentPrompt;
+    }
 
-    const context = history.slice(-5)
+    const context = history
+      .slice(-5)
       .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join("\n");
 
@@ -61,12 +64,12 @@ Return ONLY the rewritten query text. No quotes, no explanations.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: `HISTORY:\n${context}\n\nUSER MESSAGE:\n${currentPrompt}` },
         ],
-        max_tokens: 200, 
+        max_tokens: 200,
       });
 
       const latency = Date.now() - start;
       const expanded = response.choices[0].message.content?.trim() ?? currentPrompt;
-      
+
       await logTrace(api, "query_expansion", {
         original: currentPrompt,
         expanded,

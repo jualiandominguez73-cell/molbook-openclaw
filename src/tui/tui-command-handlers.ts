@@ -153,13 +153,19 @@ export function createCommandHandlers(context: CommandHandlerContext) {
         agentId: state.currentAgentId,
       });
       const items = result.sessions.map((session) => {
-        const title = (session as any).derivedTitle ?? session.displayName;
+        // Note: derivedTitle and description are added when includeDerivedTitles=true
+        // but aren't in the base type definition
+        const sessionExt = session as typeof session & {
+          derivedTitle?: string;
+          description?: string;
+        };
+        const title = sessionExt.derivedTitle ?? session.displayName;
         const formattedKey = formatSessionKey(session.key);
         // Avoid redundant "title (key)" when title matches key
         const label = title && title !== formattedKey ? `${title} (${formattedKey})` : formattedKey;
         // Build description: time + message preview
         const timePart = session.updatedAt ? formatRelativeTime(session.updatedAt) : "";
-        const preview = ((session as any).description ?? session.lastMessagePreview)
+        const preview = (sessionExt.description ?? session.lastMessagePreview)
           ?.replace(/\s+/g, " ")
           .trim();
         const description =
@@ -174,7 +180,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
             session.subject,
             session.sessionId,
             session.key,
-            (session as any).description,
+            sessionExt.description,
             session.lastMessagePreview,
           ]
             .filter(Boolean)

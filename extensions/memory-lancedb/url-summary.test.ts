@@ -4,57 +4,73 @@ import { describe, test, expect, vi, beforeEach } from "vitest";
 vi.mock("./src/services/lancedb-store.js", () => {
   return {
     LanceDbStore: class {
-      async search() { return []; }
-      async store() { return { id: "123" }; }
-    }
+      async search() {
+        return [];
+      }
+      async store() {
+        return { id: "123" };
+      }
+    },
   };
 });
 
 vi.mock("./src/services/openai-embedder.js", () => {
   return {
     OpenAiEmbedder: class {
-      async embed() { return []; }
-    }
+      async embed() {
+        return [];
+      }
+    },
   };
 });
 
 vi.mock("./src/services/openai-extractor.js", () => {
   return {
     OpenAiExtractor: class {
-      async extract() { return []; }
-      async summarizeUrl() { return "Mocked Summary of URL"; }
-    }
+      async extract() {
+        return [];
+      }
+      async summarizeUrl() {
+        return "Mocked Summary of URL";
+      }
+    },
   };
 });
 
 vi.mock("./src/services/openai-expander.js", () => {
   return {
     OpenAiExpander: class {
-      async expand() { return "expanded"; }
-    }
+      async expand() {
+        return "expanded";
+      }
+    },
   };
 });
 
 vi.mock("./src/services/openai-synthesizer.js", () => {
   return {
     OpenAiSynthesizer: class {
-      async synthesize() { return { merged: [], archived: [], summary: "" }; }
-    }
+      async synthesize() {
+        return { merged: [], archived: [], summary: "" };
+      }
+    },
   };
 });
 
 vi.mock("./src/services/digest-service.js", () => {
   return {
     DigestService: class {
-      async runDailyMaintenance() { return "Summary"; }
-    }
+      async runDailyMaintenance() {
+        return "Summary";
+      }
+    },
   };
 });
 
 vi.mock("./config.js", () => ({
   memoryConfigSchema: {
-    parse: (cfg: any) => ({
-      ...cfg,
+    parse: (cfg: unknown) => ({
+      ...(cfg as Record<string, unknown>),
       embedding: { apiKey: "sk-mock", model: "text-embedding-3-small" },
       extraction: { apiKey: "sk-mock", model: "gpt-4o-mini" },
     }),
@@ -64,24 +80,24 @@ vi.mock("./config.js", () => ({
 }));
 
 describe("Inbox URL Summarization", () => {
-  let memoryPlugin: any;
-  let mockApi: any;
+  let memoryPlugin: unknown;
+  let mockApi: unknown;
   let agentEndHandler: Function;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Import index.js dynamically
     const module = await import("./index.js");
     memoryPlugin = module.default;
-    
+
     // To spy on methods, we need to spy on the prototype or the instance.
     // Since we returned a class in the mock, we can spy on the prototype methods.
     const extractorModule = await import("./src/services/openai-extractor.js");
     vi.spyOn(extractorModule.OpenAiExtractor.prototype, "summarizeUrl");
     vi.spyOn(extractorModule.OpenAiExtractor.prototype, "extract");
 
-    const registeredHooks: Record<string, any> = {};
+    const registeredHooks: Record<string, unknown> = {};
     mockApi = {
       pluginConfig: {
         dbPath: "/tmp/test",
@@ -116,8 +132,8 @@ describe("Inbox URL Summarization", () => {
       channelId: "test-dm",
       messages: [
         { role: "user", content: "Check this out https://example.com/article" },
-        { role: "assistant", content: "Okay, I will." }
-      ]
+        { role: "assistant", content: "Okay, I will." },
+      ],
     };
 
     await agentEndHandler(mockEvent);
@@ -125,7 +141,7 @@ describe("Inbox URL Summarization", () => {
     const extractorModule = await import("./src/services/openai-extractor.js");
     expect(extractorModule.OpenAiExtractor.prototype.summarizeUrl).toHaveBeenCalledWith(
       "https://example.com/article",
-      mockApi
+      mockApi,
     );
   });
 
@@ -136,8 +152,8 @@ describe("Inbox URL Summarization", () => {
       channelId: "test-group",
       messages: [
         { role: "user", content: "Check this out https://example.com/article" },
-        { role: "assistant", content: "Okay." }
-      ]
+        { role: "assistant", content: "Okay." },
+      ],
     };
 
     await agentEndHandler(mockEvent);

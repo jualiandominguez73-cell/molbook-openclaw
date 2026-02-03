@@ -46,7 +46,7 @@ describe("cron view", () => {
     const container = document.createElement("div");
     render(renderCron(createProps()), container);
 
-    expect(container.textContent).toContain("No job selected");
+    expect(container.textContent).toContain("Select a job to inspect run history.");
   });
 
   it("loads run history when clicking a job row", () => {
@@ -63,7 +63,7 @@ describe("cron view", () => {
       container,
     );
 
-    const row = container.querySelector(".cron-job-card") as HTMLElement | null;
+    const row = container.querySelector(".list-item-clickable");
     expect(row).not.toBeNull();
     row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
@@ -85,13 +85,13 @@ describe("cron view", () => {
       container,
     );
 
-    const selected = container.querySelector(".cron-job-card--selected");
+    const selected = container.querySelector(".list-item-selected");
     expect(selected).not.toBeNull();
 
-    const runsButton = container.querySelector(
-      'button[title="View runs"]',
-    ) as HTMLButtonElement | null;
-    expect(runsButton).not.toBeNull();
+    const runsButton = Array.from(container.querySelectorAll("button")).find(
+      (btn) => btn.textContent?.trim() === "Runs",
+    );
+    expect(runsButton).not.toBeUndefined();
     runsButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     expect(onLoadRuns).toHaveBeenCalledTimes(1);

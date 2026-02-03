@@ -1,9 +1,5 @@
 [Unit]
-<<<<<<<< HEAD:scripts/systemd/clawdbrain-auth-monitor.timer
 Description=Check Clawdbrain auth expiry every 30 minutes
-========
-Description=Check OpenClaw auth expiry every 30 minutes
->>>>>>>> fork/main:scripts/systemd/openclaw-auth-monitor.timer
 
 [Timer]
 OnBootSec=5min

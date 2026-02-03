@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, css, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 /**
@@ -44,9 +44,7 @@ export class ResizableDivider extends LitElement {
   `;
 
   render() {
-    return html`
-      
-    `;
+    return nothing;
   }
 
   connectedCallback() {
@@ -74,10 +72,14 @@ export class ResizableDivider extends LitElement {
   };
 
   private handleMouseMove = (e: MouseEvent) => {
-    if (!this.isDragging) return;
+    if (!this.isDragging) {
+      return;
+    }
 
     const container = this.parentElement;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     const containerWidth = container.getBoundingClientRect().width;
     const deltaX = e.clientX - this.startX;
