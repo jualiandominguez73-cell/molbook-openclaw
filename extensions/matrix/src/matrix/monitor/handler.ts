@@ -452,29 +452,11 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
       const messageId = event.event_id ?? "";
       const replyToEventId = content["m.relates_to"]?.["m.in_reply_to"]?.event_id;
       const threadRootId = resolveMatrixThreadRootId({ event, content });
-
-      // DEBUG: Log thread detection
-      console.log("[matrix-thread-debug]", {
-        messageId,
-        roomId,
-        isDirectMessage,
-        threadRootId,
-        relatesTo: content["m.relates_to"],
-        relType: content["m.relates_to"]?.rel_type,
-      });
-
       const threadTarget = resolveMatrixThreadTarget({
         threadReplies,
         messageId,
         threadRootId,
         isThreadRoot: false, // @vector-im/matrix-bot-sdk doesn't have this info readily available
-      });
-
-      // DEBUG: Log thread target (controls where replies go)
-      console.log("[matrix-thread-debug] outbound:", {
-        threadReplies,
-        threadTarget,
-        threadRootId,
       });
 
       const baseRoute = core.channel.routing.resolveAgentRoute({
@@ -486,16 +468,13 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         },
       });
 
-      // Append thread marker for session isolation (rooms only, not DMs)
+      // Append thread marker for session isolation
       const route = {
         ...baseRoute,
         sessionKey: threadRootId
           ? `${baseRoute.sessionKey}:thread:${threadRootId}`
           : baseRoute.sessionKey,
       };
-
-      // DEBUG: Log session key
-      console.log("[matrix-thread-debug] sessionKey:", route.sessionKey);
 
       // Fetch thread root context for new thread sessions
       let threadStarterBody: string | undefined;
@@ -531,15 +510,9 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
 
               threadLabel = `Matrix thread in ${roomName ?? roomId}`;
               parentSessionKey = baseRoute.sessionKey;
-
-              console.log("[matrix-thread-debug] fetched thread root:", {
-                threadRootId,
-                rootSender: rootEvent.sender,
-                rootBody: rootEvent.body?.slice(0, 100),
-              });
             }
-          } catch (err) {
-            console.log("[matrix-thread-debug] failed to fetch thread root:", err);
+          } catch {
+            // Failed to fetch thread root - continue without context
           }
         }
       }
