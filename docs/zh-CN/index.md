@@ -72,23 +72,47 @@ OpenClaw 同时也驱动着 OpenClaw 助手。
 
 ## 工作原理
 
-```
-WhatsApp / Telegram / Discord / iMessage (+ plugins)
-        │
-        ▼
-  ┌───────────────────────────┐
-  │          Gateway网关          │  ws://127.0.0.1:18789 (loopback-only)
-  │     (single source)       │
-  │                           │  http://<gateway-host>:18793
-  │                           │    /__openclaw__/canvas/ (Canvas host)
-  └───────────┬───────────────┘
-              │
-              ├─ Pi agent (RPC)
-              ├─ CLI (openclaw …)
-              ├─ Chat UI (SwiftUI)
-              ├─ macOS app (OpenClaw.app)
-              ├─ iOS node via Gateway网关 WS + pairing
-              └─ Android node via Gateway网关 WS + pairing
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryTextColor': '#000000',
+    'primaryBorderColor': '#000000',
+    'lineColor': '#000000',
+    'secondaryColor': '#f9f9fb',
+    'tertiaryColor': '#ffffff',
+    'clusterBkg': '#f9f9fb',
+    'clusterBorder': '#000000',
+    'nodeBorder': '#000000',
+    'mainBkg': '#ffffff',
+    'edgeLabelBackground': '#ffffff'
+  }
+}}%%
+flowchart TB
+ subgraph Clients["Messaging Clients"]
+        IM["iMessage (+ plugins)"]
+        DC["Discord"]
+        TG["Telegram"]
+        WA["WhatsApp"]
+  end
+ subgraph Nodes["Agents / Nodes"]
+        ChatUI["Chat UI<br>(SwiftUI)"]
+        CLI["CLI<br>(openclaw …)"]
+        Pi["Pi Agent<br>(RPC)"]
+        Android["Android Node<br>via Gateway WS + pairing"]
+        iOS["iOS Node<br>via Gateway WS + pairing"]
+        Mac["MacOS App<br>(openClaw.app)"]
+  end
+    WA ~~~ TG
+    TG ~~~ DC
+    DC ~~~ IM
+    Pi ~~~ CLI
+    CLI ~~~ ChatUI
+    Mac ~~~ iOS
+    iOS ~~~ Android
+    Clients --> Gateway["<b>Gateway (single source)<br></b><br>ws://127.0.0.1:18789 (loopback-only)<br><br>http://:18793\n/__openclaw__/canvas/ (Canvas host)"]
+    Gateway --> Nodes
 ```
 
 大多数操作通过 **Gateway网关** （`openclaw gateway`进行，它是一个长期运行的单进程，负责管理渠道连接和 WebSocket 控制面。

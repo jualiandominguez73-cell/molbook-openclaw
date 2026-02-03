@@ -61,23 +61,47 @@ Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
 
 ## How it works
 
-```
-WhatsApp / Telegram / Discord / iMessage (+ plugins)
-        │
-        ▼
-  ┌───────────────────────────┐
-  │          Gateway          │  ws://127.0.0.1:18789 (loopback-only)
-  │     (single source)       │
-  │                           │  http://<gateway-host>:18793
-  │                           │    /__openclaw__/canvas/ (Canvas host)
-  └───────────┬───────────────┘
-              │
-              ├─ Pi agent (RPC)
-              ├─ CLI (openclaw …)
-              ├─ Chat UI (SwiftUI)
-              ├─ macOS app (OpenClaw.app)
-              ├─ iOS node via Gateway WS + pairing
-              └─ Android node via Gateway WS + pairing
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryTextColor': '#000000',
+    'primaryBorderColor': '#000000',
+    'lineColor': '#000000',
+    'secondaryColor': '#f9f9fb',
+    'tertiaryColor': '#ffffff',
+    'clusterBkg': '#f9f9fb',
+    'clusterBorder': '#000000',
+    'nodeBorder': '#000000',
+    'mainBkg': '#ffffff',
+    'edgeLabelBackground': '#ffffff'
+  }
+}}%%
+flowchart TB
+ subgraph Clients["Messaging Clients"]
+        IM["iMessage (+ plugins)"]
+        DC["Discord"]
+        TG["Telegram"]
+        WA["WhatsApp"]
+  end
+ subgraph Nodes["Agents / Nodes"]
+        ChatUI["Chat UI<br>(SwiftUI)"]
+        CLI["CLI<br>(openclaw …)"]
+        Pi["Pi Agent<br>(RPC)"]
+        Android["Android Node<br>via Gateway WS + pairing"]
+        iOS["iOS Node<br>via Gateway WS + pairing"]
+        Mac["MacOS App<br>(openClaw.app)"]
+  end
+    WA ~~~ TG
+    TG ~~~ DC
+    DC ~~~ IM
+    Pi ~~~ CLI
+    CLI ~~~ ChatUI
+    Mac ~~~ iOS
+    iOS ~~~ Android
+    Clients --> Gateway["<b>Gateway (single source)<br></b><br>ws://127.0.0.1:18789 (loopback-only)<br><br>http://:18793\n/__openclaw__/canvas/ (Canvas host)"]
+    Gateway --> Nodes
 ```
 
 Most operations flow through the **Gateway** (`openclaw gateway`), a single long-running process that owns channel connections and the WebSocket control plane.
