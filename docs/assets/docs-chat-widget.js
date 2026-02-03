@@ -3,9 +3,9 @@
 
   const apiBase = window.DOCS_CHAT_API_URL || "http://localhost:3001";
 
-  // Load @create-markdown/preview for markdown rendering
+  // Load vendored @create-markdown/preview@0.1.0 for markdown rendering
   let markdownToHTML = null;
-  import("https://esm.sh/@create-markdown/preview@0.1.0")
+  import("/assets/create-markdown-preview.js")
     .then((mod) => {
       markdownToHTML = mod.markdownToHTML;
     })
