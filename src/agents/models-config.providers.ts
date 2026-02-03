@@ -4,6 +4,7 @@ import {
   DEFAULT_COPILOT_API_BASE_URL,
   resolveCopilotApiToken,
 } from "../providers/github-copilot-token.js";
+import { isOllamaInstalled, promptOllamaInstall } from "../providers/ollama-installer.js";
 import { ensureAuthProfileStore, listProfilesForProvider } from "./auth-profiles.js";
 import { discoverBedrockModels } from "./bedrock-discovery.js";
 import { resolveAwsSdkEnvVarName, resolveEnvApiKey } from "./model-auth.js";
@@ -94,7 +95,9 @@ async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
   if (process.env.VITEST || process.env.NODE_ENV === "test") {
     return [];
   }
+
   const OLLAMA_API_BASE_URL = process.env.OLLAMA_HOST || "http://127.0.0.1:11434";
+
   try {
     const response = await fetch(`${OLLAMA_API_BASE_URL}/api/tags`, {
       signal: AbortSignal.timeout(10000),
@@ -131,6 +134,26 @@ async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
     }
     return [];
   }
+}
+
+/**
+ * Check if Ollama should be offered for installation
+ * Only prompt if running interactively (TTY) and not already installed
+ */
+async function shouldOfferOllamaInstall(): Promise<boolean> {
+  // Don't prompt in non-interactive environments
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return false;
+  }
+
+  // Don't prompt if explicitly disabled
+  if (process.env.OPENCLAW_SKIP_OLLAMA_INSTALL === "1") {
+    return false;
+  }
+
+  // Check if already installed
+  const installed = await isOllamaInstalled();
+  return !installed;
 }
 
 function normalizeApiKeyConfig(value: string): string {
