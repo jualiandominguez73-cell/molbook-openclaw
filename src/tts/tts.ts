@@ -49,7 +49,7 @@ const DEFAULT_OPENAI_VOICE = "alloy";
 const DEFAULT_EDGE_VOICE = "en-US-MichelleNeural";
 const DEFAULT_EDGE_LANG = "en-US";
 const DEFAULT_EDGE_OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3";
-const DEFAULT_SPEECHIFY_VOICE_ID = "lisa";
+const DEFAULT_SPEECHIFY_VOICE_ID = "george";
 const DEFAULT_SPEECHIFY_MODEL = "simba-english" as const;
 const DEFAULT_SPEECHIFY_AUDIO_FORMAT = "mp3" as const;
 
@@ -664,7 +664,12 @@ function parseTtsDirectives(
             if (!policy.allowProvider) {
               break;
             }
-            if (rawValue === "openai" || rawValue === "elevenlabs" || rawValue === "edge") {
+            if (
+              rawValue === "openai" ||
+              rawValue === "elevenlabs" ||
+              rawValue === "speechify" ||
+              rawValue === "edge"
+            ) {
               overrides.provider = rawValue;
             } else {
               warnings.push(`unsupported provider "${rawValue}"`);
@@ -1398,16 +1403,17 @@ export async function textToSpeech(params: {
         });
         outputFormat = output.elevenlabs;
       } else if (provider === "speechify") {
+        const speechifyFormat = config.speechify.audioFormat;
         audioBuffer = await speechifyTTS({
           text: params.text,
           apiKey,
           voiceId: config.speechify.voiceId,
           model: config.speechify.model,
           language: config.speechify.language,
-          audioFormat: output.speechify,
+          audioFormat: speechifyFormat,
           timeoutMs: config.timeoutMs,
         });
-        outputFormat = output.speechify;
+        outputFormat = speechifyFormat;
       } else {
         const openaiModelOverride = params.overrides?.openai?.model;
         const openaiVoiceOverride = params.overrides?.openai?.voice;
