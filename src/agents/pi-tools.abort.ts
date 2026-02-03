@@ -12,7 +12,11 @@ function throwAbortError(): never {
  * where the AbortSignal constructor may differ.
  */
 function isAbortSignal(obj: unknown): obj is AbortSignal {
-  return obj instanceof AbortSignal;
+  if (!obj || typeof obj !== "object") {
+    return false;
+  }
+  const signal = obj as Record<string, unknown>;
+  return typeof signal.aborted === "boolean" && typeof signal.addEventListener === "function";
 }
 
 function combineAbortSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal | undefined {
