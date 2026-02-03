@@ -278,6 +278,19 @@ export class CallManager {
           await this.endCall(call.callId);
         }
       }, delaySec * 1000);
+    } else if (call.direction === "inbound" && call.providerCallId) {
+      // For inbound conversation calls, start listening after the greeting
+      console.log(`[voice-call] Inbound conversation: starting transcription for ${call.callId}`);
+      try {
+        await this.provider?.startListening({
+          callId: call.callId,
+          providerCallId: call.providerCallId,
+        });
+        call.state = "listening";
+        this.persistCallRecord(call);
+      } catch (err) {
+        console.warn(`[voice-call] Failed to start listening: ${err}`);
+      }
     }
   }
 

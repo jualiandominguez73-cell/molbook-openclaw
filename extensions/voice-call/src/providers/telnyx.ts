@@ -143,6 +143,11 @@ export class TelnyxProvider implements VoiceCallProvider {
         return { events: [], statusCode: 200 };
       }
 
+      // Debug: log transcription events
+      if (data.event_type === "call.transcription") {
+        console.log(`[telnyx] Transcription event payload:`, JSON.stringify(data.payload, null, 2));
+      }
+
       const event = this.normalizeEvent(data);
       return {
         events: event ? [event] : [],
@@ -206,14 +211,17 @@ export class TelnyxProvider implements VoiceCallProvider {
           text: data.payload?.text || "",
         };
 
-      case "call.transcription":
+      case "call.transcription": {
+        // Telnyx puts transcript data in transcription_data object
+        const txData = data.payload?.transcription_data;
         return {
           ...baseEvent,
           type: "call.speech",
-          transcript: data.payload?.transcription || "",
-          isFinal: data.payload?.is_final ?? true,
-          confidence: data.payload?.confidence,
+          transcript: txData?.transcript || "",
+          isFinal: txData?.is_final ?? true,
+          confidence: txData?.confidence,
         };
+      }
 
       case "call.hangup":
         return {
@@ -362,9 +370,11 @@ interface TelnyxEvent {
     from?: string;
     to?: string;
     text?: string;
-    transcription?: string;
-    is_final?: boolean;
-    confidence?: number;
+    transcription_data?: {
+      transcript?: string;
+      is_final?: boolean;
+      confidence?: number;
+    };
     hangup_cause?: string;
     digit?: string;
     [key: string]: unknown;
