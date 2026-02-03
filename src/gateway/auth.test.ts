@@ -9,7 +9,13 @@ import {
 describe("gateway auth", () => {
   it("does not throw when req is missing socket", async () => {
     const res = await authorizeGatewayConnect({
-      auth: { mode: "token", token: "secret", allowTailscale: false },
+      auth: {
+        mode: "token",
+        token: "secret",
+        allowTailscale: false,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: { token: "secret" },
       // Regression: avoid crashing on req.socket.remoteAddress when callers pass a non-IncomingMessage.
       req: {} as never,
@@ -19,14 +25,26 @@ describe("gateway auth", () => {
 
   it("reports missing and mismatched token reasons", async () => {
     const missing = await authorizeGatewayConnect({
-      auth: { mode: "token", token: "secret", allowTailscale: false },
+      auth: {
+        mode: "token",
+        token: "secret",
+        allowTailscale: false,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: null,
     });
     expect(missing.ok).toBe(false);
     expect(missing.reason).toBe("token_missing");
 
     const mismatch = await authorizeGatewayConnect({
-      auth: { mode: "token", token: "secret", allowTailscale: false },
+      auth: {
+        mode: "token",
+        token: "secret",
+        allowTailscale: false,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: { token: "wrong" },
     });
     expect(mismatch.ok).toBe(false);
@@ -35,7 +53,7 @@ describe("gateway auth", () => {
 
   it("reports missing token config reason", async () => {
     const res = await authorizeGatewayConnect({
-      auth: { mode: "token", allowTailscale: false },
+      auth: { mode: "token", allowTailscale: false, trustLocalhost: false, allowedHosts: [] },
       connectAuth: { token: "anything" },
     });
     expect(res.ok).toBe(false);
@@ -44,14 +62,26 @@ describe("gateway auth", () => {
 
   it("reports missing and mismatched password reasons", async () => {
     const missing = await authorizeGatewayConnect({
-      auth: { mode: "password", password: "secret", allowTailscale: false },
+      auth: {
+        mode: "password",
+        password: "secret",
+        allowTailscale: false,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: null,
     });
     expect(missing.ok).toBe(false);
     expect(missing.reason).toBe("password_missing");
 
     const mismatch = await authorizeGatewayConnect({
-      auth: { mode: "password", password: "secret", allowTailscale: false },
+      auth: {
+        mode: "password",
+        password: "secret",
+        allowTailscale: false,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: { password: "wrong" },
     });
     expect(mismatch.ok).toBe(false);
@@ -60,7 +90,7 @@ describe("gateway auth", () => {
 
   it("reports missing password config reason", async () => {
     const res = await authorizeGatewayConnect({
-      auth: { mode: "password", allowTailscale: false },
+      auth: { mode: "password", allowTailscale: false, trustLocalhost: false, allowedHosts: [] },
       connectAuth: { password: "secret" },
     });
     expect(res.ok).toBe(false);
@@ -69,7 +99,13 @@ describe("gateway auth", () => {
 
   it("treats local tailscale serve hostnames as direct", async () => {
     const res = await authorizeGatewayConnect({
-      auth: { mode: "token", token: "secret", allowTailscale: true },
+      auth: {
+        mode: "token",
+        token: "secret",
+        allowTailscale: true,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: { token: "secret" },
       req: {
         socket: { remoteAddress: "127.0.0.1" },
@@ -83,7 +119,13 @@ describe("gateway auth", () => {
 
   it("allows tailscale identity to satisfy token mode auth", async () => {
     const res = await authorizeGatewayConnect({
-      auth: { mode: "token", token: "secret", allowTailscale: true },
+      auth: {
+        mode: "token",
+        token: "secret",
+        allowTailscale: true,
+        trustLocalhost: false,
+        allowedHosts: [],
+      },
       connectAuth: null,
       tailscaleWhois: async () => ({ login: "peter", name: "Peter" }),
       req: {
