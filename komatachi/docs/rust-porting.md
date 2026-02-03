@@ -1,63 +1,35 @@
 # Rust Porting Guide
 
-> **Status**: Reference document from experimental validation
-> **Context**: Decision #5 in PROGRESS.md established "TypeScript with Rust portability"
+> **Context**: Decision #5 established "TypeScript with Rust portability"
 
-This document captures lessons learned from an experimental Rust implementation of the compaction module. The experiment validated that our TypeScript design translates cleanly to Rust, confirming decision #5. The experimental code was removed after validation—this document preserves the approach and lessons for future porting work.
-
----
-
-## The Approach: Hybrid Architecture
-
-The experimental implementation used a **hybrid architecture**:
-
-- **Rust**: Pure computation (token estimation, metadata extraction, string formatting)
-- **TypeScript**: Async orchestration (calling the summarizer, error handling)
-
-This separation emerged from a key insight: Rust excels at synchronous, CPU-bound work; TypeScript excels at async coordination. Rather than fighting this, the hybrid design leverages each language's strengths.
-
-### Boundary Definition
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    TypeScript Layer                      │
-│  - Async operations (API calls to summarizer)           │
-│  - Error handling and user-facing types                 │
-│  - Set<string> ↔ Vec<string> conversions               │
-└─────────────────────────────────────────────────────────┘
-                           │
-                           ▼ napi-rs bindings
-┌─────────────────────────────────────────────────────────┐
-│                      Rust Layer                          │
-│  - Token estimation                                     │
-│  - Tool failure extraction                              │
-│  - File list computation                                │
-│  - Summary section formatting                           │
-│  - Input validation                                     │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Why This Boundary?
-
-This was a pragmatic choice for the experiment, not a fundamental requirement:
-
-1. **Pure computation separates cleanly**: Token estimation, string manipulation, and data extraction have no I/O dependencies—they're ideal Rust candidates.
-2. **I/O strategy is flexible**: The summarizer (which makes LLM calls) was injected as a callback. This lets the caller decide the I/O pattern—the core module doesn't need to know.
-3. **Data conversion at boundaries**: TypeScript uses `Set<string>` idiomatically; Rust uses `Vec<String>`. Convert at the boundary, not throughout.
-
-Note: The hybrid split was about separating concerns, not about async complexity. A pure Rust implementation could handle I/O via blocking calls, async/await, or callback injection.
+This document captures lessons from validating that our TypeScript design ports cleanly to Rust. We built a Rust implementation of the compaction module and ran it against the existing TypeScript test suite via napi-rs bindings. The experiment confirmed the approach works; this document preserves what we learned.
 
 ---
 
-## Type Mapping Patterns
+## The Core Insight
 
-### Nullable Fields
+**Pure computation ports trivially. Keep I/O at the boundaries.**
 
-TypeScript's `field?: type` maps to Rust's `Option<T>`:
+The compaction module is essentially pure: it takes data in, does computation, and returns data out. The one I/O operation (calling the summarizer) is injected as a dependency. This separation means:
+
+- The computation logic translates 1:1 to Rust
+- The I/O strategy is decided separately, at the boundary
+- Testing is straightforward (inject a mock)
+
+This isn't a Rust-specific pattern—it's good software design that happens to make porting easy.
+
+---
+
+## Type Mapping
+
+TypeScript types map predictably to Rust types.
+
+### Optional Fields
 
 ```typescript
 // TypeScript
 interface Message {
+  role: string;
   toolCallId?: string;
   exitCode?: number;
 }
@@ -66,22 +38,29 @@ interface Message {
 ```rust
 // Rust
 pub struct Message {
+    pub role: String,
     pub tool_call_id: Option<String>,
     pub exit_code: Option<i32>,
 }
 ```
 
-### Union Types for Results
-
-TypeScript's discriminated unions map to Rust's `Result` or custom structs:
+### Discriminated Unions → Rust Enums or Structs
 
 ```typescript
 // TypeScript
-function canCompact(): { ok: true } | { ok: false; reason: string };
+type ValidationResult =
+  | { ok: true }
+  | { ok: false; reason: string; inputTokens: number };
 ```
 
 ```rust
-// Rust - using a struct with Option fields
+// Rust - as enum
+pub enum ValidationResult {
+    Ok,
+    Err { reason: String, input_tokens: u32 },
+}
+
+// Rust - as struct (when serialization matters)
 pub struct ValidationResult {
     pub ok: bool,
     pub reason: Option<String>,
@@ -89,24 +68,23 @@ pub struct ValidationResult {
 }
 ```
 
-### Collection Types
-
-TypeScript's `Set<T>` has no direct Rust equivalent via napi-rs. Use `Vec<T>` in Rust and convert at the boundary:
+### Collections
 
 ```typescript
-// TypeScript wrapper
-function fileOpsToNative(fileOps: FileOperations): native.FileOperations {
-  return {
-    read: [...fileOps.read],     // Set -> Array
-    edited: [...fileOps.edited],
-    written: [...fileOps.written],
-  };
-}
+// TypeScript
+const filesRead: Set<string>;
+const messages: Message[];
 ```
 
-### Unknown/Dynamic Content
+```rust
+// Rust
+let files_read: HashSet<String>;
+let messages: Vec<Message>;
+```
 
-TypeScript's `unknown` maps to `serde_json::Value`:
+Note: When crossing FFI boundaries (napi-rs), `Set<T>` converts to `Vec<T>` since JavaScript Sets don't map directly.
+
+### Dynamic Content
 
 ```typescript
 // TypeScript
@@ -118,83 +96,15 @@ interface Message {
 ```rust
 // Rust
 pub struct Message {
-    #[napi(ts_type = "unknown")]
     pub content: serde_json::Value,
 }
 ```
 
 ---
 
-## napi-rs Annotations
+## Pure Functions Port 1:1
 
-The experimental implementation used [napi-rs](https://napi.rs/) for Node.js bindings.
-
-### Key Annotations
-
-```rust
-use napi_derive::napi;
-
-// Export a function
-#[napi]
-pub fn estimate_tokens(message: Message) -> u32 { ... }
-
-// Export a struct with JS-compatible field names
-#[napi(object)]
-pub struct Message {
-    #[napi(js_name = "toolCallId")]  // camelCase in JS
-    pub tool_call_id: Option<String>, // snake_case in Rust
-}
-```
-
-### Error Handling
-
-Rust errors map to JavaScript exceptions via `napi::Result`:
-
-```rust
-#[napi]
-pub fn prepare_compaction(...) -> napi::Result<PreparedCompaction> {
-    if input_too_large {
-        return Err(napi::Error::new(
-            napi::Status::GenericFailure,
-            "Input too large to compact".to_string(),
-        ));
-    }
-    Ok(result)
-}
-```
-
-TypeScript catches these as regular exceptions:
-
-```typescript
-try {
-  prepared = native.prepareCompaction(messages, fileOps, maxTokens);
-} catch (error) {
-  if (error.message.includes("Input too large")) {
-    throw new InputTooLargeError(...);
-  }
-  throw error;
-}
-```
-
----
-
-## Lessons Learned
-
-### 1. Design TypeScript for Portability
-
-The TypeScript code should avoid patterns that don't translate to Rust:
-
-| Avoid in TypeScript | Use Instead | Rust Equivalent |
-|---------------------|-------------|-----------------|
-| `any` | Explicit types | Strong typing |
-| Implicit type coercion | Explicit conversions | `From`/`Into` traits |
-| Prototype manipulation | Pure functions | Functions |
-| Closures capturing mutable state | Explicit state passing | Owned data |
-| Dynamic property access | Defined interfaces | Structs |
-
-### 2. Pure Functions Port Cleanly
-
-Functions that take inputs and return outputs without side effects port 1:1:
+Functions without side effects translate directly:
 
 ```typescript
 // TypeScript
@@ -205,140 +115,72 @@ export function estimateTokens(message: Message): number {
 ```
 
 ```rust
-// Rust - nearly identical
-pub fn estimate_tokens(message: Message) -> u32 {
+// Rust
+pub fn estimate_tokens(message: &Message) -> u32 {
     let text = extract_text(&message.content);
     (text.len() as f64 / 4.0).ceil() as u32
 }
 ```
 
-### 3. I/O Patterns for External Calls
+The logic is identical. The differences are mechanical: `&` for borrows, explicit numeric casts, snake_case.
 
-When a module needs to make external calls (like LLM API requests), there are several patterns:
+---
 
-**Callback injection** - The module stays pure; the caller provides the I/O mechanism:
+## Dependency Injection for I/O
 
-```rust
-fn compact<F>(messages: Vec<Message>, summarize: F) -> Result<Summary>
-where
-    F: FnOnce(&[Message]) -> Result<String>
-{
-    // Module doesn't care how summarize is implemented
-    let summary = summarize(&messages)?;
-    // ...
-}
-```
-
-**Blocking I/O** - Simple and correct for sequential operations:
-
-```rust
-// Using ureq for synchronous HTTP
-let response = ureq::post(url)
-    .send_json(&request)?
-    .into_string()?;
-```
-
-**Thread + channel** - When you need concurrency without async:
-
-```rust
-let (tx, rx) = mpsc::channel();
-thread::spawn(move || {
-    let result = make_llm_call();
-    tx.send(result).unwrap();
-});
-let response = rx.recv()?;
-```
-
-**Async/await** - When handling many concurrent operations (e.g., a server):
-
-```rust
-async fn summarize(messages: &[Message]) -> Result<String> {
-    let response = reqwest::Client::new()
-        .post(url)
-        .json(&request)
-        .send()
-        .await?;
-    // ...
-}
-```
-
-The experimental implementation used callback injection, keeping the core module I/O-agnostic. This is often the cleanest pattern—it separates the "what" (computation) from the "how" (I/O strategy).
-
-### 4. Validation Works Identically
-
-Input validation logic ports directly. The same checks, same error messages:
+When a module needs external capabilities (like calling an LLM), inject them:
 
 ```typescript
-// TypeScript
-if (inputTokens > effectiveMax) {
-  throw new InputTooLargeError(inputTokens, maxTokens);
+// TypeScript - function injection
+interface CompactionConfig {
+  summarize: (messages: Message[]) => Promise<string>;
 }
 ```
 
 ```rust
-// Rust
-if input_tokens > effective_max {
-    return Err(napi::Error::new(
-        napi::Status::GenericFailure,
-        format!("Input too large: {} > {}", input_tokens, max_tokens),
-    ));
+// Rust - trait-based injection
+pub trait Summarizer {
+    fn summarize(&self, messages: &[Message]) -> Result<String, Error>;
+}
+
+pub fn compact(
+    messages: &[Message],
+    summarizer: &impl Summarizer,
+) -> Result<CompactionResult, Error> {
+    // Module doesn't know or care how summarization happens
+    let summary = summarizer.summarize(messages)?;
+    // ...
 }
 ```
 
-### 5. Build Infrastructure Complexity
-
-The experimental Rust implementation required:
-
-- `Cargo.toml` with napi-rs dependencies
-- `build.rs` for napi build hooks
-- `package.json` in the crate directory for npm packaging
-- `.gitignore` for build artifacts
-
-This infrastructure cost is non-trivial. It's worth it for:
-- Performance-critical paths
-- CPU-bound computation
-- Memory-sensitive operations
-
-It's not worth it for:
-- Thin wrappers
-- Primarily async code
-- Rapidly changing interfaces
+The module stays pure and testable. The caller decides how I/O actually works.
 
 ---
 
-## When to Port to Rust
+## Validation Approach
 
-Port a module to Rust when:
+We used napi-rs to create Node.js bindings for the Rust implementation. This let us:
 
-1. **Performance matters**: The module is on a hot path and profiling shows it's a bottleneck
-2. **Computation dominates**: The module does significant CPU work (parsing, transformation, computation)
-3. **Interface is stable**: The module's API is unlikely to change frequently
-4. **Dependencies exist**: Rust equivalents for required functionality exist (or aren't needed)
+1. Run the existing 44 TypeScript tests against Rust code
+2. Verify identical behavior without writing duplicate tests
+3. Catch type mapping issues at the boundary
 
-Keep in TypeScript when:
-
-1. **Interface is unstable**: The API is still being designed
-2. **Integration is complex**: Heavy interop with Node.js APIs or npm packages
-3. **Iteration speed matters**: You need to change and test rapidly
-4. **Node ecosystem dependency**: The module relies heavily on npm packages without Rust equivalents
+This was validation scaffolding, not target architecture. The bindings confirmed the port works; they aren't part of the design going forward.
 
 ---
 
-## Validation Results
+## What We Validated
 
-The experimental implementation validated:
+1. **Type mapping works**: All TypeScript types mapped cleanly to Rust equivalents
+2. **Behavior is identical**: Same tests, same results
+3. **Pure functions port directly**: No structural changes needed
 
-1. **Type mapping works**: All types mapped cleanly between TypeScript and Rust
-2. **Behavior is identical**: 44 tests passed with both implementations
-3. **Hybrid architecture is viable**: The TypeScript/Rust boundary was clean
-4. **Performance would improve**: Rust computation would be faster (not measured, as performance wasn't a concern)
-
-The experiment confirmed decision #5: writing "Rust-portable TypeScript" is achievable. The actual porting can happen when/if performance requirements demand it.
+The experiment confirmed decision #5: writing Rust-portable TypeScript is achievable. The actual port can happen when requirements demand it.
 
 ---
 
 ## References
 
-- [napi-rs documentation](https://napi.rs/)
-- [serde_json for dynamic JSON](https://docs.rs/serde_json/)
+- [napi-rs documentation](https://napi.rs/) (for validation bindings)
+- [serde_json](https://docs.rs/serde_json/) (for dynamic JSON)
 - Decision #5 in [PROGRESS.md](../PROGRESS.md)
