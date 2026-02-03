@@ -195,6 +195,68 @@ describe("message_sending hook integration", () => {
     expect(sendWhatsApp).toHaveBeenCalledTimes(3);
   });
 
+  it("applies hook modifications to sendPayload path", async () => {
+    // Create a custom registry with sendPayload adapter
+    const sendPayloadMock = vi.fn().mockResolvedValue({
+      channel: "custom" as const,
+      messageId: "c1",
+      roomId: "r1",
+    });
+    const customRegistry = createTestRegistry([
+      {
+        pluginId: "custom",
+        source: "test",
+        plugin: createOutboundTestPlugin({
+          id: "custom",
+          outbound: {
+            deliveryMode: "direct",
+            sendText: vi
+              .fn()
+              .mockResolvedValue({ channel: "custom", messageId: "t1", roomId: "r1" }),
+            sendMedia: vi
+              .fn()
+              .mockResolvedValue({ channel: "custom", messageId: "m1", roomId: "r1" }),
+            sendPayload: sendPayloadMock,
+          },
+        }),
+      },
+    ]);
+
+    // Register hook that modifies content
+    customRegistry.typedHooks.push({
+      pluginId: "test-audit-plugin",
+      hookName: "message_sending",
+      handler: async (event: PluginHookMessageSendingEvent, ctx: PluginHookMessageContext) => {
+        hookCalls.push({ event, ctx });
+        return { content: "[FILTERED] " + event.content };
+      },
+      priority: 0,
+      source: "test",
+    });
+
+    setActivePluginRegistry(customRegistry);
+    initializeGlobalHookRunner(customRegistry);
+
+    const cfg: OpenClawConfig = {};
+
+    await deliverOutboundPayloads({
+      cfg,
+      channel: "custom",
+      to: "room123",
+      payloads: [{ text: "Original message", channelData: { custom: true } }],
+    });
+
+    // Verify hook was called
+    expect(hookCalls).toHaveLength(1);
+
+    // Verify sendPayload received modified text
+    expect(sendPayloadMock).toHaveBeenCalledTimes(1);
+    const callArg = sendPayloadMock.mock.calls[0][0];
+    expect(callArg.text).toBe("[FILTERED] Original message");
+    expect(callArg.payload.text).toBe("[FILTERED] Original message");
+    expect(callArg.payload.channelData).toEqual({ custom: true });
+  });
+
   it("continues delivery when no hooks are registered", async () => {
     // Use registry without hooks
     const registry = createTestRegistry([

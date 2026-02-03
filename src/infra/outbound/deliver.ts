@@ -355,6 +355,10 @@ export async function deliverOutboundPayloads(params: {
       }
     }
 
+    // Apply hook-modified text to the payload for sendPayload path
+    const modifiedPayload =
+      payloadText !== (payload.text ?? "") ? { ...payload, text: payloadText } : payload;
+
     const payloadSummary: NormalizedOutboundPayload = {
       text: payloadText,
       mediaUrls: payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []),
@@ -363,8 +367,8 @@ export async function deliverOutboundPayloads(params: {
     try {
       throwIfAborted(abortSignal);
       params.onPayload?.(payloadSummary);
-      if (handler.sendPayload && payload.channelData) {
-        results.push(await handler.sendPayload(payload));
+      if (handler.sendPayload && modifiedPayload.channelData) {
+        results.push(await handler.sendPayload(modifiedPayload));
         continue;
       }
       if (payloadSummary.mediaUrls.length === 0) {
