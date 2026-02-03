@@ -209,16 +209,16 @@ r1USnb+wUdA7Zoj/mQ==
       });
     });
 
-    let clientRef: GatewayClient | null = null;
+    let onConnected: () => void;
     const connected = new Promise<void>((resolve) => {
-      clientRef = new GatewayClient({
-        url: `ws://127.0.0.1:${port}`,
-        timeout: 100, // Very short timeout for testing
-        onHelloOk: () => resolve(),
-      });
-      clientRef.start();
+      onConnected = resolve;
     });
-    const client = clientRef!;
+    const client = new GatewayClient({
+      url: `ws://127.0.0.1:${port}`,
+      timeout: 100, // Very short timeout for testing
+      onHelloOk: () => onConnected(),
+    });
+    client.start();
 
     await connected;
 
@@ -269,16 +269,16 @@ r1USnb+wUdA7Zoj/mQ==
       });
     });
 
-    let clientRef: GatewayClient | null = null;
+    let onConnected: () => void;
     const connected = new Promise<void>((resolve) => {
-      clientRef = new GatewayClient({
-        url: `ws://127.0.0.1:${port}`,
-        timeout: 5000, // Long client timeout
-        onHelloOk: () => resolve(),
-      });
-      clientRef.start();
+      onConnected = resolve;
     });
-    const client = clientRef!;
+    const client = new GatewayClient({
+      url: `ws://127.0.0.1:${port}`,
+      timeout: 5000, // Long client timeout
+      onHelloOk: () => onConnected(),
+    });
+    client.start();
 
     await connected;
 
@@ -340,16 +340,16 @@ r1USnb+wUdA7Zoj/mQ==
       });
     });
 
-    let clientRef: GatewayClient | null = null;
+    let onConnected: () => void;
     const connected = new Promise<void>((resolve) => {
-      clientRef = new GatewayClient({
-        url: `ws://127.0.0.1:${port}`,
-        timeout: 0, // Disable timeout
-        onHelloOk: () => resolve(),
-      });
-      clientRef.start();
+      onConnected = resolve;
     });
-    const client = clientRef!;
+    const client = new GatewayClient({
+      url: `ws://127.0.0.1:${port}`,
+      timeout: 0, // Disable timeout
+      onHelloOk: () => onConnected(),
+    });
+    client.start();
 
     await connected;
 
@@ -395,16 +395,16 @@ r1USnb+wUdA7Zoj/mQ==
       });
     });
 
-    let clientRef: GatewayClient | null = null;
+    let onConnected: () => void;
     const connected = new Promise<void>((resolve) => {
-      clientRef = new GatewayClient({
-        url: `ws://127.0.0.1:${port}`,
-        timeout: 1000,
-        onHelloOk: () => resolve(),
-      });
-      clientRef.start();
+      onConnected = resolve;
     });
-    const client = clientRef!;
+    const client = new GatewayClient({
+      url: `ws://127.0.0.1:${port}`,
+      timeout: 1000,
+      onHelloOk: () => onConnected(),
+    });
+    client.start();
 
     await connected;
 

@@ -453,7 +453,12 @@ export class GatewayClient {
       return p;
     }
 
-    // Race between the request promise and a timeout
+    // Race between the request promise and a timeout.
+    // Note: The timeout only affects the client-side promise; it does not abort
+    // server-side processing. If the server eventually responds after timeout,
+    // the response will be silently dropped (no pending entry). This is intentional
+    // as the gateway protocol does not support request cancellation, and closing
+    // the entire connection would be too disruptive for other in-flight requests.
     let timeoutId: NodeJS.Timeout | null = null;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
