@@ -76,7 +76,7 @@ const OLLAMA_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
-const SAMBANOVA_BASE_URL = "https://cloud.sambanova.ai/";
+const SAMBANOVA_BASE_URL = "https://api.sambanova.ai/v1";
 const SAMBANOVA_DEFAULT_CONTEXT_WINDOW = 128000;
 const SAMBANOVA_DEFAULT_MAX_TOKENS = 8192;
 const SAMBANOVA_DEFAULT_COST = {
@@ -428,7 +428,7 @@ function buildSambanovaProvider(): ProviderConfig {
         maxTokens: SAMBANOVA_DEFAULT_MAX_TOKENS,
       },
       {
-        id: "ambanova/DeepSeek-V3.1-Terminus",
+        id: "sambanova/DeepSeek-V3.1-Terminus",
         name: "Deepseek V3 Terminus",
         reasoning: false,
         input: ["text"],
@@ -437,7 +437,7 @@ function buildSambanovaProvider(): ProviderConfig {
         maxTokens: SAMBANOVA_DEFAULT_MAX_TOKENS,
       },
       {
-        id: "gpt-oss-120b",
+        id: "sambanova/gpt-oss-120b",
         name: "GPT OSS 120B",
         reasoning: false,
         input: ["text"],

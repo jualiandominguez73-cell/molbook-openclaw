@@ -463,7 +463,7 @@ export function applySambanovaProviderConfig(cfg: OpenClawConfig): OpenClawConfi
     ...models["sambanova/Llama-4-Maverick-17B-128E-Instruct"],
     alias: models["sambanova/Llama-4-Maverick-17B-128E-Instruct"]?.alias ?? "Llama 4 Maverick 17B",
   };
-  models["sambanova/Meta-Llama-3.1-8B-Instruct`"] = {
+  models["sambanova/Meta-Llama-3.1-8B-Instruct"] = {
     ...models["sambanova/Meta-Llama-3.1-8B-Instruct"],
     alias: models["sambanova/Meta-Llama-3.1-8B-Instruct"]?.alias ?? "Llama 3.1 8B",
   };

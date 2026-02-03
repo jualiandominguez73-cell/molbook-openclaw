@@ -551,7 +551,7 @@ export async function applyAuthChoiceApiProviders(
       );
     }
 
-    const envKey = resolveEnvApiKey("samnbanova");
+    const envKey = resolveEnvApiKey("sambanova");
     if (envKey) {
       const useExisting = await params.prompter.confirm({
         message: `Use existing SAMBANOVA_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
