@@ -38,7 +38,6 @@ export {
 } from "./onboard-auth.config-opencode.js";
 export {
   OPENROUTER_DEFAULT_MODEL_REF,
-  QIANFAN_DEFAULT_MODEL_REF,
   setAnthropicApiKey,
   setGeminiApiKey,
   setKimiCodingApiKey,
@@ -73,4 +72,5 @@ export {
   MOONSHOT_DEFAULT_MODEL_REF,
   QIANFAN_BASE_URL,
   QIANFAN_DEFAULT_MODEL_ID,
+  QIANFAN_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";

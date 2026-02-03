@@ -179,8 +179,6 @@ export async function setOpencodeZenApiKey(key: string, agentDir?: string) {
   });
 }
 
-export const QIANFAN_DEFAULT_MODEL_REF = "qianfan/ernie-5.0-thinking-latest";
-
 export async function setQianfanApiKey(key: string, agentDir?: string) {
   upsertAuthProfile({
     profileId: "qianfan:default",

@@ -18,7 +18,6 @@ import {
 } from "../agents/venice-models.js";
 import {
   OPENROUTER_DEFAULT_MODEL_REF,
-  QIANFAN_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   ZAI_DEFAULT_MODEL_REF,
@@ -31,6 +30,7 @@ import {
   MOONSHOT_DEFAULT_MODEL_REF,
   QIANFAN_BASE_URL,
   QIANFAN_DEFAULT_MODEL_ID,
+  QIANFAN_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";
 
 export function applyZaiConfig(cfg: OpenClawConfig): OpenClawConfig {
