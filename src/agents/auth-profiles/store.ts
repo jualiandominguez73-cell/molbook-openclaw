@@ -3,7 +3,12 @@ import fs from "node:fs";
 import lockfile from "proper-lockfile";
 import type { AuthProfileCredential, AuthProfileStore, ProfileUsageStats } from "./types.js";
 import { resolveOAuthPath } from "../../config/paths.js";
-import { loadJsonFile, saveJsonFile } from "../../infra/json-file.js";
+import {
+  loadSecureJsonFile,
+  migratePlaintextJsonFile,
+  saveSecureJsonFile,
+} from "../../infra/crypto-store.js";
+import { loadJsonFile } from "../../infra/json-file.js";
 import { AUTH_STORE_LOCK_OPTIONS, AUTH_STORE_VERSION, log } from "./constants.js";
 import { syncExternalCliCredentials } from "./external-cli-sync.js";
 import { ensureAuthStoreFile, resolveAuthStorePath, resolveLegacyAuthStorePath } from "./paths.js";
@@ -194,13 +199,14 @@ function mergeOAuthFileIntoStore(store: AuthProfileStore): boolean {
 
 export function loadAuthProfileStore(): AuthProfileStore {
   const authPath = resolveAuthStorePath();
-  const raw = loadJsonFile(authPath);
+  migratePlaintextJsonFile(authPath);
+  const raw = loadSecureJsonFile(authPath);
   const asStore = coerceAuthStore(raw);
   if (asStore) {
     // Sync from external CLI tools on every load
     const synced = syncExternalCliCredentials(asStore);
     if (synced) {
-      saveJsonFile(authPath, asStore);
+      saveSecureJsonFile(authPath, asStore);
     }
     return asStore;
   }
@@ -257,13 +263,14 @@ function loadAuthProfileStoreForAgent(
   _options?: { allowKeychainPrompt?: boolean },
 ): AuthProfileStore {
   const authPath = resolveAuthStorePath(agentDir);
-  const raw = loadJsonFile(authPath);
+  migratePlaintextJsonFile(authPath);
+  const raw = loadSecureJsonFile(authPath);
   const asStore = coerceAuthStore(raw);
   if (asStore) {
     // Sync from external CLI tools on every load
     const synced = syncExternalCliCredentials(asStore);
     if (synced) {
-      saveJsonFile(authPath, asStore);
+      saveSecureJsonFile(authPath, asStore);
     }
     return asStore;
   }
@@ -271,11 +278,12 @@ function loadAuthProfileStoreForAgent(
   // Fallback: inherit auth-profiles from main agent if subagent has none
   if (agentDir) {
     const mainAuthPath = resolveAuthStorePath(); // without agentDir = main
-    const mainRaw = loadJsonFile(mainAuthPath);
+    migratePlaintextJsonFile(mainAuthPath);
+    const mainRaw = loadSecureJsonFile(mainAuthPath);
     const mainStore = coerceAuthStore(mainRaw);
     if (mainStore && Object.keys(mainStore.profiles).length > 0) {
       // Clone main store to subagent directory for auth inheritance
-      saveJsonFile(authPath, mainStore);
+      saveSecureJsonFile(authPath, mainStore);
       log.info("inherited auth-profiles from main agent", { agentDir });
       return mainStore;
     }
@@ -325,7 +333,7 @@ function loadAuthProfileStoreForAgent(
   const syncedCli = syncExternalCliCredentials(store);
   const shouldWrite = legacy !== null || mergedOAuth || syncedCli;
   if (shouldWrite) {
-    saveJsonFile(authPath, store);
+    saveSecureJsonFile(authPath, store);
   }
 
   // PR #368: legacy auth.json could get re-migrated from other agent dirs,
@@ -374,5 +382,5 @@ export function saveAuthProfileStore(store: AuthProfileStore, agentDir?: string)
     lastGood: store.lastGood ?? undefined,
     usageStats: store.usageStats ?? undefined,
   } satisfies AuthProfileStore;
-  saveJsonFile(authPath, payload);
+  saveSecureJsonFile(authPath, payload);
 }
