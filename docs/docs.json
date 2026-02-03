@@ -851,7 +851,7 @@
           {
             "group": "Start Here",
             "pages": [
-              "start/index",
+              "index",
               "start/getting-started",
               "start/wizard",
               "start/setup",
