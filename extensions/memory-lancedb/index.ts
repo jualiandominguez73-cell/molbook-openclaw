@@ -2,7 +2,7 @@
  * OpenClaw Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
- * Uses LanceDB for storage and OpenAI for embeddings.
+ * Uses LanceDB for storage and OpenAI or MiniMax for embeddings.
  * Provides seamless auto-recall and auto-capture via lifecycle hooks.
  */
 
@@ -143,10 +143,14 @@ class MemoryDB {
 }
 
 // ============================================================================
-// OpenAI Embeddings
+// Embeddings (OpenAI or MiniMax)
 // ============================================================================
 
-class Embeddings {
+interface EmbeddingProvider {
+  embed(text: string): Promise<number[]>;
+}
+
+class OpenAIEmbeddings implements EmbeddingProvider {
   private client: OpenAI;
 
   constructor(
@@ -163,6 +167,69 @@ class Embeddings {
     });
     return response.data[0].embedding;
   }
+}
+
+class MiniMaxEmbeddings implements EmbeddingProvider {
+  private apiKey: string;
+  private groupId: string;
+  private model: string;
+  private baseUrl = "https://api.minimax.chat/v1/text/embeddings";
+
+  constructor(
+    apiKey: string,
+    groupId: string,
+    model: string,
+  ) {
+    this.apiKey = apiKey;
+    this.groupId = groupId;
+    this.model = model;
+  }
+
+  async embed(text: string): Promise<number[]> {
+    const response = await fetch(this.baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
+        "X-GroupId": this.groupId,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        texts: [text],
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`MiniMax embedding failed: ${error}`);
+    }
+
+    const data = await response.json() as {
+      base_resp: { status_msg: string };
+      embeddings: number[][];
+    };
+
+    if (data.base_resp.status_msg !== "OK") {
+      throw new Error(`MiniMax embedding error: ${data.base_resp.status_msg}`);
+    }
+
+    return data.embeddings[0];
+  }
+}
+
+function createEmbeddings(
+  provider: "openai" | "minimax",
+  apiKey: string,
+  model: string,
+  groupId?: string,
+): EmbeddingProvider {
+  if (provider === "minimax") {
+    if (!groupId) {
+      throw new Error("MiniMax provider requires groupId");
+    }
+    return new MiniMaxEmbeddings(apiKey, groupId, model);
+  }
+  return new OpenAIEmbeddings(apiKey, model);
 }
 
 // ============================================================================
@@ -238,7 +305,12 @@ const memoryPlugin = {
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
     const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = createEmbeddings(
+      cfg.embedding.provider,
+      cfg.embedding.apiKey,
+      cfg.embedding.model ?? "text-embedding-3-small",
+      cfg.embedding.groupId,
+    );
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);
 

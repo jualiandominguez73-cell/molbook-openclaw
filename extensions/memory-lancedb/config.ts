@@ -4,9 +4,10 @@ import { join } from "node:path";
 
 export type MemoryConfig = {
   embedding: {
-    provider: "openai";
+    provider: "openai" | "minimax";
     model?: string;
     apiKey: string;
+    groupId?: string;
   };
   dbPath?: string;
   autoCapture?: boolean;
@@ -49,6 +50,8 @@ const DEFAULT_DB_PATH = resolveDefaultDbPath();
 const EMBEDDING_DIMENSIONS: Record<string, number> = {
   "text-embedding-3-small": 1536,
   "text-embedding-3-large": 3072,
+  "embo-01": 6144,
+  "MiniMax-Text-01": 6144,
 };
 
 function assertAllowedKeys(value: Record<string, unknown>, allowed: string[], label: string) {
@@ -95,13 +98,23 @@ export const memoryConfigSchema = {
     if (!embedding || typeof embedding.apiKey !== "string") {
       throw new Error("embedding.apiKey is required");
     }
-    assertAllowedKeys(embedding, ["apiKey", "model"], "embedding config");
+
+    const provider = (embedding.provider as string) || "openai";
+    if (provider !== "openai" && provider !== "minimax") {
+      throw new Error(`Unsupported embedding provider: ${provider}. Use "openai" or "minimax".`);
+    }
+
+    const allowedKeys = ["apiKey", "model", "provider"];
+    if (provider === "minimax") {
+      allowedKeys.push("groupId");
+    }
+    assertAllowedKeys(embedding, allowedKeys, "embedding config");
 
     const model = resolveEmbeddingModel(embedding);
 
-    return {
+    const result: MemoryConfig = {
       embedding: {
-        provider: "openai",
+        provider: provider as "openai" | "minimax",
         model,
         apiKey: resolveEnvVars(embedding.apiKey),
       },
@@ -109,18 +122,38 @@ export const memoryConfigSchema = {
       autoCapture: cfg.autoCapture !== false,
       autoRecall: cfg.autoRecall !== false,
     };
+
+    if (provider === "minimax") {
+      if (typeof embedding.groupId !== "string") {
+        throw new Error("embedding.groupId is required for MiniMax provider");
+      }
+      result.embedding.groupId = resolveEnvVars(embedding.groupId);
+    }
+
+    return result;
   },
   uiHints: {
+    "embedding.provider": {
+      label: "Embedding Provider",
+      help: "Choose OpenAI or MiniMax for embeddings",
+      default: "openai",
+    },
     "embedding.apiKey": {
-      label: "OpenAI API Key",
+      label: "API Key",
       sensitive: true,
-      placeholder: "sk-proj-...",
-      help: "API key for OpenAI embeddings (or use ${OPENAI_API_KEY})",
+      placeholder: "sk-proj-... (OpenAI) or ${MINIMAX_API_KEY}",
+      help: "API key for embeddings",
+    },
+    "embedding.groupId": {
+      label: "Group ID",
+      placeholder: "${MINIMAX_GROUP_ID}",
+      help: "MiniMax Group ID (required for MiniMax provider)",
+      advanced: true,
     },
     "embedding.model": {
       label: "Embedding Model",
       placeholder: DEFAULT_MODEL,
-      help: "OpenAI embedding model to use",
+      help: "OpenAI: text-embedding-3-small/large | MiniMax: embo-01",
     },
     dbPath: {
       label: "Database Path",
