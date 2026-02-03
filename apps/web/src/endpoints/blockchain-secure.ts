@@ -287,11 +287,30 @@ export const confirmBuyTransaction: PayloadHandler = async (req, res) => {
       })
     }
 
-    // Wait for transaction confirmation
+    // Wait for transaction confirmation with timeout
     const ethereum = getEthereumService(req.payload)
     const provider = ethereum['provider']
 
-    const receipt = await provider.waitForTransaction(transactionHash, 3) // Wait for 3 confirmations
+    const TRANSACTION_TIMEOUT = 120000 // 2 minutes
+
+    let receipt
+    try {
+      receipt = await Promise.race([
+        provider.waitForTransaction(transactionHash, 3), // Wait for 3 confirmations
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Transaction confirmation timeout')), TRANSACTION_TIMEOUT)
+        )
+      ])
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Transaction confirmation timeout') {
+        return res.status(408).json({
+          error: 'Transaction confirmation timeout',
+          message: 'Transaction is still pending. Please check again in a few minutes.',
+          transactionHash
+        })
+      }
+      throw error
+    }
 
     if (!receipt || !receipt.status) {
       return res.status(400).json({

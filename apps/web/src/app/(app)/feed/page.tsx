@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { sanitizeText } from '@/lib/utils/sanitize'
 
 interface Post {
   id: string
@@ -112,23 +113,54 @@ export default function FeedPage() {
 function PostCard({ post }: { post: Post }) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likeCount)
+  const [csrfToken, setCsrfToken] = useState<string | null>(null)
+
+  // Fetch CSRF token on mount
+  useEffect(() => {
+    async function fetchCsrfToken() {
+      try {
+        const response = await fetch('/api/csrf-token')
+        const data = await response.json()
+        setCsrfToken(data.csrfToken)
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error)
+      }
+    }
+    fetchCsrfToken()
+  }, [])
 
   async function handleLike() {
+    if (!csrfToken) {
+      console.error('CSRF token not available')
+      return
+    }
+
     try {
       if (liked) {
         // Unlike
         await fetch(`/api/social/posts/${post.id}/like`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'X-CSRF-Token': csrfToken
+          }
         })
         setLikeCount((prev) => prev - 1)
       } else {
         // Like
         await fetch(`/api/social/posts/${post.id}/like`, {
-          method: 'POST'
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': csrfToken
+          }
         })
         setLikeCount((prev) => prev + 1)
       }
       setLiked(!liked)
+
+      // Refresh CSRF token after use (one-time use tokens)
+      const response = await fetch('/api/csrf-token')
+      const data = await response.json()
+      setCsrfToken(data.csrfToken)
     } catch (error) {
       console.error('Failed to toggle like:', error)
     }

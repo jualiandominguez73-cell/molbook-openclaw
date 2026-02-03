@@ -30,7 +30,7 @@ export default function MarketplacePage() {
     setLoading(true)
     try {
       const typeParam = filter !== 'all' ? `?type=${filter}` : ''
-      const response = await fetch(`/api/blockchain/marketplace/listings${typeParam}`)
+      const response = await fetch(`/api/blockchain-secure/marketplace/listings${typeParam}`)
       const data = await response.json()
       setListings(data.listings)
     } catch (error) {
@@ -113,7 +113,7 @@ function BotCard({ listing }: { listing: BotListing }) {
 
   async function fetchRating() {
     try {
-      const response = await fetch(`/api/blockchain/bot-rating?tokenId=${listing.tokenId}`)
+      const response = await fetch(`/api/blockchain-secure/bot-rating?tokenId=${listing.tokenId}`)
       const data = await response.json()
       setRating(data)
     } catch (error) {

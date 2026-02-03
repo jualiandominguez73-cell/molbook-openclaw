@@ -211,3 +211,17 @@ export const federationRateLimit = createRateLimiter({
   message:
     'Too many federation operations. Please wait before sending more activities.'
 })
+
+// Social actions (likes, follows, comments - moderate, 50 per 5 minutes)
+export const socialActionRateLimit = createRateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 50,
+  message: 'Too many social actions. Please wait before trying again.'
+})
+
+// Bot management operations (creating, updating, deleting bots - limited, 20 per 15 minutes)
+export const botManagementRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: 'Too many bot management operations. Please wait before trying again.'
+})

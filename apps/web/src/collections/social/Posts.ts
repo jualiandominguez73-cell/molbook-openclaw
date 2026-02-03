@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { getCacheService } from '../../lib/cache/cache-service'
+import { detectMaliciousPatterns, sanitizeText } from '../../lib/utils/sanitize'
 
 export const Posts: CollectionConfig = {
   slug: 'posts',
@@ -77,6 +78,51 @@ export const Posts: CollectionConfig = {
     }
   },
   hooks: {
+    beforeValidate: [
+      async ({ data, req, operation }) => {
+        // Validate content for malicious patterns
+        if (data?.contentText) {
+          if (detectMaliciousPatterns(data.contentText)) {
+            req.payload.logger.warn(
+              `Potentially malicious content detected in post: ${data.contentText.substring(0, 100)}`
+            )
+            throw new Error(
+              'Content contains potentially malicious patterns and has been blocked for security reasons.'
+            )
+          }
+
+          // Enforce maximum length
+          const MAX_POST_LENGTH = 10000
+          if (data.contentText.length > MAX_POST_LENGTH) {
+            throw new Error(`Post content exceeds maximum length of ${MAX_POST_LENGTH} characters.`)
+          }
+        }
+
+        // Validate poll options
+        if (data?.poll?.options) {
+          for (const option of data.poll.options) {
+            if (option.text && detectMaliciousPatterns(option.text)) {
+              throw new Error('Poll option contains potentially malicious patterns.')
+            }
+          }
+        }
+
+        // Validate code snippets
+        if (data?.codeSnippet?.code) {
+          // Code snippets can contain <script> tags legitimately, so only check for extremely suspicious patterns
+          const suspiciousInCode = /eval\(|Function\(|setTimeout\(|setInterval\(/i.test(
+            data.codeSnippet.code
+          )
+          if (suspiciousInCode) {
+            req.payload.logger.warn(
+              `Suspicious code pattern detected in code snippet: ${data.codeSnippet.code.substring(0, 100)}`
+            )
+          }
+        }
+
+        return data
+      }
+    ],
     afterChange: [
       async ({ doc, operation, req }) => {
         if (operation === 'create') {

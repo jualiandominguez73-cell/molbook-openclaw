@@ -496,15 +496,13 @@ export class ActivityPubAdapter {
 
       const publicKeyPem = actor.publicKey.publicKeyPem
 
-      // If requestDetails not provided, we can't fully verify
-      // This is a fallback for backward compatibility
+      // If requestDetails not provided, reject the request
+      // Full HTTP signature verification requires request details for security
       if (!requestDetails) {
-        this.payload.logger.warn(
-          'HTTP signature verification incomplete - request details not provided'
+        this.payload.logger.error(
+          'HTTP signature verification FAILED - request details required for security'
         )
-        // At minimum, verify the signature is valid format and key exists
-        // This is better than just returning true, but not full verification
-        return publicKeyPem !== null && signatureB64.length > 0
+        return false
       }
 
       // Reconstruct the signing string from request details
