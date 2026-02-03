@@ -1,6 +1,7 @@
 import type { MsgContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import {
+  resolveAgentConfig,
   resolveAgentDir,
   resolveAgentWorkspaceDir,
   resolveSessionAgentId,
@@ -38,7 +39,13 @@ export async function getReplyFromConfig(
     sessionKey: agentSessionKey,
     config: cfg,
   });
-  const agentCfg = cfg.agents?.defaults;
+  // Merge per-agent config (e.g. thinkingDefault) with global defaults
+  const perAgentConfig = resolveAgentConfig(cfg, agentId);
+  const agentCfg = perAgentConfig
+    ? Object.assign({}, cfg.agents?.defaults, {
+        thinkingDefault: perAgentConfig.thinkingDefault ?? cfg.agents?.defaults?.thinkingDefault,
+      })
+    : cfg.agents?.defaults;
   const sessionCfg = cfg.session;
   const { defaultProvider, defaultModel, aliasIndex } = resolveDefaultModel({
     cfg,
