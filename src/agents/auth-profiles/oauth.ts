@@ -156,10 +156,7 @@ async function tryResolveOAuthProfile(params: {
  * Call this when receiving a 401 from the provider, indicating the token
  * was revoked server-side before the local expires timestamp.
  */
-export function invalidateOAuthToken(params: {
-  profileId: string;
-  agentDir?: string;
-}): void {
+export function invalidateOAuthToken(params: { profileId: string; agentDir?: string }): void {
   const store = ensureAuthProfileStore(params.agentDir);
   const cred = store.profiles[params.profileId];
   if (!cred || cred.type !== "oauth") {
