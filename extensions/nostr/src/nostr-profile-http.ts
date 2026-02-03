@@ -54,10 +54,15 @@ function checkRateLimit(accountId: string): boolean {
 
   // Evict stale entries at size limit (throttled to once per second)
   if (rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES && now >= nextCleanupAt) {
+    // Snapshot keys to avoid mutating Map during iteration
+    const keysToDelete: string[] = [];
     for (const [key, entry] of rateLimitMap) {
       if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-        rateLimitMap.delete(key);
+        keysToDelete.push(key);
       }
+    }
+    for (const key of keysToDelete) {
+      rateLimitMap.delete(key);
     }
     // If still at limit after evicting stale entries, remove oldest
     if (rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES) {
