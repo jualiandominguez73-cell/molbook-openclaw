@@ -50,16 +50,16 @@ RUN rm -f /etc/sudoers.d/${USER}
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY ui/package.json ./ui/package.json
-COPY patches ./patches
-COPY scripts ./scripts
+COPY --chown=${USER}:${USER} package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY --chown=${USER}:${USER} ui/package.json ./ui/package.json
+COPY --chown=${USER}:${USER} patches ./patches
+COPY --chown=${USER}:${USER} scripts ./scripts
 
 # Build stage runs as root; PATH must be set for pnpm availability
 ENV PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile  && pnpm store prune
 
-COPY . .
+COPY --chown=${USER}:${USER} . .
 RUN OPENCLAW_A2UI_SKIP_MISSING=1 pnpm build
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
@@ -67,10 +67,7 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
-# Allow non-root user to write temp files during runtime/tests.
-RUN chown -R node:node /app
 # Security hardening: Run as non-root user
-# /app code owned by root (read-only), runtime user has execute-only permissions
 USER ${USER}
 
 # Start gateway server with default config.
