@@ -31,6 +31,7 @@ interface OnboardingState {
   modelProvider: {
     provider: ModelProvider;
     apiKey: string;
+    baseUrl?: string; // For local/Ollama models
   };
   gateway: {
     mode: GatewayMode;
@@ -52,6 +53,7 @@ export function OnboardingWizard({ onComplete, onCancel }: OnboardingWizardProps
     modelProvider: {
       provider: "openai",
       apiKey: "",
+      baseUrl: "",
     },
     gateway: {
       mode: "auto",
@@ -72,8 +74,9 @@ export function OnboardingWizard({ onComplete, onCancel }: OnboardingWizardProps
       case "risk":
         return state.riskAccepted;
       case "provider":
-        // Local doesn't need API key, others should have one (but allow skip)
-        return state.modelProvider.provider === "local" || state.modelProvider.apiKey.length > 0;
+        // Require API key to be filled in to proceed (can't click Continue without it)
+        // User must click "Skip for now" if they want to skip
+        return state.modelProvider.apiKey.length > 0;
       case "gateway":
         return state.gateway.mode !== "remote" || (state.gateway.endpoint?.length ?? 0) > 0;
       case "success":
@@ -181,8 +184,8 @@ export function OnboardingWizard({ onComplete, onCancel }: OnboardingWizardProps
       )}
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto py-12">
+      <main className="flex-1 overflow-y-auto flex items-center justify-center">
+        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={state.currentStep}
@@ -228,36 +231,42 @@ export function OnboardingWizard({ onComplete, onCancel }: OnboardingWizardProps
                   onStartChat={handleStartChat}
                 />
               )}
+
+              {/* Footer with navigation buttons - now inside content flow */}
+              {!isFirstStep && !isSuccessStep && (
+                <footer className="flex items-center justify-between pt-5 mt-6 border-t">
+                  <div>
+                    {currentStepConfig.canSkip && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={handleSkip}
+                        className="border-muted-foreground/30 hover:border-muted-foreground/50"
+                      >
+                        Skip for now
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <span className="text-sm sm:text-base text-muted-foreground">
+                      Step {state.currentStep} of {STEPS.length - 1}
+                    </span>
+                    <Button
+                      size="lg"
+                      onClick={handleNext}
+                      disabled={!canProceed}
+                    >
+                      {state.currentStep === STEPS.length - 2 ? "Finish" : "Continue"}
+                      <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </div>
+                </footer>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
       </main>
-
-      {/* Footer with navigation buttons */}
-      {!isFirstStep && !isSuccessStep && (
-        <footer className="flex items-center justify-between px-6 py-4 border-t bg-card/50">
-          <div>
-            {currentStepConfig.canSkip && (
-              <Button variant="ghost" onClick={handleSkip}>
-                Skip for now
-              </Button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              Step {state.currentStep} of {STEPS.length - 1}
-            </span>
-            <Button
-              onClick={handleNext}
-              disabled={!canProceed && !currentStepConfig.canSkip}
-            >
-              {state.currentStep === STEPS.length - 2 ? "Finish" : "Continue"}
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </footer>
-      )}
     </div>
   );
 }

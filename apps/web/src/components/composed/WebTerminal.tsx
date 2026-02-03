@@ -36,23 +36,17 @@ async function loadXterm(): Promise<{
   SearchAddon: new () => SearchAddonLike;
   ClipboardAddon: new () => unknown;
 }> {
-  const terminalModuleId = "@xterm/xterm";
-  const fitModuleId = "@xterm/addon-fit";
-  const weblinksModuleId = "@xterm/addon-web-links";
-  const searchModuleId = "@xterm/addon-search";
-  const clipboardModuleId = "@xterm/addon-clipboard";
-
   const [terminalMod, fitMod, webLinksMod, searchMod, clipboardMod] = await Promise.all([
-    import(/* @vite-ignore */ terminalModuleId) as Promise<unknown>,
-    import(/* @vite-ignore */ fitModuleId) as Promise<unknown>,
-    import(/* @vite-ignore */ weblinksModuleId) as Promise<unknown>,
-    import(/* @vite-ignore */ searchModuleId) as Promise<unknown>,
-    import(/* @vite-ignore */ clipboardModuleId) as Promise<unknown>,
-    import(/* @vite-ignore */ `${terminalModuleId}/css/xterm.css`).catch(() => null),
+    import("@xterm/xterm") as Promise<unknown>,
+    import("@xterm/addon-fit") as Promise<unknown>,
+    import("@xterm/addon-web-links") as Promise<unknown>,
+    import("@xterm/addon-search") as Promise<unknown>,
+    import("@xterm/addon-clipboard") as Promise<unknown>,
+    import("@xterm/xterm/css/xterm.css").catch(() => null),
   ]);
 
   if (typeof terminalMod !== "object" || terminalMod === null || !("Terminal" in terminalMod)) {
-    throw new Error(`Expected "${terminalModuleId}" to export Terminal`);
+    throw new Error('Expected "@xterm/xterm" to export Terminal');
   }
 
   const Terminal = (terminalMod as XtermModule).Terminal;
@@ -61,11 +55,11 @@ async function loadXterm(): Promise<{
   const SearchAddon = (searchMod as AddonModule<SearchAddonLike>).SearchAddon;
   const ClipboardAddon = (clipboardMod as AddonModule<unknown>).ClipboardAddon;
 
-  if (typeof Terminal !== "function") {throw new Error(`Invalid Terminal export from "${terminalModuleId}"`);}
-  if (typeof FitAddon !== "function") {throw new Error(`Invalid FitAddon export from "${fitModuleId}"`);}
-  if (typeof WebLinksAddon !== "function") {throw new Error(`Invalid WebLinksAddon export from "${weblinksModuleId}"`);}
-  if (typeof SearchAddon !== "function") {throw new Error(`Invalid SearchAddon export from "${searchModuleId}"`);}
-  if (typeof ClipboardAddon !== "function") {throw new Error(`Invalid ClipboardAddon export from "${clipboardModuleId}"`);}
+  if (typeof Terminal !== "function") {throw new Error('Invalid Terminal export from "@xterm/xterm"');}
+  if (typeof FitAddon !== "function") {throw new Error('Invalid FitAddon export from "@xterm/addon-fit"');}
+  if (typeof WebLinksAddon !== "function") {throw new Error('Invalid WebLinksAddon export from "@xterm/addon-web-links"');}
+  if (typeof SearchAddon !== "function") {throw new Error('Invalid SearchAddon export from "@xterm/addon-search"');}
+  if (typeof ClipboardAddon !== "function") {throw new Error('Invalid ClipboardAddon export from "@xterm/addon-clipboard"');}
 
   return { Terminal, FitAddon, WebLinksAddon, SearchAddon, ClipboardAddon };
 }
