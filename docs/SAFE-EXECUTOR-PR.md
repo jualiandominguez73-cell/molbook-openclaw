@@ -2,109 +2,129 @@
 
 ## Summary
 
-This PR adds a defense-in-depth security module for OpenClaw that protects against prompt injection attacks when bots are exposed to external users (Discord servers, Telegram groups, etc.).
+This PR adds a defense-in-depth security module for OpenClaw powered by [ajs-clawbot](https://www.npmjs.com/package/ajs-clawbot), providing **Runtime-Layer Permission** security that makes dangerous operations impossible rather than merely discouraged.
 
 ## The Problem
 
-When you expose your OpenClaw bot to external users, they can potentially craft messages that exploit prompt injection to:
+When you expose your OpenClaw bot to external users (Discord servers, Telegram groups, etc.), they can craft messages that exploit prompt injection to:
 - Read sensitive files (.env, SSH keys, credentials)
 - Execute arbitrary commands
 - Exfiltrate data via network requests
 - Cause denial of service through flooding or infinite loops
 
-The current exec-approvals system is a good start but relies on 'whack-a-mole' - blocking known bad things after they're discovered.
+Current "fixes" (regex filters, prompt engineering) use **Application-Layer Permission** - the capability exists and a boolean decides whether to use it. This is trivially bypassed via prompt injection.
 
-## The Solution
+## The Solution: Runtime-Layer Permission
 
-This module implements 'safe by default' - only allow explicitly permitted things:
+This module uses **ajs-clawbot's capability-based security** where dangerous capabilities literally don't exist until explicitly granted. There's nothing to bypass.
 
-### 1. Command Validation
-- Blocks shell metacharacters (`; & | $ < >`)
-- Validates all path arguments against blocked patterns
-- Opaque error messages (don't leak why something failed)
+```
+  APPLICATION-LAYER                      RUNTIME-LAYER (ajs-clawbot)
+  ==================                     ===========================
 
-### 2. Path-Based Blocking
-Automatically blocks access to sensitive files:
-- Environment files: `.env`, `.env.local`, etc.
-- SSH keys: `id_rsa`, `id_ed25519`, `.ssh/`
-- Credentials: `credentials.json`, `secrets.yaml`
-- Cloud configs: `.aws/`, `.gcloud/`, `.kube/`
-- And 50+ more patterns
+  +------------------+                   +------------------+
+  |   Agent Code     |                   |   Agent Code     |
+  +--------+---------+                   +--------+---------+
+           |                                      |
+           v                                      v
+  +------------------+                   +------------------+
+  | if (allowed) {   |  <-- bypass!      |   fs.read()?     |
+  |   fs.read()      |                   +--------+---------+
+  | }                |                            |
+  +--------+---------+                            v
+           |                             +------------------+
+           v                             | CAPABILITY NOT   |
+  +------------------+                   | BOUND TO VM      |
+  |  fs.read() runs  |                   |                  |
+  |  (always exists) |                   | Function doesn't |
+  +------------------+                   | exist to call!   |
+                                         +------------------+
+```
 
-### 3. Environment Sanitization
-Blocks dangerous env vars that can hijack execution:
-- `LD_PRELOAD`, `LD_LIBRARY_PATH` (linker injection)
-- `NODE_OPTIONS`, `NODE_PATH` (Node.js injection)
-- `PYTHONPATH`, `BASH_ENV`, etc.
-- `PATH` modification (binary hijacking)
+## Features
+
+### 1. Zero Capabilities by Default
+Skills start with nothing. They can't read files, fetch URLs, or execute commands unless explicitly granted.
+
+### 2. Trust Levels by Message Source
+```typescript
+// Automatically determined from message context
+CLI user        -> 'full' trust
+Owner flag      -> 'full' trust  
+Trusted users   -> 'shell' trust
+DMs             -> 'write' trust
+Group chats     -> 'llm' trust
+Public channels -> 'network' trust
+```
+
+### 3. Always-Blocked Patterns
+Sensitive files blocked regardless of trust level:
+- Environment: `.env`, `.env.*`
+- SSH: `id_rsa`, `id_ed25519`, `.ssh/*`
+- Credentials: `credentials.*`, `secrets.*`
+- Certificates: `*.pem`, `*.key`
+- Cloud: `.aws/*`, `.gcloud/*`, `.kube/*`
 
 ### 4. SSRF Protection
-Blocks requests to internal resources:
-- `localhost`, `*.local`, `*.internal`
-- `metadata.google.internal` (cloud metadata)
-- Private IPs: `10.x`, `192.168.x`, `127.x`, etc.
-- IPv4-mapped-IPv6 bypass detection (`::ffff:192.168.1.1`)
+- Private IPs: 10.x, 192.168.x, 127.x, etc.
+- IPv6 private ranges: fc00::/7, fe80::/10, ::1
+- IPv4-mapped-IPv6 bypass detection: ::ffff:192.168.x.x
+- Cloud metadata: 169.254.169.254
+- Blocked hostnames: localhost, *.local, metadata.google.internal
 
-### 5. Rate Limiting
+### 5. Environment Sanitization
+Blocks dangerous env vars: LD_PRELOAD, NODE_OPTIONS, PYTHONPATH, BASH_ENV, etc.
+
+### 6. Rate Limiting & Flood Protection
 - Self-message rejection (prevents recursion attacks)
-- Per-requester rate limits (prevents flooding)
-- Automatic cooldown after limit exceeded
+- Per-requester rate limits
+- Global rate limits
+- Automatic cooldown
 
-### 6. Trust Levels
-Different security based on message source:
-- `owner`: CLI user (full trust)
-- `trusted`: Explicitly approved users
-- `paired`: Users who completed pairing
-- `public`: Unknown/anonymous users
+### 7. Process Tree Killing
+Timeouts kill entire process trees, not just parent processes.
 
 ## Usage
 
 ```typescript
-import { 
-  validateCommand, 
-  validateFilePath,
-  createSafeExecutionContext 
-} from './safe-executor';
+import { createOpenClawExecutor } from './safe-executor';
 
-// Create context for incoming message
-const ctx = createSafeExecutionContext({
-  source: { provider: 'discord', channelType: 'group' },
-  workdir: '/app/workspace',
+const { executor, execute } = createOpenClawExecutor({
+  workspaceRoot: process.env.OPENCLAW_WORKSPACE,
+  llmPredict: anthropicClient.predict,
+  allowedHosts: ['api.github.com', 'api.weather.gov'],
   selfIds: ['my-bot-id'],
+  strictRateLimiting: true, // for public channels
 });
 
-// Validate before executing
-const validation = validateCommand('cat config.json', {
-  workdir: ctx.workdir,
-  trustLevel: ctx.trustLevel,
-});
-
-if (!validation.allowed) {
-  return { error: 'Command failed' }; // Opaque error
-}
+// Execute skill with automatic trust level from message source
+const result = await execute(
+  './skills/weather',
+  { city: 'Seattle' },
+  { provider: 'discord', channelType: 'group', userId: 'user-123' }
+);
 ```
-
-## Security Patterns Source
-
-This incorporates security lessons from:
-- OpenClaw's own `bash-tools.exec.ts` (dangerous env vars)
-- OpenClaw's `ssrf.ts` (SSRF protection)
-- ajs-clawbot project (blocked file patterns)
 
 ## Files Changed
 
-- `src/safe-executor/index.ts` - Module exports
-- `src/safe-executor/validator.ts` - Core validation logic
+- `src/safe-executor/index.ts` - Module exports (re-exports from ajs-clawbot)
+- `src/safe-executor/openclaw-executor.ts` - OpenClaw-specific integration
 - `src/safe-executor/config.ts` - Configuration loading
+- `src/safe-executor/safe-executor.test.ts` - 24 integration tests
+
+## Dependencies
+
+- `ajs-clawbot@^0.2.6` - Runtime-layer capability-based security
 
 ## Testing
 
-The underlying patterns have 185 tests in the ajs-clawbot project covering:
-- All blocked file patterns
-- SSRF hostname and IP detection
-- IPv4-mapped-IPv6 bypass detection
-- Environment variable sanitization
-- Rate limiting behavior
+24 integration tests covering:
+- Trust level mapping from message sources
+- Security utilities (blocked paths, env vars, IPs, hostnames)
+- Process utilities
+- Executor factory creation
+
+The underlying ajs-clawbot package has 254 tests.
 
 ## Backwards Compatibility
 
