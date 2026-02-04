@@ -7,7 +7,7 @@ Thank you for helping improve OpenClaw's documentation. This guide covers how to
 1. Fork and clone the [openclaw/openclaw](https://github.com/openclaw/openclaw) repository
 2. Navigate to the `/docs` directory
 3. Make your changes
-4. Install the Mintlify CLI: `npm install -g mintlify`
+4. Install the Mintlify CLI: `npm install -g mint`
 5. Run `mint dev` to preview your changes locally at `http://localhost:3000`
 6. Submit a pull request
 7. Resolve any failing CI checks or code review comments
