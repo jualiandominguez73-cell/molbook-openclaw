@@ -75,19 +75,13 @@ def extract_image_data(result: dict) -> str | None:
     return data_item.get("b64_json")
 
 
-def save_image(data: str, output_path: Path, is_svg: bool = False) -> None:
+def save_image(data: str, output_path: Path) -> None:
     """Save base64 encoded image data to file."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if is_svg:
-        # SVG is text-based
-        decoded = base64.b64decode(data)
-        output_path.write_bytes(decoded)
-    else:
-        image_data = base64.b64decode(data)
-        output_path.write_bytes(image_data)
+    image_data = base64.b64decode(data)
+    output_path.write_bytes(image_data)
     full_path = output_path.resolve()
     print(f"\nImage saved: {full_path}")
-    print(f"MEDIA: {full_path}")
 
 
 def make_request(
@@ -110,7 +104,7 @@ def make_request(
         headers["Content-Type"] = "application/json"
         response = requests.post(url, headers=headers, json=json_data)
 
-    if response.status_code != 200:
+    if not response.ok:
         print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
         print(f"Response: {response.text}", file=sys.stderr)
         sys.exit(1)
@@ -137,7 +131,7 @@ def cmd_generate(args, token: str) -> None:
 
     image_data = (result.get('image') or result.get("data", [{}])[0]).get("b64_json")
     if image_data:
-        save_image(image_data, Path(args.filename), is_svg=True)
+        save_image(image_data, Path(args.filename))
     else:
         print("Error: No image data in response.", file=sys.stderr)
         sys.exit(1)
@@ -162,9 +156,7 @@ def cmd_image_to_image(args, token: str) -> None:
 
     image_data = extract_image_data(result)
     if image_data:
-        # Check if output is SVG based on file extension
-        is_svg = args.filename.lower().endswith('.svg')
-        save_image(image_data, Path(args.filename), is_svg=is_svg)
+        save_image(image_data, Path(args.filename))
     else:
         print("Error: No image data in response.", file=sys.stderr)
         sys.exit(1)
@@ -186,9 +178,9 @@ def cmd_replace_background(args, token: str) -> None:
         }
         result = make_request("/images/replaceBackground", token, files=files, data=data)
 
-    image_data = (result.get('image') or result.get("data", [{}])[0]).get("b64_json")
+    image_data = extract_image_data(result)
     if image_data:
-        save_image(image_data, Path(args.filename), is_svg=True)
+        save_image(image_data, Path(args.filename))
     else:
         print("Error: No image data in response.", file=sys.stderr)
         sys.exit(1)
@@ -205,7 +197,7 @@ def cmd_vectorize(args, token: str) -> None:
 
     image_data = extract_image_data(result)
     if image_data:
-        save_image(image_data, Path(args.filename), is_svg=True)
+        save_image(image_data, Path(args.filename))
     else:
         print("Error: No image data in response.", file=sys.stderr)
         sys.exit(1)
