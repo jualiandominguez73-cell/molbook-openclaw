@@ -56,14 +56,19 @@ export const spixiOnboardingAdapter: ChannelOnboardingAdapter = {
             [
                 "Spixi uses decentralized P2P messaging via the Ixian network.",
                 "",
-                "You will need:",
-                "1. An MQTT broker (e.g., Mosquitto or Aedes) for real-time messages",
-                "2. A QuIXI node for the Ixian API",
-                "3. Your Ixian wallet address",
+                "Before continuing, please install:",
                 "",
-                "More info: https://github.com/ixian-platform/QuIXI",
+                "1. MQTT Broker (for real-time messages):",
+                "   • Mosquitto: https://mosquitto.org/download/",
+                "   • Aedes (Node.js): npm install aedes",
+                "",
+                "2. QuIXI Node (Ixian API bridge):",
+                "   • https://github.com/ixian-platform/QuIXI",
+                "",
+                "3. Spixi Wallet (to get your Ixian address):",
+                "   • https://spixi.io/",
             ].join("\n"),
-            "Spixi Setup"
+            "Spixi Prerequisites"
         );
 
         const mqttHost = String(
