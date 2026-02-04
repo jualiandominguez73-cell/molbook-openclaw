@@ -1,0 +1,67 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force sync (overwrite local changes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/openclaw/openclaw.git || true
+          git fetch upstream
+
+      - name: Check for updates
+        id: check
+        run: |
+          LOCAL=$(git rev-parse HEAD)
+          UPSTREAM=$(git rev-parse upstream/main)
+          if [ "$LOCAL" = "$UPSTREAM" ]; then
+            echo "up_to_date=true" >> $GITHUB_OUTPUT
+            echo "Already up to date"
+          else
+            echo "up_to_date=false" >> $GITHUB_OUTPUT
+            echo "Updates available from upstream"
+          fi
+
+      - name: Merge upstream changes
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          # Try to merge upstream
+          if git merge upstream/main --no-edit; then
+            echo "Merge successful"
+          else
+            echo "Merge conflicts detected"
+            # Accept upstream for conflicting files, keep both for new files
+            git checkout --theirs . 2>/dev/null || true
+            git add -A
+            git commit -m "Merge upstream/main (auto-sync)" || true
+          fi
+
+      - name: Push changes
+        if: steps.check.outputs.up_to_date == 'false'
+        run: git push origin main

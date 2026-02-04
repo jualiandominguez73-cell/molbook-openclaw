@@ -4,61 +4,98 @@
 param(
     [switch]$Merge,    # Use merge instead of rebase
     [switch]$Force,    # Force sync (will overwrite local changes)
+    [switch]$Silent,   # Suppress console output (for scheduled tasks)
     [string]$Branch = "main"  # Branch to sync from
 )
 
 $ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectDir = Split-Path -Parent $ScriptDir
+$LogFile = Join-Path $ProjectDir "sync.log"
 
-Write-Host "🔄 Syncing with upstream OpenClaw..." -ForegroundColor Cyan
+function Write-Log {
+    param([string]$Message, [string]$Color = "White")
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logMessage = "[$timestamp] $Message"
+    Add-Content -Path $LogFile -Value $logMessage -ErrorAction SilentlyContinue
+    if (-not $Silent) {
+        Write-Host $Message -ForegroundColor $Color
+    }
+}
+
+Set-Location $ProjectDir
+
+Write-Log "Syncing with upstream OpenClaw..." "Cyan"
 
 # Fetch latest from upstream
-Write-Host "`n📥 Fetching from upstream..." -ForegroundColor Yellow
-git fetch upstream
-
+Write-Log "Fetching from upstream..." "Yellow"
+$fetchOutput = git fetch upstream 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to fetch from upstream" -ForegroundColor Red
+    Write-Log "Failed to fetch from upstream: $fetchOutput" "Red"
     exit 1
+}
+
+# Check if we're behind
+$localHead = git rev-parse HEAD
+$upstreamHead = git rev-parse upstream/$Branch
+
+if ($localHead -eq $upstreamHead) {
+    Write-Log "Already up to date with upstream/$Branch" "Green"
+    exit 0
 }
 
 # Check for uncommitted changes
 $status = git status --porcelain
 if ($status -and -not $Force) {
-    Write-Host "⚠️  You have uncommitted changes. Commit or stash them first." -ForegroundColor Yellow
-    Write-Host "   Or use -Force to discard local changes." -ForegroundColor Yellow
-    git status --short
+    Write-Log "Uncommitted changes detected. Use -Force to override." "Yellow"
+    if (-not $Silent) {
+        git status --short
+    }
     exit 1
 }
 
 # Get current branch
 $currentBranch = git rev-parse --abbrev-ref HEAD
-
-Write-Host "`n🔀 Current branch: $currentBranch" -ForegroundColor Green
+Write-Log "Current branch: $currentBranch" "Green"
 
 if ($Force) {
-    Write-Host "⚠️  Force mode: Resetting to upstream/$Branch" -ForegroundColor Yellow
-    git reset --hard upstream/$Branch
+    Write-Log "Force mode: Resetting to upstream/$Branch" "Yellow"
+    git reset --hard upstream/$Branch 2>&1 | Out-Null
 } elseif ($Merge) {
-    Write-Host "🔀 Merging upstream/$Branch into $currentBranch..." -ForegroundColor Yellow
-    git merge upstream/$Branch --no-edit
+    Write-Log "Merging upstream/$Branch into $currentBranch..." "Yellow"
+    $mergeOutput = git merge upstream/$Branch --no-edit --allow-unrelated-histories 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # Try to resolve conflicts by accepting upstream
+        Write-Log "Merge conflicts - accepting upstream versions" "Yellow"
+        git checkout --theirs . 2>&1 | Out-Null
+        git add -A 2>&1 | Out-Null
+        git commit -m "Merge upstream/$Branch (auto-sync)" 2>&1 | Out-Null
+    }
 } else {
-    Write-Host "🔀 Rebasing $currentBranch onto upstream/$Branch..." -ForegroundColor Yellow
-    git rebase upstream/$Branch
+    Write-Log "Rebasing $currentBranch onto upstream/$Branch..." "Yellow"
+    $rebaseOutput = git rebase upstream/$Branch 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Log "Rebase failed, falling back to merge" "Yellow"
+        git rebase --abort 2>&1 | Out-Null
+        git merge upstream/$Branch --no-edit --allow-unrelated-histories 2>&1 | Out-Null
+    }
 }
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "`n❌ Sync failed. You may need to resolve conflicts." -ForegroundColor Red
-    Write-Host "   Run 'git status' to see conflicts." -ForegroundColor Yellow
-    Write-Host "   After resolving, run 'git rebase --continue' or 'git merge --continue'" -ForegroundColor Yellow
+    Write-Log "Sync failed. Manual intervention may be needed." "Red"
     exit 1
 }
 
-Write-Host "`n✅ Sync complete!" -ForegroundColor Green
+# Get version info
+$versionLine = git log -1 --oneline upstream/$Branch
+Write-Log "Sync complete! Latest: $versionLine" "Green"
 
-# Show what changed
-Write-Host "`n📋 Recent upstream changes:" -ForegroundColor Cyan
-git log --oneline -10 upstream/$Branch
+if (-not $Silent) {
+    Write-Host "`nRecent upstream changes:" -ForegroundColor Cyan
+    git log --oneline -10 upstream/$Branch
 
-Write-Host "`n💡 Tips:" -ForegroundColor Cyan
-Write-Host "   - Run 'pnpm install' if dependencies changed" -ForegroundColor Gray
-Write-Host "   - Run 'pnpm build' to rebuild" -ForegroundColor Gray
-Write-Host "   - Check CHANGELOG.md for breaking changes" -ForegroundColor Gray
+    Write-Host "`nTips:" -ForegroundColor Cyan
+    Write-Host "   - Run 'pnpm install' if dependencies changed" -ForegroundColor Gray
+    Write-Host "   - Run 'pnpm build' to rebuild" -ForegroundColor Gray
+    Write-Host "   - Check CHANGELOG.md for breaking changes" -ForegroundColor Gray
+}
