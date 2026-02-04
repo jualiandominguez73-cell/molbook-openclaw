@@ -5,6 +5,7 @@ import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
 import type { EmbeddedRunAttemptResult } from "./pi-embedded-runner/run/types.js";
+import { loadSecureJsonFile } from "../infra/crypto-store.js";
 
 const runEmbeddedAttemptMock = vi.fn<Promise<EmbeddedRunAttemptResult>, [unknown]>();
 
@@ -164,9 +165,10 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
 
       expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(2);
 
-      const stored = JSON.parse(
-        await fs.readFile(path.join(agentDir, "auth-profiles.json"), "utf-8"),
-      ) as { usageStats?: Record<string, { lastUsed?: number }> };
+      const authFilePath = path.join(agentDir, "auth-profiles.json");
+      const stored = loadSecureJsonFile(authFilePath) as {
+        usageStats?: Record<string, { lastUsed?: number }>;
+      };
       expect(typeof stored.usageStats?.["openai:p2"]?.lastUsed).toBe("number");
     } finally {
       await fs.rm(agentDir, { recursive: true, force: true });
@@ -208,9 +210,10 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
 
       expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(1);
 
-      const stored = JSON.parse(
-        await fs.readFile(path.join(agentDir, "auth-profiles.json"), "utf-8"),
-      ) as { usageStats?: Record<string, { lastUsed?: number }> };
+      const authFilePath = path.join(agentDir, "auth-profiles.json");
+      const stored = loadSecureJsonFile(authFilePath) as {
+        usageStats?: Record<string, { lastUsed?: number }>;
+      };
       expect(stored.usageStats?.["openai:p2"]?.lastUsed).toBe(2);
     } finally {
       await fs.rm(agentDir, { recursive: true, force: true });
@@ -269,9 +272,8 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
 
         expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(1);
 
-        const stored = JSON.parse(
-          await fs.readFile(path.join(agentDir, "auth-profiles.json"), "utf-8"),
-        ) as {
+        const authFilePath = path.join(agentDir, "auth-profiles.json");
+        const stored = loadSecureJsonFile(authFilePath) as {
           usageStats?: Record<string, { lastUsed?: number; cooldownUntil?: number }>;
         };
         expect(stored.usageStats?.["openai:p1"]?.cooldownUntil).toBeUndefined();
@@ -376,9 +378,10 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
 
         expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(1);
 
-        const stored = JSON.parse(
-          await fs.readFile(path.join(agentDir, "auth-profiles.json"), "utf-8"),
-        ) as { usageStats?: Record<string, { lastUsed?: number; cooldownUntil?: number }> };
+        const authFilePath = path.join(agentDir, "auth-profiles.json");
+        const stored = loadSecureJsonFile(authFilePath) as {
+          usageStats?: Record<string, { lastUsed?: number; cooldownUntil?: number }>;
+        };
         expect(stored.usageStats?.["openai:p1"]?.cooldownUntil).toBe(now + 60 * 60 * 1000);
         expect(typeof stored.usageStats?.["openai:p2"]?.lastUsed).toBe("number");
       } finally {
@@ -539,9 +542,8 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
 
         expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(2);
 
-        const stored = JSON.parse(
-          await fs.readFile(path.join(agentDir, "auth-profiles.json"), "utf-8"),
-        ) as {
+        const authFilePath = path.join(agentDir, "auth-profiles.json");
+        const stored = loadSecureJsonFile(authFilePath) as {
           usageStats?: Record<string, { lastUsed?: number; cooldownUntil?: number }>;
         };
         expect(typeof stored.usageStats?.["openai:p1"]?.lastUsed).toBe("number");
