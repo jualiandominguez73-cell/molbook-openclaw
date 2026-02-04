@@ -40,8 +40,9 @@ export function resolveControlUiRepoRoot(
 }
 
 export async function resolveControlUiDistIndexPath(
-  argv1: string | undefined = process.argv[1],
+  opts: string | { argv1?: string; moduleUrl?: string; cwd?: string } = process.argv[1],
 ): Promise<string | null> {
+  const argv1 = typeof opts === "string" ? opts : opts.argv1;
   if (!argv1) {
     return null;
   }
@@ -53,7 +54,11 @@ export async function resolveControlUiDistIndexPath(
     return path.join(distDir, "control-ui", "index.html");
   }
 
-  const packageRoot = await resolveOpenClawPackageRoot({ argv1: normalized });
+  const packageRoot = await resolveOpenClawPackageRoot({
+    argv1: normalized,
+    moduleUrl: typeof opts === "string" ? undefined : opts.moduleUrl,
+    cwd: typeof opts === "string" ? undefined : opts.cwd,
+  });
   if (!packageRoot) {
     return null;
   }
@@ -165,7 +170,11 @@ export async function ensureControlUiAssetsBuilt(
   runtime: RuntimeEnv = defaultRuntime,
   opts?: { timeoutMs?: number },
 ): Promise<EnsureControlUiAssetsResult> {
-  const indexFromDist = await resolveControlUiDistIndexPath(process.argv[1]);
+  const indexFromDist = await resolveControlUiDistIndexPath({
+    argv1: process.argv[1],
+    moduleUrl: import.meta.url,
+    cwd: process.cwd(),
+  });
   if (indexFromDist && fs.existsSync(indexFromDist)) {
     return { ok: true, built: false };
   }
