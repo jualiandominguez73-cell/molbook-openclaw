@@ -396,7 +396,15 @@ export function sanitizeUserFacingText(text: string): string {
     );
   }
 
-  if (isContextOverflowError(trimmed)) {
+  // Only check for context overflow if the text looks like an error message
+  // (starts with error prefix or is a raw API error payload).
+  // This prevents false positives when the assistant's normal response
+  // mentions "context overflow" as part of its content.
+  const looksLikeError =
+    ERROR_PREFIX_RE.test(trimmed) ||
+    isRawApiErrorPayload(trimmed) ||
+    isLikelyHttpErrorText(trimmed);
+  if (looksLikeError && isContextOverflowError(trimmed)) {
     return (
       "Context overflow: prompt too large for the model. " +
       "Try again with less input or a larger-context model."
