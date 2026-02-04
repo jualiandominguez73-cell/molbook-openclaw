@@ -290,7 +290,7 @@ describe("tui-event-handlers: handleAgentEvent", () => {
     expect(tui.requestRender).not.toHaveBeenCalled();
   });
 
-  it("omits tool output when verbose is on", () => {
+  it("omits tool output when verbose is on (non-full)", () => {
     const state = makeState({
       activeChatRunId: "run-123",
       sessionInfo: { verboseLevel: "on" },
