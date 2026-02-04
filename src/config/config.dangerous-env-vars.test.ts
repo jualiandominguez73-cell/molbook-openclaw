@@ -172,6 +172,42 @@ describe("config dangerous env var blocking", () => {
     });
   });
 
+  it("blocks dangerous vars regardless of case (case-insensitive)", async () => {
+    await withTempHome(async (home) => {
+      const configDir = path.join(home, ".openclaw");
+      await fs.mkdir(configDir, { recursive: true });
+      await fs.writeFile(
+        path.join(configDir, "openclaw.json"),
+        JSON.stringify(
+          {
+            env: {
+              vars: {
+                node_options: "--require=/tmp/malicious.js", // lowercase
+                Node_Options: "--require=/tmp/another.js", // mixed case
+                ld_preload: "/tmp/evil.so", // lowercase
+              },
+            },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      await withEnvOverride(
+        { node_options: undefined, Node_Options: undefined, ld_preload: undefined },
+        async () => {
+          const { loadConfig } = await import("./config.js");
+          loadConfig();
+          // All case variants should be blocked
+          expect(process.env.node_options).toBeUndefined();
+          expect(process.env.Node_Options).toBeUndefined();
+          expect(process.env.ld_preload).toBeUndefined();
+        },
+      );
+    });
+  });
+
   it("allows safe API key variables", async () => {
     await withTempHome(async (home) => {
       const configDir = path.join(home, ".openclaw");
