@@ -44,6 +44,7 @@ type HookDispatchers = {
     name: string;
     wakeMode: "now" | "next-heartbeat";
     sessionKey: string;
+    agentId?: string;
     deliver: boolean;
     channel: HookMessageChannel;
     to?: string;
@@ -181,6 +182,7 @@ export function createHooksRequestHandler(
             name: mapped.action.name ?? "Hook",
             wakeMode: mapped.action.wakeMode,
             sessionKey: mapped.action.sessionKey ?? "",
+            agentId: mapped.action.agentId,
             deliver: resolveHookDeliver(mapped.action.deliver),
             channel,
             to: mapped.action.to,

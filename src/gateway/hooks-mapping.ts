@@ -47,6 +47,7 @@ export type HookAction =
       name?: string;
       wakeMode: "now" | "next-heartbeat";
       sessionKey?: string;
+      agentId?: string;
       deliver?: boolean;
       allowUnsafeExternalContent?: boolean;
       channel?: HookMessageChannel;
@@ -86,6 +87,7 @@ type HookTransformResult = Partial<{
   wakeMode: "now" | "next-heartbeat";
   name: string;
   sessionKey: string;
+  agentId: string;
   deliver: boolean;
   allowUnsafeExternalContent: boolean;
   channel: HookMessageChannel;
@@ -286,6 +288,7 @@ function mergeAction(
     wakeMode,
     name: override.name ?? baseAgent?.name,
     sessionKey: override.sessionKey ?? baseAgent?.sessionKey,
+    agentId: override.agentId ?? baseAgent?.agentId,
     deliver: typeof override.deliver === "boolean" ? override.deliver : baseAgent?.deliver,
     allowUnsafeExternalContent:
       typeof override.allowUnsafeExternalContent === "boolean"

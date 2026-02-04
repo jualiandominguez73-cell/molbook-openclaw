@@ -34,6 +34,7 @@ export function createGatewayHooksRequestHandler(params: {
     name: string;
     wakeMode: "now" | "next-heartbeat";
     sessionKey: string;
+    agentId?: string;
     deliver: boolean;
     channel: HookMessageChannel;
     to?: string;
@@ -79,6 +80,7 @@ export function createGatewayHooksRequestHandler(params: {
           job,
           message: value.message,
           sessionKey,
+          agentId: value.agentId,
           lane: "cron",
         });
         const summary = result.summary?.trim() || result.error?.trim() || result.status;
