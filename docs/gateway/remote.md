@@ -80,9 +80,8 @@ With the tunnel up:
 - `openclaw gateway {status,health,send,agent,call}` can also target the forwarded URL via `--url` when needed.
 
 Note: replace `18789` with your configured `gateway.port` (or `--port`/`OPENCLAW_GATEWAY_PORT`).
-Note: when you pass `--url` to a non-local address, the CLI does not fall back to config/env
-credentials to prevent credential leakage. Include `--token` or `--password` explicitly for
-remote targets. Local addresses (loopback, private IPs, tailnet) still use credential fallback.
+Note: when you pass `--url`, the CLI does not fall back to config or environment credentials.
+Include `--token` or `--password` explicitly. Missing explicit credentials is an error.
 
 ## CLI remote defaults
 

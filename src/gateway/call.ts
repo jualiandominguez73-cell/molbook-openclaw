@@ -7,7 +7,6 @@ import {
   resolveStateDir,
 } from "../config/config.js";
 import { loadOrCreateDeviceIdentity } from "../infra/device-identity.js";
-import { isPrivateIpAddress } from "../infra/net/ssrf.js";
 import { pickPrimaryTailnetIPv4 } from "../infra/tailnet.js";
 import { loadGatewayTlsRuntime } from "../infra/tls/gateway.js";
 import {
@@ -18,24 +17,6 @@ import {
 } from "../utils/message-channel.js";
 import { GatewayClient } from "./client.js";
 import { PROTOCOL_VERSION } from "./protocol/index.js";
-
-/**
- * Returns true if the URL points to a local/private address where credential
- * fallback is safe. Returns false for public/unknown URLs where we should
- * require explicit credentials to prevent credential exfiltration.
- */
-function isLocalUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    if (host === "localhost") {
-      return true;
-    }
-    return isPrivateIpAddress(host);
-  } catch {
-    return false;
-  }
-}
 
 export type CallGatewayOptions = {
   url?: string;
@@ -137,8 +118,23 @@ export async function callGateway<T = Record<string, unknown>>(
   const remote = isRemoteMode ? config.gateway?.remote : undefined;
   const urlOverride =
     typeof opts.url === "string" && opts.url.trim().length > 0 ? opts.url.trim() : undefined;
-  // Block credential fallback only for non-local URL overrides to prevent exfiltration
-  const hasNonLocalUrlOverride = !!urlOverride && !isLocalUrl(urlOverride);
+  const explicitToken =
+    typeof opts.token === "string" && opts.token.trim().length > 0 ? opts.token.trim() : undefined;
+  const explicitPassword =
+    typeof opts.password === "string" && opts.password.trim().length > 0
+      ? opts.password.trim()
+      : undefined;
+  if (urlOverride && !explicitToken && !explicitPassword) {
+    const configPath =
+      opts.configPath ?? resolveConfigPath(process.env, resolveStateDir(process.env));
+    throw new Error(
+      [
+        "gateway url override requires explicit credentials",
+        "Fix: pass --token or --password (or gatewayToken in tools).",
+        `Config: ${configPath}`,
+      ].join("\n"),
+    );
+  }
   const remoteUrl =
     typeof remote?.url === "string" && remote.url.trim().length > 0 ? remote.url.trim() : undefined;
   if (isRemoteMode && !urlOverride && !remoteUrl) {
@@ -173,15 +169,9 @@ export async function callGateway<T = Record<string, unknown>>(
     overrideTlsFingerprint ||
     remoteTlsFingerprint ||
     (tlsRuntime?.enabled ? tlsRuntime.fingerprintSha256 : undefined);
-  const explicitToken =
-    typeof opts.token === "string" && opts.token.trim().length > 0 ? opts.token.trim() : undefined;
-  const explicitPassword =
-    typeof opts.password === "string" && opts.password.trim().length > 0
-      ? opts.password.trim()
-      : undefined;
   const token =
     explicitToken ||
-    (!hasNonLocalUrlOverride
+    (!urlOverride
       ? isRemoteMode
         ? typeof remote?.token === "string" && remote.token.trim().length > 0
           ? remote.token.trim()
@@ -194,7 +184,7 @@ export async function callGateway<T = Record<string, unknown>>(
       : undefined);
   const password =
     explicitPassword ||
-    (!hasNonLocalUrlOverride
+    (!urlOverride
       ? process.env.OPENCLAW_GATEWAY_PASSWORD?.trim() ||
         process.env.CLAWDBOT_GATEWAY_PASSWORD?.trim() ||
         (isRemoteMode

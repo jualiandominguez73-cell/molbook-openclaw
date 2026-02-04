@@ -78,9 +78,8 @@ Shared options (where supported):
 - `--timeout <ms>`: timeout/budget (varies per command).
 - `--expect-final`: wait for a “final” response (agent calls).
 
-Note: when you set `--url` to a non-local address, the CLI does not fall back to config/env
-credentials to prevent credential leakage. Pass `--token` or `--password` explicitly for
-remote targets. Local addresses (loopback, private IPs, tailnet) still use credential fallback.
+Note: when you set `--url`, the CLI does not fall back to config or environment credentials.
+Pass `--token` or `--password` explicitly. Missing explicit credentials is an error.
 
 ### `gateway health`
 

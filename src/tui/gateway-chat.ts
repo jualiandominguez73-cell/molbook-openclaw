@@ -224,33 +224,49 @@ export function resolveGatewayConnection(opts: GatewayConnectionOptions) {
   const authToken = config.gateway?.auth?.token;
 
   const localPort = resolveGatewayPort(config);
+  const urlOverride =
+    typeof opts.url === "string" && opts.url.trim().length > 0 ? opts.url.trim() : undefined;
+  const explicitToken =
+    typeof opts.token === "string" && opts.token.trim().length > 0 ? opts.token.trim() : undefined;
+  const explicitPassword =
+    typeof opts.password === "string" && opts.password.trim().length > 0
+      ? opts.password.trim()
+      : undefined;
+  if (urlOverride && !explicitToken && !explicitPassword) {
+    throw new Error(
+      [
+        "gateway url override requires explicit credentials",
+        "Fix: pass --token or --password when using --url.",
+      ].join("\n"),
+    );
+  }
   const url =
-    (typeof opts.url === "string" && opts.url.trim().length > 0 ? opts.url.trim() : undefined) ||
+    urlOverride ||
     (typeof remote?.url === "string" && remote.url.trim().length > 0
       ? remote.url.trim()
       : undefined) ||
     `ws://127.0.0.1:${localPort}`;
 
   const token =
-    (typeof opts.token === "string" && opts.token.trim().length > 0
-      ? opts.token.trim()
-      : undefined) ||
-    (isRemoteMode
-      ? typeof remote?.token === "string" && remote.token.trim().length > 0
-        ? remote.token.trim()
-        : undefined
-      : process.env.OPENCLAW_GATEWAY_TOKEN?.trim() ||
-        (typeof authToken === "string" && authToken.trim().length > 0
-          ? authToken.trim()
-          : undefined));
+    explicitToken ||
+    (!urlOverride
+      ? isRemoteMode
+        ? typeof remote?.token === "string" && remote.token.trim().length > 0
+          ? remote.token.trim()
+          : undefined
+        : process.env.OPENCLAW_GATEWAY_TOKEN?.trim() ||
+          (typeof authToken === "string" && authToken.trim().length > 0
+            ? authToken.trim()
+            : undefined)
+      : undefined);
 
   const password =
-    (typeof opts.password === "string" && opts.password.trim().length > 0
-      ? opts.password.trim()
-      : undefined) ||
-    process.env.OPENCLAW_GATEWAY_PASSWORD?.trim() ||
-    (typeof remote?.password === "string" && remote.password.trim().length > 0
-      ? remote.password.trim()
+    explicitPassword ||
+    (!urlOverride
+      ? process.env.OPENCLAW_GATEWAY_PASSWORD?.trim() ||
+        (typeof remote?.password === "string" && remote.password.trim().length > 0
+          ? remote.password.trim()
+          : undefined)
       : undefined);
 
   return { url, token, password };
