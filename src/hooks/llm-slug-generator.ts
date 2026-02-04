@@ -10,11 +10,9 @@ import {
   resolveDefaultAgentId,
   resolveAgentWorkspaceDir,
   resolveAgentDir,
-  resolveAgentModelPrimary,
 } from "../agents/agent-scope.js";
 import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
-import { parseModelRef } from "../agents/model-selection.js";
-import { DEFAULT_PROVIDER } from "../agents/defaults.js";
+import { resolveDefaultModelForAgent } from "../agents/model-selection.js";
 
 /**
  * Generate a short 1-2 word filename slug from session content using LLM
@@ -30,11 +28,11 @@ export async function generateSlugViaLLM(params: {
     const workspaceDir = resolveAgentWorkspaceDir(params.cfg, agentId);
     const agentDir = resolveAgentDir(params.cfg, agentId);
 
-    // Resolve primary model from config to use configured model instead of hardcoded defaults
-    const primaryModelRef = resolveAgentModelPrimary(params.cfg, agentId);
-    const parsedModel = primaryModelRef
-      ? parseModelRef(primaryModelRef, DEFAULT_PROVIDER)
-      : null;
+    // Resolve model from config using proper resolution logic (handles aliases, defaults, etc.)
+    const modelRef = resolveDefaultModelForAgent({
+      cfg: params.cfg,
+      agentId,
+    });
 
     // Create a temporary session file for this one-off LLM call
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-slug-"));
@@ -54,9 +52,9 @@ Reply with ONLY the slug, nothing else. Examples: "vendor-pitch", "api-design", 
       workspaceDir,
       agentDir,
       config: params.cfg,
-      // Pass provider and model from config to use configured model instead of defaults
-      provider: parsedModel?.provider,
-      model: parsedModel?.model,
+      // Pass resolved provider and model from config
+      provider: modelRef.provider,
+      model: modelRef.model,
       prompt,
       timeoutMs: 15_000, // 15 second timeout
       runId: `slug-gen-${Date.now()}`,
