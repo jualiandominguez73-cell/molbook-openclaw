@@ -49,13 +49,19 @@ export function buildRoutingIndexes(cfg: OpenClawConfig): RoutingIndexes {
   };
 
   for (const binding of listBindings(cfg)) {
-    if (!binding || typeof binding !== "object") continue;
+    if (!binding || typeof binding !== "object") {
+      continue;
+    }
 
     const channel = normalizeBindingChannelId(binding.match?.channel);
-    if (!channel) continue;
+    if (!channel) {
+      continue;
+    }
 
     const agentId = binding.agentId;
-    if (!agentId) continue;
+    if (!agentId) {
+      continue;
+    }
 
     const accountIdRaw = (binding.match?.accountId ?? "").trim();
     // Normalize accountId: empty means default, "*" means wildcard, otherwise specific
@@ -198,17 +204,6 @@ function normalizeAccountId(value: string | undefined | null): string {
   return trimmed ? trimmed : DEFAULT_ACCOUNT_ID;
 }
 
-function matchesAccountId(match: string | undefined, actual: string): boolean {
-  const trimmed = (match ?? "").trim();
-  if (!trimmed) {
-    return actual === DEFAULT_ACCOUNT_ID;
-  }
-  if (trimmed === "*") {
-    return true;
-  }
-  return trimmed === actual;
-}
-
 export function buildAgentSessionKey(params: {
   agentId: string;
   channel: string;
@@ -254,52 +249,6 @@ function pickFirstExistingAgentId(cfg: OpenClawConfig, agentId: string): string 
   return sanitizeAgentId(resolveDefaultAgentId(cfg));
 }
 
-function matchesChannel(
-  match: { channel?: string | undefined } | undefined,
-  channel: string,
-): boolean {
-  const key = normalizeToken(match?.channel);
-  if (!key) {
-    return false;
-  }
-  return key === channel;
-}
-
-function matchesPeer(
-  match: { peer?: { kind?: string; id?: string } | undefined } | undefined,
-  peer: RoutePeer,
-): boolean {
-  const m = match?.peer;
-  if (!m) {
-    return false;
-  }
-  const kind = normalizeToken(m.kind);
-  const id = normalizeId(m.id);
-  if (!kind || !id) {
-    return false;
-  }
-  return kind === peer.kind && id === peer.id;
-}
-
-function matchesGuild(
-  match: { guildId?: string | undefined } | undefined,
-  guildId: string,
-): boolean {
-  const id = normalizeId(match?.guildId);
-  if (!id) {
-    return false;
-  }
-  return id === guildId;
-}
-
-function matchesTeam(match: { teamId?: string | undefined } | undefined, teamId: string): boolean {
-  const id = normalizeId(match?.teamId);
-  if (!id) {
-    return false;
-  }
-  return id === teamId;
-}
-
 export function resolveAgentRoute(input: ResolveAgentRouteInput): ResolvedAgentRoute {
   const channel = normalizeToken(input.channel);
   const accountId = normalizeAccountId(input.accountId);
@@ -342,10 +291,14 @@ export function resolveAgentRoute(input: ResolveAgentRouteInput): ResolvedAgentR
     map: Map<string, string> | undefined,
     baseKey: string,
   ): string | undefined => {
-    if (!map) return undefined;
+    if (!map) {
+      return undefined;
+    }
     // Try specific account first
     const specific = map.get(`${accountId}:${baseKey}`);
-    if (specific) return specific;
+    if (specific) {
+      return specific;
+    }
     // Fallback to wildcard account
     return map.get(`*:${baseKey}`);
   };

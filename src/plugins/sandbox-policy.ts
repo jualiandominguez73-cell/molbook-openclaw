@@ -54,27 +54,20 @@ export function createSandboxPolicy(
 }
 
 /**
- * Wrap a function to block access if the permission is not granted.
- * Throws an error if the plugin tries to use a restricted API without permission.
+ * Create a blocking function that throws when called.
+ * Used to replace restricted APIs when permission is not granted.
  */
-export function wrapRestrictedApi<T extends (...args: unknown[]) => unknown>(
-  fn: T,
+function createBlockingFunction(
   policy: SandboxPolicy,
   apiName: RestrictedApiName,
   logger: PluginLogger,
-): T {
-  const hasPermission = policy.permissions[apiName as keyof typeof policy.permissions] ?? false;
-
-  if (hasPermission) {
-    return fn;
-  }
-
-  return ((...args: unknown[]) => {
+): () => never {
+  return () => {
     logger.error(`blocked call to ${apiName} - plugin does not have permission`);
     throw new Error(
       `Access denied: ${apiName} requires permissions.${apiName}:true in plugin config for "${policy.pluginId}"`,
     );
-  }) as T;
+  };
 }
 
 /**
@@ -95,19 +88,22 @@ export function createSandboxedRuntime(
     return runtime;
   }
 
-  // Create wrapped versions of dangerous APIs (only wrap those without permission)
+  // Create blocked versions of dangerous APIs (only block those without permission)
   const wrappedRunCommandWithTimeout = policy.permissions.runCommandWithTimeout
     ? runtime.system.runCommandWithTimeout
-    : wrapRestrictedApi(
-        runtime.system.runCommandWithTimeout,
+    : (createBlockingFunction(
         policy,
         "runCommandWithTimeout",
         logger,
-      );
+      ) as typeof runtime.system.runCommandWithTimeout);
 
   const wrappedWriteConfigFile = policy.permissions.writeConfigFile
     ? runtime.config.writeConfigFile
-    : wrapRestrictedApi(runtime.config.writeConfigFile, policy, "writeConfigFile", logger);
+    : (createBlockingFunction(
+        policy,
+        "writeConfigFile",
+        logger,
+      ) as typeof runtime.config.writeConfigFile);
 
   // Return a new runtime with sandboxed APIs
   return {
