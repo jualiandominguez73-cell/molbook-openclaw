@@ -9,7 +9,7 @@ import {
 import { scheduleChatScroll, scheduleLogsScroll } from "./app-scroll.ts";
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgentSkills } from "./controllers/agent-skills.ts";
-import { loadAgents } from "./controllers/agents.ts";
+import { loadAgents, loadModelCatalog } from "./controllers/agents.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { loadConfig, loadConfigSchema } from "./controllers/config.ts";
 import { loadCronJobs, loadCronStatus } from "./controllers/cron.ts";
@@ -216,6 +216,8 @@ export async function refreshActiveTab(host: SettingsHost) {
     const app = host as unknown as OpenClawApp;
     await loadAgents(app);
     await loadConfig(app);
+    // Load model catalog for agent model selection
+    void loadModelCatalog(app);
     const agentIds = app.agentsList?.agents?.map((entry) => entry.id) ?? [];
     if (agentIds.length > 0) {
       void loadAgentIdentities(app, agentIds);
@@ -251,6 +253,8 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "config") {
     await loadConfigSchema(host as unknown as OpenClawApp);
     await loadConfig(host as unknown as OpenClawApp);
+    // Load model catalog for models settings view
+    void loadModelCatalog(host as unknown as OpenClawApp);
   }
   if (host.tab === "debug") {
     await loadDebug(host as unknown as OpenClawApp);

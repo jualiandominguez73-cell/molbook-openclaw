@@ -2,3 +2,4 @@ export { renderConfigForm, type ConfigFormProps, SECTION_META } from "./config-f
 export { analyzeConfigSchema, type ConfigSchemaAnalysis } from "./config-form.analyze.ts";
 export { renderNode } from "./config-form.node.ts";
 export { schemaType, type JsonSchema } from "./config-form.shared.ts";
+export { type DetectedProvider, type ModelsConfigValue } from "./models-settings.ts";

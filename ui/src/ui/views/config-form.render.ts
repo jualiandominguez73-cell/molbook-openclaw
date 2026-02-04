@@ -3,6 +3,12 @@ import type { ConfigUiHints } from "../types.ts";
 import { icons } from "../icons.ts";
 import { renderNode } from "./config-form.node.ts";
 import { hintForPath, humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
+import {
+  renderModelsSettings,
+  type ModelsConfigValue,
+  type DetectedProvider,
+  type GatewayCatalogModel,
+} from "./models-settings.ts";
 
 export type ConfigFormProps = {
   schema: JsonSchema | null;
@@ -13,7 +19,15 @@ export type ConfigFormProps = {
   searchQuery?: string;
   activeSection?: string | null;
   activeSubsection?: string | null;
+  /** Detected providers from environment variables */
+  detectedProviders?: Record<string, DetectedProvider>;
+  /** Models from gateway catalog (models.list RPC) */
+  gatewayCatalog?: GatewayCatalogModel[];
+  /** Whether catalog is loading */
+  catalogLoading?: boolean;
   onPatch: (path: Array<string | number>, value: unknown) => void;
+  onRefreshModels?: () => void;
+  onAuthProvider?: (providerId: string, authType: string) => void;
 };
 
 // SVG Icons for section cards (Lucide-style)
@@ -406,6 +420,27 @@ export function renderConfigForm(props: ConfigFormProps) {
         schema: sectionSchema.properties[activeSubsection],
       };
     }
+  }
+
+  // Use specialized models settings view for the models section
+  // Check this BEFORE the empty check since models may not be in the schema
+  if (activeSection === "models" && !searchQuery) {
+    const modelsValue = value.models as ModelsConfigValue | undefined;
+    return html`
+      <div class="config-form config-form--modern">
+        ${renderModelsSettings({
+          value: modelsValue ?? null,
+          disabled: props.disabled,
+          hints: props.uiHints,
+          detectedProviders: props.detectedProviders ?? {},
+          gatewayCatalog: props.gatewayCatalog ?? [],
+          catalogLoading: props.catalogLoading,
+          onPatch: (path, val) => props.onPatch(["models", ...path], val),
+          onRefreshModels: props.onRefreshModels,
+          onAuthProvider: props.onAuthProvider,
+        })}
+      </div>
+    `;
   }
 
   if (filteredEntries.length === 0) {

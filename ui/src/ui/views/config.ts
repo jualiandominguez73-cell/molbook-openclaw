@@ -1,5 +1,7 @@
 import { html, nothing } from "lit";
 import type { ConfigUiHints } from "../types.ts";
+import type { DetectedProvider } from "./config-form.ts";
+import type { GatewayCatalogModel } from "./models-settings.ts";
 import { hintForPath, humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
 import { analyzeConfigSchema, renderConfigForm, SECTION_META } from "./config-form.ts";
 
@@ -26,6 +28,12 @@ export type ConfigProps = {
   configExists: boolean | null;
   /** Path to the config file */
   configPath: string | null;
+  /** Detected providers from environment variables */
+  detectedProviders?: Record<string, DetectedProvider>;
+  /** Models from gateway catalog (models.list RPC) */
+  gatewayCatalog?: GatewayCatalogModel[];
+  /** Whether catalog is loading */
+  catalogLoading?: boolean;
   onRawChange: (next: string) => void;
   onFormModeChange: (mode: "form" | "raw") => void;
   onFormPatch: (path: Array<string | number>, value: unknown) => void;
@@ -36,6 +44,8 @@ export type ConfigProps = {
   onSave: () => void;
   onApply: () => void;
   onUpdate: () => void;
+  onRefreshModels?: () => void;
+  onAuthProvider?: (providerId: string, authType: string) => void;
 };
 
 // SVG Icons for sidebar (Lucide-style)
@@ -673,7 +683,7 @@ export function renderConfig(props: ConfigProps) {
             : nothing
         }
         ${
-          allowSubnav
+          allowSubnav && props.activeSection !== "models"
             ? html`
               <div class="config-subnav">
                 <button
@@ -761,6 +771,11 @@ export function renderConfig(props: ConfigProps) {
                         searchQuery: props.searchQuery,
                         activeSection: props.activeSection,
                         activeSubsection: effectiveSubsection,
+                        detectedProviders: props.detectedProviders,
+                        gatewayCatalog: props.gatewayCatalog,
+                        catalogLoading: props.catalogLoading,
+                        onRefreshModels: props.onRefreshModels,
+                        onAuthProvider: props.onAuthProvider,
                       })
                 }
                 ${

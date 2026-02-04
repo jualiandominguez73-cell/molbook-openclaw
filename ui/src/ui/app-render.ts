@@ -7,7 +7,7 @@ import { OpenClawApp } from "./app.ts";
 import { loadAgentFileContent, loadAgentFiles, saveAgentFile } from "./controllers/agent-files.ts";
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgentSkills } from "./controllers/agent-skills.ts";
-import { loadAgents } from "./controllers/agents.ts";
+import { loadAgents, loadModelCatalog } from "./controllers/agents.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { ChatState, loadChatHistory } from "./controllers/chat.ts";
 import {
@@ -71,6 +71,38 @@ import { renderSkills } from "./views/skills.ts";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
+
+/** Trigger provider authentication flow */
+async function triggerProviderAuth(state: OpenClawApp, providerId: string, authType: string) {
+  // For now, show instructions since auth flows typically require CLI
+  // In the future, this could trigger a gateway RPC that opens browser/terminal
+  const authCommands: Record<string, string> = {
+    "github-copilot:oauth": "openclaw models auth login-github-copilot",
+    "anthropic:token": "openclaw models auth paste-token --provider anthropic",
+    "openai:oauth": "openclaw onboard --auth-choice openai-codex",
+    "google:oauth": "openclaw plugins enable google-gemini-cli-auth",
+    "qwen-portal:oauth":
+      "openclaw plugins enable qwen-portal-auth && openclaw models auth login --provider qwen-portal",
+  };
+
+  const key = `${providerId}:${authType}`;
+  const command = authCommands[key] ?? `openclaw models auth login --provider ${providerId}`;
+
+  // Try to trigger via gateway RPC (for future implementation)
+  if (state.client) {
+    try {
+      await state.client.request("models.auth.trigger", { provider: providerId, authType });
+      // If successful, refresh the model catalog
+      void loadModelCatalog(state);
+      return;
+    } catch {
+      // Gateway doesn't support this RPC yet, fall through to CLI instructions
+    }
+  }
+
+  // Show CLI instructions
+  alert(`To authenticate with ${providerId}, run:\n\n${command}\n\nThen refresh the models.`);
+}
 
 function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
   const list = state.agentsList?.agents ?? [];
@@ -368,8 +400,11 @@ export function renderApp(state: AppViewState) {
                 agentSkillsError: state.agentSkillsError,
                 agentSkillsAgentId: state.agentSkillsAgentId,
                 skillsFilter: state.skillsFilter,
+                modelCatalog: state.modelCatalog,
+                modelsLoading: state.modelsLoading,
                 onRefresh: async () => {
                   await loadAgents(state);
+                  void loadModelCatalog(state);
                   const agentIds = state.agentsList?.agents?.map((entry) => entry.id) ?? [];
                   if (agentIds.length > 0) {
                     void loadAgentIdentities(state, agentIds);
@@ -952,6 +987,11 @@ export function renderApp(state: AppViewState) {
                 onSave: () => saveConfig(state as unknown as OpenClawApp),
                 onApply: () => applyConfig(state as unknown as OpenClawApp),
                 onUpdate: () => runUpdate(state as unknown as OpenClawApp),
+                gatewayCatalog: state.modelCatalog,
+                catalogLoading: state.modelsLoading,
+                onRefreshModels: () => loadModelCatalog(state as unknown as OpenClawApp),
+                onAuthProvider: (providerId, authType) =>
+                  triggerProviderAuth(state as unknown as OpenClawApp, providerId, authType),
               })
             : nothing
         }

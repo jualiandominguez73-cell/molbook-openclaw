@@ -26,6 +26,16 @@ import {
 
 export type AgentsPanel = "overview" | "files" | "tools" | "skills" | "channels" | "cron";
 
+/** Model choice from gateway models.list */
+export type GatewayModelChoice = {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  vision?: boolean;
+};
+
 export type AgentsProps = {
   loading: boolean;
   error: string | null;
@@ -36,6 +46,9 @@ export type AgentsProps = {
   configLoading: boolean;
   configSaving: boolean;
   configDirty: boolean;
+  /** Available models from gateway catalog */
+  modelCatalog: GatewayModelChoice[];
+  modelsLoading: boolean;
   channelsLoading: boolean;
   channelsError: string | null;
   channelsSnapshot: ChannelsStatusSnapshot | null;
@@ -197,6 +210,10 @@ type ConfigSnapshot = {
   agents?: {
     defaults?: { workspace?: string; model?: unknown; models?: Record<string, { alias?: string }> };
     list?: AgentConfigEntry[];
+  };
+  models?: {
+    mode?: "merge" | "replace";
+    providers?: Record<string, unknown>;
   };
   tools?: {
     profile?: string;
@@ -399,16 +416,10 @@ function resolveModelFallbacks(model?: unknown): string[] | null {
   return null;
 }
 
-function parseFallbackList(value: string): string[] {
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
 type ConfiguredModelOption = {
   value: string;
   label: string;
+  provider?: string;
 };
 
 function resolveConfiguredModels(
@@ -437,18 +448,174 @@ function resolveConfiguredModels(
   return options;
 }
 
-function buildModelOptions(configForm: Record<string, unknown> | null, current?: string | null) {
-  const options = resolveConfiguredModels(configForm);
-  const hasCurrent = current ? options.some((option) => option.value === current) : false;
-  if (current && !hasCurrent) {
-    options.unshift({ value: current, label: `Current (${current})` });
+function buildModelOptionsFromCatalog(
+  catalog: GatewayModelChoice[],
+  current?: string | null,
+): ConfiguredModelOption[] {
+  // Group models by provider
+  const byProvider = new Map<string, GatewayModelChoice[]>();
+  for (const model of catalog) {
+    const provider = model.provider || "other";
+    const existing = byProvider.get(provider) || [];
+    existing.push(model);
+    byProvider.set(provider, existing);
   }
+
+  const options: ConfiguredModelOption[] = [];
+
+  // Sort providers alphabetically, but put common ones first
+  const providerOrder = ["anthropic", "openai", "google", "github-copilot", "groq", "xai"];
+  const sortedProviders = [...byProvider.keys()].toSorted((a, b) => {
+    const aIdx = providerOrder.indexOf(a);
+    const bIdx = providerOrder.indexOf(b);
+    if (aIdx !== -1 && bIdx !== -1) {
+      return aIdx - bIdx;
+    }
+    if (aIdx !== -1) {
+      return -1;
+    }
+    if (bIdx !== -1) {
+      return 1;
+    }
+    return a.localeCompare(b);
+  });
+
+  for (const provider of sortedProviders) {
+    const models = byProvider.get(provider) || [];
+    for (const model of models) {
+      const modelId = `${provider}/${model.id}`;
+      const label = model.name || model.id;
+      options.push({ value: modelId, label: `${label} (${provider})`, provider });
+    }
+  }
+
+  // Add current model if not in catalog
+  if (current) {
+    const hasCurrent = options.some((o) => o.value === current);
+    if (!hasCurrent) {
+      options.unshift({ value: current, label: `Current (${current})` });
+    }
+  }
+
+  return options;
+}
+
+function buildModelOptions(
+  configForm: Record<string, unknown> | null,
+  catalog: GatewayModelChoice[],
+  current?: string | null,
+) {
+  // Use catalog if available, fall back to config-based models
+  const options =
+    catalog.length > 0
+      ? buildModelOptionsFromCatalog(catalog, current)
+      : (() => {
+          const configOptions = resolveConfiguredModels(configForm);
+          const hasCurrent = current
+            ? configOptions.some((option) => option.value === current)
+            : false;
+          if (current && !hasCurrent) {
+            configOptions.unshift({ value: current, label: `Current (${current})` });
+          }
+          return configOptions;
+        })();
+
   if (options.length === 0) {
     return html`
-      <option value="" disabled>No configured models</option>
+      <option value="" disabled>No models available</option>
     `;
   }
+
+  // Group by provider for optgroup rendering
+  if (catalog.length > 0) {
+    const byProvider = new Map<string, ConfiguredModelOption[]>();
+    for (const option of options) {
+      const provider = option.provider || "other";
+      const existing = byProvider.get(provider) || [];
+      existing.push(option);
+      byProvider.set(provider, existing);
+    }
+
+    const providerOrder = ["anthropic", "openai", "google", "github-copilot", "groq", "xai"];
+    const sortedProviders = [...byProvider.keys()].toSorted((a, b) => {
+      const aIdx = providerOrder.indexOf(a);
+      const bIdx = providerOrder.indexOf(b);
+      if (aIdx !== -1 && bIdx !== -1) {
+        return aIdx - bIdx;
+      }
+      if (aIdx !== -1) {
+        return -1;
+      }
+      if (bIdx !== -1) {
+        return 1;
+      }
+      return a.localeCompare(b);
+    });
+
+    return sortedProviders.map((provider) => {
+      const providerOptions = byProvider.get(provider) || [];
+      const providerLabel = provider.charAt(0).toUpperCase() + provider.slice(1);
+      return html`
+        <optgroup label=${providerLabel}>
+          ${providerOptions.map(
+            (option) => html`<option value=${option.value}>${option.label}</option>`,
+          )}
+        </optgroup>
+      `;
+    });
+  }
+
   return options.map((option) => html`<option value=${option.value}>${option.label}</option>`);
+}
+
+function buildFallbackOptions(catalog: GatewayModelChoice[], selected: string[]) {
+  const selectedSet = new Set(selected);
+
+  if (catalog.length === 0) {
+    return html`
+      <option value="" disabled>No models available</option>
+    `;
+  }
+
+  // Group by provider
+  const byProvider = new Map<string, GatewayModelChoice[]>();
+  for (const model of catalog) {
+    const provider = model.provider || "other";
+    const existing = byProvider.get(provider) || [];
+    existing.push(model);
+    byProvider.set(provider, existing);
+  }
+
+  const providerOrder = ["anthropic", "openai", "google", "github-copilot", "groq", "xai"];
+  const sortedProviders = [...byProvider.keys()].toSorted((a, b) => {
+    const aIdx = providerOrder.indexOf(a);
+    const bIdx = providerOrder.indexOf(b);
+    if (aIdx !== -1 && bIdx !== -1) {
+      return aIdx - bIdx;
+    }
+    if (aIdx !== -1) {
+      return -1;
+    }
+    if (bIdx !== -1) {
+      return 1;
+    }
+    return a.localeCompare(b);
+  });
+
+  return sortedProviders.map((provider) => {
+    const models = byProvider.get(provider) || [];
+    const providerLabel = provider.charAt(0).toUpperCase() + provider.slice(1);
+    return html`
+      <optgroup label=${providerLabel}>
+        ${models.map((model) => {
+          const modelId = `${provider}/${model.id}`;
+          const label = model.name || model.id;
+          const isSelected = selectedSet.has(modelId);
+          return html`<option value=${modelId} ?selected=${isSelected}>${label}</option>`;
+        })}
+      </optgroup>
+    `;
+  });
 }
 
 type CompiledPattern =
@@ -617,6 +784,7 @@ export function renderAgents(props: AgentsProps) {
                       configLoading: props.configLoading,
                       configSaving: props.configSaving,
                       configDirty: props.configDirty,
+                      modelCatalog: props.modelCatalog,
                       onConfigReload: props.onConfigReload,
                       onConfigSave: props.onConfigSave,
                       onModelChange: props.onModelChange,
@@ -785,6 +953,7 @@ function renderAgentOverview(params: {
   configLoading: boolean;
   configSaving: boolean;
   configDirty: boolean;
+  modelCatalog: GatewayModelChoice[];
   onConfigReload: () => void;
   onConfigSave: () => void;
   onModelChange: (agentId: string, modelId: string | null) => void;
@@ -800,6 +969,7 @@ function renderAgentOverview(params: {
     configLoading,
     configSaving,
     configDirty,
+    modelCatalog,
     onConfigReload,
     onConfigSave,
     onModelChange,
@@ -821,7 +991,6 @@ function renderAgentOverview(params: {
     (defaultModel !== "-" ? normalizeModelValue(defaultModel) : null);
   const effectivePrimary = modelPrimary ?? defaultPrimary ?? null;
   const modelFallbacks = resolveModelFallbacks(config.entry?.model);
-  const fallbackText = modelFallbacks ? modelFallbacks.join(", ") : "";
   const identityName =
     agentIdentity?.name?.trim() ||
     agent.identity?.name?.trim() ||
@@ -885,21 +1054,26 @@ function renderAgentOverview(params: {
               <option value="">
                 ${defaultPrimary ? `Inherit default (${defaultPrimary})` : "Inherit default"}
               </option>
-              ${buildModelOptions(configForm, effectivePrimary ?? undefined)}
+              ${buildModelOptions(configForm, modelCatalog, effectivePrimary ?? undefined)}
             </select>
           </label>
           <label class="field" style="min-width: 260px; flex: 1;">
-            <span>Fallbacks (comma-separated)</span>
-            <input
-              .value=${fallbackText}
+            <span>Fallback models</span>
+            <select
+              multiple
+              style="min-height: 80px;"
               ?disabled=${!configForm || configLoading || configSaving}
-              placeholder="provider/model, provider/model"
-              @input=${(e: Event) =>
-                onModelFallbacksChange(
-                  agent.id,
-                  parseFallbackList((e.target as HTMLInputElement).value),
-                )}
-            />
+              @change=${(e: Event) => {
+                const select = e.target as HTMLSelectElement;
+                const selected = Array.from(select.selectedOptions).map((opt) => opt.value);
+                onModelFallbacksChange(agent.id, selected);
+              }}
+            >
+              ${buildFallbackOptions(modelCatalog, modelFallbacks ?? [])}
+            </select>
+            <span class="field-hint" style="font-size: 11px; color: var(--muted);">
+              Hold Cmd/Ctrl to select multiple
+            </span>
           </label>
         </div>
         <div class="row" style="justify-content: flex-end; gap: 8px;">

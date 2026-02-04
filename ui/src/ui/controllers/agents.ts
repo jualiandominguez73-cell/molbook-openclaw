@@ -1,6 +1,16 @@
 import type { GatewayBrowserClient } from "../gateway.ts";
 import type { AgentsListResult } from "../types.ts";
 
+/** Model choice from gateway models.list */
+export type GatewayModelChoice = {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  vision?: boolean;
+};
+
 export type AgentsState = {
   client: GatewayBrowserClient | null;
   connected: boolean;
@@ -8,6 +18,9 @@ export type AgentsState = {
   agentsError: string | null;
   agentsList: AgentsListResult | null;
   agentsSelectedId: string | null;
+  /** Available models from gateway */
+  modelCatalog: GatewayModelChoice[];
+  modelsLoading: boolean;
 };
 
 export async function loadAgents(state: AgentsState) {
@@ -33,5 +46,27 @@ export async function loadAgents(state: AgentsState) {
     state.agentsError = String(err);
   } finally {
     state.agentsLoading = false;
+  }
+}
+
+/** Load available models from gateway */
+export async function loadModelCatalog(state: AgentsState) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  if (state.modelsLoading) {
+    return;
+  }
+  state.modelsLoading = true;
+  try {
+    const res = await state.client.request<{ models?: GatewayModelChoice[] }>("models.list", {});
+    if (res && Array.isArray(res.models)) {
+      state.modelCatalog = res.models;
+    }
+  } catch (err) {
+    // Non-fatal - fall back to config-based models
+    console.warn("Failed to load model catalog:", err);
+  } finally {
+    state.modelsLoading = false;
   }
 }
