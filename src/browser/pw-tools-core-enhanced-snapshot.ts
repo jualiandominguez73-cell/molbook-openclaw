@@ -90,6 +90,7 @@ const pagesWithScript = new WeakSet<Page>();
 /**
  * Ensure the enhanced detection script is injected into the page.
  * Uses addInitScript for persistence across navigations.
+ * @throws Error if script injection fails after all attempts
  */
 async function ensureScriptInjected(page: Page): Promise<void> {
   if (pagesWithScript.has(page)) {
@@ -110,6 +111,8 @@ async function ensureScriptInjected(page: Page): Promise<void> {
   }
 
   const script = getPageScript();
+  let lastError: unknown;
+  
   try {
     // Add as init script so it persists across navigations
     await page.addInitScript(script);
@@ -121,27 +124,33 @@ async function ensureScriptInjected(page: Page): Promise<void> {
     )) as boolean;
     if (isAvailable) {
       pagesWithScript.add(page);
-    } else {
-      // Script didn't load, will retry
-      throw new Error("Script injection failed: OpenClawEnhancedDetection not available");
+      return;
     }
+    lastError = new Error("OpenClawEnhancedDetection not available after injection");
   } catch (err) {
-    // If addInitScript fails, try direct evaluation
-    try {
-      await page.evaluate(script);
-      const isAvailable = (await page.evaluate(
-        "typeof OpenClawEnhancedDetection !== 'undefined'",
-      )) as boolean;
-      if (isAvailable) {
-        pagesWithScript.add(page);
-      } else {
-        // Script still not available, will retry on next call
-      }
-    } catch {
-      // Best effort - script injection failed
-      // Will retry on next call
-    }
+    lastError = err;
   }
+
+  // If addInitScript fails, try direct evaluation
+  try {
+    await page.evaluate(script);
+    const isAvailable = (await page.evaluate(
+      "typeof OpenClawEnhancedDetection !== 'undefined'",
+    )) as boolean;
+    if (isAvailable) {
+      pagesWithScript.add(page);
+      return;
+    }
+    lastError = new Error("OpenClawEnhancedDetection not available after direct evaluation");
+  } catch (err) {
+    lastError = err;
+  }
+
+  // All injection attempts failed - throw clear error
+  throw new Error(
+    `Failed to inject enhanced detection script: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    { cause: lastError },
+  );
 }
 
 /**
