@@ -94,5 +94,21 @@ export function sanitizeConfigSecrets(cfg: OpenClawConfig): OpenClawConfig {
     }
   }
 
+  // Sanitize agent workspace paths (rewrite host home dir to container path)
+  if (sanitized.agents) {
+    const agents = sanitized.agents as Record<string, { workspace?: string } | undefined>;
+    for (const agentId of Object.keys(agents)) {
+      const agent = agents[agentId];
+      if (agent?.workspace && typeof agent.workspace === "string") {
+        // Replace any home directory path with container path
+        // This handles paths like /home/username/.openclaw/workspace
+        agent.workspace = agent.workspace.replace(
+          /^\/home\/[^/]+\//,
+          "/home/node/"
+        );
+      }
+    }
+  }
+
   return sanitized;
 }

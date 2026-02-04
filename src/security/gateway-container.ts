@@ -67,6 +67,23 @@ const SECRET_EXACT_MATCHES = new Set([
   "OPENCLAW_CONFIG_PATH",
   "CLAWDBOT_STATE_DIR",
   "CLAWDBOT_CONFIG_PATH",
+  // User/session related (prevent host user leaking)
+  "USER",
+  "LOGNAME",
+  "USERNAME",
+  "PWD",
+  "OLDPWD",
+  "PATH",
+  // XDG dirs (contain host paths)
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "XDG_STATE_HOME",
+  "XDG_RUNTIME_DIR",
+  // NVM (contains host paths)
+  "NVM_DIR",
+  "NVM_BIN",
+  "NVM_INC",
 ]);
 
 /**
@@ -135,6 +152,12 @@ export async function startGatewayContainer(opts: GatewayContainerOptions): Prom
     // Explicitly set container paths to prevent host paths from being used
     "-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
     "-e", "HOME=/home/node",
+    "-e", "USER=node",
+    "-e", "LOGNAME=node",
+    "-e", "PWD=/app",
+    "-e", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "-e", "XDG_CACHE_HOME=/home/node/.cache",
+    "-e", "XDG_CONFIG_HOME=/home/node/.config",
   ];
 
   // Add bind mounts for tools/skills
