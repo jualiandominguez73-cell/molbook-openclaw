@@ -9,7 +9,7 @@ import {
   resolveStorePath,
 } from "../config/sessions.js";
 import { callGateway } from "../gateway/call.js";
-import { normalizeMainKey } from "../routing/session-key.js";
+import { normalizeMainKey, parseAgentSessionKey } from "../routing/session-key.js";
 import { defaultRuntime } from "../runtime.js";
 import {
   type DeliveryContext,
@@ -469,8 +469,10 @@ export async function runSubagentAnnounceFlow(params: {
     let directOrigin = requesterOrigin;
 
     if (!requesterEntry) {
-      // Requester session not found (deleted or never existed) - fallback to root/main
-      const mainKey = resolveMainSessionKey(cfg);
+      // Requester session not found (deleted or never existed) - fallback to agent-specific main
+      // Extract agentId from child's session key pattern: agent:{agentId}:subagent:{uuid}
+      const childAgentId = parseAgentSessionKey(params.childSessionKey)?.agentId;
+      const mainKey = childAgentId ? `agent:${childAgentId}:main` : resolveMainSessionKey(cfg); // Fallback to global main if parsing fails
       targetSessionKey = mainKey;
       // Try to load main session entry for routing
       const mainAgentId = resolveAgentIdFromSessionKey(mainKey);

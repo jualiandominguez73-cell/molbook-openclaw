@@ -103,6 +103,7 @@ const DEFAULT_SUBAGENT_TOOL_DENY = [
 export function resolveSubagentToolPolicy(params: {
   cfg?: OpenClawConfig;
   sessionKey?: string;
+  spawnDepth?: number;
 }): SandboxToolPolicy {
   const configured = params.cfg?.tools?.subagents?.tools;
 
@@ -110,15 +111,12 @@ export function resolveSubagentToolPolicy(params: {
   let denySessionsSpawn = true; // Default: deny (current behavior)
 
   if (params.sessionKey && params.cfg) {
-    // Load session depth to check if recursive spawning is allowed
+    // Use spawnDepth from parameter (passed from session context) instead of loading store
     try {
-      const agentId = resolveAgentIdFromSessionKey(params.sessionKey);
-      const storePath = resolveStorePath(params.cfg.session?.store, { agentId });
-      const store = loadSessionStore(storePath);
-      const entry = store[params.sessionKey];
-      const currentDepth = entry?.spawnDepth ?? 0;
+      const currentDepth = params.spawnDepth ?? 0;
 
       // Resolve maxSpawnDepth for this agent
+      const agentId = resolveAgentIdFromSessionKey(params.sessionKey);
       const agentConfig = resolveAgentConfig(params.cfg, agentId);
       const maxDepth =
         agentConfig?.subagents?.maxSpawnDepth ??

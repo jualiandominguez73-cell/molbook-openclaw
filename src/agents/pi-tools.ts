@@ -206,6 +206,7 @@ export function createOpenClawCodingTools(options?: {
     providerProfileAlsoAllow,
   );
   const scopeKey = options?.exec?.scopeKey ?? (agentId ? `agent:${agentId}` : undefined);
+  // TODO: Pass spawnDepth from session context to avoid default fallback in resolveSubagentToolPolicy
   const subagentPolicy =
     isSubagentSessionKey(options?.sessionKey) && options?.sessionKey
       ? resolveSubagentToolPolicy({ cfg: options.config, sessionKey: options.sessionKey })

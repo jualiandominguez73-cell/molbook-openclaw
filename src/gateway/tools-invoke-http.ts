@@ -206,6 +206,7 @@ export async function handleToolsInvokeHttpRequest(
     messageProvider: messageChannel ?? undefined,
     accountId: accountId ?? null,
   });
+  // TODO: Pass spawnDepth from session context to avoid default fallback in resolveSubagentToolPolicy
   const subagentPolicy = isSubagentSessionKey(sessionKey)
     ? resolveSubagentToolPolicy({ cfg, sessionKey })
     : undefined;
