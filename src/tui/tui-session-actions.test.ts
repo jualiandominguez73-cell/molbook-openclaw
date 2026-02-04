@@ -67,6 +67,7 @@ describe("tui session actions", () => {
     const first = refreshSessionInfo();
     const second = refreshSessionInfo();
 
+    await Promise.resolve();
     expect(listSessions).toHaveBeenCalledTimes(1);
 
     resolveFirst?.({

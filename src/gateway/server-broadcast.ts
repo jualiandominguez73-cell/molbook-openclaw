@@ -43,7 +43,8 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
     },
     targetConnIds?: ReadonlySet<string>,
   ) => {
-    const eventSeq = ++seq;
+    const isTargeted = Boolean(targetConnIds);
+    const eventSeq = isTargeted ? undefined : ++seq;
     const frame = JSON.stringify({
       type: "event",
       event,
@@ -53,7 +54,7 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
     });
     const logMeta: Record<string, unknown> = {
       event,
-      seq: eventSeq,
+      seq: eventSeq ?? "targeted",
       clients: params.clients.size,
       targets: targetConnIds ? targetConnIds.size : undefined,
       dropIfSlow: opts?.dropIfSlow,
