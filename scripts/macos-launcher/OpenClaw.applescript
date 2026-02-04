@@ -2,7 +2,8 @@
 -- Starts the gateway if not already running, then opens Control UI
 
 on run
-    set gatewayRunning to do shell script "pgrep -f openclaw-gateway || echo ''"
+    -- Check for both "openclaw-gateway" (daemon) and "openclaw gateway" (cli invocation)
+    set gatewayRunning to do shell script "pgrep -f 'openclaw-gateway|openclaw gateway' || echo ''"
 
     if gatewayRunning is "" then
         -- Gateway not running, start it
