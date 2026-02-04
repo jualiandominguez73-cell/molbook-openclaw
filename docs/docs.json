@@ -58,6 +58,10 @@
       "destination": "/providers/xiaomi"
     },
     {
+      "source": "/volcengine",
+      "destination": "/providers/volcengine"
+    },
+    {
       "source": "/openai",
       "destination": "/providers/openai"
     },

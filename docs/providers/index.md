@@ -45,6 +45,7 @@ See [Venice AI](/providers/venice).
 - [Amazon Bedrock](/bedrock)
 - [Z.AI](/providers/zai)
 - [Xiaomi](/providers/xiaomi)
+- [Volcengine](/providers/volcengine)
 - [GLM models](/providers/glm)
 - [MiniMax](/providers/minimax)
 - [Venice (Venice AI, privacy-focused)](/providers/venice)

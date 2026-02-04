@@ -29,6 +29,8 @@ import {
   applyVeniceProviderConfig,
   applyVercelAiGatewayConfig,
   applyVercelAiGatewayProviderConfig,
+  applyVolcengineConfig,
+  applyVolcengineProviderConfig,
   applyXiaomiConfig,
   applyXiaomiProviderConfig,
   applyZaiConfig,
@@ -38,6 +40,7 @@ import {
   SYNTHETIC_DEFAULT_MODEL_REF,
   VENICE_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
+  VOLCENGINE_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   setGeminiApiKey,
   setKimiCodingApiKey,
@@ -47,6 +50,7 @@ import {
   setSyntheticApiKey,
   setVeniceApiKey,
   setVercelAiGatewayApiKey,
+  setVolcengineApiKey,
   setXiaomiApiKey,
   setZaiApiKey,
   ZAI_DEFAULT_MODEL_REF,
@@ -92,6 +96,8 @@ export async function applyAuthChoiceApiProviders(
       authChoice = "zai-api-key";
     } else if (params.opts.tokenProvider === "xiaomi") {
       authChoice = "xiaomi-api-key";
+    } else if (params.opts.tokenProvider === "volcengine") {
+      authChoice = "volcengine-api-key";
     } else if (params.opts.tokenProvider === "synthetic") {
       authChoice = "synthetic-api-key";
     } else if (params.opts.tokenProvider === "venice") {
@@ -535,6 +541,54 @@ export async function applyAuthChoiceApiProviders(
         applyDefaultConfig: applyXiaomiConfig,
         applyProviderConfig: applyXiaomiProviderConfig,
         noteDefault: XIAOMI_DEFAULT_MODEL_REF,
+        noteAgentModel,
+        prompter: params.prompter,
+      });
+      nextConfig = applied.config;
+      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+    }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  if (authChoice === "volcengine-api-key") {
+    let hasCredential = false;
+
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "volcengine") {
+      await setVolcengineApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+
+    const envKey = resolveEnvApiKey("volcengine");
+    if (envKey) {
+      const useExisting = await params.prompter.confirm({
+        message: `Use existing VOLCENGINE_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setVolcengineApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "Enter Volcengine API key",
+        validate: validateApiKeyInput,
+      });
+      await setVolcengineApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "volcengine:default",
+      provider: "volcengine",
+      mode: "api_key",
+    });
+    {
+      const applied = await applyDefaultModelChoice({
+        config: nextConfig,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: VOLCENGINE_DEFAULT_MODEL_REF,
+        applyDefaultConfig: applyVolcengineConfig,
+        applyProviderConfig: applyVolcengineProviderConfig,
+        noteDefault: VOLCENGINE_DEFAULT_MODEL_REF,
         noteAgentModel,
         prompter: params.prompter,
       });

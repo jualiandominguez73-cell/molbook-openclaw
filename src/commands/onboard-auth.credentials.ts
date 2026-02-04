@@ -115,6 +115,7 @@ export async function setVeniceApiKey(key: string, agentDir?: string) {
 
 export const ZAI_DEFAULT_MODEL_REF = "zai/glm-4.7";
 export const XIAOMI_DEFAULT_MODEL_REF = "xiaomi/mimo-v2-flash";
+export const VOLCENGINE_DEFAULT_MODEL_REF = "volcengine/doubao-seed-1-8-251228";
 export const OPENROUTER_DEFAULT_MODEL_REF = "openrouter/auto";
 export const VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF = "vercel-ai-gateway/anthropic/claude-opus-4.5";
 
@@ -137,6 +138,18 @@ export async function setXiaomiApiKey(key: string, agentDir?: string) {
     credential: {
       type: "api_key",
       provider: "xiaomi",
+      key,
+    },
+    agentDir: resolveAuthAgentDir(agentDir),
+  });
+}
+
+export async function setVolcengineApiKey(key: string, agentDir?: string) {
+  upsertAuthProfile({
+    profileId: "volcengine:default",
+    credential: {
+      type: "api_key",
+      provider: "volcengine",
       key,
     },
     agentDir: resolveAuthAgentDir(agentDir),

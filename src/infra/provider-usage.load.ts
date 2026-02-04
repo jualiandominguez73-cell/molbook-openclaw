@@ -72,6 +72,12 @@ export async function loadProviderUsageSummary(
               displayName: PROVIDER_LABELS.xiaomi,
               windows: [],
             };
+          case "volcengine":
+            return {
+              provider: "volcengine",
+              displayName: PROVIDER_LABELS.volcengine,
+              windows: [],
+            };
           case "zai":
             return await fetchZaiUsage(auth.token, timeoutMs, fetchFn);
           default:

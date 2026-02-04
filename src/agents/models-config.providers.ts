@@ -43,6 +43,17 @@ const XIAOMI_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+const VOLCENGINE_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
+export const VOLCENGINE_DEFAULT_MODEL_ID = "doubao-seed-1-8-251228";
+const VOLCENGINE_DEFAULT_CONTEXT_WINDOW = 200000;
+const VOLCENGINE_DEFAULT_MAX_TOKENS = 8192;
+const VOLCENGINE_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 const MOONSHOT_BASE_URL = "https://api.moonshot.ai/v1";
 const MOONSHOT_DEFAULT_MODEL_ID = "kimi-k2.5";
 const MOONSHOT_DEFAULT_CONTEXT_WINDOW = 256000;
@@ -376,6 +387,24 @@ export function buildXiaomiProvider(): ProviderConfig {
   };
 }
 
+export function buildVolcengineProvider(): ProviderConfig {
+  return {
+    baseUrl: VOLCENGINE_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: VOLCENGINE_DEFAULT_MODEL_ID,
+        name: "Doubao Seed 1.8",
+        reasoning: false,
+        input: ["text"],
+        cost: VOLCENGINE_DEFAULT_COST,
+        contextWindow: VOLCENGINE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: VOLCENGINE_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 async function buildVeniceProvider(): Promise<ProviderConfig> {
   const models = await discoverVeniceModels();
   return {
@@ -451,6 +480,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "xiaomi", store: authStore });
   if (xiaomiKey) {
     providers.xiaomi = { ...buildXiaomiProvider(), apiKey: xiaomiKey };
+  }
+
+  const volcengineKey =
+    resolveEnvApiKeyVarName("volcengine") ??
+    resolveApiKeyFromProfiles({ provider: "volcengine", store: authStore });
+  if (volcengineKey) {
+    providers.volcengine = { ...buildVolcengineProvider(), apiKey: volcengineKey };
   }
 
   // Ollama provider - only add if explicitly configured

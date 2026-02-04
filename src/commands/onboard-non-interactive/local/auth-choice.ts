@@ -20,6 +20,7 @@ import {
   applySyntheticConfig,
   applyVeniceConfig,
   applyVercelAiGatewayConfig,
+  applyVolcengineConfig,
   applyXiaomiConfig,
   applyZaiConfig,
   setAnthropicApiKey,
@@ -32,6 +33,7 @@ import {
   setSyntheticApiKey,
   setVeniceApiKey,
   setVercelAiGatewayApiKey,
+  setVolcengineApiKey,
   setXiaomiApiKey,
   setZaiApiKey,
 } from "../../onboard-auth.js";
@@ -213,6 +215,29 @@ export async function applyNonInteractiveAuthChoice(params: {
       mode: "api_key",
     });
     return applyXiaomiConfig(nextConfig);
+  }
+
+  if (authChoice === "volcengine-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "volcengine",
+      cfg: baseConfig,
+      flagValue: opts.volcengineApiKey,
+      flagName: "--volcengine-api-key",
+      envVar: "VOLCENGINE_API_KEY",
+      runtime,
+    });
+    if (!resolved) {
+      return null;
+    }
+    if (resolved.source !== "profile") {
+      await setVolcengineApiKey(resolved.key);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "volcengine:default",
+      provider: "volcengine",
+      mode: "api_key",
+    });
+    return applyVolcengineConfig(nextConfig);
   }
 
   if (authChoice === "openai-api-key") {
