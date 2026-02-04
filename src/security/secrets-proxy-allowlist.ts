@@ -9,7 +9,8 @@ export const DEFAULT_ALLOWED_DOMAINS = [
   // Core LLM providers
   "api.anthropic.com",
   "api.openai.com",
-  "generativelanguage.googleapis.com",
+  // Google APIs (covers generativelanguage, cloudcode-pa, aiplatform, etc.)
+  "googleapis.com",
   "api.openrouter.ai",
 
   // Search / Perplexity
