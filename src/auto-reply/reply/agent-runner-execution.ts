@@ -456,7 +456,7 @@ export async function runAgentTurnWithFallback(params: {
 
                     if (blockReplyPipeline && params.blockStreamingEnabled) {
                       // Use the pipeline to ensure proper message ordering
-                      blockReplyPipeline.enqueue(toolResultPayload);
+                      await blockReplyPipeline.enqueue(toolResultPayload);
                     } else {
                       // Fallback to direct delivery when pipeline is unavailable
                       await onToolResult(toolResultPayload);
