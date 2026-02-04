@@ -425,6 +425,8 @@ export async function processFeishuMessage(
     // Additional images from post messages
     MediaUrls: additionalMediaPaths.length > 0 ? additionalMediaPaths : undefined,
     WasMentioned: isGroup ? wasMentioned : undefined,
+    // Reply-to support for quote replies
+    ReplyToId: message.message_id,
   };
 
   await dispatchReplyWithBufferedBlockDispatcher({
@@ -475,6 +477,8 @@ export async function processFeishuMessage(
               {
                 mediaUrl,
                 receiveIdType: "chat_id",
+                // Only reply to the first media item to avoid spamming quote replies
+                replyToMessageId: i === 0 ? payload.replyToId : undefined,
               },
             );
           }
@@ -488,6 +492,7 @@ export async function processFeishuMessage(
               {
                 msgType: "text",
                 receiveIdType: "chat_id",
+                replyToMessageId: payload.replyToId,
               },
             );
           }
