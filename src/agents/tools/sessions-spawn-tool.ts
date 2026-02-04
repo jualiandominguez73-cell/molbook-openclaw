@@ -223,9 +223,13 @@ export function createSessionsSpawnTool(opts?: {
         task,
       });
 
-      // Resolve the target agent's bound accountId for the channel.
-      // This ensures sub-agents use their own messaging identity (e.g., their own Telegram bot)
-      // rather than the requester's or system default.
+      // Resolve the target agent's bound accountId for the requester's channel.
+      // This ensures sub-agents spawned from chat use their own messaging identity
+      // (e.g., their own Telegram bot) rather than the requester's or system default.
+      //
+      // When requesterOrigin.channel is absent (cron/hook/internal spawns), we intentionally
+      // skip resolution here. In those cases, the sub-agent controls its own outbound routing
+      // via explicit accountId in its message tool calls, or falls back to its configured default.
       const targetAccountId = requesterOrigin?.channel
         ? resolveAgentBoundAccountId(cfg, targetAgentId, requesterOrigin.channel)
         : null;
