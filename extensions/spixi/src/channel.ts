@@ -8,6 +8,7 @@ import { getSpixiRuntime } from "./runtime.js";
 import { listSpixiAccountIds, resolveSpixiAccount } from "./accounts.js";
 import { type ResolvedSpixiAccount } from "./types.js";
 import { SpixiConfigSchema } from "./schema.js";
+import { spixiOnboardingAdapter } from "./onboarding.js";
 import mqtt from "mqtt";
 
 const meta = getChatChannelMeta("spixi");
@@ -19,6 +20,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
     showConfigured: true,
     quickstartAllowFrom: true,
   },
+  onboarding: spixiOnboardingAdapter,
   configSchema: buildChannelConfigSchema(SpixiConfigSchema),
   config: {
     listAccountIds: (cfg) => listSpixiAccountIds(cfg),
@@ -63,11 +65,11 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
       const { account, log } = ctx;
       const config = account.config;
       const mqttUrl = `mqtt://${config.mqttHost || "127.0.0.1"}:${config.mqttPort || 1884}`;
-      
+
       log?.info(`[${account.accountId}] connecting to Spixi MQTT: ${mqttUrl}`);
-      
+
       const client = mqtt.connect(mqttUrl);
-      
+
       client.on("connect", () => {
         log?.info(`[${account.accountId}] Spixi MQTT Connected`);
         client.subscribe("Chat");
@@ -79,13 +81,13 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
             const data = JSON.parse(message.toString());
             const sender = data.sender;
             const text = data.data?.data || data.message;
-            
+
             if (!text || (config.myWalletAddress && sender === config.myWalletAddress)) {
               return;
             }
 
             log?.info(`[${account.accountId}] Received Spixi message from ${sender}`);
-            
+
             // Inbound relay logic to OpenClaw core
             ctx.onMessage?.({
               id: data.id || `spixi-${Date.now()}`,
