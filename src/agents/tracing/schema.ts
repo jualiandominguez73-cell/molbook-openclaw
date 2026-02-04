@@ -107,7 +107,7 @@ export type TraceFile = {
 
 /**
  * Load a trace from JSON.
- * Validates that it matches the schema version.
+ * Validates that it matches the schema version and has required structure.
  */
 export function loadTrace(json: string): TraceFile {
   const parsed = JSON.parse(json) as unknown;
@@ -119,6 +119,16 @@ export function loadTrace(json: string): TraceFile {
   ) {
     throw new Error("Invalid trace: missing or unsupported traceVersion");
   }
+
+  // Validate that metadata and entries exist and have correct structure
+  const parsedObj = parsed as Record<string, unknown>;
+  if (typeof parsedObj.metadata !== "object" || parsedObj.metadata === null) {
+    throw new Error("Invalid trace: missing metadata or entries");
+  }
+  if (!Array.isArray(parsedObj.entries)) {
+    throw new Error("Invalid trace: missing metadata or entries");
+  }
+
   return parsed as TraceFile;
 }
 

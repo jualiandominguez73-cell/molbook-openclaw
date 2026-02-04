@@ -820,10 +820,19 @@ export async function runEmbeddedAttempt(
           } else {
             await abortable(activeSession.prompt(effectivePrompt));
           }
+        } catch (err) {
+          promptError = err;
+        } finally {
+          log.debug(
+            `embedded run prompt end: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - promptStartedAt}`,
+          );
+        }
 
-          // Record LLM call to trace file (when --trace flag is provided).
-          // The traceWriter is a no-op when tracing is disabled, so this has zero overhead.
-          if (traceWriter) {
+        // Record LLM call to trace file (when --trace flag is provided).
+        // The traceWriter is a no-op when tracing is disabled, so this has zero overhead.
+        // Wrap in separate try-catch to prevent tracing failures from altering promptError.
+        if (traceWriter) {
+          try {
             const stateSnapshot = {
               messages: activeSession.messages.slice(),
               sessionState: {
@@ -843,13 +852,12 @@ export async function runEmbeddedAttempt(
               stateHash,
             });
             await traceWriter.flush();
+          } catch (traceErr) {
+            // Log tracing errors locally without affecting run outcome
+            processLogger?.warn?.(
+              `tracing error: ${traceErr instanceof Error ? traceErr.message : String(traceErr)}`,
+            );
           }
-        } catch (err) {
-          promptError = err;
-        } finally {
-          log.debug(
-            `embedded run prompt end: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - promptStartedAt}`,
-          );
         }
 
         try {
@@ -904,14 +912,31 @@ export async function runEmbeddedAttempt(
         params.abortSignal?.removeEventListener?.("abort", onAbort);
 
         // Record run completion to trace (when --trace flag is provided).
+        // Wrap in try-catch to prevent tracing failures from propagating.
         if (traceWriter) {
-          const outcome = aborted ? "aborted" : promptError ? "errored" : "completed";
-          traceWriter.recordEnd({
-            durationMs: Date.now() - promptStartedAt,
-            outcome,
-            error: promptError ? describeUnknownError(promptError) : undefined,
-          });
-          await traceWriter.flush();
+          try {
+            const outcome = aborted ? "aborted" : promptError ? "errored" : "completed";
+            const recordEndParams: any = { outcome };
+            // Only include durationMs if promptStartedAt is a valid number
+            if (typeof promptStartedAt === "number") {
+              recordEndParams.durationMs = Date.now() - promptStartedAt;
+            }
+            if (promptError) {
+              try {
+                recordEndParams.error = describeUnknownError(promptError);
+              } catch (describeErr) {
+                // If describeUnknownError fails, fall back to string representation
+                recordEndParams.error = String(promptError);
+              }
+            }
+            traceWriter.recordEnd(recordEndParams);
+            await traceWriter.flush();
+          } catch (traceErr) {
+            // Swallow tracing errors to prevent propagation from finally block
+            processLogger?.warn?.(
+              `tracing completion error: ${traceErr instanceof Error ? traceErr.message : String(traceErr)}`,
+            );
+          }
         }
       }
 

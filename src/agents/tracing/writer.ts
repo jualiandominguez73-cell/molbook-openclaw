@@ -15,10 +15,37 @@ import path from "node:path";
 import type { TraceEntry, TraceFile, LLMCallRecord, ToolCallRecord, TokenUsage } from "./schema.js";
 
 /**
+ * Shared interface for trace writers (both real and no-op).
+ * Allows polymorphic use of TraceWriter and NoOpTraceWriter.
+ */
+export interface ITraceWriter {
+  recordLlmCall(params: {
+    messages: unknown;
+    response: unknown;
+    model: { provider: string; modelId: string; api?: string; thinkingLevel?: string };
+    tokenUsage?: TokenUsage;
+    stateHash: string;
+  }): void;
+  recordToolCall(params: {
+    toolName: string;
+    params: unknown;
+    result: { success: boolean; output?: unknown; error?: string };
+    stateHash: string;
+  }): void;
+  recordEnd(params: {
+    durationMs?: number;
+    outcome: "completed" | "aborted" | "errored";
+    error?: string;
+  }): void;
+  flush(): Promise<void>;
+  getTrace(): Readonly<TraceFile> | null;
+}
+
+/**
  * Writer that records trace entries to disk.
  * Must be instantiated at the start of a run.
  */
-export class TraceWriter {
+export class TraceWriter implements ITraceWriter {
   private stepIndex = 0;
   private trace: TraceFile;
   private tracePath: string;
@@ -64,6 +91,7 @@ export class TraceWriter {
 
   /**
    * Record an LLM call to the trace.
+   * Note: callers must call flush() to persist entries to disk.
    */
   recordLlmCall(params: {
     messages: unknown;
@@ -87,6 +115,7 @@ export class TraceWriter {
 
   /**
    * Record a tool call to the trace.
+   * Note: callers must call flush() to persist entries to disk.
    */
   recordToolCall(params: {
     toolName: string;
@@ -110,11 +139,13 @@ export class TraceWriter {
    * Mark the run as ended with final metadata.
    */
   recordEnd(params: {
-    durationMs: number;
+    durationMs?: number;
     outcome: "completed" | "aborted" | "errored";
     error?: string;
   }): void {
-    this.trace.metadata.durationMs = params.durationMs;
+    if (typeof params.durationMs === "number") {
+      this.trace.metadata.durationMs = params.durationMs;
+    }
     this.trace.metadata.outcome = params.outcome;
     this.trace.metadata.error = params.error;
   }
@@ -167,7 +198,7 @@ export async function createTraceWriterIfEnabled(params: {
  * No-op trace writer for when tracing is disabled.
  * Implements the same interface but does nothing.
  */
-export class NoOpTraceWriter {
+export class NoOpTraceWriter implements ITraceWriter {
   recordLlmCall(params: {
     messages: unknown;
     response: unknown;
@@ -188,7 +219,7 @@ export class NoOpTraceWriter {
   }
 
   recordEnd(params: {
-    durationMs: number;
+    durationMs?: number;
     outcome: "completed" | "aborted" | "errored";
     error?: string;
   }): void {
@@ -197,5 +228,10 @@ export class NoOpTraceWriter {
 
   async flush(): Promise<void> {
     // no-op
+  }
+
+  getTrace(): Readonly<TraceFile> | null {
+    // Return null for no-op writer since no trace is recorded
+    return null;
   }
 }
