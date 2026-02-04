@@ -86,7 +86,7 @@ Cloudflare AI Gateway works with:
 - Google AI Studio (Gemini)
 - Azure OpenAI
 - AWS Bedrock
-- Workers AI
+- Cloudflare Workers AI
 - And many more
 
 ## Environment note
