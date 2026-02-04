@@ -36,12 +36,37 @@ export async function onTimer(state: CronServiceState) {
   }
   state.running = true;
   try {
-    await locked(state, async () => {
+    // Get due jobs inside lock and mark them as running to prevent duplicates (P0 fix)
+    const dueJobs = await locked(state, async () => {
       await ensureLoaded(state);
-      await runDueJobs(state);
+      if (!state.store) return [];
+      const now = state.deps.nowMs();
+      const due = state.store.jobs.filter((j) => {
+        if (!j.enabled) return false;
+        if (typeof j.state.runningAtMs === "number") return false;
+        const next = j.state.nextRunAtMs;
+        return typeof next === "number" && now >= next;
+      });
+      // Mark as running INSIDE lock to prevent race conditions
+      for (const job of due) {
+        job.state.runningAtMs = now;
+      }
       await persist(state);
-      armTimer(state);
+      return due;
     });
+
+    // Execute jobs OUTSIDE lock - allows cron.add/list/update to proceed in parallel
+    try {
+      for (const job of dueJobs) {
+        await executeJob(state, job, state.deps.nowMs(), { forced: false });
+      }
+    } finally {
+      // Always persist and rearm, even if execution throws (P1 fix)
+      await locked(state, async () => {
+        await persist(state);
+        armTimer(state);
+      });
+    }
   } finally {
     state.running = false;
   }
