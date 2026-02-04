@@ -345,7 +345,9 @@ export async function stopSystemdService({
     return;
   }
 
-  throw new Error(`systemctl stop failed: ${systemRes.stderr || systemRes.stdout}`.trim());
+  const userErr = (userRes.stderr || userRes.stdout).trim();
+  const sysErr = (systemRes.stderr || systemRes.stdout).trim();
+  throw new Error(`systemctl stop failed.\nUser: ${userErr}\nSystem: ${sysErr}`);
 }
 
 export async function restartSystemdService({
@@ -372,7 +374,9 @@ export async function restartSystemdService({
     return;
   }
 
-  throw new Error(`systemctl restart failed: ${systemRes.stderr || systemRes.stdout}`.trim());
+  const userErr = (userRes.stderr || userRes.stdout).trim();
+  const sysErr = (systemRes.stderr || systemRes.stdout).trim();
+  throw new Error(`systemctl restart failed.\nUser: ${userErr}\nSystem: ${sysErr}`);
 }
 
 export async function isSystemdServiceEnabled(args: {

@@ -181,7 +181,8 @@ export function renderRuntimeHints(
       hints.push(`Launchd stderr (if installed): ${logs.stderrPath}`);
     } else if (process.platform === "linux") {
       const unit = resolveGatewaySystemdServiceName(env.OPENCLAW_PROFILE);
-      hints.push(`Logs: journalctl --user -u ${unit}.service -n 200 --no-pager`);
+      hints.push(`Logs (user): journalctl --user -u ${unit}.service -n 200 --no-pager`);
+      hints.push(`Logs (system): journalctl -u ${unit}.service -n 200 --no-pager`);
     } else if (process.platform === "win32") {
       const task = resolveGatewayWindowsTaskName(env.OPENCLAW_PROFILE);
       hints.push(`Logs: schtasks /Query /TN "${task}" /V /FO LIST`);
