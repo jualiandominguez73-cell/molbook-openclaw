@@ -70,7 +70,7 @@ describe("resolveApiKeyForProfile fallback to main agent", () => {
         },
       },
     };
-    await saveSecureJsonFile(path.join(secondaryAgentDir, "auth-profiles.json"), secondaryStore);
+    saveSecureJsonFile(path.join(secondaryAgentDir, "auth-profiles.json"), secondaryStore);
 
     // Write fresh credentials for main agent
     const mainStore: AuthProfileStore = {
@@ -85,7 +85,7 @@ describe("resolveApiKeyForProfile fallback to main agent", () => {
         },
       },
     };
-    await saveSecureJsonFile(path.join(mainAgentDir, "auth-profiles.json"), mainStore);
+    saveSecureJsonFile(path.join(mainAgentDir, "auth-profiles.json"), mainStore);
 
     // Mock fetch to simulate OAuth refresh failure
     const fetchSpy = vi.fn(async () => {
@@ -142,8 +142,8 @@ describe("resolveApiKeyForProfile fallback to main agent", () => {
         },
       },
     };
-    await saveSecureJsonFile(path.join(secondaryAgentDir, "auth-profiles.json"), expiredStore);
-    await saveSecureJsonFile(path.join(mainAgentDir, "auth-profiles.json"), expiredStore);
+    saveSecureJsonFile(path.join(secondaryAgentDir, "auth-profiles.json"), expiredStore);
+    saveSecureJsonFile(path.join(mainAgentDir, "auth-profiles.json"), expiredStore);
 
     // Mock fetch to simulate OAuth refresh failure
     const fetchSpy = vi.fn(async () => {
