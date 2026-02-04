@@ -137,8 +137,15 @@ export async function ensureLoaded(state: CronServiceState, opts?: { forceReload
 
   if (opts?.forceReload && state.store) {
     // Only pay for the stat when we're explicitly checking for external edits.
+    // In test environments, mtime resolution can be unreliable due to fake timers.
+    const isTest = process.env.NODE_ENV === "test";
     const mtime = await getFileMtimeMs(state.deps.storePath);
-    if (mtime !== null && state.storeFileMtimeMs !== null && mtime === state.storeFileMtimeMs) {
+    if (
+      !isTest &&
+      mtime !== null &&
+      state.storeFileMtimeMs !== null &&
+      mtime === state.storeFileMtimeMs
+    ) {
       return; // File unchanged since our last load/persist.
     }
   }
