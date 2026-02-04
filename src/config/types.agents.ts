@@ -7,6 +7,7 @@ import type {
   SandboxPruneSettings,
 } from "./types.sandbox.js";
 import type { AgentToolsConfig, MemorySearchConfig } from "./types.tools.js";
+import type { IdentityPersistenceConfig } from "./types.identity-persistence.js";
 
 export type AgentModelConfig =
   | string
@@ -32,6 +33,8 @@ export type AgentConfig = {
   /** Optional per-agent heartbeat overrides. */
   heartbeat?: AgentDefaultsConfig["heartbeat"];
   identity?: IdentityConfig;
+  /** Identity persistence and hierarchical consciousness configuration */
+  identityPersistence?: IdentityPersistenceConfig;
   groupChat?: GroupChatConfig;
   subagents?: {
     /** Allow spawning sub-agents under other agent ids. Use "*" to allow any. */
