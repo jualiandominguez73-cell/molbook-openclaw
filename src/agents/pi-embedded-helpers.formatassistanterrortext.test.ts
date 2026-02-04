@@ -79,4 +79,16 @@ describe("formatAssistantErrorText", () => {
     expect(result).toContain("API quota exceeded");
     expect(result).toContain("spending limits");
   });
+  it("returns an actionable quota message for spending limit errors", () => {
+    const msg = makeAssistantError("spending limit reached");
+    const result = formatAssistantErrorText(msg);
+    expect(result).toContain("API quota exceeded");
+    expect(result).toContain("spending limits");
+  });
+  it("returns an actionable quota message for 429 quota errors", () => {
+    const msg = makeAssistantError("429 You exceeded your current quota");
+    const result = formatAssistantErrorText(msg);
+    expect(result).toContain("API quota exceeded");
+    expect(result).toContain("spending limits");
+  });
 });

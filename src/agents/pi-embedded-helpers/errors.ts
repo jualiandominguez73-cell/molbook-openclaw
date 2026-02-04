@@ -83,6 +83,17 @@ const HTTP_ERROR_HINTS = [
   "permission",
 ];
 
+// Shared user-facing error messages (avoids duplication between formatAssistantErrorText and sanitizeUserFacingText)
+export const BILLING_EXHAUSTED_MSG =
+  "API credits exhausted. Add more credits at your provider's billing page " +
+  "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing).";
+
+export const QUOTA_EXCEEDED_MSG =
+  "API quota exceeded. Check your spending limits and add credits if needed " +
+  "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing).";
+
+const OVERLOADED_MSG = "The AI service is temporarily overloaded. Please try again in a moment.";
+
 function stripFinalTagsFromText(text: string): string {
   if (!text) {
     return text;
@@ -365,21 +376,15 @@ export function formatAssistantErrorText(
   }
 
   if (isBillingErrorMessage(raw)) {
-    return (
-      "API credits exhausted. Add more credits at your provider's billing page " +
-      "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing)."
-    );
+    return BILLING_EXHAUSTED_MSG;
   }
 
   if (isQuotaExhaustedErrorMessage(raw)) {
-    return (
-      "API quota exceeded. Check your spending limits and add credits if needed " +
-      "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing)."
-    );
+    return QUOTA_EXCEEDED_MSG;
   }
 
   if (isOverloadedErrorMessage(raw)) {
-    return "The AI service is temporarily overloaded. Please try again in a moment.";
+    return OVERLOADED_MSG;
   }
 
   if (isLikelyHttpErrorText(raw) || isRawApiErrorPayload(raw)) {
@@ -417,27 +422,21 @@ export function sanitizeUserFacingText(text: string): string {
     );
   }
 
-  if (isBillingErrorMessage(trimmed)) {
-    return (
-      "API credits exhausted. Add more credits at your provider's billing page " +
-      "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing)."
-    );
-  }
-
-  if (isQuotaExhaustedErrorMessage(trimmed)) {
-    return (
-      "API quota exceeded. Check your spending limits and add credits if needed " +
-      "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing)."
-    );
-  }
-
   if (isRawApiErrorPayload(trimmed) || isLikelyHttpErrorText(trimmed)) {
     return formatRawAssistantErrorForUi(trimmed);
   }
 
   if (ERROR_PREFIX_RE.test(trimmed)) {
+    if (isBillingErrorMessage(trimmed)) {
+      return BILLING_EXHAUSTED_MSG;
+    }
+    // Check quota before rate-limit so quota-specific errors get the right message
+    // (quota patterns overlap with rateLimit patterns)
+    if (isQuotaExhaustedErrorMessage(trimmed)) {
+      return QUOTA_EXCEEDED_MSG;
+    }
     if (isOverloadedErrorMessage(trimmed) || isRateLimitErrorMessage(trimmed)) {
-      return "The AI service is temporarily overloaded. Please try again in a moment.";
+      return OVERLOADED_MSG;
     }
     if (isTimeoutErrorMessage(trimmed)) {
       return "LLM request timed out.";

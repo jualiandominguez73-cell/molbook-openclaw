@@ -6,6 +6,8 @@ export {
   stripThoughtSignatures,
 } from "./pi-embedded-helpers/bootstrap.js";
 export {
+  BILLING_EXHAUSTED_MSG,
+  QUOTA_EXCEEDED_MSG,
   classifyFailoverReason,
   formatRawAssistantErrorForUi,
   formatAssistantErrorText,
