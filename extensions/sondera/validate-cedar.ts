@@ -18,6 +18,21 @@ interface ValidationResult {
   warnings: string[];
 }
 
+/**
+ * Extract the @id annotation from a policy using Cedar's policyToJson.
+ */
+function extractPolicyId(policyText: string): string | null {
+  try {
+    const result = cedar.policyToJson(policyText);
+    if (result.type === "success" && result.json.annotations?.id) {
+      return result.json.annotations.id;
+    }
+  } catch {
+    // Fall through to return null
+  }
+  return null;
+}
+
 function validatePolicyFile(filePath: string): ValidationResult {
   const fileName = path.basename(filePath);
   const result: ValidationResult = {
@@ -31,55 +46,34 @@ function validatePolicyFile(filePath: string): ValidationResult {
   try {
     const policyText = fs.readFileSync(filePath, "utf-8");
 
-    // Count policies by looking for permit/forbid statements
-    const policyMatches = policyText.match(/(permit|forbid)\s*\(\s*principal/g);
-    result.policyCount = policyMatches?.length ?? 0;
+    // Use Cedar's native parser to split and validate policies
+    // This properly handles nested braces, complex expressions, and multiline conditions
+    const parseResult = cedar.policySetTextToParts(policyText);
 
-    // Extract @id annotations for better error reporting
-    const idMatches = policyText.match(/@id\s*\(\s*"([^"]+)"\s*\)/g);
-    const policyIds = idMatches?.map(m => m.match(/"([^"]+)"/)?.[1]) ?? [];
+    if (parseResult.type === "failure") {
+      result.valid = false;
+      const errorMsgs = parseResult.errors?.map(e => e.message) || ["Unknown parse error"];
+      result.errors.push(`Failed to parse policy file: ${errorMsgs.join("; ")}`);
+      return result;
+    }
 
-    // Try to parse each policy individually for better error reporting
-    const policyRegex = /(?:@id\s*\(\s*"([^"]+)"\s*\)\s*)?(permit|forbid)\s*\(\s*principal\s*,\s*action\s*,\s*resource\s*\)\s*(?:when\s*\{[^}]*\})?\s*;/g;
+    result.policyCount = parseResult.policies.length;
 
-    let match;
-    let policyIndex = 0;
-    while ((match = policyRegex.exec(policyText)) !== null) {
-      const policyId = match[1] || `policy${policyIndex}`;
-      const policyBody = match[0].replace(/@id\s*\([^)]*\)\s*/, '').trim();
+    // Validate each policy individually for better error reporting
+    parseResult.policies.forEach((policyStr, index) => {
+      const policyId = extractPolicyId(policyStr) || `policy${index}`;
 
-      // Try to use Cedar to validate this single policy
-      try {
-        const testResult = cedar.isAuthorized({
-          principal: { type: "User", id: "test" },
-          action: { type: "Sondera::Action", id: "test" },
-          resource: { type: "Resource", id: "test" },
-          context: { params: { command: "test" } },
-          policies: {
-            staticPolicies: { [policyId]: policyBody },
-          },
-          entities: [],
-        });
+      // Use checkParsePolicySet to validate the individual policy
+      const checkResult = cedar.checkParsePolicySet({
+        staticPolicies: { [policyId]: policyStr },
+      });
 
-        if (testResult.type === "failure") {
-          result.valid = false;
-          const errorMsgs = testResult.errors?.map((e: { message: string }) => e.message) || ["Unknown error"];
-          result.errors.push(`Policy "${policyId}": ${errorMsgs.join("; ")}`);
-        }
-      } catch (err) {
+      if (checkResult.type === "failure") {
         result.valid = false;
-        result.errors.push(`Policy "${policyId}": ${err instanceof Error ? err.message : String(err)}`);
+        const errorMsgs = checkResult.errors?.map(e => e.message) || ["Unknown error"];
+        result.errors.push(`Policy "${policyId}": ${errorMsgs.join("; ")}`);
       }
-
-      policyIndex++;
-    }
-
-    // Check for common issues (skip comments)
-    const nonCommentLines = policyText.split('\n').filter(line => !line.trim().startsWith('//'));
-    const nonCommentText = nonCommentLines.join('\n');
-    if (nonCommentText.includes(":(){ :|:& };:")) {
-      result.warnings.push("Fork bomb pattern contains special characters that may not parse correctly");
-    }
+    });
 
     if (result.policyCount === 0) {
       result.warnings.push("No policies found in file");

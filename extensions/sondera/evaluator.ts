@@ -25,45 +25,70 @@ interface ParsedPolicies {
   policies: Record<string, string>;
   /** Mapping from Cedar's internal IDs (policy0, policy1...) to our @id names */
   internalIdToName: Map<string, string>;
+  /** Any parsing errors encountered */
+  errors: string[];
+}
+
+/**
+ * Extract the @id annotation from a policy using Cedar's policyToJson.
+ * Returns the @id value or null if not found.
+ */
+function extractPolicyId(policyText: string): string | null {
+  try {
+    const result = cedar.policyToJson(policyText);
+    if (result.type === "success" && result.json.annotations?.id) {
+      return result.json.annotations.id;
+    }
+  } catch {
+    // Fall through to return null
+  }
+  return null;
 }
 
 /**
  * Parse Cedar policy text into individual policies with their @id annotations.
- * Returns policies for Cedar and a mapping from internal IDs to @id names.
+ * Uses Cedar's native policySetTextToParts() for robust parsing that handles
+ * nested braces, complex expressions, and multiline conditions correctly.
  */
 function parsePolicies(policyText: string): ParsedPolicies {
   const policies: Record<string, string> = {};
   const internalIdToName = new Map<string, string>();
-  let policyCounter = 0;
+  const errors: string[] = [];
 
-  // Match @id("...") annotation followed by permit/forbid policy
-  // The regex captures: @id annotation (optional), permit/forbid keyword, and the full policy body
-  const policyRegex = /(?:@id\s*\(\s*"([^"]+)"\s*\)\s*)?(permit|forbid)\s*\(\s*principal\s*,\s*action\s*,\s*resource\s*\)\s*(?:when\s*\{[^}]*\})?\s*;/g;
+  // Use Cedar's native parser to split policies - handles nested braces correctly
+  const parseResult = cedar.policySetTextToParts(policyText);
 
-  let match;
-  while ((match = policyRegex.exec(policyText)) !== null) {
-    const policyId = match[1] || `policy${policyCounter}`;
-    // Extract the full policy text (including @id if present)
-    const fullMatch = match[0];
-    // Store just the permit/forbid part (without @id) as that's what Cedar expects
-    const policyBody = fullMatch.replace(/@id\s*\([^)]*\)\s*/, '').trim();
-    policies[policyId] = policyBody;
-    // Map Cedar's internal ID to our @id name
-    internalIdToName.set(`policy${policyCounter}`, policyId);
-    policyCounter++;
+  if (parseResult.type === "failure") {
+    const errorMsgs = parseResult.errors?.map(e => e.message).join("; ") || "Unknown parse error";
+    errors.push(`Failed to parse policy set: ${errorMsgs}`);
+    return { policies, internalIdToName, errors };
   }
 
-  return { policies, internalIdToName };
+  // Process each policy extracted by Cedar
+  parseResult.policies.forEach((policyStr, index) => {
+    // Extract the @id annotation using Cedar's JSON conversion
+    const policyId = extractPolicyId(policyStr) || `policy${index}`;
+
+    // Store the policy (Cedar accepts policies with @id annotations)
+    policies[policyId] = policyStr;
+
+    // Map Cedar's internal ID to our @id name for diagnostics translation
+    internalIdToName.set(`policy${index}`, policyId);
+  });
+
+  return { policies, internalIdToName, errors };
 }
 
 /**
- * Cedar Policy Evaluator for Sondera guardrails.
- */
-/**
- * Count the number of @id annotations in a Cedar policy file.
- * This gives an accurate rule count without instantiating an evaluator.
+ * Count the number of policies in a Cedar policy file.
+ * Uses Cedar's native parser for accurate counting.
  */
 export function countPolicyRules(policyText: string): number {
+  const parseResult = cedar.policySetTextToParts(policyText);
+  if (parseResult.type === "success") {
+    return parseResult.policies.length;
+  }
+  // Fallback to regex count if parsing fails (for partial/invalid files)
   const idRegex = /@id\s*\(\s*"[^"]+"\s*\)/g;
   const matches = policyText.match(idRegex);
   return matches?.length ?? 0;
@@ -72,11 +97,25 @@ export function countPolicyRules(policyText: string): number {
 export class CedarEvaluator {
   private policies: Record<string, string>;
   private internalIdToName: Map<string, string>;
+  private parseErrors: string[];
 
   constructor(policyText: string) {
     const parsed = parsePolicies(policyText);
     this.policies = parsed.policies;
     this.internalIdToName = parsed.internalIdToName;
+    this.parseErrors = parsed.errors;
+
+    // Throw if parsing failed entirely (no policies loaded)
+    if (parsed.errors.length > 0 && Object.keys(parsed.policies).length === 0) {
+      throw new Error(`Cedar policy parsing failed: ${parsed.errors.join("; ")}`);
+    }
+  }
+
+  /**
+   * Get any non-fatal parsing errors encountered during initialization.
+   */
+  get errors(): string[] {
+    return this.parseErrors;
   }
 
   /**
