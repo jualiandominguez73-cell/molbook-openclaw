@@ -281,6 +281,8 @@ const FIELD_LABELS: Record<string, string> = {
   "memory.qmd.limits.maxInjectedChars": "QMD Max Injected Chars",
   "memory.qmd.limits.timeoutMs": "QMD Search Timeout (ms)",
   "memory.qmd.scope": "QMD Surface Scope",
+  "memory.progressive": "Progressive Memory",
+  "memory.progressive.enabled": "Enable Progressive Memory",
   "auth.profiles": "Auth Profiles",
   "auth.order": "Auth Profile Order",
   "auth.cooldowns.billingBackoffHours": "Billing Backoff (hours)",

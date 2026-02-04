@@ -3,10 +3,15 @@ import type { SessionSendPolicyConfig } from "./types.base.js";
 export type MemoryBackend = "builtin" | "qmd";
 export type MemoryCitationsMode = "auto" | "on" | "off";
 
+export type MemoryProgressiveConfig = {
+  enabled?: boolean;
+};
+
 export type MemoryConfig = {
   backend?: MemoryBackend;
   citations?: MemoryCitationsMode;
   qmd?: MemoryQmdConfig;
+  progressive?: MemoryProgressiveConfig;
 };
 
 export type MemoryQmdConfig = {

@@ -78,11 +78,18 @@ const MemoryQmdSchema = z
   })
   .strict();
 
+const MemoryProgressiveSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+  })
+  .strict();
+
 const MemorySchema = z
   .object({
     backend: z.union([z.literal("builtin"), z.literal("qmd")]).optional(),
     citations: z.union([z.literal("auto"), z.literal("on"), z.literal("off")]).optional(),
     qmd: MemoryQmdSchema.optional(),
+    progressive: MemoryProgressiveSchema.optional(),
   })
   .strict()
   .optional();

@@ -92,8 +92,5 @@ export function closeAllProgressiveStores(): void {
  * Check if progressive memory is enabled in config.
  */
 export function isProgressiveMemoryEnabled(cfg: OpenClawConfig): boolean {
-  const memory = cfg.memory as Record<string, unknown> | undefined;
-  if (!memory) return false;
-  const progressive = memory.progressive as Record<string, unknown> | undefined;
-  return progressive?.enabled === true;
+  return cfg.memory?.progressive?.enabled === true;
 }
