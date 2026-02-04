@@ -28,8 +28,37 @@ export function deriveSessionKey(scope: SessionScope, ctx: MsgContext) {
 export function resolveSessionKey(scope: SessionScope, ctx: MsgContext, mainKey?: string) {
   const explicit = ctx.SessionKey?.trim();
   if (explicit) {
-    return explicit.toLowerCase();
+    // Apply the same canonicalization logic as resolveSessionStoreKey
+    const explicitLower = explicit.toLowerCase();
+
+    // If it's already in canonical format, return as-is
+    if (
+      explicitLower.startsWith("agent:") ||
+      explicitLower === "global" ||
+      explicitLower === "unknown"
+    ) {
+      return explicitLower;
+    }
+
+    // Check if it's a main key alias
+    const canonicalMainKey = normalizeMainKey(mainKey);
+    if (explicitLower === "main" || explicitLower === canonicalMainKey) {
+      return buildAgentMainSessionKey({
+        agentId: DEFAULT_AGENT_ID,
+        mainKey: canonicalMainKey,
+      });
+    }
+
+    // For non-group sessions, use the explicit key as the session identifier
+    const isGroup = explicitLower.includes(":group:") || explicitLower.includes(":channel:");
+    if (!isGroup) {
+      return `agent:${DEFAULT_AGENT_ID}:${explicitLower}`;
+    }
+
+    // For group sessions, add agent prefix
+    return `agent:${DEFAULT_AGENT_ID}:${explicitLower}`;
   }
+
   const raw = deriveSessionKey(scope, ctx);
   if (scope === "global") {
     return raw;

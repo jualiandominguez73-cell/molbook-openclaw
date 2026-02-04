@@ -39,6 +39,7 @@ import {
   loadSessionEntry,
   readSessionMessages,
   resolveSessionModelRef,
+  toDisplaySessionKey,
 } from "../session-utils.js";
 import { formatForLog } from "../ws-log.js";
 import { injectTimestamp, timestampOptsFromConfig } from "./agent-timestamp.js";
@@ -159,7 +160,7 @@ function broadcastChatFinal(params: {
   const seq = nextChatSeq({ agentRunSeq: params.context.agentRunSeq }, params.runId);
   const payload = {
     runId: params.runId,
-    sessionKey: params.sessionKey,
+    sessionKey: toDisplaySessionKey(params.sessionKey), // Convert to display format for frontend
     seq,
     state: "final" as const,
     message: params.message,
@@ -177,7 +178,7 @@ function broadcastChatError(params: {
   const seq = nextChatSeq({ agentRunSeq: params.context.agentRunSeq }, params.runId);
   const payload = {
     runId: params.runId,
-    sessionKey: params.sessionKey,
+    sessionKey: toDisplaySessionKey(params.sessionKey), // Convert to display format for frontend
     seq,
     state: "error" as const,
     errorMessage: params.errorMessage,
@@ -203,6 +204,7 @@ export const chatHandlers: GatewayRequestHandlers = {
       sessionKey: string;
       limit?: number;
     };
+
     const { cfg, storePath, entry } = loadSessionEntry(sessionKey);
     const sessionId = entry?.sessionId;
     const rawMessages =
@@ -214,6 +216,7 @@ export const chatHandlers: GatewayRequestHandlers = {
     const sliced = rawMessages.length > max ? rawMessages.slice(-max) : rawMessages;
     const sanitized = stripEnvelopeFromMessages(sliced);
     const capped = capArrayByJsonBytes(sanitized, getMaxChatHistoryMessagesBytes()).items;
+
     let thinkingLevel = entry?.thinkingLevel;
     if (!thinkingLevel) {
       const configured = cfg.agents?.defaults?.thinkingDefault;
@@ -230,6 +233,7 @@ export const chatHandlers: GatewayRequestHandlers = {
         });
       }
     }
+
     respond(true, {
       sessionKey,
       sessionId,

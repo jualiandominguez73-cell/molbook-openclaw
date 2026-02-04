@@ -338,6 +338,32 @@ function canonicalizeSessionKeyForAgent(agentId: string, key: string): string {
   return `agent:${normalizeAgentId(agentId)}:${key}`;
 }
 
+/**
+ * Convert a canonical session key back to its display/request format
+ * This is used when sending events to frontend to maintain consistency
+ */
+export function toDisplaySessionKey(canonicalKey: string): string {
+  if (!canonicalKey) {
+    return canonicalKey;
+  }
+
+  // Handle special keys
+  if (canonicalKey === "global" || canonicalKey === "unknown") {
+    return canonicalKey;
+  }
+
+  // Parse agent session key format: agent:agentId:rest
+  if (canonicalKey.startsWith("agent:")) {
+    const parts = canonicalKey.split(":");
+    if (parts.length >= 3) {
+      // Return the rest part (everything after agent:agentId:)
+      return parts.slice(2).join(":");
+    }
+  }
+
+  return canonicalKey;
+}
+
 function resolveDefaultStoreAgentId(cfg: OpenClawConfig): string {
   return normalizeAgentId(resolveDefaultAgentId(cfg));
 }

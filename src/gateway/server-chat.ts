@@ -2,7 +2,7 @@ import { normalizeVerboseLevel } from "../auto-reply/thinking.js";
 import { loadConfig } from "../config/config.js";
 import { type AgentEventPayload, getAgentRunContext } from "../infra/agent-events.js";
 import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
-import { loadSessionEntry } from "./session-utils.js";
+import { loadSessionEntry, toDisplaySessionKey } from "./session-utils.js";
 import { formatForLog } from "./ws-log.js";
 
 /**
@@ -155,7 +155,7 @@ export function createAgentEventHandler({
     chatRunState.deltaSentAt.set(clientRunId, now);
     const payload = {
       runId: clientRunId,
-      sessionKey,
+      sessionKey: toDisplaySessionKey(sessionKey), // Convert to display format for frontend
       seq,
       state: "delta" as const,
       message: {
@@ -179,12 +179,14 @@ export function createAgentEventHandler({
     error?: unknown,
   ) => {
     const text = chatRunState.buffers.get(clientRunId)?.trim() ?? "";
+
     chatRunState.buffers.delete(clientRunId);
     chatRunState.deltaSentAt.delete(clientRunId);
+
     if (jobState === "done") {
       const payload = {
         runId: clientRunId,
-        sessionKey,
+        sessionKey: toDisplaySessionKey(sessionKey), // Convert to display format for frontend
         seq,
         state: "final" as const,
         message: text
@@ -195,6 +197,7 @@ export function createAgentEventHandler({
             }
           : undefined,
       };
+
       // Suppress webchat broadcast for heartbeat runs when showOk is false
       if (!shouldSuppressHeartbeatBroadcast(clientRunId)) {
         broadcast("chat", payload);
@@ -202,13 +205,15 @@ export function createAgentEventHandler({
       nodeSendToSession(sessionKey, "chat", payload);
       return;
     }
+
     const payload = {
       runId: clientRunId,
-      sessionKey,
+      sessionKey: toDisplaySessionKey(sessionKey), // Convert to display format for frontend
       seq,
       state: "error" as const,
       errorMessage: error ? formatForLog(error) : undefined,
     };
+
     broadcast("chat", payload);
     nodeSendToSession(sessionKey, "chat", payload);
   };
