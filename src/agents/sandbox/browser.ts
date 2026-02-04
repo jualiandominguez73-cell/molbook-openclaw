@@ -21,15 +21,23 @@ import { isToolAllowed } from "./tool-policy.js";
 
 /**
  * Returns the host address that Docker containers can use to reach the gateway.
- * On macOS/Windows Docker Desktop, host.docker.internal works.
- * On Linux, use the Docker bridge IP (172.17.0.1).
+ *
+ * Precedence:
+ * 1. OPENCLAW_DOCKER_HOST env var (for custom setups: rootless Docker, Colima, etc.)
+ * 2. host.docker.internal (macOS/Windows Docker Desktop)
+ * 3. 172.17.0.1 (Linux default bridge gateway)
  */
 function resolveDockerHostAddress(): string {
+  const envOverride = process.env.OPENCLAW_DOCKER_HOST?.trim();
+  if (envOverride) {
+    return envOverride;
+  }
   const platform = os.platform();
   if (platform === "darwin" || platform === "win32") {
     return "host.docker.internal";
   }
-  // Linux: Docker bridge default gateway
+  // Linux: Docker bridge default gateway. Override with OPENCLAW_DOCKER_HOST
+  // for non-standard setups (rootless Docker, custom bridge networks, etc.).
   return "172.17.0.1";
 }
 
@@ -206,6 +214,9 @@ export async function ensureSandboxBrowser(params: {
 
     // Bind to all interfaces so containers can reach the bridge.
     // Use Docker host address in the URL so containers can connect.
+    // Note: Binding to 0.0.0.0 exposes the bridge on all interfaces. The bridge
+    // only responds to ephemeral ports and is short-lived per sandbox session.
+    // Future: add auth token support plumbed through to browser client calls.
     const dockerHost = resolveDockerHostAddress();
     return await startBrowserBridgeServer({
       resolved: buildSandboxBrowserResolvedConfig({
