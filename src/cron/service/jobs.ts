@@ -107,11 +107,16 @@ export function createJob(state: CronServiceState, input: CronJobCreate): CronJo
         : undefined;
   const enabled = typeof input.enabled === "boolean" ? input.enabled : true;
   // Compute nextRunAtMs early to ensure it's set correctly
-  const nextRunAtMs = enabled ? computeJobNextRunAtMs({
-    enabled,
-    schedule: input.schedule,
-    state: input.state || {},
-  } as CronJob, now) : undefined;
+  const nextRunAtMs = enabled
+    ? computeJobNextRunAtMs(
+        {
+          enabled,
+          schedule: input.schedule,
+          state: input.state || {},
+        } as CronJob,
+        now,
+      )
+    : undefined;
   const job: CronJob = {
     id,
     agentId: normalizeOptionalAgentId(input.agentId),
