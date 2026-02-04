@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { PluginHookRegistration } from "./types.js";
 import type { PluginRegistry } from "./registry.js";
+import type { PluginHookRegistration } from "./types.js";
 import { createHookRunner } from "./hooks.js";
 
-function makeRegistry(
-  typedHooks: PluginHookRegistration[] = [],
-): PluginRegistry {
+function makeRegistry(typedHooks: PluginHookRegistration[] = []): PluginRegistry {
   return {
     plugins: [],
     tools: [],
