@@ -52,7 +52,10 @@ export function computeJobNextRunAtMs(job: CronJob, nowMs: number): number | und
     if (job.state.lastStatus === "ok" && job.state.lastRunAtMs) {
       return undefined;
     }
-    const atMs = parseAbsoluteTimeMs(job.schedule.at);
+    const schedule = job.schedule as any;
+    const at = schedule.at;
+    const atMsFallback = typeof schedule.atMs === "number" ? schedule.atMs : null;
+    const atMs = typeof at === "string" ? parseAbsoluteTimeMs(at) : atMsFallback;
     return atMs !== null ? atMs : undefined;
   }
   return computeNextRunAtMs(job.schedule, nowMs);
