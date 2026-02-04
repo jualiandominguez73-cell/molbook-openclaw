@@ -132,8 +132,16 @@ async function tryResolveOAuthProfile(params: {
   // SECURE MODE: Return placeholder without checking expiry or refreshing.
   // The secrets proxy on the host will inject the real token at HTTP time.
   if (process.env.OPENCLAW_SECURE_MODE === "1") {
+    // For google-gemini-cli, return JSON format with placeholders
+    const needsProjectId = cred.provider === "google-gemini-cli" || cred.provider === "google-antigravity";
+    const apiKey = needsProjectId
+      ? JSON.stringify({
+          token: `{{OAUTH:${profileId}}}`,
+          projectId: cred.projectId || "",
+        })
+      : `{{OAUTH:${profileId}}}`;
     return {
-      apiKey: `{{OAUTH:${profileId}}}`,
+      apiKey,
       provider: cred.provider,
       email: cred.email,
     };
@@ -187,7 +195,14 @@ export async function resolveApiKeyForProfile(params: {
   if (process.env.OPENCLAW_SECURE_MODE === "1") {
     let placeholder: string;
     if (cred.type === "oauth") {
-      placeholder = `{{OAUTH:${profileId}}}`;
+      // For google-gemini-cli, return JSON format with placeholders
+      const needsProjectId = cred.provider === "google-gemini-cli" || cred.provider === "google-antigravity";
+      placeholder = needsProjectId
+        ? JSON.stringify({
+            token: `{{OAUTH:${profileId}}}`,
+            projectId: (cred as any).projectId || "",
+          })
+        : `{{OAUTH:${profileId}}}`;
     } else if (cred.type === "api_key") {
       placeholder = `{{APIKEY:${profileId}}}`;
     } else if (cred.type === "token") {
