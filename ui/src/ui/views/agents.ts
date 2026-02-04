@@ -846,7 +846,7 @@ function renderAgentOverview(params: {
       <div class="agents-overview-grid" style="margin-top: 16px;">
         <div class="agent-kv">
           <div class="label">Workspace</div>
-          <div class="mono">${workspace}</div>
+          <div class="mono" style="word-break: break-all;">${workspace}</div>
         </div>
         <div class="agent-kv">
           <div class="label">Primary Model</div>
