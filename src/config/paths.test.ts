@@ -122,16 +122,6 @@ describe("state + config path candidates", () => {
       } else {
         process.env.OPENCLAW_CONFIG_PATH = previousOpenClawConfig;
       }
-      if (previousOpenClawConfig === undefined) {
-        delete process.env.OPENCLAW_CONFIG_PATH;
-      } else {
-        process.env.OPENCLAW_CONFIG_PATH = previousOpenClawConfig;
-      }
-      if (previousOpenClawState === undefined) {
-        delete process.env.OPENCLAW_STATE_DIR;
-      } else {
-        process.env.OPENCLAW_STATE_DIR = previousOpenClawState;
-      }
       if (previousOpenClawState === undefined) {
         delete process.env.OPENCLAW_STATE_DIR;
       } else {

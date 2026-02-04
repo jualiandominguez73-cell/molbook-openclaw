@@ -279,7 +279,9 @@ export function createProxyAgent(): ProxyAgent | undefined {
   const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
   const proxy = httpsProxy || httpProxy;
 
-  if (!proxy) return undefined;
+  if (!proxy) {
+    return undefined;
+  }
 
   try {
     return new ProxyAgent(proxy);
