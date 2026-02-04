@@ -37,10 +37,12 @@ let importBindings: string | undefined; // e.g. "{ a as runDaemonStop, … }"
 for (const candidate of candidates) {
   const src = fs.readFileSync(path.join(distDir, candidate), "utf8");
   for (const other of candidates) {
-    if (other === candidate) continue;
+    if (other === candidate) {
+      continue;
+    }
     const escaped = other.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const match = src.match(
-      new RegExp(`import\\s*(\\{[^}]+\\})\\s*from\\s*"\\.\/${escaped}"`, "m"),
+      new RegExp(`import\\s*(\\{[^}]+\\})\\s*from\\s*"./${escaped}"`, "m"),
     );
     if (match) {
       barrel = candidate;
@@ -49,7 +51,9 @@ for (const candidate of candidates) {
       break;
     }
   }
-  if (barrel) break;
+  if (barrel) {
+    break;
+  }
 }
 
 if (!barrel || !innerChunk || !importBindings) {
