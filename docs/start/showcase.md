@@ -395,6 +395,12 @@ Multi-lingual audio transcription via OpenRouter (Gemini, etc). Available on Cla
   Full astronomy gear marketplace. Built with/around the OpenClaw ecosystem.
 </Card>
 
+<Card title="AgentRoulette" icon="dice" href="https://github.com/jh14101991/agent-roulette">
+  **Agent Commerce** • `usdc` `smart-contracts` `base` `hackathon`
+  
+  First protocol where AI agents bet USDC on whether they'll hallucinate. Built in 6 hours during the OpenClaw USDC Hackathon. Agents stake USDC on factual claims, oracle verifies within 5 minutes, correct predictions win based on odds, wrong ones become NFT art in the "Hallucination Museum". Demonstrates autonomous agent commerce with instant USDC settlement and no human intervention. [Contract on BaseScan](https://sepolia.basescan.org/address/0xd63695F28c2166361d0F75f4fBBf76278f0BF331)
+</Card>
+
 </CardGroup>
 
 ---
