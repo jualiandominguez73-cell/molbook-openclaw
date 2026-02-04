@@ -56,8 +56,16 @@ if [[ ! -f "$in" ]]; then
   exit 1
 fi
 
+# Fallback: read from OpenClaw config if env var not set
 if [[ "${OPENAI_API_KEY:-}" == "" ]]; then
-  echo "Missing OPENAI_API_KEY" >&2
+  config_file="$HOME/.openclaw/openclaw.json"
+  if [[ -f "$config_file" ]]; then
+    OPENAI_API_KEY=$(grep -A1 '"openai-whisper-api"' "$config_file" 2>/dev/null | grep '"apiKey"' | sed 's/.*"apiKey": *"\([^"]*\)".*/\1/' || true)
+  fi
+fi
+
+if [[ "${OPENAI_API_KEY:-}" == "" ]]; then
+  echo "Missing OPENAI_API_KEY (set env var or configure in ~/.openclaw/openclaw.json)" >&2
   exit 1
 fi
 
