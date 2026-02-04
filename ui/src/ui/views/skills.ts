@@ -99,13 +99,14 @@ export function renderSkills(props: SkillsProps) {
   const textFilter = props.filter.trim().toLowerCase();
 
   // Apply text filter
-  let filtered = textFilter
+  const textFiltered = textFilter
     ? skills.filter((skill) =>
         [skill.name, skill.description, skill.source].join(" ").toLowerCase().includes(textFilter),
       )
     : skills;
 
   // Apply state filter
+  let filtered = textFiltered;
   if (props.stateFilter !== "all") {
     const stateGroup = SKILL_STATE_GROUPS.find((g) => g.id === props.stateFilter);
     if (stateGroup) {
@@ -140,15 +141,17 @@ export function renderSkills(props: SkillsProps) {
 
       <div class="skill-state-summary" style="margin-top: 12px;">
         <button
+          type="button"
           class="skill-state-chip ${props.stateFilter === "all" ? "active" : ""}"
           @click=${() => props.onStateFilterChange("all")}
         >
-          All: ${skills.length}
+          All: ${textFiltered.length}
         </button>
         ${SKILL_STATE_GROUPS.map((g) => {
-          const count = skills.filter(g.match).length;
+          const count = textFiltered.filter(g.match).length;
           const isActive = props.stateFilter === g.id;
           return html`<button
+            type="button"
             class="skill-state-chip ${g.id} ${isActive ? "active" : ""}"
             @click=${() => props.onStateFilterChange(g.id as SkillStateFilter)}
           >${g.label}: ${count}</button>`;
