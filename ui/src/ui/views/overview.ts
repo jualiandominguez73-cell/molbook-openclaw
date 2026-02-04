@@ -7,6 +7,7 @@ import { formatNextRun } from "../presenter.ts";
 /**
  * Validate session key format
  * Returns validation result with error message if invalid
+ * Supports: agent:agentId:sessionKey, subagent:xxx, acp:xxx, and special cases
  */
 function validateSessionKeyFormat(input: string): { isValid: boolean; error?: string } {
   const trimmed = input.trim();
@@ -16,27 +17,66 @@ function validateSessionKeyFormat(input: string): { isValid: boolean; error?: st
     return { isValid: true };
   }
 
-  // Handle special cases that are always valid
+  // Handle special single-segment cases that are always valid
   if (trimmed === "main" || trimmed === "global" || trimmed === "unknown") {
     return { isValid: true };
   }
 
-  // Check if it's in proper agent:agentId:sessionKey format
-  if (trimmed.startsWith("agent:")) {
-    const parts = trimmed.split(":");
+  // Check for valid two-segment formats
+  const parts = trimmed.split(":");
+  if (parts.length < 2) {
+    return {
+      isValid: false,
+      error:
+        "Session key must have at least 2 segments (e.g., agent:main:session, subagent:xxx, or acp:xxx)",
+    };
+  }
+
+  const prefix = parts[0]?.toLowerCase();
+
+  // Check agent: format (requires 3 segments)
+  if (prefix === "agent") {
     if (parts.length >= 3 && parts[1]?.trim() && parts[2]?.trim()) {
       return { isValid: true };
     }
     return {
       isValid: false,
-      error: "Invalid format. Use: agent:agentId:sessionName (e.g., agent:main:xiaohua)",
+      error:
+        "Agent format requires 3 segments: agent:agentId:sessionName (e.g., agent:main:xiaohua)",
     };
   }
 
-  // If not in agent: format, it's invalid
+  // Check subagent: format (requires at least 2 segments)
+  if (prefix === "subagent") {
+    if (parts.length >= 2 && parts[1]?.trim()) {
+      return { isValid: true };
+    }
+    return {
+      isValid: false,
+      error: "Subagent format requires at least 2 segments: subagent:xxx",
+    };
+  }
+
+  // Check acp: format (requires at least 2 segments)
+  if (prefix === "acp") {
+    if (parts.length >= 2 && parts[1]?.trim()) {
+      return { isValid: true };
+    }
+    return {
+      isValid: false,
+      error: "ACP format requires at least 2 segments: acp:xxx",
+    };
+  }
+
+  // Other two-segment formats are also valid (for extensibility)
+  if (parts.length >= 2 && parts[0]?.trim() && parts[1]?.trim()) {
+    return { isValid: true };
+  }
+
   return {
     isValid: false,
-    error: "Session key must be in format: agent:agentId:sessionName (e.g., agent:main:xiaohua)",
+    error:
+      "Invalid format. Use: agent:agentId:sessionName, subagent:xxx, acp:xxx, or other two-segment format",
   };
 }
 
@@ -210,8 +250,8 @@ export function renderOverview(props: OverviewProps) {
                 const v = (e.target as HTMLInputElement).value;
                 props.onSessionKeyChange(v);
               }}
-              placeholder="agent:main:xiaohua"
-              title="Required format: agent:agentId:sessionName (e.g., agent:main:xiaohua)"
+              placeholder="agent:main:session, subagent:xxx, or acp:xxx"
+              title="Supported formats: agent:agentId:sessionName, subagent:xxx, acp:xxx, or other two-segment format"
               style=${sessionKeyValidation.isValid ? "" : "border-color: #e74c3c; background-color: #fdf2f2;"}
             />
             ${
