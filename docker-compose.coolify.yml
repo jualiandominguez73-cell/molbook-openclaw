@@ -1,6 +1,8 @@
 services:
   openclaw:
-    image: openclaw/openclaw:latest # Better than 'build' for noobs to avoid build errors
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: openclaw
     ports:
       - "${PORT:-18789}:18789"
