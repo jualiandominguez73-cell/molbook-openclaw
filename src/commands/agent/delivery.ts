@@ -198,7 +198,9 @@ export async function deliverAgentCommandResult(params: {
   // For nested lane agents (e.g., CLI agents) targeting webchat, emit agent events
   // so the gateway's chat event handler can broadcast to webchat clients.
   // Without this, CLI agent responses are only logged but never reach webchat.
-  if (opts.lane === AGENT_LANE_NESTED && isInternalMessageChannel(deliveryChannel)) {
+  // Note: We explicitly check for "webchat" rather than using isInternalMessageChannel()
+  // to avoid emitting events for any future internal channels that may be added.
+  if (opts.lane === AGENT_LANE_NESTED && deliveryChannel === "webchat") {
     const sessionKey = opts.sessionKey ?? opts.sessionId;
     const runId = opts.runId;
     if (runId && sessionKey) {
