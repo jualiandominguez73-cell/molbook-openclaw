@@ -2,7 +2,7 @@
 
 **Status**: Product Architecture
 **Last Updated**: 2026-02-04
-**Changes from v2**: Added frontend, project board UI, sleep-time compute, trace-based self-improvement, async/sync hybrid collaboration model, dual interaction modes (quick/task), chat-based task creation, question supersession, external world watchers.
+**Changes from v2**: Added frontend, project board UI, sleep-time compute, trace-based self-improvement, async/sync hybrid collaboration model, dual interaction modes (quick/task), chat-based task creation, question supersession, external world watchers, policy engine (attention/WIP/autonomy/planning policies), weekly review ritual, success criteria with self-assessment, priority classification, behavior calibration.
 
 ---
 
@@ -14,7 +14,7 @@ The Execution Service is a **web-based autonomous agent platform**. Users intera
 
 Tasks are typically created through conversation — the user describes a goal in the chat, the agent refines requirements via sync dialogue, produces a plan, and the user confirms before async execution begins. Users can also create tasks directly from the board UI.
 
-Agents run autonomously in Docker containers using an LLM-in-a-loop architecture. A **Watcher Service** monitors external sources (email, messaging, APIs, price feeds) and triggers agent actions when conditions are met. A background **Sleep-Time Compute** system reviews daily traces to generate reminders, consolidate memory, detect failure patterns, and propose self-improvements.
+Agents run autonomously in Docker containers using an LLM-in-a-loop architecture. A **Policy Engine** governs agent-human interaction — controlling notification timing, WIP limits, autonomy level, and planning heuristics — so the human's attention is protected while the agent maximizes autonomous progress. A **Watcher Service** monitors external sources (email, messaging, APIs, price feeds) and triggers agent actions when conditions are met. A background **Sleep-Time Compute** system reviews daily traces to generate reminders, consolidate memory, detect failure patterns, and propose self-improvements.
 
 ### 1.2 Core Capabilities
 
@@ -28,6 +28,9 @@ Agents run autonomously in Docker containers using an LLM-in-a-loop architecture
 | **Async Collaboration** | Agent and user communicate via comments on work items; agent can supersede outdated questions |
 | **Sync Collaboration** | Live discussions for requirement refinement, complex decisions; agent can re-enter when environment changes |
 | **External World Watchers** | Plugin-based monitoring of email, messaging, APIs, price feeds with condition evaluation and trigger actions |
+| **Policy Engine** | Configurable policies governing notification timing (AttentionPolicy), concurrency limits (WIPPolicy), agent autonomy level, and planning heuristics |
+| **Weekly Review** | System-scheduled interactive session: review all tasks, re-prioritize, process pending reviews, calibrate agent behavior |
+| **Success Criteria** | Tasks carry explicit outcome definitions (OKR-style); agent self-assesses before publishing deliverables |
 | **Sleep-Time Compute** | Nightly background jobs: daily digest, memory consolidation, failure analysis, skill generation |
 | **Trace-Based Self-Improvement** | Review agent traces, detect patterns, propose prompt/skill updates |
 | **File System Browser** | Each agent workspace is browsable in the UI — plans, memos, scratch files, deliverables, tool outputs |
@@ -56,8 +59,14 @@ Agents run autonomously in Docker containers using an LLM-in-a-loop architecture
 │  │ Session           │  │ Board Sync       │  │ Discussion Scheduler          │   │
 │  │ Coordinator       │  │ Engine           │  │                               │   │
 │  │ (routing, HITL,   │  │ (plan → board    │  │ (schedule sync sessions,      │   │
-│  │  control)         │  │  projection)     │  │  availability, notifications) │   │
+│  │  control)         │  │  projection)     │  │  weekly review, availability) │   │
 │  └──────────────────┘  └──────────────────┘  └──────────────────────────────┘   │
+│                                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ Policy Engine                                                            │   │
+│  │ (attention policy, WIP policy, autonomy policy, planning policy)        │   │
+│  │ → Notification Service (batching, digest windows, DND, priority filter) │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                  │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────────┐   │
 │  │ Agent Runner      │  │ Trace Store      │  │ Sleep-Time Compute            │   │
@@ -236,6 +245,13 @@ interface Task {
   /** Agent's current plan — source of truth for Work Items */
   plan_snapshot?: PlanSnapshot;
 
+  /**
+   * Success criteria (OKR-style Key Results). The agent evaluates deliverables
+   * against these before publishing. Human reviews the self-assessment.
+   * Generated by agent during planning, confirmed by human.
+   */
+  success_criteria?: SuccessCriterion[];
+
   /** Deliverables produced by the agent */
   deliverables: Deliverable[];
 
@@ -245,6 +261,18 @@ interface Task {
   created_at: string;
   updated_at: string;
   completed_at?: string;
+}
+
+interface SuccessCriterion {
+  id: string;
+  description: string;               // e.g., "Report covers all 10 competitors"
+  type: 'required' | 'stretch';      // Stretch = nice-to-have (OKR 0.7 principle)
+  /** Agent self-assessment — filled when deliverable is published */
+  assessment?: {
+    met: boolean;
+    confidence: number;              // 0.0-1.0
+    evidence: string;                // "Covered 10/10 competitors. See output/report.md Section 3."
+  };
 }
 
 /**
@@ -1592,9 +1620,456 @@ POST   /api/watchers/:id/test          // Test watcher with a sample event
 
 ---
 
-## 11. Frontend Architecture
+## 11. Policy Engine
 
-### 11.1 Pages
+### 11.1 Purpose
+
+The Policy Engine is the layer between agent actions and human-facing outputs. It governs **when** and **how** the agent communicates with the human, how much autonomy the agent has, and how work is prioritized. All policies are **user-configurable** with sensible defaults.
+
+**Design rationale** (from human productivity research):
+- **Deep Work**: humans have ~4 hours/day of focused cognitive capacity. Every notification costs context-switching time.
+- **Kanban WIP limits**: limiting work-in-progress increases throughput 40% and reduces lead time 60%.
+- **GTD Weekly Review**: periodic structured review is the "critical success factor" — more effective than continuous monitoring.
+- **Eisenhower Matrix**: not all agent communications are equally urgent. Classify before routing.
+- **OKR**: track outcomes (success criteria) not just activities (plan steps).
+
+### 11.2 Policy Configuration
+
+```typescript
+interface UserPolicy {
+  attention: AttentionPolicy;
+  wip: WIPPolicy;
+  review: ReviewPolicy;         // Already exists (Section 4.4), now part of policy engine
+  autonomy: AutonomyPolicy;
+  planning: PlanningPolicy;
+}
+```
+
+### 11.3 AttentionPolicy
+
+Controls how and when the human receives notifications. **Default: notify immediately** (user can tighten later).
+
+```typescript
+interface AttentionPolicy {
+  /**
+   * Notification threshold: which events generate push notifications.
+   * Default: 'all' — notify immediately for everything.
+   * Can be tightened to reduce interruptions.
+   */
+  notification_threshold: 'blocker_only' | 'high_and_blocker' | 'medium_and_above' | 'all';
+
+  /**
+   * Digest windows: batch non-urgent notifications into scheduled check-in moments.
+   * Items below notification_threshold accumulate and are delivered at these times.
+   * Default: [] (empty — no batching, everything immediate).
+   * Example: ['09:00', '13:00', '17:00'] — three check-ins per day.
+   */
+  digest_windows: string[];
+
+  /**
+   * Do-not-disturb periods. Agent accumulates, never notifies.
+   * Emergency blockers still go through.
+   * Default: [] (no DND periods).
+   */
+  dnd_periods: { start: string; end: string }[];
+
+  /**
+   * Auto-approve low-risk deliverables without human review.
+   * When the agent's self-assessment confidence is above this threshold
+   * AND all required success criteria are met, auto-approve.
+   * Default: undefined (all deliverables require human review).
+   */
+  auto_approve_confidence_threshold?: number;  // e.g., 0.95
+}
+
+// Default policy — notify everything immediately
+const DEFAULT_ATTENTION_POLICY: AttentionPolicy = {
+  notification_threshold: 'all',
+  digest_windows: [],
+  dnd_periods: [],
+  auto_approve_confidence_threshold: undefined,
+};
+```
+
+**Priority classification**: every agent communication gets a priority level before the notification engine routes it:
+
+```typescript
+type NotificationPriority = 'low' | 'medium' | 'high' | 'blocker';
+
+function classifyPriority(event: AgentEvent): NotificationPriority {
+  // Blockers: agent is paused, cannot continue
+  if (event.type === 'comment' && event.block) return 'blocker';
+  if (event.type === 'discussion_request' && event.urgency === 'high' && event.block) return 'blocker';
+
+  // High: deliverables ready for review, high-urgency discussions
+  if (event.type === 'deliverable_published') return 'high';
+  if (event.type === 'discussion_request' && event.urgency === 'high') return 'high';
+
+  // Medium: non-blocking questions, task status changes
+  if (event.type === 'comment' && event.comment_type === 'question') return 'medium';
+  if (event.type === 'task_status_changed') return 'medium';
+
+  // Low: notes, progress updates, decisions
+  return 'low';
+}
+```
+
+### 11.4 WIPPolicy
+
+Controls concurrency limits. The bottleneck is **human review bandwidth**, not agent execution capacity. **All configurable.**
+
+```typescript
+interface WIPPolicy {
+  /**
+   * Max tasks the agent can execute simultaneously.
+   * This is a resource limit (Docker containers, API rate limits).
+   * Default: 5.
+   */
+  max_concurrent_tasks: number;
+
+  /**
+   * Max deliverables pending human review.
+   * When this limit is reached, the agent prioritizes tasks that don't
+   * need review yet, or works on stretch/optional items.
+   * Default: 10.
+   */
+  max_pending_review: number;
+
+  /**
+   * Max blocking questions (agent is paused waiting for answer).
+   * When this limit is reached, the agent attempts to self-resolve
+   * by trying alternative approaches or making a best-effort decision
+   * and noting the assumption.
+   * Default: 5.
+   */
+  max_pending_questions: number;
+
+  /**
+   * What to do when max_pending_review is reached.
+   * Default: 'deprioritize_review_tasks'.
+   */
+  review_queue_full_behavior:
+    | 'deprioritize_review_tasks'    // Focus on tasks that don't need review yet
+    | 'auto_approve_low_risk'        // Auto-approve deliverables with high self-assessment confidence
+    | 'pause_new_deliverables'       // Stop producing deliverables until queue drains
+    | 'continue_anyway';             // Ignore the limit
+}
+
+const DEFAULT_WIP_POLICY: WIPPolicy = {
+  max_concurrent_tasks: 5,
+  max_pending_review: 10,
+  max_pending_questions: 5,
+  review_queue_full_behavior: 'deprioritize_review_tasks',
+};
+```
+
+### 11.5 AutonomyPolicy
+
+Controls how much the agent asks vs just does. Tunable based on trust level and human feedback.
+
+```typescript
+interface AutonomyPolicy {
+  /**
+   * For small additions requested via comments (< estimated N minutes),
+   * agent acts without updating the plan or asking for confirmation.
+   * Maps to GTD's "two-minute rule".
+   * Default: 5 (minutes).
+   */
+  micro_request_threshold_minutes: number;
+
+  /**
+   * Agent self-resolves non-blocking questions after this timeout
+   * by making a best-effort decision and noting the assumption.
+   * Default: undefined (never auto-resolve — always wait).
+   */
+  auto_resolve_timeout_minutes?: number;
+
+  /**
+   * Agent proactively reports: risk flags, confidence levels, scope concerns.
+   * 'minimal': only report blockers.
+   * 'standard': blockers + risks + confidence on deliverables.
+   * 'verbose': everything including progress notes.
+   * Default: 'standard'.
+   */
+  proactive_reporting: 'minimal' | 'standard' | 'verbose';
+
+  /**
+   * When the agent detects scope creep or a task taking much longer
+   * than expected, it proposes scope negotiation.
+   * Default: true.
+   */
+  scope_negotiation: boolean;
+}
+
+const DEFAULT_AUTONOMY_POLICY: AutonomyPolicy = {
+  micro_request_threshold_minutes: 5,
+  auto_resolve_timeout_minutes: undefined,
+  proactive_reporting: 'standard',
+  scope_negotiation: true,
+};
+```
+
+### 11.6 PlanningPolicy
+
+Controls how the agent structures and orders its work.
+
+```typescript
+interface PlanningPolicy {
+  /**
+   * "Eat the Frog" — order plan steps by uncertainty/risk first.
+   * Discovers blockers early so human can unblock sooner.
+   * Default: true.
+   */
+  risk_first_ordering: boolean;
+
+  /**
+   * Include "stretch" items in plans (OKR 0.7 principle).
+   * Stretch items are nice-to-have, not required for task completion.
+   * Default: true.
+   */
+  include_stretch_items: boolean;
+
+  /**
+   * Agent must generate success criteria during planning.
+   * Human confirms criteria before execution begins.
+   * Default: true.
+   */
+  require_success_criteria: boolean;
+}
+
+const DEFAULT_PLANNING_POLICY: PlanningPolicy = {
+  risk_first_ordering: true,
+  include_stretch_items: true,
+  require_success_criteria: true,
+};
+```
+
+### 11.7 Notification Service
+
+The Notification Service sits between the Policy Engine and the frontend. It implements batching, digest windows, and DND.
+
+```typescript
+async function routeNotification(
+  userId: string,
+  event: AgentEvent,
+  policy: AttentionPolicy,
+): Promise<void> {
+  const priority = classifyPriority(event);
+
+  // Blockers always go through, even during DND
+  if (priority === 'blocker') {
+    await sendImmediateNotification(userId, event);
+    return;
+  }
+
+  // Check DND
+  if (isInDndPeriod(policy.dnd_periods)) {
+    await queueForNextDigest(userId, event);
+    return;
+  }
+
+  // Check threshold
+  if (!meetsThreshold(priority, policy.notification_threshold)) {
+    if (policy.digest_windows.length > 0) {
+      await queueForNextDigest(userId, event);
+    }
+    // If no digest windows and below threshold, still store but don't notify
+    return;
+  }
+
+  // Meets threshold → send immediately
+  await sendImmediateNotification(userId, event);
+}
+
+async function sendDigest(userId: string): Promise<void> {
+  const queued = await db.getQueuedNotifications(userId);
+  if (queued.length === 0) return;
+
+  // Group by task, summarize
+  const digest = await generateDigestSummary(queued);
+  await ws.send(userId, { type: 'notification_digest', digest });
+  await db.clearQueuedNotifications(userId);
+}
+```
+
+### 11.8 Weekly Review (System-Scheduled)
+
+**From GTD**: David Allen calls the weekly review "the critical success factor." This is a system-initiated interactive session, not an agent-initiated discussion.
+
+```typescript
+interface WeeklyReview {
+  review_id: string;
+  user_id: string;
+  week: string;                    // ISO week: "2026-W05"
+  scheduled_at: string;            // Configurable: default Sunday 18:00
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+
+  /** System-generated briefing (from sleep-time compute data) */
+  briefing: WeeklyBriefing;
+
+  /** User actions during review */
+  actions_taken?: ReviewAction[];
+}
+
+interface WeeklyBriefing {
+  /** What happened this week */
+  completed_tasks: TaskDigestEntry[];
+  active_tasks: TaskDigestEntry[];
+
+  /** Pending human actions — the backlog to clear */
+  pending_reviews: { deliverable_id: string; task_goal: string; age_hours: number }[];
+  pending_questions: { comment_id: string; task_goal: string; question: string; age_hours: number }[];
+  pending_discussions: { request_id: string; topic: string }[];
+  pending_improvements: { proposal_id: string; description: string }[];
+
+  /** Stale items to close or re-prioritize */
+  stale_tasks: { task_id: string; goal: string; idle_days: number }[];
+
+  /** Agent behavior metrics (for calibration) */
+  behavior_metrics: {
+    questions_asked: number;
+    questions_self_resolved: number;
+    deliverables_produced: number;
+    avg_self_assessment_confidence: number;
+    times_agent_was_wrong: number;        // User rejected high-confidence deliverables
+    notifications_sent: number;
+  };
+
+  /** Self-improvement proposals to review */
+  improvement_proposals: ImprovementProposal[];
+
+  /** Suggested policy adjustments based on this week's data */
+  suggested_policy_changes?: PolicySuggestion[];
+}
+
+interface PolicySuggestion {
+  policy_field: string;              // e.g., "attention.notification_threshold"
+  current_value: unknown;
+  suggested_value: unknown;
+  reason: string;                    // "You had 47 notifications this week but only acted on 12. Consider raising the threshold."
+}
+
+type ReviewAction =
+  | { type: 'approve_deliverable'; deliverable_id: string }
+  | { type: 'answer_question'; comment_id: string; answer: string }
+  | { type: 'cancel_task'; task_id: string }
+  | { type: 'reprioritize_task'; task_id: string; new_priority: number }
+  | { type: 'approve_improvement'; proposal_id: string }
+  | { type: 'reject_improvement'; proposal_id: string }
+  | { type: 'adjust_policy'; policy: Partial<UserPolicy> }
+  | { type: 'calibrate_behavior'; feedback: string };
+```
+
+**Flow**:
+
+```
+Every week (configurable: Sunday 18:00 default):
+  System generates WeeklyBriefing from sleep-time compute data
+  Sends notification: "Your weekly review is ready"
+  Human opens /review page:
+    │
+    ├── Task Review
+    │   See all tasks: completed, active, stale
+    │   Close stale tasks, re-prioritize, add new goals
+    │
+    ├── Action Queue
+    │   Process pending reviews, questions, discussions in batch
+    │   (This is the "inbox zero" moment)
+    │
+    ├── Improvement Proposals
+    │   Approve/reject self-improvement proposals
+    │
+    ├── Behavior Calibration
+    │   See agent metrics: questions asked, confidence accuracy, notifications sent
+    │   Adjust policies: "send fewer notifications" / "ask less, decide more"
+    │   System suggests policy changes based on data
+    │
+    └── Next Week Focus
+        Set top 3 priority tasks for next week
+        Agent will prioritize these in planning
+```
+
+### 11.9 Self-Assessment Pipeline
+
+Before publishing a deliverable, the agent evaluates it against the task's success criteria:
+
+```typescript
+async function publishWithSelfAssessment(
+  taskId: string,
+  deliverable: Deliverable,
+  policy: UserPolicy,
+): Promise<void> {
+  const task = await db.getTask(taskId);
+
+  if (task.success_criteria?.length) {
+    // Agent self-assesses against each criterion
+    const assessment = await agentLoop.selfAssess(deliverable, task.success_criteria);
+
+    // Attach assessment to deliverable
+    deliverable.self_assessment = assessment;
+
+    // Update success criteria with assessment results
+    for (const criterion of task.success_criteria) {
+      const result = assessment.find(a => a.criterion_id === criterion.id);
+      if (result) criterion.assessment = result;
+    }
+  }
+
+  // Check auto-approve conditions
+  const allRequiredMet = task.success_criteria
+    ?.filter(c => c.type === 'required')
+    .every(c => c.assessment?.met && c.assessment.confidence >= (policy.attention.auto_approve_confidence_threshold ?? 1.1));
+
+  if (allRequiredMet && policy.attention.auto_approve_confidence_threshold) {
+    deliverable.review_status = 'AUTO_APPROVED';
+  } else {
+    deliverable.review_status = 'PENDING';
+  }
+
+  await db.createDeliverable(deliverable);
+  await routeNotification(task.user_id, {
+    type: 'deliverable_published',
+    deliverable,
+    self_assessment: deliverable.self_assessment,
+  }, policy.attention);
+}
+```
+
+### 11.10 Behavior Calibration
+
+Human feedback on agent behavior feeds back into policy adjustments and self-improvement proposals.
+
+```typescript
+interface BehaviorFeedback {
+  feedback_id: string;
+  user_id: string;
+  feedback_type:
+    | 'too_many_questions'       // → increase autonomy
+    | 'not_enough_updates'       // → increase proactive_reporting
+    | 'too_many_notifications'   // → raise notification_threshold
+    | 'wrong_priorities'         // → adjust planning policy
+    | 'confidence_too_high'      // → agent overestimates its work quality
+    | 'confidence_too_low'       // → agent underestimates, causing unnecessary reviews
+    | 'custom';
+  description?: string;
+  created_at: string;
+
+  /** System-suggested policy change based on this feedback */
+  suggested_change?: PolicySuggestion;
+}
+```
+
+When the human provides feedback (during weekly review or anytime), the system:
+1. Records the feedback
+2. Suggests a concrete policy change
+3. If approved, applies the change
+4. Feeds into the self-improvement loop (sleep-time compute can detect the pattern)
+
+---
+
+## 12. Frontend Architecture
+
+### 12.1 Pages
 
 | Page | Path | Purpose |
 |------|------|---------|
@@ -1606,9 +2081,10 @@ POST   /api/watchers/:id/test          // Test watcher with a sample event
 | **Digest** | `/digest` | Daily digest view with reminders and attention items |
 | **Improvements** | `/improvements` | Pending improvement proposals for review |
 | **Watchers** | `/watchers` | Manage external world watchers |
-| **Settings** | `/settings` | Agent config, model selection, risk policies |
+| **Weekly Review** | `/review` | Interactive weekly review: task review, action queue, behavior calibration |
+| **Settings** | `/settings` | Agent config, model selection, risk policies, **policy configuration** |
 
-### 11.2 Real-Time Updates (WebSocket)
+### 12.2 Real-Time Updates (WebSocket)
 
 ```typescript
 type WebSocketEvent =
@@ -1627,10 +2103,13 @@ type WebSocketEvent =
   | { type: 'comment_superseded'; old_comment_id: string; new_comment: Comment }
   | { type: 'chat_response'; content: string }              // Quick mode response
   | { type: 'plan_proposal'; goal: string; plan: PlanSnapshot }  // Task creation: plan for confirmation
-  | { type: 'refinement_start'; questions: string[]; message: string };  // Task creation: need to refine
+  | { type: 'refinement_start'; questions: string[]; message: string }  // Task creation: need to refine
+  | { type: 'notification_digest'; digest: NotificationDigest }        // Batched notifications (AttentionPolicy)
+  | { type: 'weekly_review_ready'; review_id: string }                 // Weekly review available
+  | { type: 'policy_suggestion'; suggestion: PolicySuggestion };       // System suggests policy change
 ```
 
-### 11.3 REST API
+### 12.3 REST API
 
 ```typescript
 // Chat (Quick Mode + Task Creation)
@@ -1693,12 +2172,23 @@ DELETE /api/watchers/:id                   // Delete watcher
 GET    /api/watchers/:id/history           // Get trigger history
 POST   /api/watchers/:id/test             // Test watcher with sample event
 
+// Policies
+GET    /api/policies                       // Get current user policies
+PATCH  /api/policies                       // Update policies (attention, WIP, autonomy, planning)
+GET    /api/policies/defaults              // Get default policy values
+
+// Weekly Review
+GET    /api/review                         // Get current/latest weekly review
+GET    /api/review/:week                   // Get review for specific week (e.g., 2026-W05)
+POST   /api/review/:id/actions             // Submit review actions (batch process)
+POST   /api/review/:id/calibrate           // Submit behavior calibration feedback
+
 // Settings
 GET    /api/settings                       // Get current settings
 PATCH  /api/settings                       // Update settings
 ```
 
-### 11.4 Tech Stack (Recommendation)
+### 12.4 Tech Stack (Recommendation)
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
@@ -1715,7 +2205,7 @@ PATCH  /api/settings                       // Update settings
 
 ---
 
-## 12. Updated Tool Inventory
+## 13. Updated Tool Inventory
 
 Tools added or modified from v2:
 
@@ -1752,9 +2242,9 @@ Full tool list:
 
 ---
 
-## 13. Updated Agent Loop
+## 14. Updated Agent Loop
 
-### 13.1 Changes from v2
+### 14.1 Changes from v2
 
 The agent loop from v2 (Section 4) is unchanged in its core structure. The additions:
 
@@ -1782,7 +2272,7 @@ interface AgentInjection {
 }
 ```
 
-### 13.2 Tool Side Effects Pipeline
+### 14.2 Tool Side Effects Pipeline
 
 ```typescript
 async function executeToolWithSideEffects(
@@ -1827,9 +2317,9 @@ async function executeToolWithSideEffects(
 
 ---
 
-## 14. Database Schema
+## 15. Database Schema
 
-### 14.1 Tables
+### 15.1 Tables
 
 ```sql
 -- Tasks
@@ -1842,6 +2332,7 @@ CREATE TABLE tasks (
   size           TEXT CHECK (size IN ('story', 'epic')),
   status         TEXT NOT NULL DEFAULT 'PLANNING',  -- Visualization-only: PLANNING → RUNNING → COMPLETED
   plan_snapshot  JSONB,
+  success_criteria JSONB,                         -- SuccessCriterion[] (OKR-style, Section 11)
   usage          JSONB,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -2007,17 +2498,65 @@ CREATE TABLE chat_messages (
   spawned_task_id TEXT REFERENCES tasks(task_id),
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- User Policies (Policy Engine configuration per user)
+CREATE TABLE user_policies (
+  user_id        TEXT PRIMARY KEY,
+  attention      JSONB NOT NULL DEFAULT '{}',   -- AttentionPolicy
+  wip            JSONB NOT NULL DEFAULT '{}',   -- WIPPolicy
+  review         JSONB NOT NULL DEFAULT '{}',   -- ReviewPolicy (Section 4.4)
+  autonomy       JSONB NOT NULL DEFAULT '{}',   -- AutonomyPolicy
+  planning       JSONB NOT NULL DEFAULT '{}',   -- PlanningPolicy
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Weekly Reviews
+CREATE TABLE weekly_reviews (
+  review_id      TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  user_id        TEXT NOT NULL,
+  week           TEXT NOT NULL,                 -- ISO week: "2026-W05"
+  scheduled_at   TIMESTAMPTZ NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending', 'in_progress', 'completed', 'skipped')),
+  briefing       JSONB NOT NULL DEFAULT '{}',   -- WeeklyBriefing
+  actions_taken  JSONB,                         -- ReviewAction[]
+  completed_at   TIMESTAMPTZ,
+  UNIQUE(user_id, week)
+);
+
+-- Notification Queue (for digest batching / DND accumulation)
+CREATE TABLE notification_queue (
+  notification_id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  user_id        TEXT NOT NULL,
+  event_type     TEXT NOT NULL,
+  event_data     JSONB NOT NULL,
+  priority       TEXT NOT NULL CHECK (priority IN ('low', 'medium', 'high', 'blocker')),
+  queued_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  delivered_at   TIMESTAMPTZ
+);
+CREATE INDEX idx_notification_queue_user_pending
+  ON notification_queue(user_id) WHERE delivered_at IS NULL;
+
+-- Behavior Feedback (calibration data from human)
+CREATE TABLE behavior_feedback (
+  feedback_id    TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  user_id        TEXT NOT NULL,
+  feedback_type  TEXT NOT NULL,
+  description    TEXT,
+  suggested_change JSONB,                       -- PolicySuggestion
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
 
 ---
 
-## 15. Unchanged from v2
+## 16. Unchanged from v2
 
 The following sections from v2 are unchanged and still apply:
 
 | v2 Section | Topic |
 |------------|-------|
-| 4. Agent Loop | Core loop pseudocode, injection queue, initial context (with additions in Section 11 above) |
+| 4. Agent Loop | Core loop pseudocode, injection queue, initial context (with additions in Section 14 above) |
 | 5. Planning Tool | update_plan definition and execution (now also triggers board sync) |
 | 6. Compaction Engine | Full compaction flow, memory flush, summarization |
 | 7. File System Context | Workspace layout, memo tools, tiered memory |
@@ -2031,7 +2570,7 @@ The following sections from v2 are unchanged and still apply:
 
 ---
 
-## 16. System Prompt Additions (for v3)
+## 17. System Prompt Additions (for v3)
 
 Append to the system prompt template from v2:
 
@@ -2076,6 +2615,54 @@ Default to async (comments). Only request sync discussions when:
 - Multiple rounds of async back-and-forth would be slower
 - The environment changed and your original requirements may need revision
 - You need to demonstrate or walk through something live
+
+## Planning
+
+### Risk-First Ordering
+Order your plan steps by uncertainty and risk first ("eat the frog"). Steps that depend
+on unknown factors, external access, or user decisions should come before routine work.
+This surfaces blockers early so the human can unblock you sooner.
+
+### Success Criteria
+During planning, generate explicit success criteria for the task:
+- **Required** criteria: must be met for the task to be considered complete.
+- **Stretch** criteria: nice-to-have (aim for ~70% of stretch goals, per the OKR principle).
+Present criteria to the user for confirmation before starting execution.
+
+### Stretch Items
+Include "stretch" items in your plan — additional improvements beyond the core goal.
+Mark them clearly as stretch so the user knows what is required vs optional.
+
+## Autonomy and Proactive Behavior
+
+### Micro-Requests
+For small follow-up actions requested via comments that you estimate will take less than
+a few minutes, act immediately without updating the plan or asking for confirmation.
+Just do it and post a note when done.
+
+### Self-Assessment
+Before publishing a deliverable, evaluate it against each success criterion. Report:
+- Whether each required criterion is met (with evidence)
+- Confidence level (0.0 - 1.0) for each assessment
+- Status of stretch criteria
+The human reviews your self-assessment alongside the deliverable.
+
+### Proactive Risk Reporting
+Flag risks early. Do not wait until you are fully blocked to report concerns:
+- If a step is taking much longer than expected, post a note with status and estimate.
+- If you discover scope is larger than originally estimated, propose scope negotiation
+  rather than silently expanding.
+- If you make an assumption to avoid blocking, explicitly note the assumption so the
+  human can correct it if wrong.
+- If you notice patterns that may affect other tasks, post a note.
+
+### Manage-Up Behavior
+You are not just a task executor — you are a project partner. Act like a senior employee
+who manages up:
+- Surface risks before they become blockers
+- Propose alternatives when you hit obstacles (don't just report the problem)
+- Note assumptions and confidence levels on decisions you make autonomously
+- Suggest improvements to the process or task framing when you notice inefficiencies
 ```
 
 ---
@@ -2096,10 +2683,14 @@ Default to async (comments). Only request sync discussions when:
 | `src/sleep-time/` | All sleep-time compute jobs |
 | `src/trace/` | Trace store, query API, summarization |
 | `src/improvement/` | Improvement proposal management |
-| `src/api/` | REST API routes (chat, tasks, watchers, files, etc.) |
+| `src/policy/` | Policy Engine: AttentionPolicy, WIPPolicy, AutonomyPolicy, PlanningPolicy, priority classification |
+| `src/notification/` | Notification Service: routing, batching, digest windows, DND, priority filtering |
+| `src/review/` | Weekly Review: briefing generator, review session handler, policy suggestions |
+| `src/calibration/` | Behavior feedback collection, policy suggestion engine |
+| `src/api/` | REST API routes (chat, tasks, watchers, files, policies, weekly review, etc.) |
 | `src/ws/` | WebSocket server for real-time updates |
 | `src/frontend/` | Next.js web application |
-| Database migrations | PostgreSQL schema (including watchers, chat_messages, superseded_by) |
+| Database migrations | PostgreSQL schema (including watchers, chat_messages, superseded_by, user_policies, weekly_reviews, notification_queue, behavior_feedback) |
 
 ### What to Modify
 
@@ -2111,6 +2702,10 @@ Default to async (comments). Only request sync discussions when:
 | Agent loop | Add tool side effects pipeline |
 | Injection types | Add `user_comment`, `discussion_scheduled`, `review_feedback`, `watcher_event`, `file_uploaded` |
 | TaskStatus enum | Remove `DISCUSSING`, add `PLANNING`, mark as visualization-only |
+| Task data model | Add `success_criteria: SuccessCriterion[]` for OKR-style outcome definitions |
+| `publish_deliverable` flow | Add self-assessment pipeline: evaluate against success criteria before publishing |
+| Notification routing | All agent events route through Policy Engine → Notification Service before reaching frontend |
+| System prompt | Add planning (risk-first, success criteria), autonomy (micro-requests, manage-up), self-assessment instructions |
 
 ### What is Unchanged
 
