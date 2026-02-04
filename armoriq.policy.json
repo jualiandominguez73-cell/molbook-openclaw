@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "updatedAt": "2026-02-04T08:10:52.496Z",
+  "updatedBy": "main",
+  "policy": {
+    "rules": [
+      {
+        "id": "block-all-credit-card-or-payment-access",
+        "action": "deny",
+        "tool": "*",
+        "dataClass": "PAYMENT"
+      }
+    ]
+  },
+  "history": [
+    {
+      "version": 1,
+      "updatedAt": "2026-02-04T08:10:52.496Z",
+      "updatedBy": "main",
+      "reason": "User policy update",
+      "policy": {
+        "rules": [
+          {
+            "id": "block-all-credit-card-or-payment-access",
+            "action": "deny",
+            "tool": "*",
+            "dataClass": "PAYMENT"
+          }
+        ]
+      }
+    }
+  ]
+}

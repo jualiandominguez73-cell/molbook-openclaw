@@ -1,5 +1,8 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
+import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import register from "./index.js";
 
@@ -27,6 +30,7 @@ type HookName = "before_agent_start" | "before_tool_call" | "agent_end";
 
 function createApi(pluginConfig: Record<string, unknown>) {
   const handlers = new Map<HookName, Array<(event: any, ctx: any) => any>>();
+  const tools: Array<(ctx: any) => any> = [];
   const api = {
     id: "armoriq",
     name: "ArmorIQ",
@@ -42,8 +46,13 @@ function createApi(pluginConfig: Record<string, unknown>) {
       list.push(handler);
       handlers.set(name, list);
     },
+    registerTool: (tool: any) => {
+      const factory = typeof tool === "function" ? tool : () => tool;
+      tools.push(factory);
+    },
+    resolvePath: (input: string) => input,
   };
-  return { api, handlers };
+  return { api, handlers, tools };
 }
 
 function createCtx(runId: string) {
@@ -339,6 +348,82 @@ describe("ArmorIQ plugin", () => {
     const beforeToolCall = handlers.get("before_tool_call")?.[0];
     const result = await beforeToolCall?.({ toolName: "web_fetch", params: {} }, ctx);
     expect(result?.block).not.toBe(true);
+  });
+
+  it("blocks policy updates when sender is not allowed", async () => {
+    const { api, handlers } = createApi({
+      enabled: true,
+      apiKey: "ak_live_test",
+      userId: "user-1",
+      agentId: "agent-1",
+      policyUpdateEnabled: true,
+      policyUpdateAllowList: ["someone-else"],
+    });
+    register(api as any);
+
+    const ctx = createCtx("run-policy-deny");
+    const beforeToolCall = handlers.get("before_tool_call")?.[0];
+    const result = await beforeToolCall?.({ toolName: "policy_update", params: {} }, ctx);
+    expect(result?.block).toBe(true);
+    expect(result?.blockReason).toContain("policy update denied");
+  });
+
+  it("applies policy updates and blocks PCI send_email", async () => {
+    const dir = await fs.mkdtemp(join(tmpdir(), "armoriq-policy-"));
+    const policyPath = join(dir, "policy.json");
+
+    const { api, handlers, tools } = createApi({
+      enabled: true,
+      apiKey: "ak_live_test",
+      userId: "user-1",
+      agentId: "agent-1",
+      policyUpdateEnabled: true,
+      policyUpdateAllowList: ["sender-1"],
+      policyStorePath: policyPath,
+    });
+    register(api as any);
+
+    const policyToolFactory = tools.find((factory) => {
+      const tool = factory({ agentId: "agent-1", sessionKey: "session:test" });
+      return tool?.name === "policy_update";
+    });
+    expect(policyToolFactory).toBeTruthy();
+    const policyTool = policyToolFactory?.({ agentId: "agent-1", sessionKey: "session:test" });
+    if (!policyTool) {
+      throw new Error("policy_update tool not registered");
+    }
+
+    const updateResult = await policyTool.execute("call-1", {
+      update: {
+        reason: "Block PCI in email",
+        mode: "replace",
+        rules: [
+          {
+            id: "deny_pci_email",
+            action: "deny",
+            tool: "send_email",
+            dataClass: "PCI",
+          },
+        ],
+      },
+    });
+    expect(updateResult?.details?.version).toBeGreaterThan(0);
+
+    const ctx = {
+      ...createCtx("run-policy-block"),
+      intentTokenRaw: JSON.stringify({
+        plan: { steps: [{ action: "send_email", mcp: "openclaw" }] },
+        expiresAt: Date.now() / 1000 + 60,
+      }),
+    };
+
+    const beforeToolCall = handlers.get("before_tool_call")?.[0];
+    const result = await beforeToolCall?.(
+      { toolName: "send_email", params: { body: "Card 4111 1111 1111 1111" } },
+      ctx,
+    );
+    expect(result?.block).toBe(true);
+    expect(result?.blockReason).toContain("policy deny");
   });
 
   it("blocks when intent token has embedded plan but proofs required and missing", async () => {

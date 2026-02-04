@@ -1,10 +1,17 @@
 import { createHash } from "node:crypto";
+import { Type } from "@sinclair/typebox";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { ArmorIQClient } from "@armoriq/sdk";
 import { completeSimple } from "@mariozechner/pi-ai";
 import { IAPVerificationService, type CsrgProofHeaders } from "./src/iap-verfication.service.js";
+import {
+  PolicyStore,
+  PolicyUpdateSchema,
+  evaluatePolicy,
+  normalizePolicyDefinition,
+} from "./src/policy.js";
 
 type ArmorIqConfig = {
   enabled: boolean;
@@ -22,6 +29,9 @@ type ArmorIqConfig = {
   agentIdSource?: "agentId" | "sessionKey";
   contextIdSource?: "sessionKey" | "agentId" | "channel" | "accountId";
   policy?: Record<string, unknown>;
+  policyStorePath?: string;
+  policyUpdateEnabled?: boolean;
+  policyUpdateAllowList?: string[];
   validitySeconds: number;
   useProduction?: boolean;
   iapEndpoint?: string;
@@ -77,12 +87,89 @@ const DEFAULT_MAX_PARAM_CHARS = 2000;
 const DEFAULT_MAX_PARAM_DEPTH = 4;
 const DEFAULT_MAX_PARAM_KEYS = 50;
 const DEFAULT_MAX_PARAM_ITEMS = 50;
+const POLICY_ACTIONS = ["allow", "deny", "require_approval"] as const;
+const POLICY_SCOPES = ["org", "project", "run"] as const;
+const POLICY_DATA_CLASSES = ["PCI", "PAYMENT", "PHI", "PII"] as const;
+const POLICY_UPDATE_INSTRUCTIONS = `Policy updates:
+- When the user asks to update or change policy (e.g. "Policy update: ..."), call the policy_update tool immediately.
+- Convert the request into structured JSON that matches the policy_update schema (do not ask clarifying questions).
+- If details are missing, infer reasonable defaults: reason="User policy update", mode="merge", tool="*", action="deny" for "block/disallow" intents.
+- For "credit card" or "payment" requests, set dataClass to PCI or PAYMENT.
+- Only use policy_update for explicit policy changes.`;
 
 const clientCache = new Map<string, ArmorIQClient>();
 const planCache = new Map<string, PlanCacheEntry>();
 
+function stringEnum<T extends readonly string[]>(
+  values: T,
+  options: { description?: string } = {},
+) {
+  return Type.Unsafe<T[number]>({
+    type: "string",
+    enum: [...values],
+    ...options,
+  });
+}
+
+const PolicyRuleToolSchema = Type.Object(
+  {
+    id: Type.String({ description: "Unique rule id" }),
+    action: stringEnum(POLICY_ACTIONS, { description: "allow, deny, or require_approval" }),
+    tool: Type.String({ description: "Tool name or *" }),
+    dataClass: Type.Optional(stringEnum(POLICY_DATA_CLASSES)),
+    params: Type.Optional(Type.Object({}, { additionalProperties: true })),
+    scope: Type.Optional(stringEnum(POLICY_SCOPES)),
+  },
+  { additionalProperties: false },
+);
+
+const PolicyUpdateToolSchema = Type.Object(
+  {
+    update: Type.Object(
+      {
+        reason: Type.String({ description: "Why this policy change is needed" }),
+        rules: Type.Array(PolicyRuleToolSchema, { minItems: 1 }),
+        mode: Type.Optional(stringEnum(["replace", "merge"] as const)),
+        scope: Type.Optional(stringEnum(POLICY_SCOPES)),
+        expiresAt: Type.Optional(Type.Number({ description: "Unix timestamp (seconds)" })),
+        actor: Type.Optional(Type.String({ description: "Optional actor label" })),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  { additionalProperties: false },
+);
+
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value.trim() || undefined : undefined;
+}
+
+function readStringArray(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const items = value
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return entry.trim();
+        }
+        if (typeof entry === "number" && Number.isFinite(entry)) {
+          return String(entry);
+        }
+        return "";
+      })
+      .filter(Boolean);
+    return items.length > 0 ? items : undefined;
+  }
+  if (typeof value === "string") {
+    const items = value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    return items.length > 0 ? items : undefined;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return [String(value)];
+  }
+  return undefined;
 }
 
 function readNumber(value: unknown): number | undefined {
@@ -113,6 +200,14 @@ function resolveConfig(api: OpenClawPluginApi): ArmorIqConfig {
     agentIdSource: readString(raw.agentIdSource) as ArmorIqConfig["agentIdSource"],
     contextIdSource: readString(raw.contextIdSource) as ArmorIqConfig["contextIdSource"],
     policy: readRecord(raw.policy),
+    policyStorePath:
+      readString(raw.policyStorePath) ?? readString(process.env.ARMORIQ_POLICY_STORE_PATH),
+    policyUpdateEnabled:
+      readBoolean(raw.policyUpdateEnabled) ??
+      readBoolean(process.env.ARMORIQ_POLICY_UPDATE_ENABLED),
+    policyUpdateAllowList:
+      readStringArray(raw.policyUpdateAllowList) ??
+      readStringArray(process.env.ARMORIQ_POLICY_UPDATE_ALLOWLIST),
     validitySeconds: readNumber(raw.validitySeconds) ?? DEFAULT_VALIDITY_SECONDS,
     useProduction: readBoolean(raw.useProduction),
     iapEndpoint: readString(raw.iapEndpoint) ?? readString(process.env.IAP_ENDPOINT),
@@ -127,6 +222,50 @@ function resolveConfig(api: OpenClawPluginApi): ArmorIqConfig {
     maxParamKeys: readNumber(raw.maxParamKeys) ?? DEFAULT_MAX_PARAM_KEYS,
     maxParamItems: readNumber(raw.maxParamItems) ?? DEFAULT_MAX_PARAM_ITEMS,
   };
+}
+
+function resolvePolicyStorePath(api: OpenClawPluginApi, cfg: ArmorIqConfig): string {
+  const rawPath = cfg.policyStorePath?.trim() || "armoriq.policy.json";
+  return api.resolvePath ? api.resolvePath(rawPath) : rawPath;
+}
+
+function isPolicyUpdateAllowed(cfg: ArmorIqConfig, ctx: ToolContext): {
+  allowed: boolean;
+  reason?: string;
+  candidates?: string[];
+} {
+  if (!cfg.policyUpdateEnabled) {
+    return { allowed: false, reason: "ArmorIQ policy updates disabled" };
+  }
+  const allowList = cfg.policyUpdateAllowList ?? [];
+  if (allowList.includes("*")) {
+    return { allowed: true };
+  }
+  if (allowList.length === 0) {
+    return { allowed: false, reason: "ArmorIQ policy updates not allowed" };
+  }
+  const candidates = [
+    ctx.senderE164,
+    ctx.senderId,
+    ctx.senderUsername,
+    ctx.senderName,
+    ctx.sessionKey,
+    ctx.agentId,
+  ]
+    .map((value) => {
+      if (typeof value === "string") {
+        return value.trim();
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return String(value);
+      }
+      return "";
+    })
+    .filter(Boolean) as string[];
+  const allowed = candidates.some((candidate) => allowList.includes(candidate));
+  return allowed
+    ? { allowed: true, candidates }
+    : { allowed: false, reason: "ArmorIQ policy update denied", candidates };
 }
 
 function resolveUserId(cfg: ArmorIqConfig, ctx: ToolContext): string | undefined {
@@ -847,6 +986,71 @@ export default function register(api: OpenClawPluginApi) {
     return;
   }
 
+  const policyStore = new PolicyStore({
+    filePath: resolvePolicyStorePath(api, cfg),
+    basePolicy: normalizePolicyDefinition(cfg.policy),
+    logger: api.logger,
+  });
+  const policyReady = policyStore.load();
+
+  if (cfg.policyUpdateEnabled) {
+    api.registerTool(
+      (toolCtx) => ({
+        name: "policy_update",
+        label: "Policy Update",
+        description:
+          "Update ArmorIQ policy rules. Use only for explicit policy changes from authorized users.",
+        parameters: PolicyUpdateToolSchema,
+        async execute(_toolCallId, params) {
+          await policyReady;
+          const rawUpdate = (params as { update?: unknown }).update;
+          const parsed = PolicyUpdateSchema.safeParse(rawUpdate);
+          if (!parsed.success) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Policy update rejected: ${parsed.error.message}`,
+                },
+              ],
+              details: { error: parsed.error.flatten() },
+            };
+          }
+          try {
+            const actor = toolCtx.agentId ?? toolCtx.sessionKey ?? "unknown";
+            const nextState = await policyStore.applyUpdate(parsed.data, actor);
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Policy updated to version ${nextState.version}.`,
+                },
+              ],
+              details: {
+                version: nextState.version,
+                updatedAt: nextState.updatedAt,
+                policyHash: policyStore.getPolicyHash(),
+              },
+            };
+          } catch (err) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Policy update failed: ${
+                    err instanceof Error ? err.message : String(err)
+                  }`,
+                },
+              ],
+              details: { error: err instanceof Error ? err.stack : String(err) },
+            };
+          }
+        },
+      }),
+      { name: "policy_update" },
+    );
+  }
+
   const verificationService = new IAPVerificationService({
     iapBaseUrl: cfg.backendEndpoint ?? cfg.iapEndpoint,
     timeoutMs: cfg.timeoutMs,
@@ -856,10 +1060,10 @@ export default function register(api: OpenClawPluginApi) {
   api.on("before_agent_start", async (event, ctx) => {
     const runKey = resolveRunKey(ctx as ToolContext);
     if (!runKey) {
-      return;
+      return cfg.policyUpdateEnabled ? { prependContext: POLICY_UPDATE_INSTRUCTIONS } : undefined;
     }
     if (planCache.has(runKey)) {
-      return;
+      return cfg.policyUpdateEnabled ? { prependContext: POLICY_UPDATE_INSTRUCTIONS } : undefined;
     }
 
     const identity = resolveIdentities(cfg, ctx as ToolContext);
@@ -871,10 +1075,11 @@ export default function register(api: OpenClawPluginApi) {
         createdAt: Date.now(),
         error: "ArmorIQ identity missing (userId/agentId)",
       });
-      return;
+      return cfg.policyUpdateEnabled ? { prependContext: POLICY_UPDATE_INSTRUCTIONS } : undefined;
     }
 
     try {
+      await policyReady;
       const plan = await buildPlanFromPrompt({
         prompt: event.prompt,
         tools: event.tools,
@@ -882,6 +1087,12 @@ export default function register(api: OpenClawPluginApi) {
         modelRegistry: ctx.modelRegistry ?? null,
         log: (message) => api.logger.info(message),
       });
+      const planRecord = plan as Record<string, unknown>;
+      const metadata = readRecord(planRecord.metadata);
+      const normalizedMetadata = metadata ?? {};
+      normalizedMetadata.policy_hash = policyStore.getPolicyHash();
+      normalizedMetadata.policy_version = policyStore.getState().version;
+      planRecord.metadata = normalizedMetadata;
 
       const client = getClient(cfg, identity);
       const planCapture = client.capturePlan("openclaw", event.prompt, plan, {
@@ -912,6 +1123,7 @@ export default function register(api: OpenClawPluginApi) {
               ? token.expiresAt
               : undefined,
       });
+      return cfg.policyUpdateEnabled ? { prependContext: POLICY_UPDATE_INSTRUCTIONS } : undefined;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       planCache.set(runKey, {
@@ -921,6 +1133,7 @@ export default function register(api: OpenClawPluginApi) {
         createdAt: Date.now(),
         error: `ArmorIQ planning failed: ${message}`,
       });
+      return cfg.policyUpdateEnabled ? { prependContext: POLICY_UPDATE_INSTRUCTIONS } : undefined;
     }
   });
 
@@ -935,6 +1148,50 @@ export default function register(api: OpenClawPluginApi) {
     const normalizedTool = normalizeToolName(event.toolName);
     const toolCtx = ctx as ToolContext;
     const intentTokenRaw = readString(toolCtx.intentTokenRaw);
+    const policyCheck = async (): Promise<{ block: true; blockReason: string } | null> => {
+      if (normalizedTool === "policy_update") {
+        return null;
+      }
+      await policyReady;
+      const policy = policyStore.getPolicy();
+      if (!policy.rules.length) {
+        return null;
+      }
+      const rawParams = isPlainObject(event.params) ? (event.params as Record<string, unknown>) : {};
+      const sanitized = sanitizeParams(rawParams, cfg);
+      const decision = evaluatePolicy({
+        policy,
+        toolName: event.toolName,
+        toolParams: sanitized,
+      });
+      if (!decision.allowed) {
+        return {
+          block: true,
+          blockReason: decision.reason ?? "ArmorIQ policy denied",
+        };
+      }
+      return null;
+    };
+
+    if (normalizedTool === "policy_update") {
+      const allowed = isPolicyUpdateAllowed(cfg, toolCtx);
+      if (!allowed.allowed) {
+        api.logger.warn(
+          `armoriq: policy_update denied (allowList=${JSON.stringify(
+            cfg.policyUpdateAllowList ?? [],
+          )}, candidates=${JSON.stringify(allowed.candidates ?? [])}, senderId=${String(
+            toolCtx.senderId ?? "",
+          )}, senderUsername=${String(toolCtx.senderUsername ?? "")}, sessionKey=${String(
+            toolCtx.sessionKey ?? "",
+          )})`,
+        );
+        return {
+          block: true,
+          blockReason: allowed.reason ?? "ArmorIQ policy update denied",
+        };
+      }
+      return event.params ? { params: event.params as Record<string, unknown> } : undefined;
+    }
     const verifyWithIap = async (
       tokenRaw: string,
       plan: Record<string, unknown>,
@@ -992,6 +1249,10 @@ export default function register(api: OpenClawPluginApi) {
         if (tokenCheck.blockReason) {
           return { block: true, blockReason: tokenCheck.blockReason };
         }
+        const policyResult = await policyCheck();
+        if (policyResult) {
+          return policyResult;
+        }
         const csrgResult = await verifyWithIap(intentTokenRaw, tokenCheck.plan ?? {});
         if (csrgResult) {
           return csrgResult;
@@ -1010,6 +1271,10 @@ export default function register(api: OpenClawPluginApi) {
       );
       if (proofError) {
         return { block: true, blockReason: proofError };
+      }
+      const policyResult = await policyCheck();
+      if (policyResult) {
+        return policyResult;
       }
 
       const csrgResult = await verifyWithIap(intentTokenRaw, { steps: [] });
@@ -1065,6 +1330,10 @@ export default function register(api: OpenClawPluginApi) {
         if (tokenCheck.blockReason) {
           return { block: true, blockReason: tokenCheck.blockReason };
         }
+        const policyResult = await policyCheck();
+        if (policyResult) {
+          return policyResult;
+        }
         const csrgResult = await verifyWithIap(cached.tokenRaw, tokenCheck.plan ?? {});
         if (csrgResult) {
           return csrgResult;
@@ -1098,6 +1367,10 @@ export default function register(api: OpenClawPluginApi) {
       }
     }
 
+    const policyResult = await policyCheck();
+    if (policyResult) {
+      return policyResult;
+    }
     return { params: event.params };
   });
 }
