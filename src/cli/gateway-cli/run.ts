@@ -266,8 +266,9 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     if (opts.secure) {
       gatewayLog.info("Starting in SECURE mode (Docker + Secrets Proxy)");
       
-      // Set secure mode environment variable for this process
-      process.env.OPENCLAW_SECURE_MODE = "1";
+      // NOTE: Do NOT set OPENCLAW_SECURE_MODE=1 here on the host process.
+      // The host-side secrets proxy needs to resolve real tokens, not placeholders.
+      // Only the Docker container should have OPENCLAW_SECURE_MODE=1 (set in gateway-container.ts).
       
       const proxyPort = 8080;
       const proxyUrl = `http://host.docker.internal:${proxyPort}`;
