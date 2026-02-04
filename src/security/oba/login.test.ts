@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { loginOba, saveObaToken } from "./login.js";
 
+// Valid format: oba_ + 64 hex chars
+const VALID_TOKEN = `oba_${"a1b2c3d4".repeat(8)}`;
+
 describe("loginOba", () => {
   it("returns token on valid callback with matching state", async () => {
     let capturedUrl = "";
@@ -25,13 +28,13 @@ describe("loginOba", () => {
         await new Promise((r) => setTimeout(r, 50));
 
         // Hit the callback with token + state
-        await fetch(`http://127.0.0.1:${port}/callback?token=oba_test123&state=${state}`);
+        await fetch(`http://127.0.0.1:${port}/callback?token=${VALID_TOKEN}&state=${state}`);
       },
       onProgress: () => {},
     });
 
     expect(result.ok).toBe(true);
-    expect(result.token).toBe("oba_test123");
+    expect(result.token).toBe(VALID_TOKEN);
     expect(capturedUrl).toContain("/auth/cli?port=");
     expect(capturedUrl).toContain("&state=");
   });
@@ -71,6 +74,28 @@ describe("loginOba", () => {
 
         // Send callback without token
         const res = await fetch(`http://127.0.0.1:${port}/callback?state=${state}`);
+        expect(res.status).toBe(400);
+      },
+      onProgress: () => {},
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("Login timed out");
+  });
+
+  it("rejects callback with invalid token format", async () => {
+    const result = await loginOba({
+      apiUrl: "http://localhost:9999",
+      timeoutMs: 3000,
+      openBrowser: async (url) => {
+        const parsed = new URL(url);
+        const port = parsed.searchParams.get("port");
+        const state = parsed.searchParams.get("state");
+
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Send callback with a token that doesn't match oba_[0-9a-f]{64}
+        const res = await fetch(`http://127.0.0.1:${port}/callback?token=bad_token&state=${state}`);
         expect(res.status).toBe(400);
       },
       onProgress: () => {},
