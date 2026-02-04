@@ -376,7 +376,7 @@ function buildAtlasSearchPrompt(params: {
   ].join("\n");
 }
 
-function extractJsonPayload(text: string): unknown | null {
+function extractJsonPayload(text: string): unknown {
   const trimmed = text.trim();
   if (!trimmed) {
     return null;
