@@ -336,6 +336,17 @@ async function waitForSubagentCompletion(runId: string, waitTimeoutMs: number) {
   }
 }
 
+export function countActiveSubagentRuns(): number {
+  let count = 0;
+  for (const entry of subagentRuns.values()) {
+    // Active = no endedAt timestamp
+    if (entry.endedAt === undefined) {
+      count++;
+    }
+  }
+  return count;
+}
+
 export function resetSubagentRegistryForTests() {
   subagentRuns.clear();
   resumedRuns.clear();
