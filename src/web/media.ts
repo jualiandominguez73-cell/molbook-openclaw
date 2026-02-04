@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { SsrFPolicy } from "../infra/net/ssrf.js";
 import { assertSandboxPath } from "../agents/sandbox-paths.js";
 import { loadConfig } from "../config/config.js";
 import { logVerbose, shouldLogVerbose } from "../globals.js";
-import type { SsrFPolicy } from "../infra/net/ssrf.js";
 import { type MediaKind, maxBytesForKind, mediaKindFromMime } from "../media/constants.js";
 import { fetchRemoteMedia } from "../media/fetch.js";
 import {
