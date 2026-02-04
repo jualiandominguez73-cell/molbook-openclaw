@@ -841,14 +841,13 @@ export async function applyAuthChoiceApiProviders(
         });
 
         if (useDiscovery) {
-          const spinner = params.prompter.spinner();
-          spinner.start("Discovering Azure OpenAI resources...");
+          const progress = params.prompter.progress("Discovering Azure OpenAI resources…");
 
           try {
             const { listAzureOpenAIResources } = await import("../agents/azure-discovery.js");
             const resources = await listAzureOpenAIResources();
 
-            spinner.stop(`Found ${resources.length} resource${resources.length === 1 ? "" : "s"}`);
+            progress.stop(`Found ${resources.length} resource${resources.length === 1 ? "" : "s"}`);
 
             if (resources.length === 0) {
               await params.prompter.note(
@@ -885,7 +884,7 @@ export async function applyAuthChoiceApiProviders(
               endpoint = String(selected);
             }
           } catch (error) {
-            spinner.stop("Discovery failed");
+            progress.stop("Discovery failed");
             await params.prompter.note(
               `Could not discover resources: ${error instanceof Error ? error.message : String(error)}`,
               "Warning",
@@ -976,14 +975,13 @@ export async function applyAuthChoiceApiProviders(
         });
 
         if (useDiscovery) {
-          const spinner = params.prompter.spinner();
-          spinner.start("Discovering Azure AI Foundry projects...");
+          const progress = params.prompter.progress("Discovering Azure AI Foundry projects…");
 
           try {
             const { listAzureAIProjects } = await import("../agents/azure-discovery.js");
             const projects = await listAzureAIProjects();
 
-            spinner.stop(`Found ${projects.length} project${projects.length === 1 ? "" : "s"}`);
+            progress.stop(`Found ${projects.length} project${projects.length === 1 ? "" : "s"}`);
 
             if (projects.length === 0) {
               await params.prompter.note(
@@ -1029,7 +1027,7 @@ export async function applyAuthChoiceApiProviders(
               endpoint = `https://${String(selected)}.services.ai.azure.com`;
             }
           } catch (error) {
-            spinner.stop("Discovery failed");
+            progress.stop("Discovery failed");
             await params.prompter.note(
               `Could not discover projects: ${error instanceof Error ? error.message : String(error)}`,
               "Warning",
@@ -1085,8 +1083,9 @@ export async function applyAuthChoiceApiProviders(
       const endpointStr = endpoint;
 
       // Discover deployed models
-      const spinner = params.prompter.spinner();
-      spinner.start("Discovering deployed models (trying multiple API versions)...");
+      const progress = params.prompter.progress(
+        "Discovering deployed models (trying multiple API versions)…",
+      );
 
       let deployments: Array<{
         name: string;
@@ -1120,11 +1119,11 @@ export async function applyAuthChoiceApiProviders(
 
         const chatCount = deployments.filter((d) => !d.isEmbedding).length;
         const embedCount = deployments.filter((d) => d.isEmbedding).length;
-        spinner.stop(
+        progress.stop(
           `Found ${deployments.length} model${deployments.length === 1 ? "" : "s"} (${chatCount} chat, ${embedCount} embeddings)`,
         );
       } catch (error) {
-        spinner.stop("Could not discover deployments");
+        progress.stop("Could not discover deployments");
         await params.prompter.note(
           `Discovery failed: ${error instanceof Error ? error.message : String(error)}\nTry manual setup or check endpoint/permissions.`,
           "Warning",
