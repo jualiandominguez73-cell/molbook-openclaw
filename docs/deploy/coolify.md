@@ -31,19 +31,19 @@ This guide covers deploying OpenClaw Gateway on [Coolify](https://coolify.io/) u
 1. In Coolify dashboard, go to **Services** → **New Service Stack**
 2. Choose **Docker Compose** as Build Pack
 3. Name your service (e.g., `openclaw`)
-4. Paste the contents of `docker-compose.coolify.yml`
+4. The repository's `docker-compose.yml` is pre-configured for Coolify
 5. Click **Save**
 
 ### 2. Configure Environment Variables
 
 In the Coolify UI, navigate to **Environment Variables** and set:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OPENCLAW_GATEWAY_TOKEN` | No | Auto-generated | Gateway auth token. Leave empty to auto-generate. |
-| `ZAI_API_KEY` | **Yes** | Fake placeholder | Your real ZAI API key from [z.ai](https://z.ai/) |
-| `OPENCLAW_GATEWAY_PORT` | No | 28471 | Non-standard port for security |
-| `OPENCLAW_GATEWAY_BIND` | No | 0.0.0.0 | Bind address (0.0.0.0 for Coolify) |
+| Variable                 | Required | Default          | Description                                       |
+| ------------------------ | -------- | ---------------- | ------------------------------------------------- |
+| `OPENCLAW_GATEWAY_TOKEN` | No       | Auto-generated   | Gateway auth token. Leave empty to auto-generate. |
+| `ZAI_API_KEY`            | **Yes**  | Fake placeholder | Your real ZAI API key from [z.ai](https://z.ai/)  |
+| `OPENCLAW_GATEWAY_PORT`  | No       | 28471            | Non-standard port for security                    |
+| `OPENCLAW_GATEWAY_BIND`  | No       | 0.0.0.0          | Bind address (0.0.0.0 for Coolify)                |
 
 **Important**: The default `ZAI_API_KEY` is a fake placeholder. You **must** replace it with your real key.
 
@@ -66,6 +66,7 @@ In the Coolify UI, navigate to **Environment Variables** and set:
 ### 5. Verify Deployment
 
 Check the health status in Coolify dashboard:
+
 - Should show **Healthy** after ~30 seconds
 - If unhealthy, check logs for errors
 
@@ -97,10 +98,10 @@ openclaw dashboard --host http://your-server-ip:28471 --token <token>
 
 ### Volume Persistence
 
-| Path | Persistence | Contents |
-|------|-------------|----------|
+| Path                   | Persistence                  | Contents                           |
+| ---------------------- | ---------------------------- | ---------------------------------- |
 | `/home/node/.openclaw` | Named volume `openclaw-data` | Config, workspace, sessions, token |
-| `/tmp` | tmpfs | Temporary files (ephemeral) |
+| `/tmp`                 | tmpfs                        | Temporary files (ephemeral)        |
 
 ### Security Features
 
@@ -114,18 +115,19 @@ openclaw dashboard --host http://your-server-ip:28471 --token <token>
 
 For 8GB RAM / 2 vCPU servers:
 
-| Resource | Limit | Reservation |
-|----------|-------|-------------|
-| Memory | 6GB | 2GB |
-| CPU | 1.8 cores | 0.5 cores |
+| Resource | Limit     | Reservation |
+| -------- | --------- | ----------- |
+| Memory   | 6GB       | 2GB         |
+| CPU      | 1.8 cores | 0.5 cores   |
 
-Adjust in `docker-compose.coolify.yml` if your server specs differ.
+Adjust in `docker-compose.yml` if your server specs differ.
 
 ## Troubleshooting
 
 ### Container Unhealthy
 
 Check logs for:
+
 - Missing `ZAI_API_KEY` (must be real, not placeholder)
 - Port conflicts (ensure 28471 is available)
 - Permission errors (volume ownership)
@@ -133,6 +135,7 @@ Check logs for:
 ### Token Lost After Recreate
 
 If you deleted the service and recreated:
+
 1. The named volume may have been deleted
 2. Set `OPENCLAW_GATEWAY_TOKEN` explicitly in environment variables
 3. Or copy the token from logs before deleting
@@ -140,6 +143,7 @@ If you deleted the service and recreated:
 ### ZAI Connection Errors
 
 Ensure:
+
 - `ZAI_API_KEY` is set to your real key (not the fake default)
 - Key is valid and has credits at [z.ai](https://z.ai/)
 
