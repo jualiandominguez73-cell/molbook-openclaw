@@ -27,12 +27,16 @@ const DEFAULT_IMAGE_MAX_TOKENS = 512;
 
 /**
  * Resolve maxTokens for the image model from config or use default.
+ *
+ * Uses `provider/modelId` key format, matching how the config schema defines
+ * agents.defaults.models keys and how resolveExtraParams accesses them.
  */
 function resolveImageMaxTokens(params: {
   cfg?: OpenClawConfig;
   provider: string;
   modelId: string;
 }): number {
+  // Key format matches config schema: "keys are full provider/model IDs"
   const modelKey = `${params.provider}/${params.modelId}`;
   const modelConfig = params.cfg?.agents?.defaults?.models?.[modelKey];
   const configured = modelConfig?.params?.maxTokens;
