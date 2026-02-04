@@ -15,7 +15,7 @@ export function registerMessageReadEditDeleteCommands(
     .option("--before <id>", "Read/search before id")
     .option("--after <id>", "Read/search after id")
     .option("--around <id>", "Read around id")
-    .option("--thread-id <id>", "Thread id (Slack thread_ts)")
+    .option("--thread-id <id>", "Thread or topic id (channel-specific)")
     .option("--include-thread", "Include thread replies (Discord)", false)
     .action(async (opts) => {
       await helpers.runMessageAction("read", opts);
@@ -31,7 +31,7 @@ export function registerMessageReadEditDeleteCommands(
           .requiredOption("-m, --message <text>", "Message body"),
       ),
     )
-    .option("--thread-id <id>", "Thread id (Telegram forum thread)")
+    .option("--thread-id <id>", "Thread or topic id (channel-specific)")
     .action(async (opts) => {
       await helpers.runMessageAction("edit", opts);
     });
