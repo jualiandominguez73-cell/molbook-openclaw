@@ -22,6 +22,8 @@ const mockPrimary = {
   close: vi.fn(async () => {}),
 };
 
+const mockMemoryIndexGet = vi.fn(async () => null);
+
 vi.mock("./qmd-manager.js", () => ({
   QmdMemoryManager: {
     create: vi.fn(async () => mockPrimary),
@@ -30,10 +32,11 @@ vi.mock("./qmd-manager.js", () => ({
 
 vi.mock("./manager.js", () => ({
   MemoryIndexManager: {
-    get: vi.fn(async () => null),
+    get: mockMemoryIndexGet,
   },
 }));
 
+import { MemoryIndexManager } from "./manager.js";
 import { QmdMemoryManager } from "./qmd-manager.js";
 import { getMemorySearchManager } from "./search-manager.js";
 
@@ -46,6 +49,8 @@ beforeEach(() => {
   mockPrimary.probeVectorAvailability.mockClear();
   mockPrimary.close.mockClear();
   QmdMemoryManager.create.mockClear();
+  mockMemoryIndexGet.mockClear();
+  mockMemoryIndexGet.mockResolvedValue(null);
 });
 
 describe("getMemorySearchManager caching", () => {
@@ -61,5 +66,31 @@ describe("getMemorySearchManager caching", () => {
     expect(first.manager).toBe(second.manager);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(QmdMemoryManager.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles fallback errors gracefully when QMD fails and builtin requires auth", async () => {
+    const cfg = {
+      memory: { backend: "qmd", qmd: {} },
+      agents: { list: [{ id: "main", default: true, workspace: "/tmp/workspace" }] },
+    } as const;
+
+    // Mock QMD primary to fail on search
+    mockPrimary.search.mockRejectedValueOnce(new Error("QMD search failed"));
+
+    // Mock builtin index to fail due to missing auth (simulating no OpenAI key)
+    mockMemoryIndexGet.mockRejectedValueOnce(
+      new Error("No API key found for provider: openai"),
+    );
+
+    const result = await getMemorySearchManager({ cfg, agentId: "main" });
+    expect(result.manager).toBeTruthy();
+
+    // First search should try QMD and fail
+    // Then try to create fallback, which also fails
+    // Should throw with the QMD error since fallback is unavailable
+    await expect(result.manager!.search("test query")).rejects.toThrow("QMD search failed");
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(MemoryIndexManager.get).toHaveBeenCalledTimes(1);
   });
 });
