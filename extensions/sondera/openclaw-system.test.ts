@@ -7,6 +7,7 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { describe, it, expect, beforeAll } from "vitest";
 import { CedarEvaluator } from "./evaluator.js";
 
@@ -15,7 +16,7 @@ describe("OpenClaw System Protection Pack", () => {
 
   beforeAll(() => {
     // Load all policies (base + OWASP + OpenClaw System)
-    const extensionDir = path.dirname(new URL(import.meta.url).pathname);
+    const extensionDir = path.dirname(fileURLToPath(import.meta.url));
     const defaultPolicy = `
       @id("default-allow")
       permit(principal, action, resource);

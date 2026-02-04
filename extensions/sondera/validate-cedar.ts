@@ -7,8 +7,9 @@
 import * as cedar from "@cedar-policy/cedar-wasm/nodejs";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const extensionDir = path.dirname(new URL(import.meta.url).pathname);
+const extensionDir = path.dirname(fileURLToPath(import.meta.url));
 
 interface ValidationResult {
   file: string;

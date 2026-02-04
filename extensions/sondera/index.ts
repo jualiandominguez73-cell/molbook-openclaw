@@ -9,6 +9,7 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import type {
   OpenClawPluginApi,
   PluginHookBeforeToolCallEvent,
@@ -41,7 +42,7 @@ export default function (api: OpenClawPluginApi) {
 
   // Use import.meta to get the actual source directory where .cedar files live
   // api.source may point to a different location (e.g., dist/) where policy files aren't copied
-  const extensionDir = path.dirname(new URL(import.meta.url).pathname);
+  const extensionDir = path.dirname(fileURLToPath(import.meta.url));
 
   // Use api.pluginConfig for direct access to this plugin's config
   const pluginConfig = api.pluginConfig as SonderaConfig | undefined;
