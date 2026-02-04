@@ -310,9 +310,14 @@ export async function runCronIsolatedAgentTurn(params: {
     });
   }
 
-  // Persist systemSent before the run, mirroring the inbound auto-reply behavior.
+  // Prevent duplicate execution across concurrent CronService instances
+  if (cronSession.sessionEntry.systemSent) {
+    return { status: "skipped", summary: "Cron already processed by another instance." };
+  }
+
   cronSession.sessionEntry.systemSent = true;
   cronSession.store[agentSessionKey] = cronSession.sessionEntry;
+
   await updateSessionStore(cronSession.storePath, (store) => {
     store[agentSessionKey] = cronSession.sessionEntry;
   });
@@ -388,6 +393,7 @@ export async function runCronIsolatedAgentTurn(params: {
   {
     const usage = runResult.meta.agentMeta?.usage;
     const modelUsed = runResult.meta.agentMeta?.model ?? fallbackModel ?? model ?? DEFAULT_MODEL;
+
     const providerUsed =
       runResult.meta.agentMeta?.provider ?? fallbackProvider ?? provider ?? DEFAULT_PROVIDER;
 
