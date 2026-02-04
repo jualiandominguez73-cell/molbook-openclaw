@@ -6,6 +6,11 @@ import { locked } from "./locked.js";
 import { ensureLoaded, persist } from "./store.js";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+/**
+ * Maximum consecutive failures before auto-disabling a cron job.
+ * This prevents infinite retry loops from freezing the API with rate-limit errors.
+ */
+const MAX_CONSECUTIVE_FAILURES = 3;
 
 export function armTimer(state: CronServiceState) {
   if (state.timer) {
@@ -93,6 +98,17 @@ export async function executeJob(
     job.state.lastDurationMs = Math.max(0, endedAt - startedAt);
     job.state.lastError = err;
 
+    // Track consecutive failures
+    if (status === "error") {
+      job.state.consecutiveFailures = (job.state.consecutiveFailures ?? 0) + 1;
+    } else if (status === "ok") {
+      // Reset failure counter on success
+      job.state.consecutiveFailures = 0;
+    }
+
+    // Auto-disable job after max consecutive failures to prevent infinite retry loop
+    const isMaxFailuresExceeded = (job.state.consecutiveFailures ?? 0) >= MAX_CONSECUTIVE_FAILURES;
+
     const shouldDelete =
       job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true;
 
@@ -101,8 +117,32 @@ export async function executeJob(
         // One-shot job completed successfully; disable it.
         job.enabled = false;
         job.state.nextRunAtMs = undefined;
+      } else if (isMaxFailuresExceeded && status === "error") {
+        // Auto-disable ONLY after max consecutive failures on error
+        job.enabled = false;
+        job.state.nextRunAtMs = undefined;
+        const errorMsg = `Job disabled after ${job.state.consecutiveFailures} consecutive failures`;
+        state.deps.log.error(
+          { jobId: job.id, jobName: job.name, consecutiveFailures: job.state.consecutiveFailures },
+          `[cron] ${errorMsg}`,
+        );
       } else if (job.enabled) {
-        job.state.nextRunAtMs = computeJobNextRunAtMs(job, endedAt);
+        // For isolated tasks, implement exponential backoff on failure
+        if (job.sessionTarget === "isolated" && status === "error") {
+          const failureCount = job.state.consecutiveFailures ?? 1;
+          // Exponential backoff: 1s, 2s, 4s
+          const baseDelayMs = 1000 * Math.pow(2, failureCount - 1);
+          const backoffDelayMs = Math.min(baseDelayMs, 3600000); // Cap at 1 hour
+
+          // Reschedule with backoff instead of using normal nextRunAtMs calculation
+          job.state.nextRunAtMs = endedAt + backoffDelayMs;
+          state.deps.log.warn(
+            { jobId: job.id, jobName: job.name, backoffMs: backoffDelayMs, failureCount },
+            `[cron] Isolated task failed. Retrying in ${backoffDelayMs}ms (exponential backoff)`,
+          );
+        } else {
+          job.state.nextRunAtMs = computeJobNextRunAtMs(job, endedAt);
+        }
       } else {
         job.state.nextRunAtMs = undefined;
       }
@@ -224,10 +264,8 @@ export async function executeJob(
     await finish("error", String(err));
   } finally {
     job.updatedAtMs = nowMs;
-    if (!opts.forced && job.enabled && !deleted) {
-      // Keep nextRunAtMs in sync in case the schedule advanced during a long run.
-      job.state.nextRunAtMs = computeJobNextRunAtMs(job, state.deps.nowMs());
-    }
+    // Note: Do not override job.state.nextRunAtMs here, as it has already been
+    // set correctly in the finish() callback with proper failure protection logic.
   }
 }
 
