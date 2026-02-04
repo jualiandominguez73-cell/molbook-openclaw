@@ -1165,7 +1165,7 @@ export async function applyAuthChoiceApiProviders(
 
       // Select chat model
       if (chatModels.length === 0) {
-        await params.prompter.note("No chat models found. Please enter manually.", "Manual setup");
+        await params.prompter.note("No chat models found via discovery.", "Manual setup");
 
         chatApiType = String(
           await params.prompter.select({
@@ -1177,12 +1177,38 @@ export async function applyAuthChoiceApiProviders(
           }),
         );
 
-        chatModelId = String(
-          await params.prompter.text({
-            message: "Enter chat model deployment name",
-            placeholder: "claude-opus-4-5",
-          }),
-        ).trim();
+        if (chatApiType === "anthropic-messages") {
+          // Offer common Claude deployment names
+          const commonClaude = await params.prompter.select({
+            message: "Select your Claude deployment (or choose 'Custom')",
+            options: [
+              { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (latest)" },
+              { value: "claude-3-5-sonnet-20240620", label: "Claude 3.5 Sonnet (June 2024)" },
+              { value: "claude-3-opus-20240229", label: "Claude 3 Opus" },
+              { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
+              { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
+              { value: "custom", label: "Custom deployment name..." },
+            ],
+          });
+
+          if (String(commonClaude) === "custom") {
+            chatModelId = String(
+              await params.prompter.text({
+                message: "Enter your Claude deployment name",
+                placeholder: "e.g., claude-opus-4-5, my-claude-deployment",
+              }),
+            ).trim();
+          } else {
+            chatModelId = String(commonClaude);
+          }
+        } else {
+          chatModelId = String(
+            await params.prompter.text({
+              message: "Enter chat model deployment name",
+              placeholder: "e.g., gpt-4, llama-3, mistral-large",
+            }),
+          ).trim();
+        }
       } else {
         const deployment = await params.prompter.select({
           message: `Select chat model (${chatModels.length} available)`,
