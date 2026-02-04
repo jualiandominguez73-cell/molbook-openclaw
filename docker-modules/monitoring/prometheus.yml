@@ -1,0 +1,56 @@
+# OpenClaw Prometheus Configuration
+# Metrics collection and alerting
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: "openclaw-monitor"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load alert rules
+rule_files:
+  - "/etc/prometheus/alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+    metrics_path: /metrics
+
+  # OpenClaw Gateway
+  - job_name: "openclaw-gateway"
+    static_configs:
+      - targets: ["openclaw-gateway:18789"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # PostgreSQL
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres:5432"]
+    metrics_path: /metrics
+
+  # Redis
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]
+    metrics_path: /metrics
+
+  # Docker containers (if docker metrics are exposed)
+  - job_name: "docker"
+    static_configs:
+      - targets: ["host.docker.internal:9323"]
+    metrics_path: /metrics
+
+# Remote write (optional - for external storage)
+# remote_write:
+#   - url: "http://remote-storage:9201/write"

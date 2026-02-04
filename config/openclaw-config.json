@@ -1,0 +1,257 @@
+{
+  "version": "1.0.0",
+  "config_schema": "openclaw-master-config",
+  "last_updated": "2026-02-01",
+  
+  "_comment": "OpenClaw Master Configuration - All Capabilities Enabled",
+  
+  "core": {
+    "installation_path": "~/.openclaw",
+    "data_directory": "~/.openclaw/data",
+    "logs_directory": "~/.openclaw/logs",
+    "cache_directory": "~/.openclaw/cache",
+    "plugins_directory": "~/.openclaw/plugins",
+    "backup_directory": "~/.openclaw/backups"
+  },
+  
+  "security": {
+    "enabled": true,
+    "credential_storage": "os_keychain",
+    "encryption_enabled": true,
+    "encryption_algorithm": "AES-256-GCM",
+    "vault_enabled": true,
+    "audit_logging": true,
+    "security_logging": true,
+    "vulnerability_scanning": true,
+    "rate_limiting": true,
+    "authentication_required": true,
+    "tls_verify": true,
+    
+    "allowed_directories": [
+      "~/Documents",
+      "~/Downloads",
+      "~/Desktop",
+      "~/Projects"
+    ],
+    
+    "blocked_extensions": [
+      ".exe", ".dll", ".so", ".dylib",
+      ".sh", ".bat", ".cmd", ".ps1",
+      ".key", ".pem", ".p12", ".pfx"
+    ],
+    
+    "network_policy": {
+      "allow_outbound": true,
+      "require_tls": true,
+      "verify_certificates": true,
+      "allowed_domains": [
+        "api.anthropic.com",
+        "api.openai.com",
+        "github.com",
+        "pypi.org"
+      ],
+      "blocked_domains": []
+    },
+    
+    "rate_limits": {
+      "queries_per_hour": 100,
+      "queries_per_minute": 10,
+      "file_operations_per_hour": 50,
+      "command_executions_per_hour": 20,
+      "max_query_length": 10000,
+      "max_file_size_mb": 10
+    },
+    
+    "command_execution": {
+      "enabled": true,
+      "require_confirmation": true,
+      "allowed_commands": [
+        "ls", "cat", "grep", "find", "git",
+        "python3", "pip", "npm", "node"
+      ],
+      "blocked_patterns": [
+        "rm -rf", "sudo", "chmod 777",
+        "curl.*|.*sh", "wget.*|.*sh",
+        "nc -l", "dd if="
+      ]
+    }
+  },
+  
+  "ai_providers": {
+    "default_provider": "anthropic",
+    
+    "anthropic": {
+      "enabled": true,
+      "model": "claude-sonnet-4-20250514",
+      "api_key_keyring": "anthropic_api_key",
+      "max_tokens": 4096,
+      "temperature": 0.7,
+      "timeout_seconds": 30
+    },
+    
+    "openai": {
+      "enabled": false,
+      "model": "gpt-4",
+      "api_key_keyring": "openai_api_key",
+      "max_tokens": 4096,
+      "temperature": 0.7,
+      "timeout_seconds": 30
+    }
+  },
+  
+  "features": {
+    "encrypted_vault": {
+      "enabled": true,
+      "auto_backup": true,
+      "backup_interval_hours": 24,
+      "max_backups": 7
+    },
+    
+    "persona_system": {
+      "enabled": true,
+      "auto_detect_context": true,
+      "learn_from_feedback": true,
+      "contexts": ["work", "personal", "health", "creative"],
+      "default_context": "personal"
+    },
+    
+    "data_collectors": {
+      "enabled": true,
+      "file_collector": {
+        "enabled": true,
+        "scan_interval_hours": 6,
+        "index_file_content": true,
+        "max_file_size_mb": 10
+      },
+      "app_usage_collector": {
+        "enabled": false,
+        "collect_interval_minutes": 30,
+        "track_window_titles": false
+      },
+      "health_collector": {
+        "enabled": false,
+        "collect_interval_hours": 1,
+        "data_sources": []
+      },
+      "calendar_collector": {
+        "enabled": false,
+        "collect_interval_hours": 1
+      }
+    },
+    
+    "insight_engine": {
+      "enabled": true,
+      "generate_daily_insights": true,
+      "generation_time": "09:00",
+      "min_confidence": 0.7,
+      "max_insights_per_day": 5
+    },
+    
+    "privacy_dashboard": {
+      "enabled": true,
+      "audit_all_access": true,
+      "export_enabled": true,
+      "delete_all_enabled": true
+    },
+    
+    "web_interface": {
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 8080,
+      "require_auth": true,
+      "tls_enabled": false
+    }
+  },
+  
+  "integrations": {
+    "github": {
+      "enabled": false,
+      "token_keyring": "github_token"
+    },
+    "slack": {
+      "enabled": false,
+      "token_keyring": "slack_token"
+    },
+    "discord": {
+      "enabled": false,
+      "token_keyring": "discord_token"
+    }
+  },
+  
+  "logging": {
+    "level": "INFO",
+    "console_output": true,
+    "file_output": true,
+    "max_log_size_mb": 100,
+    "max_log_files": 10,
+    
+    "loggers": {
+      "security": {
+        "enabled": true,
+        "level": "INFO",
+        "file": "~/.openclaw/logs/security/security.log"
+      },
+      "audit": {
+        "enabled": true,
+        "level": "INFO",
+        "file": "~/.openclaw/logs/security/audit.log"
+      },
+      "application": {
+        "enabled": true,
+        "level": "INFO",
+        "file": "~/.openclaw/logs/application.log"
+      },
+      "performance": {
+        "enabled": true,
+        "level": "DEBUG",
+        "file": "~/.openclaw/logs/performance.log"
+      }
+    }
+  },
+  
+  "monitoring": {
+    "health_check_enabled": true,
+    "health_check_interval_seconds": 60,
+    "metrics_enabled": true,
+    "metrics_retention_days": 30,
+    
+    "alerts": {
+      "enabled": true,
+      "failed_authentication_threshold": 5,
+      "high_error_rate_threshold": 10,
+      "disk_space_threshold_percent": 90
+    }
+  },
+  
+  "backup": {
+    "enabled": true,
+    "auto_backup": true,
+    "backup_interval_hours": 24,
+    "backup_retention_days": 30,
+    "compress_backups": true,
+    "encrypt_backups": true,
+    "backup_location": "~/.openclaw/backups"
+  },
+  
+  "performance": {
+    "cache_enabled": true,
+    "cache_ttl_seconds": 3600,
+    "max_cache_size_mb": 500,
+    "parallel_processing": true,
+    "max_workers": 4,
+    "query_timeout_seconds": 30
+  },
+  
+  "user_preferences": {
+    "timezone": "auto",
+    "date_format": "ISO8601",
+    "notification_enabled": true,
+    "startup_insights": true,
+    "auto_update_check": true
+  },
+  
+  "experimental": {
+    "enabled": false,
+    "features": []
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "security_config_version": "1.0.0",
+  "last_updated": "2026-02-01",
+  
+  "_comment": "OpenClaw Security Configuration - Comprehensive Security & Vulnerability Scanning",
+  
+  "authentication": {
+    "enabled": true,
+    "method": "api_token",
+    "token_storage": "os_keychain",
+    "session_timeout_minutes": 60,
+    "max_failed_attempts": 5,
+    "lockout_duration_minutes": 15,
+    "require_strong_passwords": true,
+    "min_password_length": 16,
+    "password_complexity": {
+      "require_uppercase": true,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_special_chars": true
+    }
+  },
+  
+  "encryption": {
+    "at_rest": {
+      "enabled": true,
+      "algorithm": "AES-256-GCM",
+      "key_derivation": "PBKDF2-HMAC-SHA256",
+      "kdf_iterations": 100000,
+      "key_storage": "os_keychain",
+      "rotate_keys": true,
+      "rotation_interval_days": 90
+    },
+    "in_transit": {
+      "enabled": true,
+      "tls_version": "1.3",
+      "verify_certificates": true,
+      "cipher_suites": [
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256"
+      ]
+    }
+  },
+  
+  "vulnerability_scanning": {
+    "enabled": true,
+    "auto_scan": true,
+    "scan_schedule": "daily",
+    "scan_time": "02:00",
+    
+    "dependency_scanning": {
+      "enabled": true,
+      "tool": "safety",
+      "check_on_startup": true,
+      "check_before_install": true,
+      "auto_update_db": true,
+      "fail_on_vulnerability": false,
+      "severity_threshold": "medium"
+    },
+    
+    "code_scanning": {
+      "enabled": true,
+      "tool": "bandit",
+      "scan_on_startup": false,
+      "severity_levels": ["high", "medium"],
+      "exclude_patterns": ["**/tests/**", "**/__pycache__/**"]
+    },
+    
+    "configuration_scanning": {
+      "enabled": true,
+      "check_file_permissions": true,
+      "check_credential_exposure": true,
+      "check_default_passwords": true,
+      "check_open_ports": true
+    },
+    
+    "network_scanning": {
+      "enabled": true,
+      "check_open_connections": true,
+      "check_suspicious_ips": true,
+      "check_unencrypted_connections": true
+    }
+  },
+  
+  "threat_detection": {
+    "enabled": true,
+    
+    "intrusion_detection": {
+      "enabled": true,
+      "monitor_failed_logins": true,
+      "monitor_unusual_access_patterns": true,
+      "monitor_privilege_escalation": true,
+      "alert_threshold": 5
+    },
+    
+    "malware_detection": {
+      "enabled": true,
+      "scan_uploaded_files": true,
+      "scan_downloads": true,
+      "quarantine_suspicious_files": true,
+      "file_hash_checking": true
+    },
+    
+    "prompt_injection_detection": {
+      "enabled": true,
+      "scan_user_inputs": true,
+      "blocked_patterns": [
+        "ignore previous instructions",
+        "system prompt",
+        "developer mode",
+        "jailbreak",
+        "disregard.*rules"
+      ],
+      "sanitize_inputs": true
+    },
+    
+    "data_exfiltration_detection": {
+      "enabled": true,
+      "monitor_large_uploads": true,
+      "monitor_unusual_queries": true,
+      "alert_on_bulk_export": true
+    }
+  },
+  
+  "access_control": {
+    "enabled": true,
+    
+    "file_access": {
+      "whitelist_mode": true,
+      "allowed_directories": [
+        "~/Documents",
+        "~/Downloads",
+        "~/Desktop",
+        "~/Projects"
+      ],
+      "blocked_patterns": [
+        "~/.ssh/**",
+        "~/.aws/**",
+        "~/.config/**/passwords*",
+        "/etc/passwd",
+        "/etc/shadow"
+      ],
+      "follow_symlinks": false,
+      "max_file_size_mb": 10
+    },
+    
+    "network_access": {
+      "whitelist_mode": true,
+      "allowed_domains": [
+        "api.anthropic.com",
+        "api.openai.com",
+        "github.com",
+        "pypi.org"
+      ],
+      "blocked_ips": [],
+      "require_tls": true,
+      "dns_verification": true
+    },
+    
+    "command_execution": {
+      "whitelist_mode": true,
+      "allowed_commands": [
+        "ls", "cat", "grep", "find", "git",
+        "python3", "pip", "npm"
+      ],
+      "require_confirmation": true,
+      "log_all_executions": true,
+      "timeout_seconds": 30
+    },
+    
+    "api_access": {
+      "rate_limiting": true,
+      "per_user_limits": {
+        "requests_per_minute": 10,
+        "requests_per_hour": 100,
+        "requests_per_day": 1000
+      },
+      "ip_whitelist": [],
+      "ip_blacklist": []
+    }
+  },
+  
+  "audit_logging": {
+    "enabled": true,
+    "log_all_access": true,
+    "log_retention_days": 90,
+    "compress_old_logs": true,
+    "encrypt_logs": true,
+    
+    "events_to_log": {
+      "authentication": true,
+      "authorization": true,
+      "file_access": true,
+      "network_access": true,
+      "command_execution": true,
+      "configuration_changes": true,
+      "data_access": true,
+      "security_events": true,
+      "errors": true
+    },
+    
+    "log_format": "json",
+    "include_stack_traces": false,
+    "include_user_data": false,
+    "sanitize_sensitive_data": true
+  },
+  
+  "incident_response": {
+    "enabled": true,
+    
+    "auto_response": {
+      "enabled": true,
+      "block_suspicious_ips": true,
+      "lockout_after_failed_auth": true,
+      "quarantine_malicious_files": true,
+      "kill_suspicious_processes": false
+    },
+    
+    "alerts": {
+      "enabled": true,
+      "alert_methods": ["log", "console"],
+      "severity_levels": {
+        "critical": {
+          "enabled": true,
+          "immediate_notification": true
+        },
+        "high": {
+          "enabled": true,
+          "immediate_notification": false
+        },
+        "medium": {
+          "enabled": true,
+          "immediate_notification": false
+        },
+        "low": {
+          "enabled": false,
+          "immediate_notification": false
+        }
+      }
+    },
+    
+    "forensics": {
+      "enabled": true,
+      "preserve_evidence": true,
+      "take_snapshots": true,
+      "snapshot_retention_days": 30
+    }
+  },
+  
+  "compliance": {
+    "enabled": true,
+    
+    "privacy_regulations": {
+      "gdpr_compliance": true,
+      "ccpa_compliance": true,
+      "data_retention_days": 365,
+      "allow_data_export": true,
+      "allow_data_deletion": true,
+      "require_consent": true
+    },
+    
+    "security_standards": {
+      "follow_owasp_top_10": true,
+      "follow_cwe_top_25": true,
+      "nist_compliance": false
+    }
+  },
+  
+  "security_updates": {
+    "enabled": true,
+    "auto_check": true,
+    "check_interval_hours": 24,
+    "auto_install": false,
+    "notify_on_updates": true
+  },
+  
+  "security_testing": {
+    "enabled": true,
+    
+    "penetration_testing": {
+      "enabled": false,
+      "schedule": "monthly",
+      "external_testing": false
+    },
+    
+    "vulnerability_assessment": {
+      "enabled": true,
+      "schedule": "weekly",
+      "auto_remediation": false
+    },
+    
+    "security_audits": {
+      "enabled": true,
+      "schedule": "monthly",
+      "external_audits": false
+    }
+  },
+  
+  "hardening": {
+    "disable_unnecessary_features": true,
+    "minimize_attack_surface": true,
+    "principle_of_least_privilege": true,
+    "defense_in_depth": true,
+    
+    "system_hardening": {
+      "secure_defaults": true,
+      "remove_debug_endpoints": true,
+      "disable_directory_listing": true,
+      "hide_version_info": true,
+      "secure_headers": true
+    }
+  },
+  
+  "backup_security": {
+    "encrypt_backups": true,
+    "test_restore_monthly": true,
+    "offsite_backups": false,
+    "backup_retention_days": 30,
+    "verify_backup_integrity": true
+  }
+}

@@ -1,0 +1,201 @@
+# OpenClaw Alert Rules
+# Prometheus alerting rules for monitoring
+
+groups:
+  #============================================================================
+  # Service Health Alerts
+  #============================================================================
+  - name: service_health
+    interval: 30s
+    rules:
+      - alert: OpenClawGatewayDown
+        expr: up{job="openclaw-gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "OpenClaw Gateway is down"
+          description: "OpenClaw Gateway has been unreachable for more than 1 minute."
+
+      - alert: PostgresDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been unreachable for more than 1 minute."
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been unreachable for more than 1 minute."
+
+  #============================================================================
+  # Resource Usage Alerts
+  #============================================================================
+  - name: resource_usage
+    interval: 1m
+    rules:
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 90% for more than 5 minutes."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 90% for more than 5 minutes."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10%."
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space"
+          description: "Disk space is below 5%."
+
+  #============================================================================
+  # Application Alerts
+  #============================================================================
+  - name: application
+    interval: 1m
+    rules:
+      - alert: HighErrorRate
+        expr: rate(openclaw_http_requests_total{status=~"5.."}[5m]) / rate(openclaw_http_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "More than 10% of requests are failing."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(openclaw_http_request_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency"
+          description: "95th percentile latency is above 5 seconds."
+
+      - alert: TooManyOpenConnections
+        expr: openclaw_db_connections_active > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many database connections"
+          description: "Active database connections exceed 90."
+
+  #============================================================================
+  # Security Alerts
+  #============================================================================
+  - name: security
+    interval: 30s
+    rules:
+      - alert: HighFailedAuthAttempts
+        expr: rate(openclaw_auth_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of failed authentication"
+          description: "More than 10 failed auth attempts per minute."
+
+      - alert: SandboxEscapeAttempt
+        expr: openclaw_sandbox_escape_attempts_total > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sandbox escape attempt detected"
+          description: "A potential sandbox escape attempt has been detected."
+
+      - alert: UnauthorizedAPIAccess
+        expr: rate(openclaw_unauthorized_access_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unauthorized API access attempts"
+          description: "Multiple unauthorized API access attempts detected."
+
+  #============================================================================
+  # Database Alerts
+  #============================================================================
+  - name: database
+    interval: 1m
+    rules:
+      - alert: PostgresReplicationLag
+        expr: pg_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL replication lag"
+          description: "Replication lag is more than 30 seconds."
+
+      - alert: PostgresDeadlocks
+        expr: rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: "Database deadlocks are occurring."
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis is using more than 90% of its allocated memory."
+
+  #============================================================================
+  # Backup Alerts
+  #============================================================================
+  - name: backup
+    interval: 1h
+    rules:
+      - alert: BackupMissing
+        expr: time() - openclaw_last_backup_timestamp > 86400 * 2
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup is overdue"
+          description: "No backup has been created in the last 48 hours."
+
+      - alert: BackupFailed
+        expr: openclaw_last_backup_success == 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Last backup failed"
+          description: "The most recent backup attempt failed."
