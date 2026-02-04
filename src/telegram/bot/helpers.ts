@@ -1,4 +1,4 @@
-import type { Chat, Location, Message, MessageOrigin, User, Venue } from "@grammyjs/types";
+import type { Chat, Message, MessageOrigin, User } from "@grammyjs/types";
 import type { TelegramStreamMode } from "./types.js";
 import { formatLocationText, type NormalizedLocation } from "../../channels/location.js";
 
@@ -324,8 +324,7 @@ function buildForwardedContextFromChat(params: {
   type: string;
   signature?: string;
 }): TelegramForwardedContext | null {
-  const fallbackKind =
-    params.type === "channel" || params.type === "legacy_channel" ? "channel" : "chat";
+  const fallbackKind = params.type === "channel" ? "channel" : "chat";
   const { display, title, username, id } = normalizeForwardedChatLabel(params.chat, fallbackKind);
   if (!display) {
     return null;
@@ -383,11 +382,7 @@ export function normalizeForwardedContext(msg: Message): TelegramForwardedContex
 }
 
 export function extractTelegramLocation(msg: Message): NormalizedLocation | null {
-  const msgWithLocation = msg as {
-    location?: Location;
-    venue?: Venue;
-  };
-  const { venue, location } = msgWithLocation;
+  const { venue, location } = msg;
 
   if (venue) {
     return {
