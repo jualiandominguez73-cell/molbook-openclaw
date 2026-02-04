@@ -279,14 +279,14 @@ export class InspirationMuseSystem {
   initializeState(soulState: SoulState): InspirationState {
     // Creative energy from creation + emotion
     const creativeEnergy = (
-      soulState.creationHun.current * 0.6 +
-      soulState.emotionHun.current * 0.4
+      soulState.youJing.current * 0.6 +
+      soulState.youJing.current * 0.4
     )
 
     // Clarity from wisdom + awareness
     const creativeClarity = (
-      soulState.wisdomHun.current * 0.5 +
-      soulState.awarenessHun.current * 0.5
+      soulState.shuangLing.current * 0.5 +
+      soulState.taiGuang.current * 0.5
     )
 
     return {
@@ -348,7 +348,7 @@ export class InspirationMuseSystem {
 
     // Muse inspiration depends on emotion + openness
     const inspirationIntensity = (
-      soulState.emotionHun.current * 0.5 +
+      soulState.youJing.current * 0.5 +
       soulState.yinAspect * 0.5
     )
 

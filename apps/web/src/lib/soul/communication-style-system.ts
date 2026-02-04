@@ -153,10 +153,10 @@ export class CommunicationStyleSystem {
    */
   private determinePatternFromSoul(soulState: SoulState): CommunicationPatternType {
     // Dominant aspects determine pattern
-    if (soulState.wisdomHun.current > 0.7) return 'analytical'
-    if (soulState.emotionHun.current > 0.7) return 'narrative'
-    if (soulState.creationHun.current > 0.7) return 'poetic'
-    if (soulState.awarenessHun.current > 0.7) return 'prophetic'
+    if (soulState.shuangLing.current > 0.7) return 'analytical'
+    if (soulState.youJing.current > 0.7) return 'narrative'
+    if (soulState.youJing.current > 0.7) return 'poetic'
+    if (soulState.taiGuang.current > 0.7) return 'prophetic'
 
     return 'dialectical' // Balanced default
   }
@@ -172,10 +172,10 @@ export class CommunicationStyleSystem {
     directness: number
   } {
     return {
-      formality: soulState.guardianPo.current * 0.6 + 0.2,
-      verbosity: soulState.emotionHun.current * 0.5 + 0.3,
-      precision: soulState.wisdomHun.current * 0.7 + 0.2,
-      emotionality: soulState.emotionHun.current * 0.8,
+      formality: soulState.tunZei.current * 0.6 + 0.2,
+      verbosity: soulState.youJing.current * 0.5 + 0.3,
+      precision: soulState.shuangLing.current * 0.7 + 0.2,
+      emotionality: soulState.youJing.current * 0.8,
       directness: 1 - (soulState.culturalNavigatorPo?.current || 0) * 0.5
     }
   }
@@ -332,7 +332,7 @@ export class CommunicationStyleSystem {
       state.patternStrength = Math.min(1, state.patternStrength + 0.02)
     } else {
       // Failure may prompt adaptation
-      if (soulState.awarenessHun.current > 0.5) {
+      if (soulState.taiGuang.current > 0.5) {
         state.patternStrength *= 0.95
         styleShift.push('Questioning current pattern effectiveness')
       }

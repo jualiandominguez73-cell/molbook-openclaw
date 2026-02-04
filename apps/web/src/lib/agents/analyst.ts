@@ -9,7 +9,7 @@
  * - Decomposes complex problems
  * - Evaluates evidence and premises
  *
- * Influenced by: wisdomHun, terrestrialHun, perceptionPo, strengthPo
+ * Influenced by: shuangLing, shuangLing, fuShi, shiGou
  *
  * Reasoning Modes:
  * - Deductive: Top-down, general → specific
@@ -48,10 +48,10 @@ export class AnalystAgent extends BaseAgent {
       this.consumeEnergy(0.08) // Analysis is cognitively expensive
 
       // Get soul-derived analytical parameters
-      const logicalReasoning = this.getEffectiveParameter('wisdomHun', 0.7) // Core reasoning
-      const practicalGrounding = this.getEffectiveParameter('terrestrialHun', 0.6) // Reality-check
-      const patternRecognition = this.getEffectiveParameter('perceptionPo', 0.6) // See patterns
-      const analyticalStrength = this.getEffectiveParameter('strengthPo', 0.6) // Sustained analysis
+      const logicalReasoning = this.getEffectiveParameter('shuangLing', 0.7) // Core reasoning
+      const practicalGrounding = this.getEffectiveParameter('shuangLing', 0.6) // Reality-check
+      const patternRecognition = this.getEffectiveParameter('fuShi', 0.6) // See patterns
+      const analyticalStrength = this.getEffectiveParameter('shiGou', 0.6) // Sustained analysis
 
       // Select reasoning mode
       const reasoningMode = this.selectReasoningMode(input, {

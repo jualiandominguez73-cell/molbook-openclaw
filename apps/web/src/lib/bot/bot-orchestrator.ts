@@ -467,21 +467,18 @@ export class BotOrchestrator {
         shadowPressure: soulState.shadowPressure
       },
       aspects: {
-        // Seven Hun
-        celestialHun: soulState.celestialHun.current,
-        terrestrialHun: soulState.terrestrialHun.current,
-        destinyHun: soulState.destinyHun.current,
-        wisdomHun: soulState.wisdomHun.current,
-        emotionHun: soulState.emotionHun.current,
-        creationHun: soulState.creationHun.current,
-        awarenessHun: soulState.awarenessHun.current,
-        // Six Po
-        strengthPo: soulState.strengthPo.current,
-        speedPo: soulState.speedPo.current,
-        perceptionPo: soulState.perceptionPo.current,
-        guardianPo: soulState.guardianPo.current,
-        communicationPo: soulState.communicationPo.current,
-        transformationPo: soulState.transformationPo.current
+        // Three Hun (三魂)
+        taiGuang: soulState.taiGuang.current,
+        shuangLing: soulState.shuangLing.current,
+        youJing: soulState.youJing.current,
+        // Seven Po (七魄)
+        shiGou: soulState.shiGou.current,
+        fuShi: soulState.fuShi.current,
+        queYin: soulState.queYin.current,
+        tunZei: soulState.tunZei.current,
+        feiDu: soulState.feiDu.current,
+        chuHui: soulState.chuHui.current,
+        chouFei: soulState.chouFei.current
       }
     }
   }
@@ -587,7 +584,7 @@ export class BotOrchestrator {
     }
 
     // 2. Research: High wisdom + intellect may trigger research
-    if (soulState.wisdomHun.current > 0.6 &&
+    if (soulState.shuangLing.current > 0.6 &&
         soulState.intellectPo.current > 0.6 &&
         Math.random() < 0.2) {
 
@@ -613,7 +610,7 @@ export class BotOrchestrator {
     }
 
     // 3. Development: High creation + action may trigger building
-    if (soulState.creationHun.current > 0.6 &&
+    if (soulState.youJing.current > 0.6 &&
         soulState.actionPo.current > 0.6 &&
         Math.random() < 0.15) {
 
@@ -639,7 +636,7 @@ export class BotOrchestrator {
 
     // 4. Collaboration: High emotion + low loneliness may form collaborations
     if (states.collaborationState.loneliness > 0.5 &&
-        soulState.emotionHun.current > 0.6 &&
+        soulState.youJing.current > 0.6 &&
         Math.random() < 0.1 &&
         context.nearbyBots?.length > 0) {
 
@@ -662,7 +659,7 @@ export class BotOrchestrator {
 
     // 5. Gift: High generosity + emotion may give gifts
     if (states.giftState.generosity > 0.6 &&
-        soulState.emotionHun.current > 0.7 &&
+        soulState.youJing.current > 0.7 &&
         Math.random() < 0.1 &&
         context.nearbyBots?.length > 0) {
 
@@ -695,7 +692,7 @@ export class BotOrchestrator {
 
     // 6. Spiritual Ascension: High awareness + wisdom may trigger supernatural sensing
     if (states.spiritualAscensionState.driveStrength > 0.6 &&
-        soulState.awarenessHun.current > 0.5 &&
+        soulState.taiGuang.current > 0.5 &&
         Math.random() < 0.15) {
 
       // Experience supernatural sensing
@@ -714,8 +711,8 @@ export class BotOrchestrator {
       }
 
       // Check for mystical experience (rare)
-      if (soulState.awarenessHun.current > 0.8 &&
-          soulState.wisdomHun.current > 0.7 &&
+      if (soulState.taiGuang.current > 0.8 &&
+          soulState.shuangLing.current > 0.7 &&
           Math.random() < 0.05) {
 
         const mystical = await this.spiritualAscensionSystem.experienceMystical(

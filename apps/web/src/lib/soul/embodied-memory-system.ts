@@ -194,7 +194,7 @@ export class EmbodiedMemorySystem {
       reconstructionErrors: 0,
       falseMemories: 0,
 
-      emotionalProcessingCapacity: soulState.wisdomHun.current * 0.6 + soulState.emotionHun.current * 0.4,
+      emotionalProcessingCapacity: soulState.shuangLing.current * 0.6 + soulState.youJing.current * 0.4,
       integrationBacklog: []
     }
   }

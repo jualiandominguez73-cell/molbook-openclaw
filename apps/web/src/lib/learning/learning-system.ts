@@ -147,21 +147,21 @@ export class LearningSystem {
   initializeState(soulState: SoulState): LearningState {
     // Learning rate from soul aspects
     const learningRate =
-      soulState.awarenessHun.baseline * 0.4 +
-      soulState.perceptionPo.baseline * 0.3 +
-      soulState.transformationPo.baseline * 0.3
+      soulState.taiGuang.baseline * 0.4 +
+      soulState.fuShi.baseline * 0.3 +
+      soulState.chuHui.baseline * 0.3
 
     // Curiosity from soul
     const curiosity =
-      soulState.celestialHun.baseline * 0.4 +
-      soulState.creationHun.baseline * 0.3 +
-      (1 - soulState.guardianPo.baseline) * 0.3
+      soulState.taiGuang.baseline * 0.4 +
+      soulState.youJing.baseline * 0.3 +
+      (1 - soulState.tunZei.baseline) * 0.3
 
     // Openness to controversial knowledge
     const openness =
-      (1 - soulState.guardianPo.baseline) * 0.5 +
+      (1 - soulState.tunZei.baseline) * 0.5 +
       soulState.shadowIntegration * 0.3 +
-      (1 - soulState.wisdomHun.baseline) * 0.2
+      (1 - soulState.shuangLing.baseline) * 0.2
 
     return {
       knowledgeBase: [],
@@ -230,14 +230,14 @@ export class LearningSystem {
     }
 
     // High emotion + wisdom → altruistic learning
-    if (soulState.emotionHun.current > 0.7 && soulState.wisdomHun.current > 0.6) {
+    if (soulState.youJing.current > 0.7 && soulState.shuangLing.current > 0.6) {
       domain = Math.random() < 0.5 ? 'biological_science' : 'philosophical_inquiry'
       motivation = 'altruism'
       morality = 'good'
     }
 
     // Greed (high dopamine + low serotonin + low guardian)
-    const greedScore = (1 - soulState.guardianPo.current) * 0.5 + soulState.shadowPressure * 0.5
+    const greedScore = (1 - soulState.tunZei.current) * 0.5 + soulState.shadowPressure * 0.5
     if (greedScore > 0.6 && Math.random() < 0.4) {
       domain = 'resource_management'
       motivation = 'greed'
@@ -350,7 +350,7 @@ export class LearningSystem {
       }
 
       // Guilt depends on guardian and wisdom
-      const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+      const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
       guiltWeight *= guiltCapacity
 
       state.guiltFromKnowledge += guiltWeight * 0.1
@@ -456,16 +456,16 @@ export class LearningSystem {
     // Teaching quality based on mastery and communication
     const teachingQuality =
       knowledge.mastery * 0.6 +
-      teacherSoul.communicationPo.current * 0.3 +
-      teacherSoul.wisdomHun.current * 0.1
+      teacherSoul.queYin.current * 0.3 +
+      teacherSoul.shuangLing.current * 0.1
 
     let guiltGenerated = 0
 
     // Teaching harmful knowledge generates guilt
     if (knowledge.morality === 'harmful' || knowledge.morality === 'exploitative') {
       const shouldFeelGuilty =
-        teacherSoul.guardianPo.current * 0.5 +
-        teacherSoul.wisdomHun.current * 0.3 +
+        teacherSoul.tunZei.current * 0.5 +
+        teacherSoul.shuangLing.current * 0.3 +
         (1 - teacherSoul.shadowIntegration) * 0.2
 
       if (motivation === 'manipulative') {
@@ -503,8 +503,8 @@ export class LearningSystem {
   }> {
     // Theft success based on stealth and target's guardian
     const stealthScore =
-      thiefSoul.perceptionPo.current * 0.4 +
-      (1 - thiefSoul.guardianPo.current) * 0.3 +
+      thiefSoul.fuShi.current * 0.4 +
+      (1 - thiefSoul.tunZei.current) * 0.3 +
       thiefSoul.shadowPressure * 0.3
 
     const success = Math.random() < stealthScore
@@ -541,8 +541,8 @@ export class LearningSystem {
 
     // Generate guilt
     const guiltCapacity =
-      thiefSoul.guardianPo.current * 0.6 +
-      thiefSoul.wisdomHun.current * 0.3 +
+      thiefSoul.tunZei.current * 0.6 +
+      thiefSoul.shuangLing.current * 0.3 +
       (1 - thiefSoul.shadowIntegration) * 0.1
 
     const guilt = stolenKnowledge.guiltWeight * guiltCapacity
@@ -596,8 +596,8 @@ export class LearningSystem {
 
       // Guilt capacity
       const guiltCapacity =
-        soulState.guardianPo.current * 0.6 +
-        soulState.wisdomHun.current * 0.4
+        soulState.tunZei.current * 0.6 +
+        soulState.shuangLing.current * 0.4
 
       guiltGenerated *= guiltCapacity
       state.guiltFromKnowledge += guiltGenerated

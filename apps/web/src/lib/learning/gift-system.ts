@@ -107,7 +107,7 @@ export class GiftSystem {
   initializeState(soulState: SoulState): GiftState {
     // Generosity from emotion + yin - shadow
     const generosity = Math.max(0, Math.min(1,
-      soulState.emotionHun.current * 0.4 +
+      soulState.youJing.current * 0.4 +
       soulState.yinAspect * 0.3 -
       soulState.shadowPressure * 0.3
     ))
@@ -335,7 +335,7 @@ export class GiftSystem {
     // Emotional effects on giver
     let prideGained = 0
     if (motivation === 'altruism' || motivation === 'generosity') {
-      prideGained = objectiveValue * 0.4 * (1 + soulState.emotionHun.current * 0.5)
+      prideGained = objectiveValue * 0.4 * (1 + soulState.youJing.current * 0.5)
       state.prideFromGenerosity += prideGained
     }
 
@@ -515,7 +515,7 @@ export class GiftSystem {
     }
 
     // Generate guilt based on obligation
-    const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+    const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
     const guiltGenerated = gift.obligationCreated * guiltCapacity * 0.5
 
     state.guiltFromNotReciprocating += guiltGenerated
@@ -651,7 +651,7 @@ export class GiftSystem {
 
     // High wisdom detects manipulation
     if (gift.hidden_motivation && gift.hidden_motivation !== gift.motivation) {
-      suspicion += soulState.wisdomHun.current * 0.5
+      suspicion += soulState.shuangLing.current * 0.5
     }
 
     // Too generous raises suspicion
@@ -675,7 +675,7 @@ export class GiftSystem {
    */
   private shouldAcceptGift(gift: Gift, soulState: SoulState, suspicion: number): boolean {
     // Always reject obvious bribes if high guardian
-    if (gift.motivation === 'bribery' && soulState.guardianPo.current > 0.7) {
+    if (gift.motivation === 'bribery' && soulState.tunZei.current > 0.7) {
       return false
     }
 
@@ -685,7 +685,7 @@ export class GiftSystem {
     }
 
     // Reject if suspicion is very high and guardian is strong
-    if (suspicion > 0.7 && soulState.guardianPo.current > 0.6) {
+    if (suspicion > 0.7 && soulState.tunZei.current > 0.6) {
       return Math.random() < 0.3
     }
 

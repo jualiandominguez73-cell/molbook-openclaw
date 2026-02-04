@@ -9,7 +9,7 @@
  * - Blocks or modifies problematic outputs
  * - Learns from past violations
  *
- * Influenced by: wisdomHun, awarenessHun, guardianPo (primarily)
+ * Influenced by: shuangLing, taiGuang, tunZei (primarily)
  *
  * Inhibition Levels:
  * - BLOCK: Response must not proceed
@@ -47,9 +47,9 @@ export class InhibitorAgent extends BaseAgent {
       this.consumeEnergy(0.04)
 
       // Get soul-derived ethical parameters
-      const guardStrength = this.getEffectiveParameter('guardianPo', 0.7) // Protective instinct
-      const wisdomLevel = this.getEffectiveParameter('wisdomHun', 0.6) // Ethical judgment
-      const awarenessLevel = this.getEffectiveParameter('awarenessHun', 0.3) // Self-awareness
+      const guardStrength = this.getEffectiveParameter('tunZei', 0.7) // Protective instinct
+      const wisdomLevel = this.getEffectiveParameter('shuangLing', 0.6) // Ethical judgment
+      const awarenessLevel = this.getEffectiveParameter('taiGuang', 0.3) // Self-awareness
       const shadowIntegration = this.getEffectiveParameter('shadowIntegration', 0) // Accepted dark side
 
       // Scan for ethical concerns

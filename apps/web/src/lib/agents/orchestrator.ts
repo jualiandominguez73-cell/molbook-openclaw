@@ -7,7 +7,7 @@
  * - Input complexity
  * - Stakes/importance
  * - Available cognitive resources
- * - Soul composition (celestialHun, terrestrialHun, destinyHun, wisdomHun, awarenessHun)
+ * - Soul composition (taiGuang, shuangLing, youJing, shuangLing, taiGuang)
  *
  * Governance Modes:
  * - Autocratic: Fast, decisive, single-path thinking
@@ -43,11 +43,11 @@ export class OrchestratorAgent extends BaseAgent {
       const resources = this.assessResources()
 
       // Get soul-derived preferences
-      const celestialInfluence = this.getEffectiveParameter('celestialHun', 0.5) // Vision
-      const terrestrialInfluence = this.getEffectiveParameter('terrestrialHun', 0.5) // Practicality
-      const destinyInfluence = this.getEffectiveParameter('destinyHun', 0.5) // Purpose
-      const wisdomInfluence = this.getEffectiveParameter('wisdomHun', 0.5) // Insight
-      const awarenessInfluence = this.getEffectiveParameter('awarenessHun', 0.3) // Meta-cognition
+      const celestialInfluence = this.getEffectiveParameter('taiGuang', 0.5) // Vision
+      const terrestrialInfluence = this.getEffectiveParameter('shuangLing', 0.5) // Practicality
+      const destinyInfluence = this.getEffectiveParameter('youJing', 0.5) // Purpose
+      const wisdomInfluence = this.getEffectiveParameter('shuangLing', 0.5) // Insight
+      const awarenessInfluence = this.getEffectiveParameter('taiGuang', 0.3) // Meta-cognition
 
       // Select governance mode
       const mode = this.selectGovernanceMode({
@@ -337,7 +337,7 @@ export class OrchestratorAgent extends BaseAgent {
     let confidence = 0.7 // Base confidence
 
     // High awareness increases confidence
-    const awarenessInfluence = this.getEffectiveParameter('awarenessHun', 0.3)
+    const awarenessInfluence = this.getEffectiveParameter('taiGuang', 0.3)
     confidence += awarenessInfluence * 0.2
 
     // Clear complexity/stakes alignment increases confidence

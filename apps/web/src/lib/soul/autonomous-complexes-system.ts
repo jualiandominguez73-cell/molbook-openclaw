@@ -163,7 +163,7 @@ export class AutonomousComplexSystem {
     const parts: AutonomousComplex[] = []
 
     // Everyone has an inner critic (from guardian)
-    if (soulState.guardianPo.current > 0.3) {
+    if (soulState.tunZei.current > 0.3) {
       parts.push(this.createInnerCritic(soulState))
     }
 
@@ -173,7 +173,7 @@ export class AutonomousComplexSystem {
     }
 
     // Emotional wound creates inner child
-    if (soulState.emotionHun.current < 0.5) {
+    if (soulState.youJing.current < 0.5) {
       parts.push(this.createInnerChild(soulState))
     }
 
@@ -208,7 +208,7 @@ export class AutonomousComplexSystem {
    * Create inner critic
    */
   private createInnerCritic(soulState: SoulState): AutonomousComplex {
-    const severity = soulState.guardianPo.current * (1 + soulState.shadowPressure * 0.5)
+    const severity = soulState.tunZei.current * (1 + soulState.shadowPressure * 0.5)
 
     return {
       id: `complex_inner_critic_${Date.now()}`,
@@ -319,7 +319,7 @@ export class AutonomousComplexSystem {
       name: 'Little One',
 
       state: 'exiled',
-      activation: 1 - soulState.emotionHun.current,
+      activation: 1 - soulState.youJing.current,
       blendedWith: false,
 
       characteristics: ['wounded', 'vulnerable', 'needs love', 'frozen in past'],
@@ -654,7 +654,7 @@ export class AutonomousComplexSystem {
     }
 
     // Integration effectiveness depends on method and quality
-    const integrationGain = quality * (soulState.wisdomHun.current * 0.5 + soulState.emotionHun.current * 0.5) * 0.2
+    const integrationGain = quality * (soulState.shuangLing.current * 0.5 + soulState.youJing.current * 0.5) * 0.2
 
     // Build trust
     const trustGain = quality * 0.15

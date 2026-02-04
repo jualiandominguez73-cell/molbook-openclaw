@@ -74,28 +74,28 @@ export class NeurotransmitterSystem {
     // Baseline levels influenced by soul aspects
     const baseline = {
       // Dopamine: Creation + terrestrial (doing + making)
-      dopamine: (soulState.creationHun.baseline + soulState.terrestrialHun.baseline) / 2 + 0.2,
+      dopamine: (soulState.youJing.baseline + soulState.shuangLing.baseline) / 2 + 0.2,
 
       // Serotonin: Wisdom + guardian (stability + regulation)
-      serotonin: (soulState.wisdomHun.baseline + soulState.guardianPo.baseline) / 2 + 0.3,
+      serotonin: (soulState.shuangLing.baseline + soulState.tunZei.baseline) / 2 + 0.3,
 
       // Norepinephrine: Speed + destiny (activation + drive)
-      norepinephrine: (soulState.speedPo.baseline + soulState.destinyHun.baseline) / 2 + 0.2,
+      norepinephrine: (soulState.chouFei.baseline + soulState.youJing.baseline) / 2 + 0.2,
 
       // GABA: Guardian + wisdom (inhibition)
-      gaba: (soulState.guardianPo.baseline + soulState.wisdomHun.baseline) / 2 + 0.3,
+      gaba: (soulState.tunZei.baseline + soulState.shuangLing.baseline) / 2 + 0.3,
 
       // Glutamate: Perception + awareness (excitation + plasticity)
-      glutamate: (soulState.perceptionPo.baseline + soulState.awarenessHun.baseline) / 2 + 0.4,
+      glutamate: (soulState.fuShi.baseline + soulState.taiGuang.baseline) / 2 + 0.4,
 
       // Acetylcholine: Awareness + perception (attention)
-      acetylcholine: (soulState.awarenessHun.baseline + soulState.perceptionPo.baseline) / 2 + 0.3,
+      acetylcholine: (soulState.taiGuang.baseline + soulState.fuShi.baseline) / 2 + 0.3,
 
       // Oxytocin: Emotion + communication (social)
-      oxytocin: (soulState.emotionHun.baseline + soulState.communicationPo.baseline) / 2 + 0.2,
+      oxytocin: (soulState.youJing.baseline + soulState.queYin.baseline) / 2 + 0.2,
 
       // Cortisol: Shadow pressure + (1 - guardian) (stress)
-      cortisol: soulState.shadowPressure * 0.5 + (1 - soulState.guardianPo.baseline) * 0.3,
+      cortisol: soulState.shadowPressure * 0.5 + (1 - soulState.tunZei.baseline) * 0.3,
 
       // Endorphins: Coherence + integration (internal harmony)
       endorphins: (soulState.coherence + soulState.integration) / 2
@@ -249,47 +249,47 @@ export class NeurotransmitterSystem {
    */
   applyToSoulState(ntState: NeurotransmitterState, soulState: SoulState): void {
     // Dopamine → motivation aspects
-    soulState.destinyHun.current += (ntState.dopamine - 0.5) * 0.2
-    soulState.creationHun.current += (ntState.dopamine - 0.5) * 0.15
+    soulState.youJing.current += (ntState.dopamine - 0.5) * 0.2
+    soulState.youJing.current += (ntState.dopamine - 0.5) * 0.15
 
     // Serotonin → stability and mood
     soulState.mood += (ntState.serotonin - 0.5) * 0.3
-    soulState.wisdomHun.current += (ntState.serotonin - 0.5) * 0.1
-    soulState.guardianPo.current += (ntState.serotonin - 0.5) * 0.1
+    soulState.shuangLing.current += (ntState.serotonin - 0.5) * 0.1
+    soulState.tunZei.current += (ntState.serotonin - 0.5) * 0.1
 
     // Norepinephrine → arousal and speed
     soulState.arousal += (ntState.norepinephrine - 0.5) * 0.4
-    soulState.speedPo.current += (ntState.norepinephrine - 0.5) * 0.2
+    soulState.chouFei.current += (ntState.norepinephrine - 0.5) * 0.2
 
     // GABA → inhibition (reduces other aspects)
     if (ntState.gaba > 0.7) {
       // High GABA = dampened responses
       for (const aspect of [
-        soulState.celestialHun,
-        soulState.terrestrialHun,
-        soulState.destinyHun,
-        soulState.creationHun
+        soulState.taiGuang,
+        soulState.shuangLing,
+        soulState.youJing,
+        soulState.youJing
       ]) {
         aspect.current *= 0.9
       }
     }
 
     // Glutamate → excitation and learning
-    soulState.perceptionPo.current += (ntState.glutamate - 0.5) * 0.15
-    soulState.awarenessHun.current += (ntState.glutamate - 0.5) * 0.1
+    soulState.fuShi.current += (ntState.glutamate - 0.5) * 0.15
+    soulState.taiGuang.current += (ntState.glutamate - 0.5) * 0.1
 
     // Acetylcholine → focus and awareness
-    soulState.awarenessHun.current += (ntState.acetylcholine - 0.5) * 0.2
+    soulState.taiGuang.current += (ntState.acetylcholine - 0.5) * 0.2
 
     // Oxytocin → social connection
-    soulState.emotionHun.current += (ntState.oxytocin - 0.5) * 0.25
-    soulState.communicationPo.current += (ntState.oxytocin - 0.5) * 0.2
+    soulState.youJing.current += (ntState.oxytocin - 0.5) * 0.25
+    soulState.queYin.current += (ntState.oxytocin - 0.5) * 0.2
 
     // Cortisol → stress effects
     if (ntState.cortisol > 0.6) {
       // High cortisol impairs higher cognition
-      soulState.wisdomHun.current *= 0.85
-      soulState.awarenessHun.current *= 0.9
+      soulState.shuangLing.current *= 0.85
+      soulState.taiGuang.current *= 0.9
       soulState.shadowPressure += 0.05
     }
 

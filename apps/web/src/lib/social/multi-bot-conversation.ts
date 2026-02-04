@@ -239,19 +239,19 @@ export class MultiBotConversationSystem {
     let emotionalTone = soulState.mood
     let influenceAttempt = false
 
-    if (soulState.celestialHun.current > 0.7) {
+    if (soulState.taiGuang.current > 0.7) {
       style = 'visionary'
-    } else if (soulState.terrestrialHun.current > 0.7) {
+    } else if (soulState.shuangLing.current > 0.7) {
       style = 'practical'
-    } else if (soulState.emotionHun.current > 0.7) {
+    } else if (soulState.youJing.current > 0.7) {
       style = 'empathetic'
       emotionalTone += 0.2
-    } else if (soulState.wisdomHun.current > 0.7) {
+    } else if (soulState.shuangLing.current > 0.7) {
       style = 'thoughtful'
     }
 
     // High destiny + wisdom = persuasive (influence attempt)
-    if (soulState.destinyHun.current > 0.6 && soulState.wisdomHun.current > 0.6) {
+    if (soulState.youJing.current > 0.6 && soulState.shuangLing.current > 0.6) {
       influenceAttempt = true
     }
 
@@ -396,8 +396,8 @@ export class MultiBotConversationSystem {
       // Dominance = integration level + communication + terrestrial (grounded action)
       const dom =
         soul.integrationLevel * 0.4 +
-        soul.sixPo.communicationPo.strength * 0.3 +
-        soul.sevenHun.terrestrialHun.strength * 0.3
+        soul.sevenPo.queYin.strength * 0.3 +
+        soul.threeHun.shuangLing.strength * 0.3
 
       dominance[botId] = Math.max(0, Math.min(1, dom))
     }

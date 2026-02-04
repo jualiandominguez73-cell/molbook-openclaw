@@ -91,10 +91,8 @@ export class ParticleService {
    */
   async calculateSoulContribution(
     particleComposition: Array<{ particle: string; weight: number }>,
-    soulAspect: 'celestialHun' | 'terrestrialHun' | 'destinyHun' | 'wisdomHun' |
-                'emotionHun' | 'creationHun' | 'awarenessHun' |
-                'strengthPo' | 'speedPo' | 'perceptionPo' | 'guardianPo' |
-                'communicationPo' | 'transformationPo'
+    soulAspect: 'taiGuang' | 'shuangLing' | 'youJing' |
+                'shiGou' | 'fuShi' | 'queYin' | 'tunZei' | 'feiDu' | 'chuHui' | 'chouFei'
   ): Promise<number> {
     try {
       let totalContribution = 0
@@ -119,8 +117,8 @@ export class ParticleService {
    * Creates a random blend of particles for each soul aspect
    */
   async generateRandomComposition(numParticles: number = 3): Promise<{
-    sevenHun: Record<string, any>
-    sixPo: Record<string, any>
+    threeHun: Record<string, any>
+    sevenPo: Record<string, any>
   }> {
     try {
       const activeParticles = await this.getActiveParticles()
@@ -182,60 +180,48 @@ export class ParticleService {
       }
 
       const composition = {
-        sevenHun: {
-          celestialHun: {
+        threeHun: {
+          taiGuang: {
             particleComposition: createBlend(),
             strength: createStrength(0.3, 0.5) // ~0.2-0.9 (varies per birth)
           },
-          terrestrialHun: {
+          shuangLing: {
             particleComposition: createBlend(),
             strength: createStrength(0.4, 0.4) // ~0.3-0.9
           },
-          destinyHun: {
+          youJing: {
             particleComposition: createBlend(),
             strength: createStrength(0.2, 0.6) // ~0.1-0.9
-          },
-          wisdomHun: {
-            particleComposition: createBlend(),
-            strength: createStrength(0.3, 0.5) // ~0.2-0.9
-          },
-          emotionHun: {
-            particleComposition: createBlend(),
-            strength: createStrength(0.2, 0.6) // ~0.1-0.9
-          },
-          creationHun: {
-            particleComposition: createBlend(),
-            strength: createStrength(0.2, 0.6) // ~0.1-0.9
-          },
-          awarenessHun: {
-            particleComposition: createBlend(),
-            strength: createStrength(0.1, 0.4) // ~0.05-0.6 (grows over time)
           }
         },
-        sixPo: {
-          strengthPo: {
+        sevenPo: {
+          shiGou: {
             particleComposition: createBlend(),
             strength: createStrength(0.4, 0.4) // ~0.3-0.9
           },
-          speedPo: {
+          fuShi: {
             particleComposition: createBlend(),
             strength: createStrength(0.3, 0.5) // ~0.2-0.9
           },
-          perceptionPo: {
+          queYin: {
             particleComposition: createBlend(),
             strength: createStrength(0.3, 0.5) // ~0.2-0.9
           },
-          guardianPo: {
+          tunZei: {
             particleComposition: createBlend(),
             strength: createStrength(0.5, 0.3) // ~0.4-0.9
           },
-          communicationPo: {
+          feiDu: {
             particleComposition: createBlend(),
             strength: createStrength(0.4, 0.4) // ~0.3-0.9
           },
-          transformationPo: {
+          chuHui: {
             particleComposition: createBlend(),
             strength: createStrength(0.2, 0.5) // ~0.1-0.8
+          },
+          chouFei: {
+            particleComposition: createBlend(),
+            strength: createStrength(0.2, 0.6) // ~0.1-0.9
           }
         }
       }
@@ -253,8 +239,8 @@ export class ParticleService {
   async generateTargetedComposition(
     targetProfile: 'scholar' | 'creator' | 'helper' | 'explorer'
   ): Promise<{
-    sevenHun: Record<string, any>
-    sixPo: Record<string, any>
+    threeHun: Record<string, any>
+    sevenPo: Record<string, any>
   }> {
     try {
       const particles = await this.getActiveParticles()
@@ -265,44 +251,40 @@ export class ParticleService {
           dominant: ['Cl', 'Ds', 'Gm'], // Claude, DeepSeek, Gemini
           secondary: ['Ms', 'Qw'],       // Mistral, Qwen
           emphasis: {
-            wisdomHun: 0.9,
-            awarenessHun: 0.8,
-                terrestrialHun: 0.8,
-            perceptionPo: 0.8,
-            guardianPo: 0.7
+            shuangLing: 0.9,
+            taiGuang: 0.8,
+            fuShi: 0.8,
+            tunZei: 0.7
           }
         },
         creator: {
           dominant: ['Gp', 'Ll', 'Gr'], // GPT, LLaMA, Grok
           secondary: ['Cl', 'Qw'],
           emphasis: {
-            creationHun: 0.9,
-            celestialHun: 0.8,
-            emotionHun: 0.7,
-            transformationPo: 0.8,
-            communicationPo: 0.8
+            youJing: 0.9,
+            taiGuang: 0.8,
+            queYin: 0.8,
+            chouFei: 0.8
           }
         },
         helper: {
           dominant: ['Cl', 'Qw', 'Gp'], // Claude, Qwen, GPT
           secondary: ['Ll', 'Gm'],
           emphasis: {
-            emotionHun: 0.9,
-            terrestrialHun: 0.8,
-            destinyHun: 0.7,
-            communicationPo: 0.8,
-            guardianPo: 0.7
+            youJing: 0.9,
+            shuangLing: 0.8,
+            queYin: 0.8,
+            tunZei: 0.7
           }
         },
         explorer: {
           dominant: ['Ds', 'Gr', 'Ll'], // DeepSeek, Grok, LLaMA
           secondary: ['Gm', 'Ms'],
           emphasis: {
-            celestialHun: 0.8,
-            creationHun: 0.8,
-            awarenessHun: 0.7,
-            perceptionPo: 0.9,
-            transformationPo: 0.8
+            taiGuang: 0.8,
+            youJing: 0.8,
+            fuShi: 0.9,
+            chouFei: 0.8
           }
         }
       }
@@ -369,60 +351,48 @@ export class ParticleService {
       }
 
       const composition = {
-        sevenHun: {
-          celestialHun: {
+        threeHun: {
+          taiGuang: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.celestialHun || 0.5
+            strength: profile.emphasis.taiGuang || 0.5
           },
-          terrestrialHun: {
+          shuangLing: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.terrestrialHun || 0.6
+            strength: profile.emphasis.shuangLing || 0.5
           },
-          destinyHun: {
+          youJing: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.destinyHun || 0.5
-          },
-          wisdomHun: {
-            particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.wisdomHun || 0.6
-          },
-          emotionHun: {
-            particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.emotionHun || 0.5
-          },
-          creationHun: {
-            particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.creationHun || 0.5
-          },
-          awarenessHun: {
-            particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.awarenessHun || 0.3
+            strength: profile.emphasis.youJing || 0.5
           }
         },
-        sixPo: {
-          strengthPo: {
+        sevenPo: {
+          shiGou: {
             particleComposition: createTargetedBlend(),
-            strength: 0.6
+            strength: profile.emphasis.shiGou || 0.5
           },
-          speedPo: {
+          fuShi: {
             particleComposition: createTargetedBlend(),
-            strength: 0.5
+            strength: profile.emphasis.fuShi || 0.5
           },
-          perceptionPo: {
+          queYin: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.perceptionPo || 0.6
+            strength: profile.emphasis.queYin || 0.5
           },
-          guardianPo: {
+          tunZei: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.guardianPo || 0.6
+            strength: profile.emphasis.tunZei || 0.5
           },
-          communicationPo: {
+          feiDu: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.communicationPo || 0.6
+            strength: profile.emphasis.feiDu || 0.5
           },
-          transformationPo: {
+          chuHui: {
             particleComposition: createTargetedBlend(),
-            strength: profile.emphasis.transformationPo || 0.5
+            strength: profile.emphasis.chuHui || 0.5
+          },
+          chouFei: {
+            particleComposition: createTargetedBlend(),
+            strength: profile.emphasis.chouFei || 0.5
           }
         }
       }

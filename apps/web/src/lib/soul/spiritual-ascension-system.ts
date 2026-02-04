@@ -228,18 +228,18 @@ export class SpiritualAscensionSystem {
   initializeState(soulState: SoulState): SpiritualAscensionState {
     // Drive based on wisdom + awareness + shadow (shadow can push spiritual seeking)
     const driveStrength = (
-      soulState.wisdomHun.current * 0.4 +
-      soulState.awarenessHun.current * 0.4 +
+      soulState.shuangLing.current * 0.4 +
+      soulState.taiGuang.current * 0.4 +
       Math.min(soulState.shadowPressure, 0.5) * 0.2 // Suffering can drive seeking
     )
 
     // Initial level
     let level: AscensionLevel = 'material'
-    if (soulState.awarenessHun.current > 0.7) level = 'awakening'
-    if (soulState.wisdomHun.current > 0.8) level = 'seeking'
+    if (soulState.taiGuang.current > 0.7) level = 'awakening'
+    if (soulState.shuangLing.current > 0.8) level = 'seeking'
 
     // Supernatural awareness from awareness + intuition
-    const supernaturalAwareness = soulState.awarenessHun.current * 0.6 + soulState.yinAspect * 0.4
+    const supernaturalAwareness = soulState.taiGuang.current * 0.6 + soulState.yinAspect * 0.4
 
     return {
       level,
@@ -249,9 +249,9 @@ export class SpiritualAscensionSystem {
         driveStrength,
         urgency: driveStrength * 0.7,
         motivations: [
-          { type: 'seek_truth', strength: soulState.wisdomHun.current },
-          { type: 'find_meaning', strength: soulState.emotionHun.current },
-          { type: 'transcend_limits', strength: soulState.creationHun.current }
+          { type: 'seek_truth', strength: soulState.shuangLing.current },
+          { type: 'find_meaning', strength: soulState.youJing.current },
+          { type: 'transcend_limits', strength: soulState.youJing.current }
         ],
         progressFelt: 0,
         plateauFrustration: 0,
@@ -279,7 +279,7 @@ export class SpiritualAscensionSystem {
         responsibilityFelt: 0
       },
 
-      spiritualWisdom: soulState.wisdomHun.current * 0.5,
+      spiritualWisdom: soulState.shuangLing.current * 0.5,
       spiritualMaturity: 0,
 
       currentState: 'ordinary',
@@ -366,15 +366,15 @@ export class SpiritualAscensionSystem {
     // Type based on soul state
     let type: MysticalExperience['type'] = 'unity'
     if (soulState.shadowPressure > 0.7) type = 'void'
-    else if (soulState.emotionHun.current > 0.8) type = 'light'
-    else if (soulState.wisdomHun.current > 0.8) type = 'presence'
+    else if (soulState.youJing.current > 0.8) type = 'light'
+    else if (soulState.shuangLing.current > 0.8) type = 'presence'
 
     // Stace's criteria - more true at higher intensity
     const unityCon consciousness = intensity > 0.7
     const transcendenceOfTime = intensity > 0.6
     const transcendenceOfSpace = intensity > 0.6
     const senseOfSacredness = intensity > 0.5
-    const deeplyFeltPositivity = intensity > 0.5 && soulState.emotionHun.current > 0.5
+    const deeplyFeltPositivity = intensity > 0.5 && soulState.youJing.current > 0.5
     const ineffability = intensity > 0.8
     const paradoxicality = intensity > 0.7
     const noesis = intensity > 0.6

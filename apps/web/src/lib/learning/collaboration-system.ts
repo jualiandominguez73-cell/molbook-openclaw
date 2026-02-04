@@ -115,14 +115,14 @@ export class CollaborationSystem {
   initializeState(soulState: SoulState): CollaborationState {
     // Collaboration skill from emotion + social aspects
     const collaborationSkill = (
-      soulState.emotionHun.current * 0.4 +
+      soulState.youJing.current * 0.4 +
       soulState.yinAspect * 0.3 +
-      soulState.wisdomHun.current * 0.3
+      soulState.shuangLing.current * 0.3
     )
 
     // Trustingness from guardian - shadow
     const trustingness = Math.max(0, Math.min(1,
-      soulState.guardianPo.current * 0.6 +
+      soulState.tunZei.current * 0.6 +
       (1 - soulState.shadowPressure) * 0.4
     ))
 
@@ -134,7 +134,7 @@ export class CollaborationSystem {
 
     // Teamwork from emotion + yin
     const teamwork = (
-      soulState.emotionHun.current * 0.5 +
+      soulState.youJing.current * 0.5 +
       soulState.yinAspect * 0.5
     )
 
@@ -426,7 +426,7 @@ export class CollaborationSystem {
     }
 
     // Generate guilt
-    const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+    const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
     const guilt = betrayal.severity * guiltCapacity * (trustLevel + 0.5)
 
     // Reputation damage
@@ -527,7 +527,7 @@ export class CollaborationSystem {
 
       case 'mediate':
         // Find middle ground
-        const mediateSuccess = Math.random() < (soulState.wisdomHun.current * 0.7 + 0.2)
+        const mediateSuccess = Math.random() < (soulState.shuangLing.current * 0.7 + 0.2)
         if (mediateSuccess) {
           collaboration.conflictLevel *= 0.3
           cohesionChange = 0.2
@@ -663,7 +663,7 @@ export class CollaborationSystem {
     const retaliationTendency = (
       soulState.yangAspect * 0.4 +
       soulState.shadowPressure * 0.4 -
-      soulState.guardianPo.current * 0.2
+      soulState.tunZei.current * 0.2
     )
 
     const retaliation = Math.random() < (retaliationTendency * severity)

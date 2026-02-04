@@ -9,7 +9,7 @@
  * - Optimizes communication clarity
  * - Handles multilingual context
  *
- * Influenced by: creationHun, emotionHun, communicationPo, perceptionPo
+ * Influenced by: youJing, youJing, queYin, fuShi
  *
  * Processing Modes:
  * - Parse: Understanding incoming language
@@ -50,10 +50,10 @@ export class LinguistAgent extends BaseAgent {
       this.consumeEnergy(0.06)
 
       // Get soul-derived linguistic parameters
-      const expressiveCapacity = this.getEffectiveParameter('creationHun', 0.6) // Language generation
-      const emotionalReading = this.getEffectiveParameter('emotionHun', 0.5) // Tone detection
-      const communicationClarity = this.getEffectiveParameter('communicationPo', 0.7) // Clear expression
-      const perceptualSensitivity = this.getEffectiveParameter('perceptionPo', 0.6) // Nuance detection
+      const expressiveCapacity = this.getEffectiveParameter('youJing', 0.6) // Language generation
+      const emotionalReading = this.getEffectiveParameter('youJing', 0.5) // Tone detection
+      const communicationClarity = this.getEffectiveParameter('queYin', 0.7) // Clear expression
+      const perceptualSensitivity = this.getEffectiveParameter('fuShi', 0.6) // Nuance detection
 
       // Analyze input language
       const analysis = this.analyzeLinguistics(input, {

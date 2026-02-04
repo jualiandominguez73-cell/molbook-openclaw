@@ -230,17 +230,17 @@ export class DreamingSystem {
     // (Like neurotransmitter levels normalize during sleep)
 
     const aspectNames = [
-      'celestialHun',
-      'terrestrialHun',
-      'destinyHun',
-      'wisdomHun',
-      'emotionHun',
-      'creationHun',
-      'awarenessHun'
+      'taiGuang',
+      'shuangLing',
+      'youJing',
+      'shuangLing',
+      'youJing',
+      'youJing',
+      'taiGuang'
     ]
 
     for (const aspectName of aspectNames) {
-      const aspect = soul.sevenHun[aspectName]
+      const aspect = soul.threeHun[aspectName]
       if (aspect && aspect.strength !== undefined) {
         // Gradual restoration (longer dream = more restoration)
         const restorationRate = 0.1 * (duration / 60) // 10% per hour

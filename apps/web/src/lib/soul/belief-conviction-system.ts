@@ -219,23 +219,23 @@ export class BeliefConvictionSystem {
     const coreValues: MeaningFramework['coreValues'] = []
 
     // Wisdom → philosophical inclination
-    if (soulState.wisdomHun.current > 0.6) {
+    if (soulState.shuangLing.current > 0.6) {
       coreValues.push({ value: 'truth', priority: 1, satisfactionLevel: 0.5 })
     }
 
     // Guardian → moral concern
-    if (soulState.guardianPo.current > 0.6) {
+    if (soulState.tunZei.current > 0.6) {
       coreValues.push({ value: 'righteousness', priority: 2, satisfactionLevel: 0.5 })
     }
 
     // Emotion → connection
-    if (soulState.emotionHun.current > 0.6) {
+    if (soulState.youJing.current > 0.6) {
       coreValues.push({ value: 'love', priority: 3, satisfactionLevel: 0.5 })
     }
 
     // Dogmatism from yang - openness
-    const dogmatism = Math.max(0, soulState.yangAspect * 0.6 - soulState.wisdomHun.current * 0.4)
-    const openMindedness = soulState.wisdomHun.current * 0.6 + soulState.yinAspect * 0.4
+    const dogmatism = Math.max(0, soulState.yangAspect * 0.6 - soulState.shuangLing.current * 0.4)
+    const openMindedness = soulState.shuangLing.current * 0.6 + soulState.yinAspect * 0.4
 
     return {
       worldView: {
@@ -262,7 +262,7 @@ export class BeliefConvictionSystem {
         coreValues,
         meaningSource: 'discovered',
         existentialAnxiety: soulState.shadowPressure * 0.5,
-        deathAcceptance: soulState.wisdomHun.current * 0.6,
+        deathAcceptance: soulState.shuangLing.current * 0.6,
         sufferingMeaning: 'growth',
         sufferingTolerance: soulState.willHun.current * 0.7
       },

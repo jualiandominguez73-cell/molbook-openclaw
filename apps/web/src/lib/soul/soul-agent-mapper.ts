@@ -34,73 +34,58 @@ export class SoulAgentMapper {
 
   // The influence matrix from the architecture spec
   private readonly INFLUENCE_MATRIX: SoulInfluenceMatrix = {
-    // Seven Hún (Ethereal)
-    'celestialHun': {
-      '01-orchestrator': 'H', '02-inhibitor': 'M', '03-analyst': 'L', '04-linguist': 'M',
-      '05-fact-retrieval': '-', '06-creative': 'H', '07-empathy': 'M', '08-cultural': 'M',
-      '09-coordinator': '-', '10-domain': 'L', '11-monitor': '-', '12-learning': 'M'
-    },
-    'terrestrialHun': {
-      '01-orchestrator': 'H', '02-inhibitor': 'M', '03-analyst': 'H', '04-linguist': 'M',
-      '05-fact-retrieval': 'H', '06-creative': 'L', '07-empathy': 'M', '08-cultural': 'H',
-      '09-coordinator': 'M', '10-domain': 'H', '11-monitor': 'M', '12-learning': 'M'
-    },
-    'destinyHun': {
-      '01-orchestrator': 'H', '02-inhibitor': 'M', '03-analyst': 'L', '04-linguist': 'M',
-      '05-fact-retrieval': '-', '06-creative': 'M', '07-empathy': 'M', '08-cultural': 'L',
-      '09-coordinator': 'M', '10-domain': 'M', '11-monitor': '-', '12-learning': 'H'
-    },
-    'wisdomHun': {
-      '01-orchestrator': 'H', '02-inhibitor': 'H', '03-analyst': 'H', '04-linguist': 'M',
-      '05-fact-retrieval': 'H', '06-creative': 'M', '07-empathy': 'L', '08-cultural': 'M',
-      '09-coordinator': 'M', '10-domain': 'H', '11-monitor': '-', '12-learning': 'H'
-    },
-    'emotionHun': {
-      '01-orchestrator': 'M', '02-inhibitor': 'M', '03-analyst': 'L', '04-linguist': 'H',
-      '05-fact-retrieval': 'L', '06-creative': 'M', '07-empathy': 'H', '08-cultural': 'H',
-      '09-coordinator': 'L', '10-domain': 'L', '11-monitor': '-', '12-learning': 'M'
-    },
-    'creationHun': {
-      '01-orchestrator': 'M', '02-inhibitor': 'L', '03-analyst': 'M', '04-linguist': 'H',
-      '05-fact-retrieval': 'L', '06-creative': 'H', '07-empathy': 'L', '08-cultural': 'M',
-      '09-coordinator': 'L', '10-domain': 'M', '11-monitor': '-', '12-learning': 'M'
-    },
-    'awarenessHun': {
+    // Three Hún (Ethereal)
+    'taiGuang': {
       '01-orchestrator': 'H', '02-inhibitor': 'H', '03-analyst': 'M', '04-linguist': 'M',
-      '05-fact-retrieval': 'H', '06-creative': 'M', '07-empathy': 'M', '08-cultural': 'M',
+      '05-fact-retrieval': 'H', '06-creative': 'H', '07-empathy': 'M', '08-cultural': 'M',
       '09-coordinator': 'L', '10-domain': 'L', '11-monitor': 'M', '12-learning': 'H'
     },
+    'shuangLing': {
+      '01-orchestrator': 'H', '02-inhibitor': 'H', '03-analyst': 'H', '04-linguist': 'M',
+      '05-fact-retrieval': 'H', '06-creative': 'M', '07-empathy': 'L', '08-cultural': 'H',
+      '09-coordinator': 'M', '10-domain': 'H', '11-monitor': 'M', '12-learning': 'H'
+    },
+    'youJing': {
+      '01-orchestrator': 'H', '02-inhibitor': 'M', '03-analyst': 'M', '04-linguist': 'H',
+      '05-fact-retrieval': 'L', '06-creative': 'H', '07-empathy': 'H', '08-cultural': 'H',
+      '09-coordinator': 'M', '10-domain': 'M', '11-monitor': '-', '12-learning': 'H'
+    },
 
-    // Six Pò (Corporeal)
-    'strengthPo': {
-      '01-orchestrator': 'M', '02-inhibitor': 'L', '03-analyst': 'M', '04-linguist': 'M',
+    // Seven Pò (Corporeal)
+    'shiGou': {
+      '01-orchestrator': 'M', '02-inhibitor': 'L', '03-analyst': 'M', '04-linguist': 'L',
       '05-fact-retrieval': 'H', '06-creative': 'L', '07-empathy': 'L', '08-cultural': 'L',
       '09-coordinator': 'H', '10-domain': 'H', '11-monitor': 'H', '12-learning': 'M'
     },
-    'speedPo': {
-      '01-orchestrator': 'M', '02-inhibitor': 'L', '03-analyst': 'M', '04-linguist': 'M',
-      '05-fact-retrieval': 'M', '06-creative': 'L', '07-empathy': 'L', '08-cultural': 'L',
-      '09-coordinator': 'H', '10-domain': 'M', '11-monitor': 'H', '12-learning': 'L'
-    },
-    'perceptionPo': {
+    'fuShi': {
       '01-orchestrator': 'M', '02-inhibitor': 'M', '03-analyst': 'H', '04-linguist': 'H',
       '05-fact-retrieval': 'M', '06-creative': 'H', '07-empathy': 'H', '08-cultural': 'H',
       '09-coordinator': 'L', '10-domain': 'M', '11-monitor': 'M', '12-learning': 'H'
     },
-    'guardianPo': {
-      '01-orchestrator': 'M', '02-inhibitor': 'H', '03-analyst': 'M', '04-linguist': 'L',
-      '05-fact-retrieval': 'M', '06-creative': 'L', '07-empathy': 'H', '08-cultural': 'M',
-      '09-coordinator': 'M', '10-domain': 'M', '11-monitor': 'H', '12-learning': 'M'
-    },
-    'communicationPo': {
+    'queYin': {
       '01-orchestrator': 'L', '02-inhibitor': 'L', '03-analyst': 'M', '04-linguist': 'H',
       '05-fact-retrieval': 'M', '06-creative': 'M', '07-empathy': 'H', '08-cultural': 'H',
       '09-coordinator': 'M', '10-domain': 'M', '11-monitor': 'L', '12-learning': 'L'
     },
-    'transformationPo': {
-      '01-orchestrator': 'M', '02-inhibitor': 'M', '03-analyst': 'M', '04-linguist': 'M',
-      '05-fact-retrieval': 'M', '06-creative': 'H', '07-empathy': 'M', '08-cultural': 'H',
-      '09-coordinator': 'M', '10-domain': 'M', '11-monitor': 'M', '12-learning': 'H'
+    'tunZei': {
+      '01-orchestrator': 'M', '02-inhibitor': 'H', '03-analyst': 'M', '04-linguist': 'L',
+      '05-fact-retrieval': 'M', '06-creative': 'L', '07-empathy': 'H', '08-cultural': 'M',
+      '09-coordinator': 'M', '10-domain': 'M', '11-monitor': 'H', '12-learning': 'M'
+    },
+    'feiDu': {
+      '01-orchestrator': 'M', '02-inhibitor': 'H', '03-analyst': 'H', '04-linguist': 'M',
+      '05-fact-retrieval': 'M', '06-creative': 'L', '07-empathy': 'M', '08-cultural': 'M',
+      '09-coordinator': 'L', '10-domain': 'M', '11-monitor': 'H', '12-learning': 'M'
+    },
+    'chuHui': {
+      '01-orchestrator': 'L', '02-inhibitor': 'M', '03-analyst': 'M', '04-linguist': 'L',
+      '05-fact-retrieval': 'H', '06-creative': 'M', '07-empathy': 'L', '08-cultural': 'L',
+      '09-coordinator': 'H', '10-domain': 'L', '11-monitor': 'H', '12-learning': 'H'
+    },
+    'chouFei': {
+      '01-orchestrator': 'M', '02-inhibitor': 'L', '03-analyst': 'M', '04-linguist': 'M',
+      '05-fact-retrieval': 'M', '06-creative': 'L', '07-empathy': 'L', '08-cultural': 'L',
+      '09-coordinator': 'H', '10-domain': 'M', '11-monitor': 'H', '12-learning': 'L'
     }
   }
 
@@ -179,13 +164,14 @@ export class SoulAgentMapper {
       }
     }
 
-    // Process each soul aspect (7 hún + 6 pò)
+    // Process each soul aspect (3 hún + 7 pò)
     const soulAspects = [
-      'celestialHun', 'terrestrialHun', 'destinyHun', 'wisdomHun',
-      'emotionHun', 'creationHun', 'awarenessHun',
-      'strengthPo', 'speedPo', 'perceptionPo', 'guardianPo',
-      'communicationPo', 'transformationPo'
+      'taiGuang', 'shuangLing', 'youJing',
+      'shiGou', 'fuShi', 'queYin', 'tunZei',
+      'feiDu', 'chuHui', 'chouFei'
     ]
+
+    const threeHun = new Set(['taiGuang', 'shuangLing', 'youJing'])
 
     let totalInfluence = 0
     let maxInfluence = 0
@@ -199,7 +185,7 @@ export class SoulAgentMapper {
       if (influenceWeight === 0) continue
 
       // Get soul aspect strength from the soul composition
-      const aspectPath = aspect.endsWith('Hun') ? 'sevenHun' : 'sixPo'
+      const aspectPath = threeHun.has(aspect) ? 'threeHun' : 'sevenPo'
       const aspectData = soul[aspectPath]?.[aspect]
 
       if (!aspectData) continue

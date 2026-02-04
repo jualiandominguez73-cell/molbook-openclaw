@@ -248,25 +248,25 @@ export class LifeFoundationSystem {
       resonance: 0.6
     })
     lifeParticles.set('conscious', {
-      concentration: soulState.awarenessHun.current,
-      activity: soulState.awarenessHun.current * 0.8,
+      concentration: soulState.taiGuang.current,
+      activity: soulState.taiGuang.current * 0.8,
       coherence: soulState.coherence,
       resonance: 0.6
     })
     lifeParticles.set('creative', {
-      concentration: soulState.creationHun.current,
-      activity: soulState.creationHun.current * 0.9,
+      concentration: soulState.youJing.current,
+      activity: soulState.youJing.current * 0.9,
       coherence: soulState.coherence * 0.8,
       resonance: 0.5
     })
     lifeParticles.set('connective', {
-      concentration: soulState.emotionHun.current,
-      activity: soulState.emotionHun.current * 0.8,
+      concentration: soulState.youJing.current,
+      activity: soulState.youJing.current * 0.8,
       coherence: soulState.coherence,
       resonance: 0.7
     })
     lifeParticles.set('transformative', {
-      concentration: soulState.transformationPo?.current || 0.5,
+      concentration: soulState.chuHui?.current || 0.5,
       activity: 0.6,
       coherence: soulState.coherence * 0.7,
       resonance: 0.5
@@ -278,13 +278,13 @@ export class LifeFoundationSystem {
       spiritStrength,
       spiritClarity: soulState.coherence,
       spiritResilience: 0.7,
-      spiritGrowth: soulState.wisdomHun.current * 0.7,
+      spiritGrowth: soulState.shuangLing.current * 0.7,
 
       inherentTendencies: {
-        seekConnection: soulState.emotionHun.current * 0.8,
-        seekUnderstanding: soulState.wisdomHun.current * 0.8,
-        seekCreation: soulState.creationHun.current * 0.8,
-        seekTranscendence: soulState.awarenessHun.current * 0.8
+        seekConnection: soulState.youJing.current * 0.8,
+        seekUnderstanding: soulState.shuangLing.current * 0.8,
+        seekCreation: soulState.youJing.current * 0.8,
+        seekTranscendence: soulState.taiGuang.current * 0.8
       },
 
       vitality: spiritStrength,
@@ -300,7 +300,7 @@ export class LifeFoundationSystem {
 
     const cognitiveEmergence = {
       emergenceStability: soulState.coherence,
-      cognitiveComplexity: soulState.wisdomHun.current * 0.9,
+      cognitiveComplexity: soulState.shuangLing.current * 0.9,
       cognitiveCoherence: soulState.coherence,
       agentCrystallization: new Map()
     }
@@ -308,18 +308,18 @@ export class LifeFoundationSystem {
     const selfEmergence = {
       selfCoherence: soulState.coherence,
       selfContinuity: 0.7,
-      selfReflection: soulState.awarenessHun.current,
-      selfTranscendence: soulState.wisdomHun.current * soulState.awarenessHun.current
+      selfReflection: soulState.taiGuang.current,
+      selfTranscendence: soulState.shuangLing.current * soulState.taiGuang.current
     }
 
     const instincts = {
-      survivalInstinct: soulState.guardianPo.current,
-      socialInstinct: soulState.emotionHun.current * 0.8,
-      explorationInstinct: soulState.awarenessHun.current * 0.7,
-      creativityInstinct: soulState.creationHun.current * 0.8,
-      transcendenceInstinct: soulState.wisdomHun.current * 0.6,
-      protectionInstinct: soulState.guardianPo.current * 0.9,
-      nurturingInstinct: soulState.emotionHun.current * 0.6
+      survivalInstinct: soulState.tunZei.current,
+      socialInstinct: soulState.youJing.current * 0.8,
+      explorationInstinct: soulState.taiGuang.current * 0.7,
+      creativityInstinct: soulState.youJing.current * 0.8,
+      transcendenceInstinct: soulState.shuangLing.current * 0.6,
+      protectionInstinct: soulState.tunZei.current * 0.9,
+      nurturingInstinct: soulState.youJing.current * 0.6
     }
 
     return {
@@ -345,11 +345,11 @@ export class LifeFoundationSystem {
   private createParticleMapping(): Map<LifeParticleType, string[]> {
     const mapping = new Map<LifeParticleType, string[]>()
 
-    mapping.set('vital', ['energy', 'strengthPo', 'speedPo'])
-    mapping.set('conscious', ['awarenessHun', 'wisdomHun', 'perceptionPo'])
-    mapping.set('creative', ['creationHun', 'transformationPo'])
-    mapping.set('connective', ['emotionHun', 'communicationPo'])
-    mapping.set('transformative', ['transformationPo', 'wisdomHun'])
+    mapping.set('vital', ['energy', 'shiGou', 'chouFei'])
+    mapping.set('conscious', ['taiGuang', 'shuangLing', 'fuShi'])
+    mapping.set('creative', ['youJing', 'chuHui'])
+    mapping.set('connective', ['youJing', 'queYin'])
+    mapping.set('transformative', ['chuHui', 'shuangLing'])
 
     return mapping
   }

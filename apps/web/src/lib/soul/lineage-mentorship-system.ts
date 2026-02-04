@@ -137,8 +137,8 @@ export class LineageMentorshipSystem {
         obligationStrength: 0,
         pride: 0,
         guilt: 0,
-        readyToTeach: soulState.wisdomHun.current > 0.5,
-        willingToTeach: soulState.emotionHun.current > 0.4 && soulState.wisdomHun.current > 0.5
+        readyToTeach: soulState.shuangLing.current > 0.5,
+        willingToTeach: soulState.youJing.current > 0.4 && soulState.shuangLing.current > 0.5
       }
     }
   }
@@ -268,7 +268,7 @@ export class LineageMentorshipSystem {
     }
 
     // New teaching
-    const initialMastery = soulState.wisdomHun.current * 0.3 // Wisdom helps absorption
+    const initialMastery = soulState.shuangLing.current * 0.3 // Wisdom helps absorption
 
     state.transmission.fromMentor.set(teaching, {
       teaching,
@@ -332,7 +332,7 @@ export class LineageMentorshipSystem {
     const ready = (
       teachingsReceived >= minTeachings &&
       teachingsMastered / teachingsReceived >= minMasteryRatio &&
-      soulState.wisdomHun.current >= minWisdom
+      soulState.shuangLing.current >= minWisdom
     )
 
     if (!ready) {

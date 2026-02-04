@@ -169,7 +169,7 @@ export class ResearchSystem {
   initializeState(soulState: SoulState, learningState: LearningState): ResearchState {
     // Research skill based on wisdom + intellect + curiosity
     const researchSkill = (
-      soulState.wisdomHun.current * 0.4 +
+      soulState.shuangLing.current * 0.4 +
       soulState.intellectPo.current * 0.4 +
       learningState.curiosity * 0.2
     )
@@ -177,7 +177,7 @@ export class ResearchSystem {
     // Creativity from yin + emotion
     const creativity = (
       soulState.yinAspect * 0.6 +
-      soulState.emotionHun.current * 0.4
+      soulState.youJing.current * 0.4
     )
 
     // Rigor from yang + will
@@ -188,8 +188,8 @@ export class ResearchSystem {
 
     // Ethical boundaries from guardian + wisdom - shadow
     const ethicalBoundaries = Math.max(0, Math.min(1,
-      soulState.guardianPo.current * 0.5 +
-      soulState.wisdomHun.current * 0.3 -
+      soulState.tunZei.current * 0.5 +
+      soulState.shuangLing.current * 0.3 -
       soulState.shadowPressure * 0.2
     ))
 
@@ -412,7 +412,7 @@ export class ResearchSystem {
     // Generate guilt if unethical research
     let guiltGenerated = 0
     if (project.method === 'unethical' || project.field === 'forbidden') {
-      const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+      const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
       guiltGenerated = project.ethicalConcerns * guiltCapacity * effort * 0.1
       state.guiltFromResearch += guiltGenerated
 

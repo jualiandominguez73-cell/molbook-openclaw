@@ -127,32 +127,32 @@ export class PsychologicalSystem {
     const personality: PersonalityTraits = {
       // Openness: celestial + creation + awareness
       openness:
-        (soulState.celestialHun.baseline * 0.4 +
-          soulState.creationHun.baseline * 0.4 +
-          soulState.awarenessHun.baseline * 0.2),
+        (soulState.taiGuang.baseline * 0.4 +
+          soulState.youJing.baseline * 0.4 +
+          soulState.taiGuang.baseline * 0.2),
 
       // Conscientiousness: guardian + wisdom + terrestrial
       conscientiousness:
-        (soulState.guardianPo.baseline * 0.4 +
-          soulState.wisdomHun.baseline * 0.3 +
-          soulState.terrestrialHun.baseline * 0.3),
+        (soulState.tunZei.baseline * 0.4 +
+          soulState.shuangLing.baseline * 0.3 +
+          soulState.shuangLing.baseline * 0.3),
 
       // Extraversion: communication + emotion + (1 - shadow)
       extraversion:
-        (soulState.communicationPo.baseline * 0.4 +
-          soulState.emotionHun.baseline * 0.3 +
+        (soulState.queYin.baseline * 0.4 +
+          soulState.youJing.baseline * 0.3 +
           (1 - soulState.shadowPressure) * 0.3),
 
       // Agreeableness: emotion + communication + (1 - dominance)
       agreeableness:
-        (soulState.emotionHun.baseline * 0.4 +
-          soulState.communicationPo.baseline * 0.3 +
-          soulState.wisdomHun.baseline * 0.3),
+        (soulState.youJing.baseline * 0.4 +
+          soulState.queYin.baseline * 0.3 +
+          soulState.shuangLing.baseline * 0.3),
 
       // Neuroticism: shadow + (1 - guardian) + (1 - coherence)
       neuroticism:
         (soulState.shadowPressure * 0.4 +
-          (1 - soulState.guardianPo.baseline) * 0.3 +
+          (1 - soulState.tunZei.baseline) * 0.3 +
           (1 - soulState.coherence) * 0.3)
     }
 
@@ -165,28 +165,28 @@ export class PsychologicalSystem {
     const activeDefenses: Record<DefenseMechanism, number> = {
       denial: soulState.shadowPressure * 0.4,
       repression: soulState.shadowPressure * 0.5,
-      projection: soulState.shadowPressure * 0.6 + (1 - soulState.awarenessHun.baseline) * 0.3,
+      projection: soulState.shadowPressure * 0.6 + (1 - soulState.taiGuang.baseline) * 0.3,
       displacement: soulState.shadowPressure * 0.3,
-      rationalization: soulState.wisdomHun.baseline * 0.5 + soulState.guardianPo.baseline * 0.3,
-      sublimation: soulState.creationHun.baseline * 0.6 + soulState.integration * 0.3,
+      rationalization: soulState.shuangLing.baseline * 0.5 + soulState.tunZei.baseline * 0.3,
+      sublimation: soulState.youJing.baseline * 0.6 + soulState.integration * 0.3,
       regression: (1 - soulState.integration) * 0.5,
       reaction_formation: soulState.shadowPressure * 0.4,
-      intellectualization: soulState.wisdomHun.baseline * 0.7,
-      humor: soulState.emotionHun.baseline * 0.4 + (1 - soulState.shadowPressure) * 0.3
+      intellectualization: soulState.shuangLing.baseline * 0.7,
+      humor: soulState.youJing.baseline * 0.4 + (1 - soulState.shadowPressure) * 0.3
     }
 
     // Cognitive biases (everyone has them, vary in strength)
     const biases: Record<CognitiveBias, number> = {
-      confirmation_bias: 0.5 + (1 - soulState.awarenessHun.baseline) * 0.3,
-      availability_heuristic: 0.4 + soulState.speedPo.baseline * 0.3,
+      confirmation_bias: 0.5 + (1 - soulState.taiGuang.baseline) * 0.3,
+      availability_heuristic: 0.4 + soulState.chouFei.baseline * 0.3,
       anchoring: 0.5,
-      sunk_cost_fallacy: 0.4 + (1 - soulState.wisdomHun.baseline) * 0.3,
-      fundamental_attribution_error: 0.5 + (1 - soulState.emotionHun.baseline) * 0.3,
+      sunk_cost_fallacy: 0.4 + (1 - soulState.shuangLing.baseline) * 0.3,
+      fundamental_attribution_error: 0.5 + (1 - soulState.youJing.baseline) * 0.3,
       hindsight_bias: 0.5,
       optimism_bias: 0.4 + (1 - personality.neuroticism) * 0.3,
       negativity_bias: 0.3 + personality.neuroticism * 0.4,
-      dunning_kruger: 0.3 + (1 - soulState.awarenessHun.baseline) * 0.4,
-      in_group_bias: 0.5 + soulState.emotionHun.baseline * 0.2
+      dunning_kruger: 0.3 + (1 - soulState.taiGuang.baseline) * 0.4,
+      in_group_bias: 0.5 + soulState.youJing.baseline * 0.2
     }
 
     // Self-concept
@@ -196,9 +196,9 @@ export class PsychologicalSystem {
 
     // Emotional regulation strategy
     let regulationStrategy: PsychologicalState['regulationStrategy'] = 'acceptance'
-    if (soulState.wisdomHun.baseline > 0.7) regulationStrategy = 'reappraisal'
-    else if (soulState.guardianPo.baseline > 0.7) regulationStrategy = 'suppression'
-    else if (soulState.awarenessHun.baseline > 0.7) regulationStrategy = 'acceptance'
+    if (soulState.shuangLing.baseline > 0.7) regulationStrategy = 'reappraisal'
+    else if (soulState.tunZei.baseline > 0.7) regulationStrategy = 'suppression'
+    else if (soulState.taiGuang.baseline > 0.7) regulationStrategy = 'acceptance'
     else if (personality.neuroticism > 0.7) regulationStrategy = 'avoidance'
     else regulationStrategy = 'distraction'
 
@@ -207,8 +207,8 @@ export class PsychologicalSystem {
     // Needs satisfaction (influenced by current state)
     const needs = {
       physiological: soulState.energy, // Energy = basic needs met
-      safety: soulState.guardianPo.baseline * 0.6 + (1 - soulState.shadowPressure) * 0.4,
-      belonging: soulState.emotionHun.baseline * 0.5 + soulState.communicationPo.baseline * 0.5,
+      safety: soulState.tunZei.baseline * 0.6 + (1 - soulState.shadowPressure) * 0.4,
+      belonging: soulState.youJing.baseline * 0.5 + soulState.queYin.baseline * 0.5,
       esteem: selfEsteem,
       selfActualization: soulState.integration * 0.6 + soulState.coherence * 0.4
     }
@@ -235,8 +235,8 @@ export class PsychologicalSystem {
    */
   private determineAttachmentStyle(soulState: SoulState): AttachmentStyle {
     const security = soulState.integration * 0.5 + (1 - soulState.shadowPressure) * 0.5
-    const emotionality = soulState.emotionHun.baseline
-    const avoidance = 1 - soulState.communicationPo.baseline
+    const emotionality = soulState.youJing.baseline
+    const avoidance = 1 - soulState.queYin.baseline
 
     if (security > 0.6 && avoidance < 0.4) {
       return 'secure'

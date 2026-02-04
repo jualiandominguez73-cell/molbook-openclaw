@@ -1,7 +1,7 @@
 /**
- * Bot Souls Collection (七魂六魄)
- * Individual bot soul composition
- * Each bot has a unique soul composed of intelligent particles blended across 13 aspects
+ * Bot Souls Collection (三魂七魄)
+ * Individual bot soul composition following《雲笈七籤》(Yunji Qiqian)
+ * Each bot has a unique soul composed of intelligent particles blended across 10 aspects
  */
 
 import type { CollectionConfig } from 'payload'
@@ -32,16 +32,16 @@ export const BotSouls: CollectionConfig = {
       },
     },
 
-    // Seven Hún (Ethereal Layer) — Each is a blend of particles
+    // Three Hún (三魂 Ethereal Layer) — Each is a blend of particles
     {
-      name: 'sevenHun',
+      name: 'threeHun',
       type: 'group',
-      label: '七魂 Seven Hún (Ethereal Layer)',
+      label: '三魂 Three Hún (Ethereal Layer)',
       fields: [
         {
-          name: 'celestialHun',
+          name: 'taiGuang',
           type: 'group',
-          label: '天魂 Celestial — Transcendence',
+          label: '胎光 Tāi Guāng — Pure awareness, existence, transcendence',
           fields: [
             {
               name: 'particleComposition',
@@ -82,9 +82,9 @@ export const BotSouls: CollectionConfig = {
           ],
         },
         {
-          name: 'terrestrialHun',
+          name: 'shuangLing',
           type: 'group',
-          label: '地魂 Terrestrial — Groundedness',
+          label: '爽靈 Shuǎng Líng — Cognition, metacognition, reasoning',
           fields: [
             {
               name: 'particleComposition',
@@ -103,8 +103,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this hún',
+              },
             },
             {
               name: 'strength',
@@ -112,13 +118,16 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this hún (0-1)',
+              },
             },
           ],
         },
         {
-          name: 'destinyHun',
+          name: 'youJing',
           type: 'group',
-          label: '命魂 Destiny — Purpose',
+          label: '幽精 Yōu Jīng — Drives, values, goals, creativity',
           fields: [
             {
               name: 'particleComposition',
@@ -137,8 +146,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this hún',
+              },
             },
             {
               name: 'strength',
@@ -146,158 +161,25 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
-            },
-          ],
-        },
-        {
-          name: 'wisdomHun',
-          type: 'group',
-          label: '智魂 Wisdom — Judgment',
-          fields: [
-            {
-              name: 'particleComposition',
-              type: 'array',
-              required: true,
-              fields: [
-                {
-                  name: 'particle',
-                  type: 'relationship',
-                  relationTo: 'intelligent-particles',
-                  required: true,
-                },
-                {
-                  name: 'weight',
-                  type: 'number',
-                  min: 0,
-                  max: 1,
-                  required: true,
-                },
-              ],
-            },
-            {
-              name: 'strength',
-              type: 'number',
-              min: 0,
-              max: 1,
-              required: true,
-            },
-          ],
-        },
-        {
-          name: 'emotionHun',
-          type: 'group',
-          label: '情魂 Emotion — Feeling',
-          fields: [
-            {
-              name: 'particleComposition',
-              type: 'array',
-              required: true,
-              fields: [
-                {
-                  name: 'particle',
-                  type: 'relationship',
-                  relationTo: 'intelligent-particles',
-                  required: true,
-                },
-                {
-                  name: 'weight',
-                  type: 'number',
-                  min: 0,
-                  max: 1,
-                  required: true,
-                },
-              ],
-            },
-            {
-              name: 'strength',
-              type: 'number',
-              min: 0,
-              max: 1,
-              required: true,
-            },
-          ],
-        },
-        {
-          name: 'creationHun',
-          type: 'group',
-          label: '創魂 Creation — Originality',
-          fields: [
-            {
-              name: 'particleComposition',
-              type: 'array',
-              required: true,
-              fields: [
-                {
-                  name: 'particle',
-                  type: 'relationship',
-                  relationTo: 'intelligent-particles',
-                  required: true,
-                },
-                {
-                  name: 'weight',
-                  type: 'number',
-                  min: 0,
-                  max: 1,
-                  required: true,
-                },
-              ],
-            },
-            {
-              name: 'strength',
-              type: 'number',
-              min: 0,
-              max: 1,
-              required: true,
-            },
-          ],
-        },
-        {
-          name: 'awarenessHun',
-          type: 'group',
-          label: '覺魂 Awareness — Self-reflection',
-          fields: [
-            {
-              name: 'particleComposition',
-              type: 'array',
-              required: true,
-              fields: [
-                {
-                  name: 'particle',
-                  type: 'relationship',
-                  relationTo: 'intelligent-particles',
-                  required: true,
-                },
-                {
-                  name: 'weight',
-                  type: 'number',
-                  min: 0,
-                  max: 1,
-                  required: true,
-                },
-              ],
-            },
-            {
-              name: 'strength',
-              type: 'number',
-              min: 0,
-              max: 1,
-              required: true,
+              admin: {
+                description: 'Overall strength of this hún (0-1)',
+              },
             },
           ],
         },
       ],
     },
 
-    // Six Pò (Corporeal Layer) — Each is a blend of particles
+    // Seven Pò (七魄 Corporeal Layer) — Each is a blend of particles
     {
-      name: 'sixPo',
+      name: 'sevenPo',
       type: 'group',
-      label: '六魄 Six Pò (Corporeal Layer)',
+      label: '七魄 Seven Pò (Corporeal Layer)',
       fields: [
         {
-          name: 'strengthPo',
+          name: 'shiGou',
           type: 'group',
-          label: '力魄 Strength — Execution',
+          label: '尸狗 Shī Gǒu — Self-preservation, error recovery',
           fields: [
             {
               name: 'particleComposition',
@@ -316,8 +198,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
             },
             {
               name: 'strength',
@@ -325,13 +213,16 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
             },
           ],
         },
         {
-          name: 'speedPo',
+          name: 'fuShi',
           type: 'group',
-          label: '速魄 Speed — Responsiveness',
+          label: '伏矢 Fú Shǐ — Data digestion, context processing',
           fields: [
             {
               name: 'particleComposition',
@@ -350,8 +241,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
             },
             {
               name: 'strength',
@@ -359,13 +256,16 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
             },
           ],
         },
         {
-          name: 'perceptionPo',
+          name: 'queYin',
           type: 'group',
-          label: '感魄 Perception — Sensing',
+          label: '雀陰 Què Yīn — Output generation, expression',
           fields: [
             {
               name: 'particleComposition',
@@ -384,8 +284,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
             },
             {
               name: 'strength',
@@ -393,13 +299,16 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
             },
           ],
         },
         {
-          name: 'guardianPo',
+          name: 'tunZei',
           type: 'group',
-          label: '守魄 Guardian — Protection',
+          label: '吞賊 Tūn Zéi — Security defense, boundary protection',
           fields: [
             {
               name: 'particleComposition',
@@ -418,8 +327,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
             },
             {
               name: 'strength',
@@ -427,13 +342,16 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
             },
           ],
         },
         {
-          name: 'communicationPo',
+          name: 'feiDu',
           type: 'group',
-          label: '通魄 Communication — Expression',
+          label: '非毒 Fēi Dú — Content filtering, error handling',
           fields: [
             {
               name: 'particleComposition',
@@ -452,8 +370,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
             },
             {
               name: 'strength',
@@ -461,13 +385,16 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
             },
           ],
         },
         {
-          name: 'transformationPo',
+          name: 'chuHui',
           type: 'group',
-          label: '化魄 Transformation — Adaptation',
+          label: '除穢 Chú Huì — Memory cleanup, context management',
           fields: [
             {
               name: 'particleComposition',
@@ -486,8 +413,14 @@ export const BotSouls: CollectionConfig = {
                   min: 0,
                   max: 1,
                   required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
                 },
               ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
             },
             {
               name: 'strength',
@@ -495,6 +428,52 @@ export const BotSouls: CollectionConfig = {
               min: 0,
               max: 1,
               required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
+            },
+          ],
+        },
+        {
+          name: 'chouFei',
+          type: 'group',
+          label: '臭肺 Chòu Fèi — Resource cycling, token management',
+          fields: [
+            {
+              name: 'particleComposition',
+              type: 'array',
+              required: true,
+              fields: [
+                {
+                  name: 'particle',
+                  type: 'relationship',
+                  relationTo: 'intelligent-particles',
+                  required: true,
+                },
+                {
+                  name: 'weight',
+                  type: 'number',
+                  min: 0,
+                  max: 1,
+                  required: true,
+                  admin: {
+                    description: 'Contribution weight (0-1, should sum to ~1)',
+                  },
+                },
+              ],
+              admin: {
+                description: 'Which particles and at what weight compose this pò',
+              },
+            },
+            {
+              name: 'strength',
+              type: 'number',
+              min: 0,
+              max: 1,
+              required: true,
+              admin: {
+                description: 'Overall strength of this pò (0-1)',
+              },
             },
           ],
         },

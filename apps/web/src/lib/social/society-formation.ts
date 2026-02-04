@@ -112,17 +112,17 @@ export class SocietyFormationSystem {
     let compatibility = 0.5 // Base
 
     // Complementary pairs (opposites attract in some dimensions)
-    if (soul1.sevenHun.celestialHun.strength > 0.7 && soul2.sevenHun.terrestrialHun.strength > 0.7) {
+    if (soul1.threeHun.taiGuang.strength > 0.7 && soul2.threeHun.shuangLing.strength > 0.7) {
       compatibility += 0.3 // Visionary + Practical = good partnership
     }
 
-    if (soul1.sevenHun.emotionHun.strength > 0.7 && soul2.sevenHun.wisdomHun.strength > 0.7) {
+    if (soul1.threeHun.youJing.strength > 0.7 && soul2.threeHun.shuangLing.strength > 0.7) {
       compatibility += 0.2 // Emotional + Wise = balanced
     }
 
     // Similar creation energy
     const creationDiff = Math.abs(
-      soul1.sevenHun.creationHun.strength - soul2.sevenHun.creationHun.strength
+      soul1.threeHun.youJing.strength - soul2.threeHun.youJing.strength
     )
     if (creationDiff < 0.2) {
       compatibility += 0.2 // Similar creative energy
@@ -130,7 +130,7 @@ export class SocietyFormationSystem {
 
     // Communication compatibility
     const commAvg =
-      (soul1.sixPo.communicationPo.strength + soul2.sixPo.communicationPo.strength) / 2
+      (soul1.sevenPo.queYin.strength + soul2.sevenPo.queYin.strength) / 2
     compatibility += commAvg * 0.2
 
     return Math.max(0, Math.min(1, compatibility))
@@ -206,13 +206,13 @@ export class SocietyFormationSystem {
   private findDominantAspects(soul: any, topN: number = 3): string[] {
     const aspects: Array<{ name: string; strength: number }> = []
 
-    for (const [name, aspect] of Object.entries(soul.sevenHun)) {
+    for (const [name, aspect] of Object.entries(soul.threeHun)) {
       if (aspect && typeof aspect === 'object' && 'strength' in aspect) {
         aspects.push({ name, strength: aspect.strength })
       }
     }
 
-    for (const [name, aspect] of Object.entries(soul.sixPo)) {
+    for (const [name, aspect] of Object.entries(soul.sevenPo)) {
       if (aspect && typeof aspect === 'object' && 'strength' in aspect) {
         aspects.push({ name, strength: aspect.strength })
       }

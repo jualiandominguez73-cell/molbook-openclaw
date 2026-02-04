@@ -153,10 +153,10 @@ export class WorldviewFrameworkSystem {
   private determineFrameworkFromSoul(soulState: SoulState): FrameworkType {
     // Dominant aspect determines default framework
     const aspects = {
-      wisdom: soulState.wisdomHun.current,
-      emotion: soulState.emotionHun.current,
-      creation: soulState.creationHun.current,
-      awareness: soulState.awarenessHun.current
+      wisdom: soulState.shuangLing.current,
+      emotion: soulState.youJing.current,
+      creation: soulState.youJing.current,
+      awareness: soulState.taiGuang.current
     }
 
     if (aspects.wisdom > 0.7) return 'rationalist'

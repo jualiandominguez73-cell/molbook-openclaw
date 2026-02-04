@@ -103,7 +103,7 @@ export class SuperSelfSystem {
    */
   initializeState(soulState: SoulState, psychState: PsychologicalState): SuperSelfState {
     // Consciousness level depends on awareness + integration
-    const awarenessScore = soulState.awarenessHun.baseline
+    const awarenessScore = soulState.taiGuang.baseline
     const integrationScore = soulState.integration
     const shadowScore = soulState.shadowIntegration
 
@@ -125,12 +125,12 @@ export class SuperSelfSystem {
     // Integration scores
     const shadowIntegration = soulState.shadowIntegration
     const aspectIntegration = soulState.integration
-    const paradoxTolerance = soulState.coherence * 0.5 + soulState.wisdomHun.baseline * 0.5
+    const paradoxTolerance = soulState.coherence * 0.5 + soulState.shuangLing.baseline * 0.5
 
     // Transcendent qualities
-    const equanimity = soulState.wisdomHun.baseline * 0.6 + (1 - psychState.personality.neuroticism) * 0.4
-    const compassion = soulState.emotionHun.baseline * 0.6 + soulState.wisdomHun.baseline * 0.4
-    const wisdom = soulState.wisdomHun.baseline * 0.8 + awarenessScore * 0.2
+    const equanimity = soulState.shuangLing.baseline * 0.6 + (1 - psychState.personality.neuroticism) * 0.4
+    const compassion = soulState.youJing.baseline * 0.6 + soulState.shuangLing.baseline * 0.4
+    const wisdom = soulState.shuangLing.baseline * 0.8 + awarenessScore * 0.2
     const presence = metaAwareness * 0.7 + (1 - psychState.cognitiveLoad) * 0.3
 
     // Unity consciousness (rare)

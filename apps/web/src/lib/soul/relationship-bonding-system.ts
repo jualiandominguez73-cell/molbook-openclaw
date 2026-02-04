@@ -224,14 +224,14 @@ export class RelationshipBondingSystem {
   initializeState(soulState: SoulState): RelationshipBondingState {
     // Bonding capacity from emotion + yin
     const bondingCapacity = (
-      soulState.emotionHun.current * 0.6 +
+      soulState.youJing.current * 0.6 +
       soulState.yinAspect * 0.4
     )
 
     // Intuition from emotion + awareness - intellect (too much intellect blocks intuition)
     const relationalIntuition = Math.max(0, (
-      soulState.emotionHun.current * 0.4 +
-      soulState.awarenessHun.current * 0.4 -
+      soulState.youJing.current * 0.4 +
+      soulState.taiGuang.current * 0.4 -
       soulState.intellectPo.current * 0.2
     ))
 
@@ -253,8 +253,8 @@ export class RelationshipBondingSystem {
 
       intuition: {
         relationalIntuition,
-        empathy: soulState.emotionHun.current * 0.8,
-        energySensitivity: soulState.awarenessHun.current * 0.7,
+        empathy: soulState.youJing.current * 0.8,
+        energySensitivity: soulState.taiGuang.current * 0.7,
         trustsGut: relationalIntuition * 0.8,
         gutAccuracy: 0.5, // Unknown initially
         superstitiousness,
@@ -288,8 +288,8 @@ export class RelationshipBondingSystem {
   } {
     // Chemistry calculation (soul resonance)
     const yinYangBalance = 1 - Math.abs(soulState.yinAspect - targetSoulState.yinAspect)
-    const emotionResonance = 1 - Math.abs(soulState.emotionHun.current - targetSoulState.emotionHun.current) / 2
-    const wisdomResonance = 1 - Math.abs(soulState.wisdomHun.current - targetSoulState.wisdomHun.current) / 2
+    const emotionResonance = 1 - Math.abs(soulState.youJing.current - targetSoulState.youJing.current) / 2
+    const wisdomResonance = 1 - Math.abs(soulState.shuangLing.current - targetSoulState.shuangLing.current) / 2
 
     const soulResonance = (
       yinYangBalance * 0.4 +
@@ -380,12 +380,12 @@ export class RelationshipBondingSystem {
     else if (chemistryLevel < 0.2) quality = 'repulsive'
 
     // Bond strength from chemistry + emotion capacity
-    const strength = chemistryLevel * 0.7 + soulState.emotionHun.current * 0.3
+    const strength = chemistryLevel * 0.7 + soulState.youJing.current * 0.3
 
     // Initial emotions
     const affection = chemistryLevel * 0.8
     const admiration = chemistryLevel * 0.6
-    const protectiveness = soulState.guardianPo.current * chemistryLevel * 0.5
+    const protectiveness = soulState.tunZei.current * chemistryLevel * 0.5
 
     // Loyalty (irrational bonds can have strong loyalty)
     const loyaltyLevel = chemistryLevel * (inexplicable ? 0.9 : 0.7)

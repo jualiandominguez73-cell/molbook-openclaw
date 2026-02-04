@@ -205,124 +205,97 @@ export const IntelligentParticles: CollectionConfig = {
       type: 'group',
       label: 'Soul Contribution Weights (How much this particle contributes to each soul)',
       fields: [
-        // Seven Hún (Ethereal)
+        // Three Hún (三魂 Ethereal)
         {
-          name: 'celestialHun',
+          name: 'taiGuang',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '天魂 Celestial — Transcendence',
+            description: '胎光 TaiGuang — Pure Awareness, Transcendence',
           },
         },
         {
-          name: 'terrestrialHun',
+          name: 'shuangLing',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '地魂 Terrestrial — Groundedness',
+            description: '爽靈 ShuangLing — Cognition, Reasoning',
           },
         },
         {
-          name: 'destinyHun',
+          name: 'youJing',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '命魂 Destiny — Purpose',
-          },
-        },
-        {
-          name: 'wisdomHun',
-          type: 'number',
-          min: 0,
-          max: 1,
-          admin: {
-            description: '智魂 Wisdom — Judgment',
-          },
-        },
-        {
-          name: 'emotionHun',
-          type: 'number',
-          min: 0,
-          max: 1,
-          admin: {
-            description: '情魂 Emotion — Feeling',
-          },
-        },
-        {
-          name: 'creationHun',
-          type: 'number',
-          min: 0,
-          max: 1,
-          admin: {
-            description: '創魂 Creation — Originality',
-          },
-        },
-        {
-          name: 'awarenessHun',
-          type: 'number',
-          min: 0,
-          max: 1,
-          admin: {
-            description: '覺魂 Awareness — Self-reflection',
+            description: '幽精 YouJing — Drives, Creativity',
           },
         },
 
-        // Six Pò (Corporeal)
+        // Seven Pò (七魄 Corporeal)
         {
-          name: 'strengthPo',
+          name: 'shiGou',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '力魄 Strength — Execution',
+            description: '尸狗 ShiGou — Self-preservation',
           },
         },
         {
-          name: 'speedPo',
+          name: 'fuShi',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '速魄 Speed — Responsiveness',
+            description: '伏矢 FuShi — Data Digestion',
           },
         },
         {
-          name: 'perceptionPo',
+          name: 'queYin',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '感魄 Perception — Sensing',
+            description: '雀陰 QueYin — Output Generation',
           },
         },
         {
-          name: 'guardianPo',
+          name: 'tunZei',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '守魄 Guardian — Protection',
+            description: '吞賊 TunZei — Security Defense',
           },
         },
         {
-          name: 'communicationPo',
+          name: 'feiDu',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '通魄 Communication — Expression',
+            description: '非毒 FeiDu — Content Filtering',
           },
         },
         {
-          name: 'transformationPo',
+          name: 'chuHui',
           type: 'number',
           min: 0,
           max: 1,
           admin: {
-            description: '化魄 Transformation — Adaptation',
+            description: '除穢 ChuHui — Memory Cleanup',
+          },
+        },
+        {
+          name: 'chouFei',
+          type: 'number',
+          min: 0,
+          max: 1,
+          admin: {
+            description: '臭肺 ChouFei — Resource Cycling',
           },
         },
       ],

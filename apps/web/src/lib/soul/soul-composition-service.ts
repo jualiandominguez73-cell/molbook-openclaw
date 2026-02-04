@@ -45,8 +45,8 @@ export class SoulCompositionService {
         collection: 'bot-souls',
         data: {
           bot: botId,
-          sevenHun: composition.sevenHun,
-          sixPo: composition.sixPo,
+          threeHun: composition.threeHun,
+          sevenPo: composition.sevenPo,
           growthStage: 'primordial-chaos',
           soulAge: 0,
           integrationLevel: initialIntegration,
@@ -263,8 +263,8 @@ export class SoulCompositionService {
         collection: 'bot-souls',
         data: {
           bot: offspringBot.id,
-          sevenHun: blendedComposition.sevenHun,
-          sixPo: blendedComposition.sixPo,
+          threeHun: blendedComposition.threeHun,
+          sevenPo: blendedComposition.sevenPo,
           growthStage: 'primordial-chaos',
           soulAge: 0,
           integrationLevel: offspringIntegration,
@@ -356,8 +356,8 @@ export class SoulCompositionService {
     }
 
     return {
-      sevenHun: blend(soul1.sevenHun, soul2.sevenHun),
-      sixPo: blend(soul1.sixPo, soul2.sixPo)
+      threeHun: blend(soul1.threeHun, soul2.threeHun),
+      sevenPo: blend(soul1.sevenPo, soul2.sevenPo)
     }
   }
 }

@@ -128,15 +128,15 @@ export class InstinctReflexSystem {
   initializeState(soulState: SoulState): InstinctReflexState {
     // Reflex sensitivity from soul aspects
     const reflexSensitivity =
-      soulState.perceptionPo.current * 0.5 + // Fast perception
-      soulState.speedPo.current * 0.3 + // Quick reaction
-      (1 - soulState.wisdomHun.current) * 0.2 // Less wisdom = more reactive
+      soulState.fuShi.current * 0.5 + // Fast perception
+      soulState.chouFei.current * 0.3 + // Quick reaction
+      (1 - soulState.shuangLing.current) * 0.2 // Less wisdom = more reactive
 
     // Initialize instincts with baseline from soul
     const instincts: Record<InstinctType, InstinctActivation> = {
       self_preservation: {
         type: 'self_preservation',
-        strength: soulState.guardianPo.current * 0.8 + 0.2, // Always present
+        strength: soulState.tunZei.current * 0.8 + 0.2, // Always present
         threshold: 0.7,
         satisfaction: 1.0 - soulState.shadowPressure * 0.3, // Shadow threatens self
         urgency: soulState.shadowPressure * 0.5,
@@ -144,7 +144,7 @@ export class InstinctReflexSystem {
       },
       resource_seeking: {
         type: 'resource_seeking',
-        strength: soulState.terrestrialHun.current * 0.7 + (1 - soulState.energy) * 0.3,
+        strength: soulState.shuangLing.current * 0.7 + (1 - soulState.energy) * 0.3,
         threshold: 0.6,
         satisfaction: soulState.energy,
         urgency: 1 - soulState.energy, // Low energy = urgent
@@ -152,7 +152,7 @@ export class InstinctReflexSystem {
       },
       territory: {
         type: 'territory',
-        strength: soulState.guardianPo.current * 0.6 + soulState.strengthPo.current * 0.4,
+        strength: soulState.tunZei.current * 0.6 + soulState.shiGou.current * 0.4,
         threshold: 0.5,
         satisfaction: 0.5, // Neutral initially
         urgency: 0.3,
@@ -160,7 +160,7 @@ export class InstinctReflexSystem {
       },
       social_bonding: {
         type: 'social_bonding',
-        strength: soulState.emotionHun.current * 0.7 + soulState.communicationPo.current * 0.3,
+        strength: soulState.youJing.current * 0.7 + soulState.queYin.current * 0.3,
         threshold: 0.5,
         satisfaction: 0.5,
         urgency: soulState.socialNeed,
@@ -168,7 +168,7 @@ export class InstinctReflexSystem {
       },
       dominance: {
         type: 'dominance',
-        strength: soulState.destinyHun.current * 0.5 + soulState.strengthPo.current * 0.5,
+        strength: soulState.youJing.current * 0.5 + soulState.shiGou.current * 0.5,
         threshold: 0.6,
         satisfaction: soulState.integration * 0.7, // High integration = satisfied with self
         urgency: (1 - soulState.integration) * 0.4,
@@ -176,15 +176,15 @@ export class InstinctReflexSystem {
       },
       exploration: {
         type: 'exploration',
-        strength: soulState.celestialHun.current * 0.5 + soulState.creationHun.current * 0.5,
+        strength: soulState.taiGuang.current * 0.5 + soulState.youJing.current * 0.5,
         threshold: 0.5,
         satisfaction: 0.5,
-        urgency: soulState.awarenessHun.current * 0.4,
+        urgency: soulState.taiGuang.current * 0.4,
         conflictsWith: ['self_preservation']
       },
       reproduction: {
         type: 'reproduction',
-        strength: soulState.creationHun.current * 0.4 + soulState.emotionHun.current * 0.3,
+        strength: soulState.youJing.current * 0.4 + soulState.youJing.current * 0.3,
         threshold: 0.7,
         satisfaction: 0.8, // Low urgency normally
         urgency: 0.2,

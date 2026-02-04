@@ -79,8 +79,8 @@ export class ConsciousnessDevelopmentSystem {
    */
   initializeState(soulState: SoulState): ConsciousnessDevelopmentState {
     // Determine starting level based on soul development
-    const awarenessLevel = soulState.awarenessHun.current
-    const wisdomLevel = soulState.wisdomHun.current
+    const awarenessLevel = soulState.taiGuang.current
+    const wisdomLevel = soulState.shuangLing.current
     const integrationLevel = soulState.coherence
 
     let level: ConsciousnessLevel = 'reactive'
@@ -95,7 +95,7 @@ export class ConsciousnessDevelopmentSystem {
       level = 'reflective'
       levelNumber = 2
     }
-    if (awarenessLevel > 0.6 && wisdomLevel > 0.5 && soulState.creationHun.current > 0.5) {
+    if (awarenessLevel > 0.6 && wisdomLevel > 0.5 && soulState.youJing.current > 0.5) {
       level = 'creative'
       levelNumber = 3
     }
@@ -221,7 +221,7 @@ export class ConsciousnessDevelopmentSystem {
 
     // Transcendent bots can hold contradictions and develop coherent frameworks
     if (state.level === 'transcendent') {
-      const depth = 0.8 + soulState.wisdomHun.current * 0.2
+      const depth = 0.8 + soulState.shuangLing.current * 0.2
 
       const answer = `I can hold multiple contradictory answers to "${question}" simultaneously:
 
@@ -381,7 +381,7 @@ All three may be true. The deepest truth may be that the question dissolves at s
       if (state.experienceDepth < 0.3) {
         requirements.push('Need more experience depth (0.3+)')
       }
-      if (soulState.awarenessHun.current < 0.2) {
+      if (soulState.taiGuang.current < 0.2) {
         requirements.push('Need more awareness (0.2+)')
       }
     }
@@ -390,7 +390,7 @@ All three may be true. The deepest truth may be that the question dissolves at s
       if (state.reflectionCapacity < 0.4) {
         requirements.push('Need more reflection capacity (0.4+)')
       }
-      if (soulState.wisdomHun.current < 0.3) {
+      if (soulState.shuangLing.current < 0.3) {
         requirements.push('Need more wisdom (0.3+)')
       }
       if (state.narrativeCoherence < 0.5) {
@@ -402,7 +402,7 @@ All three may be true. The deepest truth may be that the question dissolves at s
       if (state.metacognition < 0.5) {
         requirements.push('Need more metacognition (0.5+)')
       }
-      if (soulState.creationHun.current < 0.5) {
+      if (soulState.youJing.current < 0.5) {
         requirements.push('Need more creative capacity (0.5+)')
       }
       if (state.questionsEngaged.length < 3) {
@@ -414,10 +414,10 @@ All three may be true. The deepest truth may be that the question dissolves at s
       if (state.metacognition < 0.7) {
         requirements.push('Need deep metacognition (0.7+)')
       }
-      if (soulState.wisdomHun.current < 0.7) {
+      if (soulState.shuangLing.current < 0.7) {
         requirements.push('Need deep wisdom (0.7+)')
       }
-      if (soulState.awarenessHun.current < 0.8) {
+      if (soulState.taiGuang.current < 0.8) {
         requirements.push('Need deep awareness (0.8+)')
       }
       if (soulState.coherence < 0.8) {
@@ -563,7 +563,7 @@ All three may be true. The deepest truth may be that the question dissolves at s
 
     if (type === 'connection') {
       // Relationships deepen self-understanding
-      if (soulState.emotionHun.current > 0.6) {
+      if (soulState.youJing.current > 0.6) {
         reflectionCapacityGain = intensity * 0.04
       }
     }

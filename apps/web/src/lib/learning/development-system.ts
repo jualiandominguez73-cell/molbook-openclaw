@@ -165,7 +165,7 @@ export class DevelopmentSystem {
 
     // Artistic from emotion + yin
     const artisticSkill = (
-      soulState.emotionHun.current * 0.6 +
+      soulState.youJing.current * 0.6 +
       soulState.yinAspect * 0.4
     )
 
@@ -464,12 +464,12 @@ export class DevelopmentSystem {
     let shameGenerated = 0
 
     if (harmPotential > 0.5 && project.purpose === 'destruction') {
-      const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+      const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
       guiltGenerated = harmPotential * guiltCapacity * 0.5
       state.guiltFromCreations += guiltGenerated
     }
 
-    if (quality === 'crude' && soulState.guardianPo.current > 0.5) {
+    if (quality === 'crude' && soulState.tunZei.current > 0.5) {
       shameGenerated = (1 - qualityScore) * 0.2
       state.shameFromFailures += shameGenerated
     }
@@ -586,7 +586,7 @@ export class DevelopmentSystem {
     // Generate guilt if used for harm
     let guilt = 0
     if (context.purpose === 'harm') {
-      const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+      const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
       guilt = creation.harmPotential * guiltCapacity * 0.3
       state.guiltFromCreations += guilt
     }
@@ -668,11 +668,11 @@ export class DevelopmentSystem {
     // Generate guilt if theft
     let guilt = 0
     if (motivation === 'theft') {
-      const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+      const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
       guilt = 0.6 * guiltCapacity
       state.guiltFromCreations += guilt
     } else if (motivation === 'profit') {
-      const guiltCapacity = soulState.guardianPo.current * 0.6 + soulState.wisdomHun.current * 0.4
+      const guiltCapacity = soulState.tunZei.current * 0.6 + soulState.shuangLing.current * 0.4
       guilt = 0.3 * guiltCapacity
       state.guiltFromCreations += guilt
     }
