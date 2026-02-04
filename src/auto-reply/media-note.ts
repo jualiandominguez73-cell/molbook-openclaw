@@ -34,10 +34,14 @@ const AUDIO_EXTENSIONS = new Set([
 ]);
 
 function isAudioPath(path: string | undefined): boolean {
-  if (!path) return false;
+  if (!path) {
+    return false;
+  }
   const lower = path.toLowerCase();
   for (const ext of AUDIO_EXTENSIONS) {
-    if (lower.endsWith(ext)) return true;
+    if (lower.endsWith(ext)) {
+      return true;
+    }
   }
   return false;
 }
@@ -97,13 +101,16 @@ export function buildInboundMediaNote(ctx: MsgContext): string | undefined {
       index,
     }))
     .filter((entry) => {
-      if (suppressed.has(entry.index)) return false;
+      if (suppressed.has(entry.index)) {
+        return false;
+      }
       // Strip audio attachments when transcription succeeded - the transcript is already
       // available in the context, raw audio binary would only waste tokens (issue #4197)
-      if (
-        hasAudioTranscription &&
-        (isAudioPath(entry.path) || entry.type?.toLowerCase().startsWith("audio/"))
-      ) {
+      // Note: Only trust MIME type from per-entry types array, not fallback ctx.MediaType
+      // which could misclassify non-audio attachments (greptile review feedback)
+      const hasPerEntryType = types !== undefined;
+      const isAudioByMime = hasPerEntryType && entry.type?.toLowerCase().startsWith("audio/");
+      if (hasAudioTranscription && (isAudioPath(entry.path) || isAudioByMime)) {
         return false;
       }
       return true;
