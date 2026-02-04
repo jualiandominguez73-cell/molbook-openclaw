@@ -167,9 +167,9 @@ bash pty:true workdir:~/project command:"claude -p 'Your task' --dangerously-ski
 bash pty:true workdir:~/project background:true command:"claude -p 'Your task' --dangerously-skip-permissions"
 ```
 
-| Flag | Effect |
-| ---- | ------ |
-| `-p "prompt"` | Non-interactive mode, exits after completion |
+| Flag                             | Effect                                         |
+| -------------------------------- | ---------------------------------------------- |
+| `-p "prompt"`                    | Non-interactive mode, exits after completion   |
 | `--dangerously-skip-permissions` | Auto-approve file operations (alias: `--yolo`) |
 
 ---
