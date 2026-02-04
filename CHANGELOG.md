@@ -9,6 +9,7 @@ Docs: https://docs.openclaw.ai
 - Agents: add GitHub PR automation tools (`github_create_pr`, `github_review_pr`, `github_merge_pr`, `github_get_pr`, `github_comment_pr`) for agent-to-agent collaboration over pull requests.
 - Gateway: add GitHub webhook listener for automated agent triggering on PR events (pull_request, pull_request_review, check_suite).
 - Gateway: add automatic disk space cleanup on startup (cleans npm/yarn/pnpm/Homebrew caches when usage > 85%, typically frees 20-35GB).
+- Render: add disk cleanup to deployment startup script for space-constrained environments.
 
 ### Fixes
 
