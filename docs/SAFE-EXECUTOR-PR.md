@@ -32,6 +32,24 @@ Current "fixes" (regex filters, prompt engineering) use **Application-Layer Perm
 
 This module uses **ajs-clawbot capability-based security** where dangerous capabilities literally do not exist until explicitly granted. There is nothing to bypass.
 
+```
+  APPLICATION-LAYER (Current)            RUNTIME-LAYER (This PR)
+  ===========================            =======================
+                                      
+  +------------------+                   +------------------+
+  | if (allowed) {   |  <-- bypass!      |   fs.read()?     |
+  |    fs.read()     |                   +--------+---------+
+  | }                |                            |
+  +--------+---------+                            v
+           |                             +------------------+
+           v                             | CAPABILITY NOT   |
+  +------------------+                   | BOUND TO VM      |
+  |  fs.read() runs  |                   |                  |
+  |  (always exists) |                   | Function doesn't |
+  +------------------+                   | exist to call!   |
+                                         +------------------+
+```
+
 ## What This PR Does (and Does Not Do)
 
 ### What it does:
