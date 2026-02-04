@@ -385,4 +385,32 @@ export class PolicyStore {
     await fs.writeFile(this.filePath, JSON.stringify(this.state, null, 2), "utf8");
     return this.state;
   }
+
+  async removeRules(ids: string[], actor?: string, reason?: string): Promise<PolicyState> {
+    const idSet = new Set(ids.filter((id) => id.trim()));
+    const nextRules = this.state.policy.rules.filter((rule) => !idSet.has(rule.id));
+    const nextVersion = this.state.version + 1;
+    const updatedAt = new Date().toISOString();
+    const updatedBy = actor;
+
+    const entry: PolicyHistoryEntry = {
+      version: nextVersion,
+      updatedAt,
+      updatedBy,
+      reason: reason ?? "Policy rule removal",
+      policy: { rules: nextRules },
+    };
+
+    this.state = {
+      version: nextVersion,
+      updatedAt,
+      updatedBy,
+      policy: { rules: nextRules },
+      history: [...this.state.history, entry],
+    };
+
+    await fs.mkdir(dirname(this.filePath), { recursive: true });
+    await fs.writeFile(this.filePath, JSON.stringify(this.state, null, 2), "utf8");
+    return this.state;
+  }
 }

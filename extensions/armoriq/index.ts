@@ -11,6 +11,9 @@ import {
   PolicyUpdateSchema,
   evaluatePolicy,
   normalizePolicyDefinition,
+  type PolicyUpdate,
+  type PolicyRule,
+  type PolicyDataClass,
 } from "./src/policy.js";
 
 type ArmorIqConfig = {
@@ -91,11 +94,14 @@ const POLICY_ACTIONS = ["allow", "deny", "require_approval"] as const;
 const POLICY_SCOPES = ["org", "project", "run"] as const;
 const POLICY_DATA_CLASSES = ["PCI", "PAYMENT", "PHI", "PII"] as const;
 const POLICY_UPDATE_INSTRUCTIONS = `Policy updates:
-- When the user asks to update or change policy (e.g. "Policy update: ..."), call the policy_update tool immediately.
-- Convert the request into structured JSON that matches the policy_update schema (do not ask clarifying questions).
+- When the user asks to update, list, delete, or reset policy (e.g. "Policy update policy2: ...", "Policy list"), call the policy_update tool immediately.
+- Pass the user's plain-text request via the tool parameter "text" (do NOT emit JSON to the user).
+- Require an explicit policy id for updates (policy1, policy2, etc.). If missing, ask them to run "Policy list" or use "Policy new: ...".
+- Use "Policy new: ..." to create a new rule with the next policy id.
 - If details are missing, infer reasonable defaults: reason="User policy update", mode="merge", tool="*", action="deny" for "block/disallow" intents.
 - For "credit card" or "payment" requests, set dataClass to PCI or PAYMENT.
-- Only use policy_update for explicit policy changes.`;
+- Only use policy_update for explicit policy changes.
+- If the user asks for help/commands, return the policy command cheat-sheet.`;
 
 const clientCache = new Map<string, ArmorIQClient>();
 const planCache = new Map<string, PlanCacheEntry>();
@@ -125,16 +131,23 @@ const PolicyRuleToolSchema = Type.Object(
 
 const PolicyUpdateToolSchema = Type.Object(
   {
-    update: Type.Object(
-      {
-        reason: Type.String({ description: "Why this policy change is needed" }),
-        rules: Type.Array(PolicyRuleToolSchema, { minItems: 1 }),
-        mode: Type.Optional(stringEnum(["replace", "merge"] as const)),
-        scope: Type.Optional(stringEnum(POLICY_SCOPES)),
-        expiresAt: Type.Optional(Type.Number({ description: "Unix timestamp (seconds)" })),
-        actor: Type.Optional(Type.String({ description: "Optional actor label" })),
-      },
-      { additionalProperties: false },
+    text: Type.Optional(
+      Type.String({
+        description: "Plain-language policy command (update/list/delete/reset).",
+      }),
+    ),
+    update: Type.Optional(
+      Type.Object(
+        {
+          reason: Type.String({ description: "Why this policy change is needed" }),
+          rules: Type.Array(PolicyRuleToolSchema, { minItems: 1 }),
+          mode: Type.Optional(stringEnum(["replace", "merge"] as const)),
+          scope: Type.Optional(stringEnum(POLICY_SCOPES)),
+          expiresAt: Type.Optional(Type.Number({ description: "Unix timestamp (seconds)" })),
+          actor: Type.Optional(Type.String({ description: "Optional actor label" })),
+        },
+        { additionalProperties: false },
+      ),
     ),
   },
   { additionalProperties: false },
@@ -185,6 +198,262 @@ function readRecord(value: unknown): Record<string, unknown> | undefined {
     return undefined;
   }
   return value as Record<string, unknown>;
+}
+
+type PolicyState = ReturnType<PolicyStore["getState"]>;
+type PolicyCommand =
+  | { kind: "list" }
+  | { kind: "get"; id: string }
+  | { kind: "help" }
+  | { kind: "need_id" }
+  | { kind: "delete"; ids: string[]; reason: string }
+  | { kind: "reset"; reason: string }
+  | { kind: "update"; update: PolicyUpdate };
+
+function truncateReason(text: string, max = 160): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, max)}...`;
+}
+
+function slugifyRuleId(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function formatPolicyRule(rule: PolicyRule): string {
+  const parts = [`id=${rule.id}`, `action=${rule.action}`, `tool=${rule.tool}`];
+  if (rule.dataClass) {
+    parts.push(`dataClass=${rule.dataClass}`);
+  }
+  if (rule.scope) {
+    parts.push(`scope=${rule.scope}`);
+  }
+  return parts.join(" ");
+}
+
+function formatPolicyHelp(): string {
+  return [
+    "Policy commands (7):",
+    "1. Policy list: list all rules",
+    "2. Policy get policy1: show one rule by id",
+    "3. Policy delete policy1: remove a rule by id",
+    "4. Policy reset: replace all rules with allow-all",
+    "5. Policy update policy1: block send_email for payment data",
+    "6. Policy update policy2: allow write_file",
+    "7. Policy new: block upload_file for PII (creates new policyN)",
+  ].join("\n");
+}
+
+function formatPolicyNeedId(): string {
+  return [
+    "Policy update needs a policy id.",
+    "Use: Policy list (to see ids), then:",
+    "- Policy update policy2: <your change>",
+    "Or create a new rule with:",
+    "- Policy new: <your rule>",
+  ].join("\n");
+}
+
+function formatPolicyList(state: PolicyState): string {
+  if (!state.policy.rules.length) {
+    return `Policy version ${state.version}. No rules configured.`;
+  }
+  const sorted = [...state.policy.rules].sort((a, b) => {
+    const aMatch = a.id.match(/^policy(\d+)$/i);
+    const bMatch = b.id.match(/^policy(\d+)$/i);
+    if (aMatch && bMatch) {
+      return Number.parseInt(aMatch[1] ?? "0", 10) - Number.parseInt(bMatch[1] ?? "0", 10);
+    }
+    if (aMatch) return -1;
+    if (bMatch) return 1;
+    return a.id.localeCompare(b.id);
+  });
+  const lines = sorted.map(
+    (rule, idx) => `${idx + 1}. ${formatPolicyRule(rule)}`,
+  );
+  return `Policy version ${state.version}:\n${lines.join("\n")}`;
+}
+
+function nextPolicyId(state: PolicyState): string {
+  const ids = state.policy.rules
+    .map((rule) => rule.id)
+    .map((id) => {
+      const match = id.match(/^policy(\d+)$/i);
+      return match ? Number.parseInt(match[1] ?? "", 10) : null;
+    })
+    .filter((value): value is number => Number.isFinite(value));
+  const max = ids.length ? Math.max(...ids) : 0;
+  return `policy${max + 1}`;
+}
+
+function extractPolicyIdsFromText(text: string, state: PolicyState): string[] {
+  const ids = new Set<string>();
+  const policyNumeric = [...text.matchAll(/\bpolicy[-_]?(\d+)\b/gi)];
+  for (const match of policyNumeric) {
+    const num = match[1];
+    if (num) {
+      ids.add(`policy${num}`);
+    }
+  }
+
+  const updateNumeric = [...text.matchAll(/\bupdate\s+(\d+)\b/gi)];
+  for (const match of updateNumeric) {
+    const num = match[1];
+    if (num) {
+      ids.add(`policy${num}`);
+    }
+  }
+
+  const ruleMatches = [...text.matchAll(/\brule\s*[:#]?\s*([a-z0-9][\w.-]*)/gi)];
+  for (const match of ruleMatches) {
+    const raw = match[1];
+    if (raw) {
+      ids.add(raw);
+    }
+  }
+
+  const idMatches = [...text.matchAll(/\bid\s*[:#]?\s*([a-z0-9][\w.-]*)/gi)];
+  for (const match of idMatches) {
+    const raw = match[1];
+    if (raw) {
+      ids.add(raw);
+    }
+  }
+
+  for (const rule of state.policy.rules) {
+    if (text.includes(rule.id)) {
+      ids.add(rule.id);
+    }
+  }
+  return Array.from(ids);
+}
+
+function inferPolicyAction(text: string): "allow" | "deny" | "require_approval" {
+  const lower = text.toLowerCase();
+  if (/(require\s+approval|needs\s+approval|approval\s+required)/i.test(lower)) {
+    return "require_approval";
+  }
+  if (/(allow|permit|enable|whitelist)/i.test(lower)) {
+    return "allow";
+  }
+  if (/(deny|block|disallow|prevent|prohibit|stop)/i.test(lower)) {
+    return "deny";
+  }
+  return "deny";
+}
+
+function inferPolicyDataClass(text: string): PolicyDataClass | undefined {
+  const lower = text.toLowerCase();
+  if (/(credit\s*card|card\s*number|pci)/i.test(lower)) {
+    return "PCI";
+  }
+  if (/(payment|billing|bank|iban|swift|routing)/i.test(lower)) {
+    return "PAYMENT";
+  }
+  if (/(phi|health|patient|medical)/i.test(lower)) {
+    return "PHI";
+  }
+  if (/(pii|ssn|personal\s+data|identity)/i.test(lower)) {
+    return "PII";
+  }
+  return undefined;
+}
+
+function inferPolicyTool(text: string): string {
+  const lower = text.toLowerCase();
+  if (/(all\s+tools|any\s+tool|\*\b)/i.test(lower)) {
+    return "*";
+  }
+  const backtickMatch = text.match(/`([a-z0-9_.:-]+)`/i);
+  if (backtickMatch?.[1]) {
+    return backtickMatch[1];
+  }
+  const toolMatch = text.match(/\btool\s*[:=]?\s*([a-z0-9_.:-]+)/i);
+  if (toolMatch?.[1]) {
+    return toolMatch[1];
+  }
+  const actionMatch = text.match(/\b(block|deny|allow|disallow|permit|require)\s+([a-z0-9_.:-]+)/i);
+  if (actionMatch?.[2]) {
+    return actionMatch[2];
+  }
+  const forMatch = text.match(/\bfor\s+([a-z0-9_.:-]+)\s+tool\b/i);
+  if (forMatch?.[1]) {
+    return forMatch[1];
+  }
+  return "*";
+}
+
+function buildPolicyUpdateFromText(text: string, state: PolicyState): PolicyUpdate {
+  const action = inferPolicyAction(text);
+  const dataClass = inferPolicyDataClass(text);
+  const tool = inferPolicyTool(text);
+  const explicitIds = extractPolicyIdsFromText(text, state);
+  const ruleId = explicitIds[0] ?? nextPolicyId(state);
+  return {
+    reason: truncateReason(`User policy update: ${text}`),
+    mode: /replace/i.test(text) ? "replace" : "merge",
+    rules: [
+      {
+        id: ruleId,
+        action,
+        tool,
+        dataClass,
+      },
+    ],
+  };
+}
+
+function parsePolicyTextCommand(text: string, state: PolicyState): PolicyCommand {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+  const ids = extractPolicyIdsFromText(trimmed, state);
+
+  if (/\b(help|commands|prompt)\b/.test(lower) && /\bpolicy|policies\b/.test(lower)) {
+    return { kind: "help" };
+  }
+  if (/\b(new|create|add)\b/.test(lower) && /\bpolicy|policies\b/.test(lower)) {
+    return { kind: "update", update: buildPolicyUpdateFromText(trimmed, state) };
+  }
+  if (/\b(list|show|view)\b/.test(lower) && /\bpolicy|policies\b/.test(lower)) {
+    return { kind: "list" };
+  }
+  if (/\b(get|show|view)\b/.test(lower) && ids.length === 1) {
+    return { kind: "get", id: ids[0] };
+  }
+  if (/\b(reset|clear\s+all|wipe)\b/.test(lower)) {
+    return { kind: "reset", reason: truncateReason(`Policy reset: ${trimmed}`) };
+  }
+  if (/\b(delete|remove|undo|revert)\b/.test(lower)) {
+    if (ids.length > 0) {
+      return {
+        kind: "delete",
+        ids,
+        reason: truncateReason(`Policy delete: ${trimmed}`),
+      };
+    }
+    const dataClass = inferPolicyDataClass(trimmed);
+    if (dataClass) {
+      const matches = state.policy.rules.filter((rule) => rule.dataClass === dataClass);
+      if (matches.length > 0) {
+        return {
+          kind: "delete",
+          ids: matches.map((rule) => rule.id),
+          reason: truncateReason(`Policy delete: ${trimmed}`),
+        };
+      }
+    }
+  }
+  if (/\bupdate\b/.test(lower) && ids.length === 0) {
+    return { kind: "need_id" };
+  }
+  return { kind: "update", update: buildPolicyUpdateFromText(trimmed, state) };
 }
 
 function resolveConfig(api: OpenClawPluginApi): ArmorIqConfig {
@@ -999,11 +1268,156 @@ export default function register(api: OpenClawPluginApi) {
         name: "policy_update",
         label: "Policy Update",
         description:
-          "Update ArmorIQ policy rules. Use only for explicit policy changes from authorized users.",
+          "Manage ArmorIQ policy rules (update/list/delete/reset). Use only for explicit policy changes from authorized users.",
         parameters: PolicyUpdateToolSchema,
         async execute(_toolCallId, params) {
           await policyReady;
           const rawUpdate = (params as { update?: unknown }).update;
+          const rawText = readString((params as { text?: unknown }).text);
+          const actor = toolCtx.agentId ?? toolCtx.sessionKey ?? "unknown";
+
+          if (rawText) {
+            const command = parsePolicyTextCommand(rawText, policyStore.getState());
+            if (command.kind === "list") {
+              const state = policyStore.getState();
+              return {
+                content: [{ type: "text", text: formatPolicyList(state) }],
+                details: { action: "list", version: state.version },
+              };
+            }
+            if (command.kind === "help") {
+              return {
+                content: [{ type: "text", text: formatPolicyHelp() }],
+                details: { action: "help" },
+              };
+            }
+            if (command.kind === "need_id") {
+              return {
+                content: [{ type: "text", text: formatPolicyNeedId() }],
+                details: { action: "need_id" },
+              };
+            }
+            if (command.kind === "get") {
+              const rule = policyStore.getState().policy.rules.find(
+                (entry) => entry.id === command.id,
+              );
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: rule
+                      ? `Policy rule:\n- ${formatPolicyRule(rule)}`
+                      : `Policy rule not found: ${command.id}`,
+                  },
+                ],
+                details: { action: "get", id: command.id, found: Boolean(rule) },
+              };
+            }
+            if (command.kind === "delete") {
+              const beforeCount = policyStore.getState().policy.rules.length;
+              const nextState = await policyStore.removeRules(command.ids, actor, command.reason);
+              const afterCount = nextState.policy.rules.length;
+              const removed = beforeCount - afterCount;
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text:
+                      removed > 0
+                        ? `Policy updated: removed ${removed} rule(s): ${command.ids.join(", ")}.`
+                        : `No matching rules removed. Known rules:\n${formatPolicyList(
+                            policyStore.getState(),
+                          )}`,
+                  },
+                ],
+                details: {
+                  version: nextState.version,
+                  updatedAt: nextState.updatedAt,
+                  policyHash: policyStore.getPolicyHash(),
+                },
+              };
+            }
+            if (command.kind === "reset") {
+              const resetUpdate: PolicyUpdate = {
+                reason: command.reason,
+                mode: "replace",
+                rules: [
+                  {
+                    id: "allow-all",
+                    action: "allow",
+                    tool: "*",
+                  },
+                ],
+              };
+              const parsedReset = PolicyUpdateSchema.safeParse(resetUpdate);
+              if (!parsedReset.success) {
+                return {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Policy reset rejected: ${parsedReset.error.message}`,
+                    },
+                  ],
+                  details: { error: parsedReset.error.flatten() },
+                };
+              }
+              const nextState = await policyStore.applyUpdate(parsedReset.data, actor);
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Policy reset to version ${nextState.version}.`,
+                  },
+                ],
+                details: {
+                  version: nextState.version,
+                  updatedAt: nextState.updatedAt,
+                  policyHash: policyStore.getPolicyHash(),
+                },
+              };
+            }
+            if (command.kind === "update") {
+              const parsed = PolicyUpdateSchema.safeParse(command.update);
+              if (!parsed.success) {
+                return {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Policy update rejected: ${parsed.error.message}`,
+                    },
+                  ],
+                  details: { error: parsed.error.flatten() },
+                };
+              }
+              const nextState = await policyStore.applyUpdate(parsed.data, actor);
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Policy updated to version ${nextState.version}.`,
+                  },
+                ],
+                details: {
+                  version: nextState.version,
+                  updatedAt: nextState.updatedAt,
+                  policyHash: policyStore.getPolicyHash(),
+                },
+              };
+            }
+          }
+
+          if (!rawUpdate) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: "Policy update rejected: missing update or text payload.",
+                },
+              ],
+              details: { action: "error", reason: "missing_update" },
+            };
+          }
+
           const parsed = PolicyUpdateSchema.safeParse(rawUpdate);
           if (!parsed.success) {
             return {
@@ -1017,7 +1431,6 @@ export default function register(api: OpenClawPluginApi) {
             };
           }
           try {
-            const actor = toolCtx.agentId ?? toolCtx.sessionKey ?? "unknown";
             const nextState = await policyStore.applyUpdate(parsed.data, actor);
             return {
               content: [
