@@ -481,7 +481,12 @@ export async function runEmbeddedPiAgent(
               };
             }
             const promptFailoverReason = classifyFailoverReason(errorText);
-            if (promptFailoverReason && promptFailoverReason !== "timeout" && lastProfileId) {
+            if (
+              promptFailoverReason &&
+              promptFailoverReason !== "timeout" &&
+              promptFailoverReason !== "format" &&
+              lastProfileId
+            ) {
               await markAuthProfileFailure({
                 store: authStore,
                 profileId: lastProfileId,
@@ -493,6 +498,7 @@ export async function runEmbeddedPiAgent(
             if (
               isFailoverErrorMessage(errorText) &&
               promptFailoverReason !== "timeout" &&
+              promptFailoverReason !== "format" &&
               (await advanceAuthProfile())
             ) {
               continue;
@@ -569,13 +575,19 @@ export async function runEmbeddedPiAgent(
                 timedOut || assistantFailoverReason === "timeout"
                   ? "timeout"
                   : (assistantFailoverReason ?? "unknown");
-              await markAuthProfileFailure({
-                store: authStore,
-                profileId: lastProfileId,
-                reason,
-                cfg: params.config,
-                agentDir: params.agentDir,
-              });
+              // Skip cooldown for format errors — the problem is the payload
+              // (e.g. orphaned tool_use_id), not the auth profile. Rotating
+              // profiles sends the same broken transcript and cascades all
+              // profiles into cooldown simultaneously.
+              if (reason !== "format") {
+                await markAuthProfileFailure({
+                  store: authStore,
+                  profileId: lastProfileId,
+                  reason,
+                  cfg: params.config,
+                  agentDir: params.agentDir,
+                });
+              }
               if (timedOut && !isProbeSession) {
                 log.warn(
                   `Profile ${lastProfileId} timed out (possible rate limit). Trying next account...`,
@@ -588,7 +600,9 @@ export async function runEmbeddedPiAgent(
               }
             }
 
-            const rotated = await advanceAuthProfile();
+            // Don't rotate profiles for format errors — the same broken
+            // payload will fail on every profile, cascading all into cooldown.
+            const rotated = cloudCodeAssistFormatError ? false : await advanceAuthProfile();
             if (rotated) {
               continue;
             }
