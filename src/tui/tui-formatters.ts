@@ -1,9 +1,13 @@
+import { extractMiniMaxResponseText } from "../agents/minimax-response-handler.js";
 import { formatRawAssistantErrorForUi } from "../agents/pi-embedded-helpers.js";
 import { formatTokenCount } from "../utils/usage-format.js";
 
 export function resolveFinalAssistantText(params: {
   finalText?: string | null;
   streamedText?: string | null;
+  assistantMessage?: Record<string, unknown>;
+  provider?: string;
+  model?: string;
 }) {
   const finalText = params.finalText ?? "";
   if (finalText.trim()) {
@@ -13,9 +17,30 @@ export function resolveFinalAssistantText(params: {
   if (streamedText.trim()) {
     return streamedText;
   }
+
+  // Try MiniMax-specific extraction for nested content
+  if (params.provider || params.model) {
+    const extracted = extractMiniMaxResponseText(params);
+    if (!extracted.isEmpty) {
+      return extracted.text;
+    }
+  }
+
   return "(no output)";
 }
 
+export function composeThinkingAndContent(params: {
+  thinkingText?: string;
+  contentText?: string;
+  showThinking?: boolean;
+}) {
+  const thinkingText = params.thinkingText?.trim() ?? "";
+  const contentText = params.contentText?.trim() ?? "";
+  const parts: string[] = [];
+
+  if (params.showThinking && thinkingText) {
+    parts.push(`[thinking]\n${thinkingText}`);
+  }
 export function composeThinkingAndContent(params: {
   thinkingText?: string;
   contentText?: string;
