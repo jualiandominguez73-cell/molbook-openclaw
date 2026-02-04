@@ -243,6 +243,12 @@
   <div id="tab-setup" class="tab-content active">
     <div class="section">
       <div class="section-title">Production Process Definition <span class="badge">CRUD</span></div>
+      <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="secondary" onclick="exportProcessesCSV()">📥 Export CSV</button>
+        <button class="secondary" onclick="document.getElementById('importProcessCSV').click()">📤 Import CSV</button>
+        <input type="file" id="importProcessCSV" accept=".csv" style="display:none" onchange="importProcessesCSV(this)">
+        <button class="secondary" onclick="clearProcessData()" style="margin-left:auto;">🗑️ Clear All</button>
+      </div>
       <div class="table-scroll">
         <table class="form-table" id="processTable">
           <thead>
@@ -263,6 +269,7 @@
         </table>
       </div>
       <button class="btn-add" onclick="addProcess()">+ Add Process</button>
+      <p style="font-size:0.7rem;color:var(--muted);margin-top:12px;">💾 Data is auto-saved to browser storage and persists after refresh.</p>
     </div>
   </div>
 
@@ -270,9 +277,15 @@
   <div id="tab-workers" class="tab-content">
     <div class="section">
       <div class="section-title">Worker Roster & Schedule</div>
-      <div class="control-group" style="margin-bottom:16px;">
-        <label>Default Hourly Rate ($/hr):</label>
-        <input type="number" id="defaultHourlyRate" value="15.00" min="0" step="0.50" style="width:100px" onchange="updateWorkerCosts()">
+      <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="secondary" onclick="exportWorkersCSV()">📥 Export CSV</button>
+        <button class="secondary" onclick="document.getElementById('importWorkerCSV').click()">📤 Import CSV</button>
+        <input type="file" id="importWorkerCSV" accept=".csv" style="display:none" onchange="importWorkersCSV(this)">
+        <button class="secondary" onclick="clearWorkerData()">🗑️ Clear All</button>
+        <div class="control-group" style="margin-left:auto;">
+          <label>Default Hourly Rate ($/hr):</label>
+          <input type="number" id="defaultHourlyRate" value="15.00" min="0" step="0.50" style="width:100px" onchange="updateWorkerCosts()">
+        </div>
       </div>
       <div class="table-scroll">
         <table class="form-table" id="workerTable">
@@ -748,7 +761,7 @@ function balanceLCT(numStations) {
     }
   }
   result.forEach(s => s.tasks.sort((a, b) => a - b));
-  return result;
+  return enforceStationCount(result, numStations);
 }
 
 function balanceRPW(numStations) {
@@ -775,7 +788,7 @@ function balanceRPW(numStations) {
     }
   }
   result.forEach(s => s.tasks.sort((a, b) => a - b));
-  return result;
+  return enforceStationCount(result, numStations);
 }
 
 function balanceKillbridge(numStations) {
@@ -794,7 +807,79 @@ function balanceKillbridge(numStations) {
       remaining = maxTakt - processes[i].total;
     }
   }
-  return result;
+  return enforceStationCount(result, numStations);
+}
+
+// Enforce exact target station count by merging or splitting stations
+function enforceStationCount(stations, target) {
+  // Cannot have more stations than processes
+  target = Math.min(target, processes.length);
+  // Must have at least 1 station
+  target = Math.max(target, 1);
+
+  // Helper to calculate station time
+  const stationTime = (st) => st.tasks.reduce((s, ti) => s + processes[ti].total, 0);
+
+  // If too many stations, merge the two smallest repeatedly
+  while (stations.length > target) {
+    // Find the two stations with smallest combined time
+    let minCombined = Infinity;
+    let mergeI = 0, mergeJ = 1;
+    for (let i = 0; i < stations.length; i++) {
+      for (let j = i + 1; j < stations.length; j++) {
+        const combined = stationTime(stations[i]) + stationTime(stations[j]);
+        if (combined < minCombined) {
+          minCombined = combined;
+          mergeI = i;
+          mergeJ = j;
+        }
+      }
+    }
+    // Merge station j into station i
+    stations[mergeI].tasks = [...stations[mergeI].tasks, ...stations[mergeJ].tasks].sort((a, b) => a - b);
+    stations.splice(mergeJ, 1);
+  }
+
+  // If too few stations, split the largest station repeatedly
+  while (stations.length < target) {
+    // Find station with most tasks (must have at least 2 tasks to split)
+    let maxTasks = 0;
+    let splitIdx = -1;
+    for (let i = 0; i < stations.length; i++) {
+      if (stations[i].tasks.length > maxTasks && stations[i].tasks.length >= 2) {
+        maxTasks = stations[i].tasks.length;
+        splitIdx = i;
+      }
+    }
+
+    // If no station can be split, we've reached the limit
+    if (splitIdx === -1) break;
+
+    // Split station into two - try to balance the time
+    const tasks = stations[splitIdx].tasks;
+    const totalT = stationTime(stations[splitIdx]);
+    const targetHalf = totalT / 2;
+
+    // Greedy split: accumulate tasks until we pass half
+    let sum = 0;
+    let splitPoint = 1;
+    for (let i = 0; i < tasks.length - 1; i++) {
+      sum += processes[tasks[i]].total;
+      if (sum >= targetHalf) {
+        splitPoint = i + 1;
+        break;
+      }
+      splitPoint = i + 1;
+    }
+
+    const firstHalf = tasks.slice(0, splitPoint);
+    const secondHalf = tasks.slice(splitPoint);
+
+    stations[splitIdx] = { tasks: firstHalf };
+    stations.splice(splitIdx + 1, 0, { tasks: secondHalf });
+  }
+
+  return stations;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -861,8 +946,9 @@ function buildSnapshots(target) {
 
 function resetBalance() {
   if (animating) return;
-  // Save before reset
-  saveStationResourcesToTasks();
+  // Clear task resources to start fresh from Process Setup
+  taskResources = {};
+  saveToLocalStorage();
   initStations();
   document.getElementById('chartBadge').textContent = 'UNBALANCED';
   document.getElementById('chartBadge').style.background = 'var(--red)';
@@ -1190,8 +1276,313 @@ document.getElementById('stationSlider').addEventListener('input', function() {
 });
 
 // ══════════════════════════════════════════════════════════════
+// CSV EXPORT/IMPORT - PROCESSES
+// ══════════════════════════════════════════════════════════════
+
+function exportProcessesCSV() {
+  const headers = ['SAP No','Description','Cycle Time (s)','Efficiency %','2-Side Mult'];
+  const rows = processes.map(p => [
+    p.sapNo,
+    '"' + p.desc.replace(/"/g, '""') + '"',
+    p.cycle,
+    p.eff,
+    p.mult
+  ].join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  downloadCSV(csv, 'process-setup.csv');
+}
+
+function importProcessesCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+    if (rows.length < 2) {
+      alert('CSV file is empty or invalid.');
+      return;
+    }
+    // Skip header row
+    const newProcesses = [];
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
+      if (cols.length < 5) continue;
+      newProcesses.push({
+        uid: genUid(),
+        sapNo: cols[0] || '',
+        desc: cols[1] || '',
+        cycle: parseFloat(cols[2]) || 0,
+        eff: parseFloat(cols[3]) || 80,
+        mult: parseInt(cols[4]) || 1
+      });
+    }
+    if (newProcesses.length > 0) {
+      processes = newProcesses;
+      taskResources = {}; // Clear task resources for fresh import
+      saveToLocalStorage();
+      recalcAllProcesses();
+      renderProcessTable();
+      initStations();
+      renderAll();
+      alert(`Imported ${newProcesses.length} processes successfully.`);
+    } else {
+      alert('No valid processes found in CSV.');
+    }
+    input.value = ''; // Reset file input
+  };
+  reader.readAsText(file);
+}
+
+function clearProcessData() {
+  if (!confirm('Are you sure you want to clear all process data?')) return;
+  processes = [{
+    uid: genUid(),
+    sapNo: 'PP000001',
+    desc: 'New Process',
+    cycle: 10,
+    eff: 80,
+    mult: 1
+  }];
+  taskResources = {};
+  saveToLocalStorage();
+  recalcAllProcesses();
+  renderProcessTable();
+  initStations();
+  renderAll();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CSV EXPORT/IMPORT - WORKERS
+// ══════════════════════════════════════════════════════════════
+
+function exportWorkersCSV() {
+  const headers = ['Employee Code','Name','Shift Start','Shift End','Break (min)','Hourly Rate'];
+  const rows = workers.map(w => [
+    w.code,
+    '"' + w.name.replace(/"/g, '""') + '"',
+    w.shiftStart,
+    w.shiftEnd,
+    w.breakMin,
+    w.hourlyRate.toFixed(2)
+  ].join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  downloadCSV(csv, 'workforce.csv');
+}
+
+function importWorkersCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+    if (rows.length < 2) {
+      alert('CSV file is empty or invalid.');
+      return;
+    }
+    // Skip header row
+    const newWorkers = [];
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
+      if (cols.length < 6) continue;
+      newWorkers.push({
+        uid: genUid(),
+        code: cols[0] || '',
+        name: cols[1] || '',
+        shiftStart: cols[2] || '08:00',
+        shiftEnd: cols[3] || '17:00',
+        breakMin: parseInt(cols[4]) || 60,
+        hourlyRate: parseFloat(cols[5]) || 15.00
+      });
+    }
+    if (newWorkers.length > 0) {
+      workers = newWorkers;
+      saveToLocalStorage();
+      renderWorkerTable();
+      renderAll();
+      alert(`Imported ${newWorkers.length} workers successfully.`);
+    } else {
+      alert('No valid workers found in CSV.');
+    }
+    input.value = ''; // Reset file input
+  };
+  reader.readAsText(file);
+}
+
+function clearWorkerData() {
+  if (!confirm('Are you sure you want to clear all worker data?')) return;
+  workers = [];
+  saveToLocalStorage();
+  renderWorkerTable();
+  renderAll();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CSV UTILITIES
+// ══════════════════════════════════════════════════════════════
+
+function downloadCSV(csv, filename) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let currentRow = [];
+  let currentField = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        currentField += '"';
+        i++; // Skip the next quote
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        currentField += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        currentRow.push(currentField.trim());
+        currentField = '';
+      } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+        currentRow.push(currentField.trim());
+        if (currentRow.length > 0 && currentRow.some(f => f !== '')) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = '';
+        if (char === '\r') i++; // Skip \n after \r
+      } else if (char !== '\r') {
+        currentField += char;
+      }
+    }
+  }
+
+  // Don't forget the last field/row
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    if (currentRow.some(f => f !== '')) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOCAL STORAGE PERSISTENCE
+// ══════════════════════════════════════════════════════════════
+
+const STORAGE_KEY_PROCESSES = 'lineBalancing_processes';
+const STORAGE_KEY_WORKERS = 'lineBalancing_workers';
+const STORAGE_KEY_TASK_RESOURCES = 'lineBalancing_taskResources';
+
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_PROCESSES, JSON.stringify(processes));
+    localStorage.setItem(STORAGE_KEY_WORKERS, JSON.stringify(workers));
+    localStorage.setItem(STORAGE_KEY_TASK_RESOURCES, JSON.stringify(taskResources));
+  } catch (e) {
+    console.warn('Failed to save to localStorage:', e);
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    const savedProcesses = localStorage.getItem(STORAGE_KEY_PROCESSES);
+    const savedWorkers = localStorage.getItem(STORAGE_KEY_WORKERS);
+    const savedTaskResources = localStorage.getItem(STORAGE_KEY_TASK_RESOURCES);
+
+    if (savedProcesses) {
+      const parsed = JSON.parse(savedProcesses);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        processes = parsed;
+      }
+    }
+    if (savedWorkers) {
+      const parsed = JSON.parse(savedWorkers);
+      if (Array.isArray(parsed)) {
+        workers = parsed;
+      }
+    }
+    if (savedTaskResources) {
+      const parsed = JSON.parse(savedTaskResources);
+      if (parsed && typeof parsed === 'object') {
+        taskResources = parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load from localStorage:', e);
+  }
+}
+
+// Wrap existing update functions to auto-save
+const originalUpdateProcess = updateProcess;
+updateProcess = function(idx, field, value) {
+  originalUpdateProcess(idx, field, value);
+  saveToLocalStorage();
+};
+
+const originalAddProcess = addProcess;
+addProcess = function() {
+  originalAddProcess();
+  saveToLocalStorage();
+};
+
+const originalDeleteProcess = deleteProcess;
+deleteProcess = function(idx) {
+  originalDeleteProcess(idx);
+  saveToLocalStorage();
+};
+
+const originalMoveProcess = moveProcess;
+moveProcess = function(idx, dir) {
+  originalMoveProcess(idx, dir);
+  saveToLocalStorage();
+};
+
+const originalUpdateWorker = updateWorker;
+updateWorker = function(idx, field, value) {
+  originalUpdateWorker(idx, field, value);
+  saveToLocalStorage();
+};
+
+const originalAddWorker = addWorker;
+addWorker = function() {
+  originalAddWorker();
+  saveToLocalStorage();
+};
+
+const originalDeleteWorker = deleteWorker;
+deleteWorker = function(idx) {
+  originalDeleteWorker(idx);
+  saveToLocalStorage();
+};
+
+const originalSaveStationResourcesToTasks = saveStationResourcesToTasks;
+saveStationResourcesToTasks = function() {
+  originalSaveStationResourcesToTasks();
+  saveToLocalStorage();
+};
+
+// ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
+
+// Load data from localStorage first
+loadFromLocalStorage();
 
 recalcAllProcesses();
 renderProcessTable();
