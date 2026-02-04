@@ -33,7 +33,9 @@ import { runSessionsSendA2AFlow } from "./sessions-send-tool.a2a.js";
  */
 function extractChannelFromSessionKey(sessionKey: string | undefined): string | undefined {
   const raw = (sessionKey ?? "").trim();
-  if (!raw) return undefined;
+  if (!raw) {
+    return undefined;
+  }
 
   const parts = raw.split(":");
 
