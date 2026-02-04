@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { LifecycleReactionsConfig } from "../config/types.messages.js";
 import {
   clearLifecycleReaction,
   createLifecycleManager,
@@ -7,25 +8,28 @@ import {
   isLifecycleEnabled,
   transitionLifecycleStage,
   type LifecycleReactionAdapter,
-  type LifecycleReactionsConfig,
 } from "./lifecycle-reactions.js";
 
 function createMockAdapter(): LifecycleReactionAdapter & {
   addedEmojis: string[];
   removedEmojis: string[];
 } {
-  return {
+  const adapter: LifecycleReactionAdapter & {
+    addedEmojis: string[];
+    removedEmojis: string[];
+  } = {
     addedEmojis: [],
     removedEmojis: [],
     addReaction: vi.fn(async (emoji: string) => {
-      (createMockAdapter as any).addedEmojis?.push(emoji);
+      adapter.addedEmojis.push(emoji);
       return true;
     }),
     removeReaction: vi.fn(async (emoji: string) => {
-      (createMockAdapter as any).removedEmojis?.push(emoji);
+      adapter.removedEmojis.push(emoji);
     }),
     onError: vi.fn(),
   };
+  return adapter;
 }
 
 describe("getLifecycleEmoji", () => {
