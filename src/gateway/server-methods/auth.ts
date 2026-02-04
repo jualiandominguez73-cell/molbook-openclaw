@@ -14,8 +14,11 @@ import { isRemoteEnvironment } from "../../commands/oauth-env.js";
 import { createVpsAwareOAuthHandlers } from "../../commands/oauth-flow.js";
 import { getProviderById, PROVIDER_REGISTRY } from "../../commands/providers/registry.js";
 import { loadConfig } from "../../config/config.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { resolvePluginProviders } from "../../plugins/providers.js";
 import { ErrorCodes, errorShape } from "../protocol/index.js";
+
+const log = createSubsystemLogger("auth");
 
 // --- In-memory OAuth flow tracking ---
 
@@ -28,6 +31,12 @@ type OAuthFlowState = {
   error?: string;
   result?: ProviderAuthResult;
   createdAt: number;
+  /** True when the flow is waiting for the user to paste a code (e.g. Anthropic OAuth) */
+  needsCode?: boolean;
+  /** Prompt message to show the user when requesting the code */
+  codePromptMessage?: string;
+  /** Resolves the pending prompter.text() call with the user-submitted code */
+  codeResolve?: (code: string) => void;
 };
 
 const pendingOAuthFlows = new Map<string, OAuthFlowState>();
@@ -210,7 +219,11 @@ export const authHandlers: GatewayRequestHandlers = {
 
     try {
       const cfg = loadConfig();
+      log.info(`startOAuth: loading plugins for provider=${providerId}`);
       const plugins = resolvePluginProviders({ config: cfg });
+      log.info(
+        `startOAuth: found ${plugins.length} plugin providers: ${plugins.map((p) => p.id).join(", ")}`,
+      );
       const normalizedId = normalizeProviderId(providerId);
       const plugin = plugins.find(
         (p) =>
@@ -253,8 +266,20 @@ export const authHandlers: GatewayRequestHandlers = {
 
       const isRemote = isRemoteEnvironment();
       const runtime = createGatewayRuntime();
-      const prompter = createGatewayPrompter();
 
+      // manualResolve bridges prompter.text() → auth.submitOAuthCode
+      const manualResolve = async (message: string): Promise<string> => {
+        flow.needsCode = true;
+        flow.codePromptMessage = message;
+        return new Promise<string>((resolve) => {
+          flow.codeResolve = resolve;
+        });
+      };
+      const prompter = createGatewayPrompter(manualResolve);
+
+      log.info(
+        `startOAuth: running OAuth method kind=${oauthMethod.kind} for provider=${plugin.id}`,
+      );
       // Run the auth flow in the background
       const authPromise = oauthMethod.run({
         config: cfg,
@@ -283,6 +308,12 @@ export const authHandlers: GatewayRequestHandlers = {
         },
       });
 
+      // Track early failure: if the plugin throws before openUrl, reject immediately
+      let earlyReject: (err: Error) => void;
+      const earlyFailure = new Promise<void>((_, reject) => {
+        earlyReject = reject;
+      });
+
       // Handle completion in the background
       authPromise
         .then(async (result) => {
@@ -305,15 +336,17 @@ export const authHandlers: GatewayRequestHandlers = {
         .catch((err) => {
           flow.status = "error";
           flow.error = String(err);
+          // Signal early failure so the handler doesn't wait for the timeout
+          earlyReject(err instanceof Error ? err : new Error(String(err)));
         });
 
-      // Wait for the auth URL with a timeout
+      // Wait for: auth URL captured, plugin failure, or timeout
       const timeout = new Promise<void>((_, reject) =>
         setTimeout(() => reject(new Error("Timed out waiting for OAuth URL")), 15_000),
       );
 
       try {
-        await Promise.race([urlPromise, timeout]);
+        await Promise.race([urlPromise, earlyFailure, timeout]);
       } catch (err) {
         pendingOAuthFlows.delete(flowId);
         respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
@@ -330,6 +363,42 @@ export const authHandlers: GatewayRequestHandlers = {
     } catch (err) {
       respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
     }
+  },
+
+  /**
+   * Submit an authorization code for an OAuth flow that requires manual code paste.
+   * Used by flows like Anthropic OAuth where the redirect goes to an external page.
+   */
+  "auth.submitOAuthCode": ({ params, respond }) => {
+    const flowId = typeof params.flowId === "string" ? params.flowId : "";
+    const code = typeof params.code === "string" ? params.code.trim() : "";
+    if (!flowId) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "missing flowId"));
+      return;
+    }
+    if (!code) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "missing code"));
+      return;
+    }
+
+    const flow = pendingOAuthFlows.get(flowId);
+    if (!flow) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown flowId"));
+      return;
+    }
+    if (!flow.codeResolve) {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, "flow is not waiting for a code"),
+      );
+      return;
+    }
+
+    flow.codeResolve(code);
+    flow.needsCode = false;
+    flow.codeResolve = undefined;
+    respond(true, { ok: true });
   },
 
   /**
@@ -351,6 +420,8 @@ export const authHandlers: GatewayRequestHandlers = {
     respond(true, {
       status: flow.status,
       error: flow.error,
+      needsCode: flow.needsCode ?? false,
+      codePromptMessage: flow.codePromptMessage,
     });
 
     // Clean up completed flows

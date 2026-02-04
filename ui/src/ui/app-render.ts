@@ -13,6 +13,7 @@ import {
   loadProvidersList,
   setProviderCredential,
   startOAuthFlow,
+  submitOAuthCode,
   type AuthHost,
 } from "./controllers/auth.ts";
 import { loadChannels } from "./controllers/channels.ts";
@@ -461,6 +462,9 @@ export function renderApp(state: AppViewState) {
                 },
                 onCancelOAuth: () => {
                   cancelOAuthFlow(state as unknown as AuthHost);
+                },
+                onSubmitOAuthCode: (code) => {
+                  void submitOAuthCode(state as unknown as AuthHost, code);
                 },
               })
             : nothing

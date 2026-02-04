@@ -1,0 +1,14 @@
+{
+  "name": "@openclaw/anthropic-auth",
+  "version": "2026.2.2",
+  "description": "OpenClaw Anthropic OAuth provider plugin",
+  "type": "module",
+  "devDependencies": {
+    "openclaw": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

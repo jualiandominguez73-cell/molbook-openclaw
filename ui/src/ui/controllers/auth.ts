@@ -16,6 +16,10 @@ export type OAuthFlowState = {
   status: "starting" | "waiting" | "success" | "error";
   authUrl?: string;
   error?: string;
+  /** True when the flow needs the user to paste an authorization code */
+  needsCode?: boolean;
+  /** Prompt message from the plugin */
+  codePromptMessage?: string;
 };
 
 export type AuthHost = ProvidersHealthHost & {
@@ -128,7 +132,13 @@ export async function startOAuthFlow(host: AuthHost, provider: string): Promise<
         const check = await host.client.request("auth.checkOAuth", {
           flowId: host.oauthFlow.flowId,
         });
-        const status = (check as { status?: string })?.status;
+        const data = check as {
+          status?: string;
+          error?: string;
+          needsCode?: boolean;
+          codePromptMessage?: string;
+        };
+        const status = data?.status;
         if (status === "success") {
           stopOAuthPolling();
           host.oauthFlow = null;
@@ -137,9 +147,15 @@ export async function startOAuthFlow(host: AuthHost, provider: string): Promise<
           await Promise.all([loadProvidersHealth(host), loadProvidersList(host)]);
         } else if (status === "error") {
           stopOAuthPolling();
-          const error = (check as { error?: string })?.error ?? "OAuth flow failed";
+          const error = data?.error ?? "OAuth flow failed";
           host.oauthFlow = { ...host.oauthFlow, status: "error", error };
           host.showToast("error", error);
+        } else if (data?.needsCode && host.oauthFlow && !host.oauthFlow.needsCode) {
+          host.oauthFlow = {
+            ...host.oauthFlow,
+            needsCode: true,
+            codePromptMessage: data.codePromptMessage,
+          };
         }
       } catch {
         // Polling error, keep trying
@@ -148,6 +164,22 @@ export async function startOAuthFlow(host: AuthHost, provider: string): Promise<
   } catch (err) {
     host.oauthFlow = null;
     host.showToast("error", `Failed to start OAuth: ${String(err)}`);
+  }
+}
+
+export async function submitOAuthCode(host: AuthHost, code: string): Promise<void> {
+  if (!host.client || !host.connected || !host.oauthFlow) {
+    return;
+  }
+  try {
+    await host.client.request("auth.submitOAuthCode", {
+      flowId: host.oauthFlow.flowId,
+      code,
+    });
+    // Clear needsCode flag; polling will pick up success/error
+    host.oauthFlow = { ...host.oauthFlow, needsCode: false, codePromptMessage: undefined };
+  } catch (err) {
+    host.showToast("error", `Failed to submit code: ${String(err)}`);
   }
 }
 

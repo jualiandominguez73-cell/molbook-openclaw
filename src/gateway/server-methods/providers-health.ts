@@ -86,12 +86,30 @@ export const providersHealthHandlers: GatewayRequestHandlers = {
       // 4. Build auth health by provider for quick lookup
       const authByProvider = new Map(authHealth.providers.map((p) => [p.provider, p]));
 
-      // 4b. Check which providers have plugin-based OAuth methods
+      // 4b. Resolve plugin providers (used for OAuth detection + plugin-only entries)
+      type ResolvedPlugin = {
+        id: string;
+        label: string;
+        aliases?: string[];
+        envVars?: string[];
+        authKinds: string[];
+        hasOAuth: boolean;
+      };
+      const resolvedPlugins: ResolvedPlugin[] = [];
       const pluginOAuthProviders = new Set<string>();
       try {
         const plugins = resolvePluginProviders({ config: cfg });
         for (const plugin of plugins) {
-          const hasOAuth = plugin.auth.some((m) => m.kind === "oauth" || m.kind === "device_code");
+          const authKinds = plugin.auth.map((m) => m.kind);
+          const hasOAuth = authKinds.some((k) => k === "oauth" || k === "device_code");
+          resolvedPlugins.push({
+            id: plugin.id,
+            label: plugin.label,
+            aliases: plugin.aliases,
+            envVars: plugin.envVars,
+            authKinds,
+            hasOAuth,
+          });
           if (hasOAuth) {
             pluginOAuthProviders.add(normalizeProviderId(plugin.id));
             for (const alias of plugin.aliases ?? []) {
@@ -200,6 +218,116 @@ export const providersHealthHandlers: GatewayRequestHandlers = {
 
         return entry;
       });
+
+      // 6. Append plugin-only providers not already in the registry list
+      const detectedIds = new Set(providers.map((p) => normalizeProviderId(p.id)));
+      for (const plugin of resolvedPlugins) {
+        const normalizedId = normalizeProviderId(plugin.id);
+        // Skip if the plugin's primary id or any alias already matches a detected provider
+        if (detectedIds.has(normalizedId)) {
+          continue;
+        }
+        const aliasMatch = (plugin.aliases ?? []).some((a) =>
+          detectedIds.has(normalizeProviderId(a)),
+        );
+        if (aliasMatch) {
+          continue;
+        }
+
+        // Derive authModes from plugin auth method kinds
+        const authModes: string[] = [];
+        for (const kind of plugin.authKinds) {
+          if (kind === "oauth" || kind === "device_code") {
+            if (!authModes.includes("oauth")) {
+              authModes.push("oauth");
+            }
+          } else if (kind === "api_key") {
+            if (!authModes.includes("api-key")) {
+              authModes.push("api-key");
+            }
+          } else if (kind === "token" || kind === "setup") {
+            if (!authModes.includes("token")) {
+              authModes.push("token");
+            }
+          }
+        }
+
+        // Check if this plugin-only provider has stored credentials
+        const pluginProfileIds = listProfilesForProvider(authStore, plugin.id);
+        const pluginConfigured = pluginProfileIds.length > 0;
+
+        // Extract credential details from the auth profile
+        let pluginAuthSource: string | undefined;
+        let pluginAuthMode: string | undefined;
+        let pluginTokenExpiresAt: number | undefined;
+        let pluginTokenRemainingMs: number | undefined;
+        let pluginTokenValidity: string | undefined;
+        let pluginHealthStatus = pluginConfigured ? "healthy" : "missing";
+
+        if (pluginProfileIds.length > 0) {
+          const cred = authStore.profiles[pluginProfileIds[0]];
+          if (cred) {
+            pluginAuthSource = "profile";
+            pluginAuthMode = cred.type; // "oauth", "api_key", "token"
+            if (cred.type === "oauth" && "expires" in cred) {
+              const expiresAt = cred.expires;
+              if (expiresAt) {
+                pluginTokenExpiresAt = expiresAt;
+                pluginTokenRemainingMs = Math.max(0, expiresAt - now);
+                if (pluginTokenRemainingMs <= 0) {
+                  pluginTokenValidity = "expired";
+                  pluginHealthStatus = "expired";
+                } else if (pluginTokenRemainingMs < 10 * 60 * 1000) {
+                  pluginTokenValidity = "expiring";
+                  pluginHealthStatus = "warning";
+                } else {
+                  pluginTokenValidity = "valid";
+                }
+              }
+            }
+          }
+        }
+
+        // Get auth health info (same as registry providers)
+        let pluginProfileHealth: {
+          status: string;
+          errorCount: number;
+          cooldownRemainingMs: number;
+          disabledReason?: string;
+        } = { status: "healthy", errorCount: 0, cooldownRemainingMs: 0 };
+        if (pluginProfileIds.length > 0) {
+          pluginProfileHealth = getProfileHealthStatus(authStore, pluginProfileIds[0]);
+        }
+        if (pluginProfileHealth.status === "disabled") {
+          pluginHealthStatus = "disabled";
+        } else if (pluginProfileHealth.status === "cooldown") {
+          pluginHealthStatus = "cooldown";
+        }
+
+        providers.push({
+          id: plugin.id,
+          name: plugin.label,
+          detected: pluginConfigured,
+          healthStatus: pluginHealthStatus,
+          configured: pluginConfigured,
+          ...(pluginAuthSource ? { authSource: pluginAuthSource } : {}),
+          ...(pluginAuthMode ? { authMode: pluginAuthMode } : {}),
+          ...(pluginTokenValidity ? { tokenValidity: pluginTokenValidity } : {}),
+          ...(pluginTokenExpiresAt ? { tokenExpiresAt: pluginTokenExpiresAt } : {}),
+          ...(pluginTokenRemainingMs !== undefined && pluginConfigured
+            ? { tokenRemainingMs: pluginTokenRemainingMs }
+            : {}),
+          ...(pluginProfileHealth.errorCount > 0
+            ? { errorCount: pluginProfileHealth.errorCount }
+            : {}),
+          ...(pluginProfileHealth.disabledReason
+            ? { disabledReason: pluginProfileHealth.disabledReason }
+            : {}),
+          ...(authModes.length > 0 ? { authModes } : {}),
+          ...(plugin.envVars && plugin.envVars.length > 0 ? { envVars: plugin.envVars } : {}),
+          ...(plugin.hasOAuth ? { oauthAvailable: true } : {}),
+        });
+      }
 
       respond(true, { providers, updatedAt: now }, undefined);
     } catch (err) {

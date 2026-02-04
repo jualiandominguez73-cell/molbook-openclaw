@@ -42,6 +42,7 @@ export type ProvidersProps = {
   ) => void;
   onStartOAuth: (provider: string) => void;
   onCancelOAuth: () => void;
+  onSubmitOAuthCode: (code: string) => void;
 };
 
 export function renderProviders(props: ProvidersProps) {
@@ -224,6 +225,79 @@ function renderOAuthFlowStatus(entry: ProviderHealthEntry, props: ProvidersProps
       <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px">
         <span class="spinner"></span>
         <span>Starting OAuth flow...</span>
+      </div>
+    `;
+  }
+
+  if (flow.status === "waiting" && flow.needsCode) {
+    return html`
+      <div style="margin-top: 8px; padding: 10px; border: 1px dashed var(--info); border-radius: 6px; background: color-mix(in srgb, var(--info) 5%, transparent);">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">
+          Paste authorization code
+        </div>
+        <div class="muted" style="font-size: 12px; margin-bottom: 8px;">
+          ${flow.codePromptMessage ?? "Complete sign-in in the browser, then paste the authorization code shown on the page."}
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input
+            type="text"
+            class="input"
+            placeholder="Paste code here..."
+            style="flex: 1; font-size: 13px; font-family: monospace;"
+            @click=${(e: Event) => e.stopPropagation()}
+            @keydown=${(e: KeyboardEvent) => {
+              e.stopPropagation();
+              if (e.key === "Enter") {
+                const input = e.target as HTMLInputElement;
+                const code = input.value.trim();
+                if (code) {
+                  props.onSubmitOAuthCode(code);
+                }
+              }
+            }}
+          />
+          <button
+            class="btn btn-sm btn-primary"
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              const container = (e.target as HTMLElement).closest("div")!;
+              const input = container.querySelector("input") as HTMLInputElement;
+              const code = input?.value.trim();
+              if (code) {
+                props.onSubmitOAuthCode(code);
+              }
+            }}
+          >
+            Submit
+          </button>
+          <button
+            class="btn btn-sm"
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              props.onCancelOAuth();
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+        ${
+          flow.authUrl
+            ? html`
+              <div style="margin-top: 6px;">
+                <a
+                  href=${flow.authUrl}
+                  target="_blank"
+                  rel="noopener"
+                  class="muted"
+                  style="font-size: 11px;"
+                  @click=${(e: Event) => e.stopPropagation()}
+                >
+                  Re-open sign-in page
+                </a>
+              </div>
+            `
+            : nothing
+        }
       </div>
     `;
   }
@@ -557,12 +631,17 @@ function renderCredentialInfo(entry: ProviderHealthEntry) {
         <span>
           ${
             entry.tokenValidity === "valid"
-              ? "Valid"
+              ? entry.tokenRemainingMs != null && entry.tokenRemainingMs > 0
+                ? html`<span style="color: var(--success)">Valid</span>
+                    <span class="muted">(expires in ${formatCountdown(entry.tokenRemainingMs)})</span>`
+                : html`
+                    <span style="color: var(--success)">Valid</span>
+                  `
               : entry.tokenValidity === "expiring"
-                ? html`Expiring
+                ? html`<span style="color: var(--warn)">Expiring</span>
                   ${
                     entry.tokenRemainingMs !== null
-                      ? html` (${formatCountdown(entry.tokenRemainingMs)})`
+                      ? html` <span style="color: var(--warn)">(${formatCountdown(entry.tokenRemainingMs)})</span>`
                       : nothing
                   }`
                 : entry.tokenValidity === "expired"
