@@ -1,22 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAgentEventHandler, createChatRunState } from "./server-chat.js";
+import { registerAgentRunContext, resetAgentRunContextForTest } from "../infra/agent-events.js";
+import {
+  createAgentEventHandler,
+  createChatRunState,
+  createToolEventRecipientRegistry,
+} from "./server-chat.js";
 
 describe("agent event handler", () => {
   it("emits chat delta for assistant text-only events", () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_000);
     const broadcast = vi.fn();
+    const broadcastToConnIds = vi.fn();
     const nodeSendToSession = vi.fn();
     const agentRunSeq = new Map<string, number>();
     const chatRunState = createChatRunState();
+    const toolEventRecipients = createToolEventRecipientRegistry();
     chatRunState.registry.add("run-1", { sessionKey: "session-1", clientRunId: "client-1" });
 
     const handler = createAgentEventHandler({
       broadcast,
+      broadcastToConnIds,
       nodeSendToSession,
       agentRunSeq,
       chatRunState,
       resolveSessionKeyForRun: () => undefined,
       clearAgentRunContext: vi.fn(),
+      toolEventRecipients,
     });
 
     handler({
@@ -40,78 +49,157 @@ describe("agent event handler", () => {
     nowSpy.mockRestore();
   });
 
-  it("filters compaction events from broadcast but sends to session", () => {
+  it("routes tool events only to registered recipients when verbose is enabled", () => {
     const broadcast = vi.fn();
+    const broadcastToConnIds = vi.fn();
     const nodeSendToSession = vi.fn();
     const agentRunSeq = new Map<string, number>();
     const chatRunState = createChatRunState();
+    const toolEventRecipients = createToolEventRecipientRegistry();
+
+    registerAgentRunContext("run-tool", { sessionKey: "session-1", verboseLevel: "on" });
+    toolEventRecipients.add("run-tool", "conn-1");
 
     const handler = createAgentEventHandler({
       broadcast,
+      broadcastToConnIds,
       nodeSendToSession,
       agentRunSeq,
       chatRunState,
       resolveSessionKeyForRun: () => "session-1",
       clearAgentRunContext: vi.fn(),
+      toolEventRecipients,
     });
 
-    // Send a compaction event
     handler({
-      runId: "run-1",
+      runId: "run-tool",
       seq: 1,
-      stream: "compaction",
+      stream: "tool",
+      ts: Date.now(),
+      data: { phase: "start", name: "read", toolCallId: "t1" },
+    });
+
+    expect(broadcast).not.toHaveBeenCalled();
+    expect(broadcastToConnIds).toHaveBeenCalledTimes(1);
+    resetAgentRunContextForTest();
+  });
+
+  it("suppresses tool events when verbose is off", () => {
+    const broadcast = vi.fn();
+    const broadcastToConnIds = vi.fn();
+    const nodeSendToSession = vi.fn();
+    const agentRunSeq = new Map<string, number>();
+    const chatRunState = createChatRunState();
+    const toolEventRecipients = createToolEventRecipientRegistry();
+
+    registerAgentRunContext("run-tool-off", { sessionKey: "session-1", verboseLevel: "off" });
+    toolEventRecipients.add("run-tool-off", "conn-1");
+
+    const handler = createAgentEventHandler({
+      broadcast,
+      broadcastToConnIds,
+      nodeSendToSession,
+      agentRunSeq,
+      chatRunState,
+      resolveSessionKeyForRun: () => "session-1",
+      clearAgentRunContext: vi.fn(),
+      toolEventRecipients,
+    });
+
+    handler({
+      runId: "run-tool-off",
+      seq: 1,
+      stream: "tool",
+      ts: Date.now(),
+      data: { phase: "start", name: "read", toolCallId: "t2" },
+    });
+
+    expect(broadcastToConnIds).not.toHaveBeenCalled();
+    resetAgentRunContextForTest();
+  });
+
+  it("strips tool output when verbose is on", () => {
+    const broadcast = vi.fn();
+    const broadcastToConnIds = vi.fn();
+    const nodeSendToSession = vi.fn();
+    const agentRunSeq = new Map<string, number>();
+    const chatRunState = createChatRunState();
+    const toolEventRecipients = createToolEventRecipientRegistry();
+
+    registerAgentRunContext("run-tool-on", { sessionKey: "session-1", verboseLevel: "on" });
+    toolEventRecipients.add("run-tool-on", "conn-1");
+
+    const handler = createAgentEventHandler({
+      broadcast,
+      broadcastToConnIds,
+      nodeSendToSession,
+      agentRunSeq,
+      chatRunState,
+      resolveSessionKeyForRun: () => "session-1",
+      clearAgentRunContext: vi.fn(),
+      toolEventRecipients,
+    });
+
+    handler({
+      runId: "run-tool-on",
+      seq: 1,
+      stream: "tool",
       ts: Date.now(),
       data: {
-        action: "compacting",
-        reason: "token_threshold",
+        phase: "result",
+        name: "exec",
+        toolCallId: "t3",
+        result: { content: [{ type: "text", text: "secret" }] },
+        partialResult: { content: [{ type: "text", text: "partial" }] },
       },
     });
 
-    // Verify compaction event was NOT broadcast to WebSocket clients
-    const agentBroadcasts = broadcast.mock.calls.filter(([event]) => event === "agent");
-    const compactionBroadcasts = agentBroadcasts.filter(
-      ([, payload]: [string, { stream?: string }]) => payload.stream === "compaction",
-    );
-    expect(compactionBroadcasts).toHaveLength(0);
-
-    // Verify compaction event WAS sent to session-specific handler
-    const sessionAgentCalls = nodeSendToSession.mock.calls.filter(
-      ([sessionKey, event]) => sessionKey === "session-1" && event === "agent",
-    );
-    expect(sessionAgentCalls).toHaveLength(1);
-    const sessionPayload = sessionAgentCalls[0]?.[2] as { stream?: string };
-    expect(sessionPayload.stream).toBe("compaction");
+    expect(broadcastToConnIds).toHaveBeenCalledTimes(1);
+    const payload = broadcastToConnIds.mock.calls[0]?.[1] as { data?: Record<string, unknown> };
+    expect(payload.data?.result).toBeUndefined();
+    expect(payload.data?.partialResult).toBeUndefined();
+    resetAgentRunContextForTest();
   });
 
-  it("allows other event types through broadcast", () => {
+  it("keeps tool output when verbose is full", () => {
     const broadcast = vi.fn();
+    const broadcastToConnIds = vi.fn();
     const nodeSendToSession = vi.fn();
     const agentRunSeq = new Map<string, number>();
     const chatRunState = createChatRunState();
+    const toolEventRecipients = createToolEventRecipientRegistry();
+
+    registerAgentRunContext("run-tool-full", { sessionKey: "session-1", verboseLevel: "full" });
+    toolEventRecipients.add("run-tool-full", "conn-1");
 
     const handler = createAgentEventHandler({
       broadcast,
+      broadcastToConnIds,
       nodeSendToSession,
       agentRunSeq,
       chatRunState,
       resolveSessionKeyForRun: () => "session-1",
       clearAgentRunContext: vi.fn(),
+      toolEventRecipients,
     });
 
-    // Send a lifecycle event (should be broadcast)
+    const result = { content: [{ type: "text", text: "secret" }] };
     handler({
-      runId: "run-1",
+      runId: "run-tool-full",
       seq: 1,
-      stream: "lifecycle",
+      stream: "tool",
       ts: Date.now(),
-      data: { phase: "start" },
+      data: {
+        phase: "result",
+        name: "exec",
+        toolCallId: "t4",
+        result,
+      },
     });
 
-    // Verify lifecycle event WAS broadcast
-    const agentBroadcasts = broadcast.mock.calls.filter(([event]) => event === "agent");
-    const lifecycleBroadcasts = agentBroadcasts.filter(
-      ([, payload]: [string, { stream?: string }]) => payload.stream === "lifecycle",
-    );
-    expect(lifecycleBroadcasts).toHaveLength(1);
+    expect(broadcastToConnIds).toHaveBeenCalledTimes(1);
+    const payload = broadcastToConnIds.mock.calls[0]?.[1] as { data?: Record<string, unknown> };
+    expect(payload.data?.result).toEqual(result);
+    resetAgentRunContextForTest();
   });
 });

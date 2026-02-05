@@ -166,6 +166,8 @@ export type SlackAccountConfig = {
   heartbeat?: ChannelHeartbeatVisibilityConfig;
   /** Overseer integration settings for this Slack account. */
   overseer?: SlackOverseerConfig;
+  /** Outbound response prefix override for this channel/account. */
+  responsePrefix?: string;
 };
 
 export type SlackConfig = {
