@@ -263,6 +263,7 @@ Telegram forum topics include a `message_thread_id` per message. OpenClaw:
 - Exposes `MessageThreadId` + `IsForum` in template context for routing/templating.
 - Topic-specific configuration is available under `channels.telegram.groups.<chatId>.topics.<threadId>` (skills, allowlists, auto-reply, system prompts, disable).
 - Topic configs inherit group settings (requireMention, allowlists, skills, prompts, enabled) unless overridden per topic.
+- When topic names are available, OpenClaw caches them and uses them for session labels in the UI as `telegram:<topic>` (or `<agent>:telegram:<topic>` in multi-agent setups); if unknown, it falls back to the topic id.
 
 Private chats can include `message_thread_id` in some edge cases. OpenClaw keeps the DM session key unchanged, but still uses the thread id for replies/draft streaming when it is present.
 
