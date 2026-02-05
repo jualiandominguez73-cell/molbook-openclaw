@@ -25,6 +25,9 @@ export type ApplyAuthChoiceParams = {
   opts?: {
     tokenProvider?: string;
     token?: string;
+    cloudflareAiGatewayAccountId?: string;
+    cloudflareAiGatewayGatewayId?: string;
+    cloudflareAiGatewayApiKey?: string;
   };
 };
 
