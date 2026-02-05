@@ -6,6 +6,7 @@ import type { OpenClawConfig } from "../../config/config.js";
 import type { AnyAgentTool } from "./common.js";
 import { resolveUserPath } from "../../utils.js";
 import { loadWebMedia } from "../../web/media.js";
+import { resolveDefaultAgentDir } from "../agent-scope.js";
 import { ensureAuthProfileStore, listProfilesForProvider } from "../auth-profiles.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../defaults.js";
 import { minimaxUnderstandImage } from "../minimax-vlm.js";
@@ -45,12 +46,17 @@ function resolveDefaultModelRef(cfg?: OpenClawConfig): {
   return { provider: DEFAULT_PROVIDER, model: DEFAULT_MODEL };
 }
 
-function hasAuthForProvider(params: { provider: string; agentDir: string }): boolean {
+function hasAuthForProvider(params: {
+  provider: string;
+  agentDir: string;
+  mainAgentDir?: string;
+}): boolean {
   if (resolveEnvApiKey(params.provider)?.apiKey) {
     return true;
   }
   const store = ensureAuthProfileStore(params.agentDir, {
     allowKeychainPrompt: false,
+    mainAgentDir: params.mainAgentDir,
   });
   return listProfilesForProvider(store, params.provider).length > 0;
 }
@@ -67,6 +73,7 @@ export function resolveImageModelConfigForTool(params: {
   cfg?: OpenClawConfig;
   agentDir: string;
 }): ImageModelConfig | null {
+  const mainAgentDir = params.cfg ? resolveDefaultAgentDir(params.cfg) : undefined;
   // Note: We intentionally do NOT gate based on primarySupportsImages here.
   // Even when the primary model supports images, we keep the tool available
   // because images are auto-injected into prompts (see attempt.ts detectAndLoadPromptImages).
@@ -80,10 +87,12 @@ export function resolveImageModelConfigForTool(params: {
   const openaiOk = hasAuthForProvider({
     provider: "openai",
     agentDir: params.agentDir,
+    mainAgentDir,
   });
   const anthropicOk = hasAuthForProvider({
     provider: "anthropic",
     agentDir: params.agentDir,
+    mainAgentDir,
   });
 
   const fallbacks: string[] = [];
@@ -105,6 +114,7 @@ export function resolveImageModelConfigForTool(params: {
   const providerOk = hasAuthForProvider({
     provider: primary.provider,
     agentDir: params.agentDir,
+    mainAgentDir,
   });
 
   let preferred: string | null = null;

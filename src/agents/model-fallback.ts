@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "../config/config.js";
 import type { FailoverReason } from "./pi-embedded-helpers.js";
+import { resolveDefaultAgentDir } from "./agent-scope.js";
 import {
   ensureAuthProfileStore,
   isProfileInCooldown,
@@ -275,8 +276,12 @@ export async function runWithModelFallback<T>(params: {
     );
   }
 
+  const mainAgentDir = params.cfg ? resolveDefaultAgentDir(params.cfg) : undefined;
   const authStore = params.cfg
-    ? ensureAuthProfileStore(params.agentDir, { allowKeychainPrompt: false })
+    ? ensureAuthProfileStore(params.agentDir ?? mainAgentDir, {
+        allowKeychainPrompt: false,
+        mainAgentDir,
+      })
     : null;
   const attempts: FallbackAttempt[] = [];
   let lastError: unknown;

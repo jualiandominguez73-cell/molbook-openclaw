@@ -228,3 +228,7 @@ export function resolveAgentDir(cfg: OpenClawConfig, agentId: string) {
   const root = resolveStateDir(process.env, os.homedir);
   return path.join(root, "agents", id, "agent");
 }
+
+export function resolveDefaultAgentDir(cfg: OpenClawConfig): string {
+  return resolveAgentDir(cfg, resolveDefaultAgentId(cfg));
+}

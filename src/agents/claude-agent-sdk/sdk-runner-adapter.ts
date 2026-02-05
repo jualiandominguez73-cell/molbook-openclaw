@@ -17,7 +17,7 @@ import type { SdkRunnerResult } from "./sdk-runner.types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("sdk-runner-adapter");
-import { resolveAgentIdFromSessionKey } from "../agent-scope.js";
+import { resolveAgentIdFromSessionKey, resolveDefaultAgentDir } from "../agent-scope.js";
 import { resolveApiKeyForProfile } from "../auth-profiles/oauth.js";
 import { ensureAuthProfileStore } from "../auth-profiles/store.js";
 import {
@@ -66,7 +66,10 @@ async function tryAsyncOAuthResolution(
 
   let store;
   try {
-    store = ensureAuthProfileStore(params.agentDir);
+    const mainAgentDir = params.config ? resolveDefaultAgentDir(params.config) : undefined;
+    store = ensureAuthProfileStore(params.agentDir ?? mainAgentDir, {
+      mainAgentDir,
+    });
   } catch {
     return entry;
   }
@@ -481,9 +484,12 @@ export async function runSdkAgentAdapted(
   }
 
   // Resolve the SDK provider from config + auth profiles.
+  const mainAgentDir = params.config ? resolveDefaultAgentDir(params.config) : undefined;
   let authStore;
   try {
-    authStore = ensureAuthProfileStore(params.agentDir);
+    authStore = ensureAuthProfileStore(params.agentDir ?? mainAgentDir, {
+      mainAgentDir,
+    });
   } catch {
     log.trace("Could not load auth profile store");
   }

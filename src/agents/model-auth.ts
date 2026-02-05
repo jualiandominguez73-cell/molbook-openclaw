@@ -4,6 +4,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { ModelProviderAuthMode, ModelProviderConfig } from "../config/types.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { getShellEnvAppliedKeys } from "../infra/shell-env.js";
+import { resolveDefaultAgentDir } from "./agent-scope.js";
 import {
   type AuthProfileStore,
   ensureAuthProfileStore,
@@ -20,6 +21,13 @@ const AWS_BEARER_ENV = "AWS_BEARER_TOKEN_BEDROCK";
 const AWS_ACCESS_KEY_ENV = "AWS_ACCESS_KEY_ID";
 const AWS_SECRET_KEY_ENV = "AWS_SECRET_ACCESS_KEY";
 const AWS_PROFILE_ENV = "AWS_PROFILE";
+
+function resolvePrimaryAgentDir(cfg?: OpenClawConfig): string | undefined {
+  if (!cfg) {
+    return undefined;
+  }
+  return resolveDefaultAgentDir(cfg);
+}
 
 function resolveProviderConfig(
   cfg: OpenClawConfig | undefined,
@@ -138,14 +146,20 @@ export async function resolveApiKeyForProvider(params: {
   agentDir?: string;
 }): Promise<ResolvedProviderAuth> {
   const { provider, cfg, profileId, preferredProfile } = params;
-  const store = params.store ?? ensureAuthProfileStore(params.agentDir);
+  const mainAgentDir = resolvePrimaryAgentDir(cfg);
+  const targetAgentDir = params.agentDir ?? mainAgentDir;
+  const store =
+    params.store ??
+    ensureAuthProfileStore(targetAgentDir, {
+      mainAgentDir,
+    });
 
   if (profileId) {
     const resolved = await resolveApiKeyForProfile({
       cfg,
       store,
       profileId,
-      agentDir: params.agentDir,
+      agentDir: params.agentDir ?? targetAgentDir,
     });
     if (!resolved) {
       throw new Error(`No credentials found for profile "${profileId}".`);
@@ -218,7 +232,7 @@ export async function resolveApiKeyForProvider(params: {
     }
   }
 
-  const authStorePath = resolveAuthStorePathForDisplay(params.agentDir);
+  const authStorePath = resolveAuthStorePathForDisplay(targetAgentDir);
   const resolvedAgentDir = path.dirname(authStorePath);
   throw new Error(
     [
@@ -324,7 +338,12 @@ export function resolveModelAuthMode(
     return "aws-sdk";
   }
 
-  const authStore = store ?? ensureAuthProfileStore();
+  const mainAgentDir = resolvePrimaryAgentDir(cfg);
+  const authStore =
+    store ??
+    ensureAuthProfileStore(mainAgentDir, {
+      mainAgentDir,
+    });
   const profiles = listProfilesForProvider(authStore, resolved);
   if (profiles.length > 0) {
     const modes = new Set(
@@ -431,7 +450,13 @@ export function isProviderConfigured(params: {
   }
 
   // Check for auth profiles
-  const store = providedStore ?? ensureAuthProfileStore(agentDir);
+  const mainAgentDir = resolvePrimaryAgentDir(cfg);
+  const targetAgentDir = agentDir ?? mainAgentDir;
+  const store =
+    providedStore ??
+    ensureAuthProfileStore(targetAgentDir, {
+      mainAgentDir,
+    });
   const profiles = listProfilesForProvider(store, provider);
   if (profiles.length > 0) {
     return true;
