@@ -12,14 +12,6 @@ import type { ResolvedWebexAccount, WebexConfig, WebexAccountConfig } from "./ty
 
 const meta = getChatChannelMeta("webex");
 
-/**
- * Resolve Webex account configuration from OpenClaw config
- * 
- * @param params - Resolution parameters
- * @param params.cfg - OpenClaw configuration
- * @param params.accountId - Account ID to resolve (optional, defaults to DEFAULT_ACCOUNT_ID)
- * @returns Resolved account configuration
- */
 function resolveWebexAccount(params: {
   cfg: OpenClawConfig;
   accountId?: string;
@@ -52,17 +44,16 @@ function resolveWebexAccount(params: {
     name = webexConfig.name;
   }
   
-  // Resolve token with proper error handling
+  // Resolve token
   if (accountConfig.botToken) {
     token = accountConfig.botToken;
     tokenSource = "config";
   } else if (accountConfig.tokenFile) {
     try {
-      // Use require for synchronous file read to match other plugins
       const fs = require("fs");
       token = fs.readFileSync(accountConfig.tokenFile, "utf-8").trim();
       tokenSource = "file";
-    } catch {
+    } catch (err) {
       // File read failed, keep token empty
     }
   } else if (resolvedAccountId === DEFAULT_ACCOUNT_ID && process.env.WEBEX_BOT_TOKEN) {
@@ -80,12 +71,6 @@ function resolveWebexAccount(params: {
   };
 }
 
-/**
- * List all configured Webex account IDs
- * 
- * @param cfg - OpenClaw configuration
- * @returns Array of account IDs
- */
 function listWebexAccountIds(cfg: OpenClawConfig): string[] {
   const webexConfig = cfg.channels?.webex as WebexConfig | undefined;
   if (!webexConfig) {
@@ -103,22 +88,11 @@ function listWebexAccountIds(cfg: OpenClawConfig): string[] {
   return Array.from(accountIds);
 }
 
-/**
- * Normalize Webex target by removing webex: prefix
- * 
- * @param target - Raw target string
- * @returns Normalized target
- */
 function normalizeWebexTarget(target: string): string {
+  // Remove webex: prefix if present
   return target.replace(/^webex:/i, "").trim();
 }
 
-/**
- * Check if a string looks like a valid Webex target ID
- * 
- * @param target - Target string to check
- * @returns True if it looks like a Webex target
- */
 function looksLikeWebexTargetId(target: string): boolean {
   const normalized = normalizeWebexTarget(target);
   
@@ -127,7 +101,7 @@ function looksLikeWebexTargetId(target: string): boolean {
     return true;
   }
   
-  // Webex person/room IDs are base64-encoded Cisco Spark URIs
+  // Webex person/room IDs start with base64-encoded Cisco Spark URIs
   if (normalized.startsWith("Y2lzY29zcGFyazovL3VzL")) {
     return true;
   }
@@ -135,9 +109,6 @@ function looksLikeWebexTargetId(target: string): boolean {
   return false;
 }
 
-/**
- * OpenClaw channel plugin for Cisco Webex
- */
 export const webexPlugin: ChannelPlugin<ResolvedWebexAccount> = {
   id: "webex",
   meta: {
@@ -171,91 +142,44 @@ export const webexPlugin: ChannelPlugin<ResolvedWebexAccount> = {
     type: "object",
     additionalProperties: false,
     properties: {
-      enabled: { 
-        type: "boolean",
-        description: "Enable/disable the Webex channel"
-      },
-      botToken: { 
-        type: "string",
-        description: "Bot access token from developer.webex.com"
-      },
-      tokenFile: { 
-        type: "string",
-        description: "Path to file containing bot token"
-      },
-      webhookUrl: { 
-        type: "string",
-        description: "Public URL for webhook endpoint (e.g., https://your-domain.com)"
-      },
-      webhookPath: { 
-        type: "string",
-        description: "Webhook path (defaults to /webex-webhook)"
-      },
-      webhookSecret: { 
-        type: "string",
-        description: "Shared secret for webhook validation"
-      },
+      enabled: { type: "boolean" },
+      botToken: { type: "string" },
+      tokenFile: { type: "string" },
+      webhookUrl: { type: "string" },
+      webhookPath: { type: "string" },
+      webhookSecret: { type: "string" },
       dmPolicy: { 
         type: "string", 
-        enum: ["pairing", "open", "disabled"],
-        description: "Direct message policy"
+        enum: ["pairing", "open", "disabled"] 
       },
       allowFrom: { 
         type: "array", 
-        items: { type: "string" },
-        description: "List of allowed sender emails/IDs"
+        items: { type: "string" } 
       },
-      name: { 
-        type: "string",
-        description: "Display name for this account"
-      },
+      name: { type: "string" },
       accounts: {
         type: "object",
         additionalProperties: {
           type: "object",
           properties: {
-            enabled: { 
-              type: "boolean",
-              description: "Enable/disable this account"
-            },
-            botToken: { 
-              type: "string",
-              description: "Bot access token for this account"
-            },
-            tokenFile: { 
-              type: "string",
-              description: "Path to file containing bot token for this account"
-            },
-            webhookUrl: { 
-              type: "string",
-              description: "Public webhook URL for this account"
-            },
-            webhookPath: { 
-              type: "string",
-              description: "Webhook path for this account"
-            },
-            webhookSecret: { 
-              type: "string",
-              description: "Webhook secret for this account"
-            },
+            enabled: { type: "boolean" },
+            botToken: { type: "string" },
+            tokenFile: { type: "string" },
+            webhookUrl: { type: "string" },
+            webhookPath: { type: "string" },
+            webhookSecret: { type: "string" },
             dmPolicy: { 
               type: "string", 
-              enum: ["pairing", "open", "disabled"],
-              description: "Direct message policy for this account"
+              enum: ["pairing", "open", "disabled"] 
             },
             allowFrom: { 
               type: "array", 
-              items: { type: "string" },
-              description: "List of allowed senders for this account"
+              items: { type: "string" } 
             },
-            name: { 
-              type: "string",
-              description: "Display name for this account"
-            },
+            name: { type: "string" },
           },
           additionalProperties: false,
         },
-        description: "Multi-account configuration"
       },
     },
   },
@@ -447,7 +371,7 @@ export const webexPlugin: ChannelPlugin<ResolvedWebexAccount> = {
   },
   gateway: {
     startAccount: async (ctx) => {
-      const { account, cfg, abortSignal } = ctx;
+      const { account, cfg, runtime, abortSignal } = ctx;
       
       if (!account.token) {
         throw new Error("Webex token not configured");

@@ -12,6 +12,7 @@ This plugin enables bidirectional messaging with Cisco Webex Teams through the W
 - ✅ **Multi-account support** - Manage multiple bot accounts
 - ✅ **Pairing system** - Control who can message the bot
 - ✅ **Mention detection** - Respond only when mentioned in groups
+- ✅ **Thinking indicator** - Shows "🤔 Thinking..." message while processing (automatically deleted when response is ready)
 
 ## Prerequisites
 

@@ -1,84 +1,45 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import { logInboundDrop } from "openclaw/plugin-sdk";
-import type { ResolvedWebexAccount, WebexWebhookEvent, WebexMessage, WebexPerson } from "./types.js";
+import type { ResolvedWebexAccount, WebexWebhookEvent, WebexMessage } from "./types.js";
 import { getWebexRuntime } from "./runtime.js";
 import { sendWebexMessage } from "./send.js";
 
-/**
- * Runtime environment for Webex monitoring
- */
-export interface WebexRuntimeEnv {
-  /** Log function for informational messages */
+export type WebexRuntimeEnv = {
   log?: (message: string) => void;
-  /** Error function for error messages */
   error?: (message: string) => void;
-}
+};
 
-/**
- * Options for monitoring Webex webhooks
- */
-export interface WebexMonitorOptions {
-  /** Resolved Webex account */
+export type WebexMonitorOptions = {
   account: ResolvedWebexAccount;
-  /** OpenClaw configuration */
   config: OpenClawConfig;
-  /** Runtime environment */
   runtime: WebexRuntimeEnv;
-  /** Abort signal for cancellation */
   abortSignal: AbortSignal;
-  /** Status update sink */
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
-  /** Custom webhook path */
   webhookPath?: string;
-  /** Webhook URL */
   webhookUrl?: string;
-  /** Webhook secret for validation */
   webhookSecret?: string;
-}
+};
 
 const DEFAULT_WEBHOOK_PATH = "/webex-webhook";
 
-/**
- * Internal webhook target configuration
- */
-interface WebhookTarget {
-  /** Resolved account configuration */
+// Registered webhook targets (path → context)
+type WebhookTarget = {
   account: ResolvedWebexAccount;
-  /** OpenClaw configuration */
   config: OpenClawConfig;
-  /** Runtime environment */
   runtime: WebexRuntimeEnv;
-  /** Status update sink */
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
-  /** Webhook secret */
   webhookSecret?: string;
-}
-
-/**
- * Map of webhook paths to their handlers
- */
+};
 const webhookTargets = new Map<string, WebhookTarget>();
 
-/**
- * Normalize webhook path by removing trailing slashes
- * 
- * @param path - Raw webhook path
- * @returns Normalized path
- */
 function normalizeWebhookPath(path: string): string {
   return path.replace(/\/+$/, "") || "/";
 }
 
 /**
- * Top-level HTTP handler registered at plugin load time
- * 
- * This function is called for all HTTP requests and determines
- * if they should be handled by the Webex webhook processor.
- * 
- * @param req - Incoming HTTP request
- * @param res - HTTP response object
- * @returns Promise resolving to true if handled, false to pass through
+ * Top-level HTTP handler registered at plugin load time.
+ * Returns true if the request was handled, false to pass through.
  */
 export async function handleWebexWebhookRequest(
   req: IncomingMessage,
@@ -101,9 +62,8 @@ export async function handleWebexWebhookRequest(
 
   try {
     await handleWebexWebhook(req, res, target);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    target.runtime.error?.(`webhook error: ${errorMessage}`);
+  } catch (err) {
+    target.runtime.error?.(`webhook error: ${String(err)}`);
     if (!res.headersSent) {
       res.statusCode = 500;
       res.end("Internal Server Error");
@@ -113,13 +73,8 @@ export async function handleWebexWebhookRequest(
 }
 
 /**
- * Start monitoring for a Webex account
- * 
- * This function registers the webhook target and sets up the webhook
- * with Webex API. It resolves when the monitoring is aborted.
- * 
- * @param options - Monitor options
- * @returns Promise that resolves when monitoring stops
+ * Start monitoring for a Webex account. Registers the webhook target and
+ * registers the webhook with Webex API. Resolves when aborted.
  */
 export async function monitorWebexProvider(options: WebexMonitorOptions): Promise<void> {
   const { account, config, runtime, abortSignal, statusSink, webhookPath, webhookUrl, webhookSecret } = options;
@@ -164,15 +119,8 @@ export async function monitorWebexProvider(options: WebexMonitorOptions): Promis
   });
 }
 
-// ── Webhook Processing ──────────────────────────────────────────────
+// ── Webhook handling ────────────────────────────────────────────────
 
-/**
- * Handle an incoming Webex webhook request
- * 
- * @param req - HTTP request
- * @param res - HTTP response
- * @param context - Webhook context
- */
 async function handleWebexWebhook(
   req: IncomingMessage,
   res: ServerResponse,
@@ -180,18 +128,17 @@ async function handleWebexWebhook(
 ): Promise<void> {
   const { account, config, runtime, statusSink, webhookSecret } = context;
 
-  // Read request body
+  // Read body
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     chunks.push(chunk);
   }
   const body = Buffer.concat(chunks).toString("utf-8");
 
-  // Validate webhook secret if configured
-  // Note: Webex uses simple shared secret validation via X-Webex-Secret header
+  // Validate secret
   if (webhookSecret) {
-    const providedSecret = req.headers["x-webex-secret"] as string;
-    if (providedSecret !== webhookSecret) {
+    const provided = req.headers["x-webex-secret"] as string;
+    if (provided !== webhookSecret) {
       runtime.error?.(`[${account.accountId}] webhook secret mismatch`);
       res.statusCode = 401;
       res.end("Unauthorized");
@@ -199,18 +146,16 @@ async function handleWebexWebhook(
     }
   }
 
-  // Parse webhook event
   let event: WebexWebhookEvent;
   try {
     event = JSON.parse(body);
   } catch {
-    runtime.error?.(`[${account.accountId}] invalid JSON in webhook body`);
     res.statusCode = 400;
     res.end("Bad Request");
     return;
   }
 
-  // Only handle new message events
+  // Only handle new messages
   if (event.resource !== "messages" || event.event !== "created") {
     res.statusCode = 200;
     res.end("OK");
@@ -219,60 +164,41 @@ async function handleWebexWebhook(
 
   const messageId = event.data?.id;
   if (!messageId) {
-    runtime.error?.(`[${account.accountId}] missing message ID in webhook`);
     res.statusCode = 400;
     res.end("Bad Request");
     return;
   }
 
-  // Respond immediately (Webex expects fast 200 responses)
+  // Respond immediately (Webex wants fast 200s)
   res.statusCode = 200;
   res.end("OK");
 
-  // Process the message asynchronously
-  try {
-    // Fetch full message details
-    const message = await fetchWebexMessage(account.token, messageId);
-    if (!message) {
-      runtime.error?.(`[${account.accountId}] failed to fetch message ${messageId}`);
-      return;
-    }
-
-    // Skip messages from the bot itself
-    const botInfo = await getBotInfo(account.token);
-    if (botInfo && message.personId === botInfo.id) {
-      return;
-    }
-
-    if (statusSink) {
-      statusSink({ lastInboundAt: Date.now() });
-    }
-
-    await processWebexMessage(message, { config, account, runtime, statusSink });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    runtime.error?.(`[${account.accountId}] message processing error: ${errorMessage}`);
+  // Fetch full message
+  const message = await fetchWebexMessage(account.token, messageId);
+  if (!message) {
+    runtime.error?.(`[${account.accountId}] failed to fetch message ${messageId}`);
+    return;
   }
+
+  // Skip self messages
+  const botInfo = await getBotInfo(account.token);
+  if (botInfo && message.personId === botInfo.id) {
+    return;
+  }
+
+  if (statusSink) {
+    statusSink({ lastInboundAt: Date.now() });
+  }
+
+  await processWebexMessage(message, { config, account, runtime, statusSink });
 }
 
-// ── Message Processing ──────────────────────────────────────────────
+// ── Message processing ──────────────────────────────────────────────
 
-/**
- * Log a verbose message with consistent formatting
- * 
- * @param runtime - Runtime environment
- * @param msg - Message to log
- */
 function logVerbose(runtime: WebexRuntimeEnv, msg: string): void {
   runtime.log?.(`[webex] ${msg}`);
 }
 
-/**
- * Process an incoming Webex message
- * 
- * @param message - Webex message object
- * @param context - Processing context
- */
 async function processWebexMessage(
   message: WebexMessage,
   context: {
@@ -285,7 +211,6 @@ async function processWebexMessage(
   const { config, account, runtime, statusSink } = context;
   const core = getWebexRuntime();
 
-  // Skip empty messages
   const text = (message.text ?? "").trim();
   if (!text) {
     logVerbose(runtime, `drop: empty text sender=${message.personEmail}`);
@@ -296,17 +221,12 @@ async function processWebexMessage(
   const chatType = isGroup ? "group" : "direct";
   const senderId = message.personEmail ?? message.personId ?? "unknown";
 
-  // Apply DM policy
+  // DM policy check
   const dmPolicy = account.config.dmPolicy || "pairing";
-  const configAllowFrom = (account.config.allowFrom ?? []).map(String);
-  
-  let storeAllowFrom: string[] = [];
-  try {
-    storeAllowFrom = await core.channel.pairing.readAllowFromStore("webex");
-  } catch {
-    // If pairing store read fails, continue with empty array
-  }
-  
+  const configAllowFrom = (account.config.allowFrom ?? []).map((entry: string) => String(entry));
+  const storeAllowFrom = await core.channel.pairing
+    .readAllowFromStore("webex")
+    .catch(() => [] as string[]);
   const effectiveAllowFrom = [...configAllowFrom, ...storeAllowFrom]
     .map((entry) => String(entry).trim().toLowerCase())
     .filter(Boolean);
@@ -346,9 +266,8 @@ async function processWebexMessage(
                 code,
               }), { accountId: account.accountId });
               statusSink?.({ lastOutboundAt: Date.now() });
-            } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              runtime.error?.(`[webex] pairing reply failed sender=${senderId}: ${errorMessage}`);
+            } catch (err) {
+              runtime.error?.(`[webex] pairing reply failed sender=${senderId}: ${String(err)}`);
             }
           }
         } else {
@@ -378,7 +297,7 @@ async function processWebexMessage(
     },
   });
 
-  // Handle mentions in groups
+  // Mention gating for group messages
   const mentionRegexes = core.channel.mentions.buildMentionRegexes(config, route.agentId);
   const wasMentioned = isGroup
     ? core.channel.mentions.matchesMentionPatterns(text, mentionRegexes)
@@ -390,13 +309,13 @@ async function processWebexMessage(
     return;
   }
 
-  // Resolve session storage
+  // Resolve store path and record session
   const storePath = core.channel.session.resolveStorePath(
-    config.session?.store,
+    (config as any).session?.store,
     { agentId: route.agentId },
   );
 
-  // Build agent envelope
+  // Build envelope for the agent
   const fromLabel = message.personEmail ?? senderId;
   const envelopeOptions = core.channel.reply.resolveEnvelopeFormatOptions(config);
   const previousTimestamp = core.channel.session.readSessionUpdatedAt({
@@ -412,7 +331,7 @@ async function processWebexMessage(
     body: text,
   });
 
-  // Record session metadata
+  // Record inbound session metadata
   try {
     await core.channel.session.recordInboundSession({
       storePath,
@@ -430,17 +349,15 @@ async function processWebexMessage(
         to: `webex:${outboundTarget}`,
         accountId: account.accountId,
       },
-      onRecordError: (error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        runtime.error?.(`[webex] session record error: ${errorMessage}`);
+      onRecordError: (err: unknown) => {
+        runtime.error?.(`[webex] session record error: ${String(err)}`);
       },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    runtime.error?.(`[webex] session record error: ${errorMessage}`);
+  } catch (err) {
+    runtime.error?.(`[webex] session record error: ${String(err)}`);
   }
 
-  // Build context payload for the agent
+  // Build context payload (same shape as other channel plugins)
   const ctxPayload = {
     Body: body,
     BodyForAgent: body,
@@ -465,7 +382,30 @@ async function processWebexMessage(
     CommandAuthorized: !isGroup || wasMentioned,
   };
 
-  // Dispatch to agent
+  // Send "Thinking..." indicator (Webex has no typing API, so we fake it)
+  let thinkingMessageId: string | undefined;
+  try {
+    const thinkingResult = await sendWebexMessage(outboundTarget, "🤔 Thinking...", {
+      accountId: account.accountId,
+    });
+    if (thinkingResult.ok && thinkingResult.messageId) {
+      thinkingMessageId = thinkingResult.messageId;
+    }
+  } catch {
+    // Non-critical — continue without indicator
+  }
+
+  let thinkingCleared = false;
+  const clearThinkingMessage = async () => {
+    if (thinkingCleared || !thinkingMessageId) return;
+    thinkingCleared = true;
+    try {
+      await deleteWebexMessage(account.token, thinkingMessageId);
+    } catch {
+      // Best effort — ignore deletion failures
+    }
+  };
+
   try {
     await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
       ctx: ctxPayload,
@@ -475,6 +415,9 @@ async function processWebexMessage(
           const replyText = payload.text ?? "";
           if (!replyText.trim()) return;
 
+          // Clear thinking indicator before first real reply
+          await clearThinkingMessage();
+
           const tableMode = core.channel.text.resolveMarkdownTableMode({
             cfg: config,
             channel: "webex",
@@ -482,7 +425,7 @@ async function processWebexMessage(
           });
           const formattedText = core.channel.text.convertMarkdownTables(replyText, tableMode);
 
-          // Handle media attachments
+          // Handle media
           const mediaList = payload.mediaUrls?.length
             ? payload.mediaUrls
             : payload.mediaUrl
@@ -509,134 +452,88 @@ async function processWebexMessage(
             statusSink?.({ lastOutboundAt: Date.now() });
           }
         },
-        onError: (error: any) => {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          runtime.error?.(`[webex] reply delivery failed: ${errorMessage}`);
+        onError: (err: any) => {
+          runtime.error?.(`[webex] reply delivery failed: ${String(err)}`);
         },
       },
       replyOptions: {},
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    runtime.error?.(`[${account.accountId}] message processing error: ${errorMessage}`);
+  } catch (err) {
+    runtime.error?.(`[${account.accountId}] message processing error: ${String(err)}`);
+  } finally {
+    // Always clean up thinking message
+    await clearThinkingMessage();
   }
 }
 
-// ── Webex API Helpers ───────────────────────────────────────────────
+// ── Webex API helpers ───────────────────────────────────────────────
 
-/**
- * Fetch a Webex message by ID
- * 
- * @param token - Webex bot token
- * @param messageId - Message ID to fetch
- * @returns Promise resolving to message or null if not found
- */
+async function deleteWebexMessage(token: string, messageId: string): Promise<void> {
+  await fetch(`https://webexapis.com/v1/messages/${messageId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 async function fetchWebexMessage(token: string, messageId: string): Promise<WebexMessage | null> {
   try {
-    const response = await fetch(`https://webexapis.com/v1/messages/${messageId}`, {
-      headers: { 
-        "Authorization": `Bearer ${token}`, 
-        "Content-Type": "application/json" 
-      },
+    const resp = await fetch(`https://webexapis.com/v1/messages/${messageId}`, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     });
-    return response.ok ? await response.json() : null;
+    return resp.ok ? await resp.json() : null;
   } catch {
     return null;
   }
 }
 
-/**
- * Bot information cache
- */
 let cachedBotInfo: { id: string; email: string } | null = null;
-
-/**
- * Get bot information from Webex API
- * 
- * @param token - Webex bot token
- * @returns Promise resolving to bot info or null
- */
 async function getBotInfo(token: string): Promise<{ id: string; email: string } | null> {
   if (cachedBotInfo) return cachedBotInfo;
-  
   try {
-    const response = await fetch("https://webexapis.com/v1/people/me", {
-      headers: { "Authorization": `Bearer ${token}` },
+    const resp = await fetch("https://webexapis.com/v1/people/me", {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    cachedBotInfo = { 
-      id: data.id, 
-      email: data.emails?.[0] 
-    };
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    cachedBotInfo = { id: data.id, email: data.emails?.[0] };
     return cachedBotInfo;
   } catch {
     return null;
   }
 }
 
-/**
- * Register or update a webhook with Webex API
- * 
- * @param token - Webex bot token
- * @param webhookUrl - Full webhook URL
- * @param secret - Optional webhook secret
- */
 async function registerWebexWebhook(token: string, webhookUrl: string, secret?: string): Promise<void> {
   try {
-    // List existing webhooks to avoid duplicates
-    const listResponse = await fetch("https://webexapis.com/v1/webhooks", {
-      headers: { "Authorization": `Bearer ${token}` },
+    // List existing webhooks
+    const listResp = await fetch("https://webexapis.com/v1/webhooks", {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    
-    if (listResponse.ok) {
-      const { items } = await listResponse.json();
-      
-      // Find existing OpenClaw webhook
+    if (listResp.ok) {
+      const { items } = await listResp.json();
+      // Update existing or skip if already correct
       const existing = items?.find(
-        (webhook: any) => 
-          webhook.resource === "messages" && 
-          webhook.event === "created" && 
-          webhook.name === "OpenClaw Webex Bot",
+        (w: any) => w.resource === "messages" && w.event === "created" && w.name === "OpenClaw Webex Bot",
       );
-      
       if (existing) {
-        if (existing.targetUrl === webhookUrl) {
-          // Webhook already exists with correct URL
-          return;
-        }
-        
+        if (existing.targetUrl === webhookUrl) return; // Already correct
         // Update existing webhook
-        const updateResponse = await fetch(`https://webexapis.com/v1/webhooks/${existing.id}`, {
+        await fetch(`https://webexapis.com/v1/webhooks/${existing.id}`, {
           method: "PUT",
-          headers: { 
-            "Authorization": `Bearer ${token}`, 
-            "Content-Type": "application/json" 
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             name: "OpenClaw Webex Bot",
             targetUrl: webhookUrl,
             ...(secret ? { secret } : {}),
           }),
         });
-        
-        if (!updateResponse.ok) {
-          const errorText = await updateResponse.text();
-          throw new Error(`Failed to update webhook: HTTP ${updateResponse.status}: ${errorText}`);
-        }
-        
         return;
       }
     }
 
     // Create new webhook
-    const createResponse = await fetch("https://webexapis.com/v1/webhooks", {
+    const resp = await fetch("https://webexapis.com/v1/webhooks", {
       method: "POST",
-      headers: { 
-        "Authorization": `Bearer ${token}`, 
-        "Content-Type": "application/json" 
-      },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         name: "OpenClaw Webex Bot",
         targetUrl: webhookUrl,
@@ -645,13 +542,11 @@ async function registerWebexWebhook(token: string, webhookUrl: string, secret?: 
         ...(secret ? { secret } : {}),
       }),
     });
-    
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      throw new Error(`Failed to create webhook: HTTP ${createResponse.status}: ${errorText}`);
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${err}`);
     }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Webhook registration failed: ${errorMessage}`);
+  } catch (err) {
+    throw new Error(`Webhook registration failed: ${String(err)}`);
   }
 }
