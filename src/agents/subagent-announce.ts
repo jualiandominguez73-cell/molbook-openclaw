@@ -19,6 +19,7 @@ import {
 } from "../utils/delivery-context.js";
 import { isEmbeddedPiRunActive, queueEmbeddedPiMessage } from "./pi-embedded.js";
 import { type AnnounceQueueItem, enqueueAnnounce } from "./subagent-announce-queue.js";
+import { buildBriefSummary } from "./subagent-progress-stream.js";
 import { readLatestAssistantReply } from "./tools/agent-step.js";
 
 function formatDurationShort(valueMs?: number) {
@@ -362,6 +363,7 @@ export async function runSubagentAnnounceFlow(params: {
   endedAt?: number;
   label?: string;
   outcome?: SubagentRunOutcome;
+  progressThreadId?: string;
 }): Promise<boolean> {
   let didAnnounce = false;
   try {
@@ -417,19 +419,6 @@ export async function runSubagentAnnounceFlow(params: {
       outcome = { status: "unknown" };
     }
 
-    // Truncate reply to prevent context overflow when packed into main session
-    const MAX_REPLY_CHARS = 8000;
-    if (reply && reply.length > MAX_REPLY_CHARS) {
-      reply = reply.slice(0, MAX_REPLY_CHARS) + "\n\n[output truncated due to length]";
-    }
-
-    // Build stats
-    const statsLine = await buildSubagentStatsLine({
-      sessionKey: params.childSessionKey,
-      startedAt: params.startedAt,
-      endedAt: params.endedAt,
-    });
-
     // Build status label
     const statusLabel =
       outcome.status === "ok"
@@ -440,20 +429,35 @@ export async function runSubagentAnnounceFlow(params: {
             ? `failed: ${outcome.error || "unknown error"}`
             : "finished with unknown status";
 
-    // Build instructional message for main agent
     const taskLabel = params.label || params.task || "background task";
+    const hasProgressThread = Boolean(params.progressThreadId);
+
+    // Use brief summary (300 chars) instead of full output to prevent context overflow
+    const briefSummary = buildBriefSummary(reply, 300);
+
+    // Build stats (still include for internal tracking, but won't dump to parent)
+    const statsLine = await buildSubagentStatsLine({
+      sessionKey: params.childSessionKey,
+      startedAt: params.startedAt,
+      endedAt: params.endedAt,
+    });
+
+    // Build instructional message for main agent - much more concise now
     const triggerMessage = [
       `A background task "${taskLabel}" just ${statusLabel}.`,
       "",
-      "Findings:",
-      reply || "(no output)",
+      "Brief summary:",
+      briefSummary,
+      hasProgressThread ? "\n(Full progress details were streamed to a dedicated thread.)" : "",
       "",
       statsLine,
       "",
       "Summarize this naturally for the user. Keep it brief (1-2 sentences). Flow it into the conversation naturally.",
       "Do not mention technical details like tokens, stats, or that this was a background task.",
       "You can respond with NO_REPLY if no announcement is needed (e.g., internal task with no user-facing result).",
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const MAX_ANNOUNCE_ATTEMPTS = 3;
     const ANNOUNCE_RETRY_DELAY_MS = 2000;

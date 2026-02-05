@@ -4,6 +4,13 @@ import { onAgentEvent } from "../infra/agent-events.js";
 import { type DeliveryContext, normalizeDeliveryContext } from "../utils/delivery-context.js";
 import { runSubagentAnnounceFlow, type SubagentRunOutcome } from "./subagent-announce.js";
 import {
+  initProgressState,
+  createSubagentProgressThread,
+  queueProgressUpdate,
+  flushProgressDigest,
+  cleanupProgressState,
+} from "./subagent-progress-stream.js";
+import {
   loadSubagentRegistryFromDisk,
   saveSubagentRegistryToDisk,
 } from "./subagent-registry.store.js";
@@ -25,6 +32,9 @@ export type SubagentRunRecord = {
   archiveAtMs?: number;
   cleanupCompletedAt?: number;
   cleanupHandled?: boolean;
+  progressThreadId?: string;
+  progressChannelId?: string;
+  lastProgressAt?: number;
 };
 
 const subagentRuns = new Map<string, SubagentRunRecord>();
@@ -189,13 +199,31 @@ function ensureListener() {
   }
   listenerStarted = true;
   listenerStop = onAgentEvent((evt) => {
-    if (!evt || evt.stream !== "lifecycle") {
+    if (!evt) {
       return;
     }
+
     const entry = subagentRuns.get(evt.runId);
     if (!entry) {
       return;
     }
+
+    // Handle tool events for progress streaming
+    if (evt.stream === "tool") {
+      const toolName = typeof evt.data?.name === "string" ? evt.data.name : undefined;
+      const toolPhase = evt.data?.phase;
+      if (toolName && (toolPhase === "start" || toolPhase === "result")) {
+        queueProgressUpdate(evt.runId, toolName, toolPhase);
+        entry.lastProgressAt = Date.now();
+      }
+      return;
+    }
+
+    // Handle lifecycle events
+    if (evt.stream !== "lifecycle") {
+      return;
+    }
+
     const phase = evt.data?.phase;
     if (phase === "start") {
       const startedAt = typeof evt.data?.startedAt === "number" ? evt.data.startedAt : undefined;
@@ -208,6 +236,12 @@ function ensureListener() {
     if (phase !== "end" && phase !== "error") {
       return;
     }
+
+    // Flush any remaining progress updates before completion
+    void flushProgressDigest(evt.runId).finally(() => {
+      cleanupProgressState(evt.runId);
+    });
+
     const endedAt = typeof evt.data?.endedAt === "number" ? evt.data.endedAt : Date.now();
     entry.endedAt = endedAt;
     if (phase === "error") {
@@ -236,6 +270,7 @@ function ensureListener() {
       endedAt: entry.endedAt,
       label: entry.label,
       outcome: entry.outcome,
+      progressThreadId: entry.progressThreadId,
     }).then((didAnnounce) => {
       finalizeSubagentCleanup(evt.runId, entry.cleanup, didAnnounce);
     });
@@ -295,7 +330,9 @@ export function registerSubagentRun(params: {
   const archiveAtMs = archiveAfterMs ? now + archiveAfterMs : undefined;
   const waitTimeoutMs = resolveSubagentWaitTimeoutMs(cfg, params.runTimeoutSeconds);
   const requesterOrigin = normalizeDeliveryContext(params.requesterOrigin);
-  subagentRuns.set(params.runId, {
+  const taskLabel = params.label || params.task || "background task";
+
+  const entry: SubagentRunRecord = {
     runId: params.runId,
     childSessionKey: params.childSessionKey,
     requesterSessionKey: params.requesterSessionKey,
@@ -308,7 +345,33 @@ export function registerSubagentRun(params: {
     startedAt: now,
     archiveAtMs,
     cleanupHandled: false,
+  };
+  subagentRuns.set(params.runId, entry);
+
+  // Initialize progress state for streaming
+  initProgressState({
+    runId: params.runId,
+    label: taskLabel,
+    origin: requesterOrigin,
   });
+
+  // Create progress thread for supported channels (async, don't block registration)
+  if (requesterOrigin?.channel && requesterOrigin?.to) {
+    void createSubagentProgressThread({
+      runId: params.runId,
+      channel: requesterOrigin.channel,
+      to: requesterOrigin.to,
+      accountId: requesterOrigin.accountId,
+      label: taskLabel,
+    }).then((result) => {
+      if (result.threadId) {
+        entry.progressThreadId = result.threadId;
+        entry.progressChannelId = result.channelId;
+        persistSubagentRuns();
+      }
+    });
+  }
+
   ensureListener();
   persistSubagentRuns();
   if (archiveAfterMs) {
@@ -389,6 +452,10 @@ async function waitForSubagentCompletion(runId: string, waitTimeoutMs: number) {
 }
 
 export function resetSubagentRegistryForTests() {
+  // Clean up all progress states
+  for (const runId of subagentRuns.keys()) {
+    cleanupProgressState(runId);
+  }
   subagentRuns.clear();
   resumedRuns.clear();
   stopSweeper();
