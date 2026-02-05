@@ -1,7 +1,8 @@
 import type { Client } from "@larksuiteoapi/node-sdk";
-import type { OpenClawConfig } from "../config/config.js";
 import type { MsgContext } from "../auto-reply/templating.js";
+import type { OpenClawConfig } from "../config/config.js";
 import { dispatchReplyWithBufferedBlockDispatcher } from "../auto-reply/reply/provider-dispatcher.js";
+import { createReplyPrefixOptions } from "../channels/reply-prefix.js";
 import { loadConfig } from "../config/config.js";
 import { logVerbose } from "../globals.js";
 import { formatErrorMessage } from "../infra/errors.js";
@@ -94,14 +95,9 @@ export async function processFeishuMessage(
   }
   const isGroup = message.chat_type === "group";
   const msgType = message.message_type;
-  const senderId = sender?.sender_id?.open_id || sender?.sender_id?.user_id;
+  const senderId = sender?.sender_id?.open_id || sender?.sender_id?.user_id || "unknown";
   const senderUnionId = sender?.sender_id?.union_id;
   const maxMediaBytes = feishuCfg.mediaMaxMb * 1024 * 1024;
-
-  if (!senderId) {
-    logger.warn("Received message without sender id");
-    return;
-  }
 
   // Check if this is a supported message type
   if (!msgType || !SUPPORTED_MSG_TYPES.has(msgType)) {
@@ -275,7 +271,7 @@ export async function processFeishuMessage(
     return;
   }
 
-  const senderName = sender?.sender_id?.user_id || senderId || "unknown";
+  const senderName = sender?.sender_id?.user_id || "unknown";
 
   // Streaming mode support
   const streamingEnabled = (feishuCfg.streaming ?? true) && Boolean(options.credentials);
@@ -314,19 +310,25 @@ export async function processFeishuMessage(
     cfg,
     channel: "feishu",
     accountId,
-    peer: isGroup
-      ? { kind: "group", id: chatId }
-      : { kind: "dm", id: senderId },
+    peer: isGroup ? { kind: "group", id: chatId } : { kind: "dm", id: senderId },
   });
   ctx.SessionKey = route.sessionKey;
   if (route.mainSessionKey && route.mainSessionKey !== route.sessionKey) {
     ctx.ParentSessionKey = route.mainSessionKey;
   }
 
+  const { onModelSelected, ...prefixOptions } = createReplyPrefixOptions({
+    cfg,
+    agentId: route.agentId,
+    channel: "feishu",
+    accountId,
+  });
+
   await dispatchReplyWithBufferedBlockDispatcher({
     ctx,
     cfg,
     dispatcherOptions: {
+      ...prefixOptions,
       deliver: async (payload, info) => {
         const hasMedia = payload.mediaUrl || (payload.mediaUrls && payload.mediaUrls.length > 0);
         if (!payload.text && !hasMedia) {
@@ -412,6 +414,7 @@ export async function processFeishuMessage(
     },
     replyOptions: {
       disableBlockStreaming: !feishuCfg.blockStreaming,
+      onModelSelected,
       onPartialReply: streamingSession
         ? async (payload) => {
             if (!streamingSession.isActive() || !payload.text) {
