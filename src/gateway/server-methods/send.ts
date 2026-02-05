@@ -12,6 +12,7 @@ import {
 import { normalizeReplyPayloadsForDelivery } from "../../infra/outbound/payloads.js";
 import { resolveOutboundTarget } from "../../infra/outbound/targets.js";
 import { normalizePollInput } from "../../polls.js";
+import { normalizeSessionKey } from "../../sessions/session-key-utils.js";
 import {
   ErrorCodes,
   errorShape,
@@ -141,10 +142,8 @@ export const sendHandlers: GatewayRequestHandlers = {
         const mirrorMediaUrls = mirrorPayloads.flatMap(
           (payload) => payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []),
         );
-        const providedSessionKey =
-          typeof request.sessionKey === "string" && request.sessionKey.trim()
-            ? request.sessionKey.trim()
-            : undefined;
+        // Normalize session keys to lowercase for consistency with session routing/storage.
+        const providedSessionKey = normalizeSessionKey(request.sessionKey);
         const derivedAgentId = resolveSessionAgentId({ config: cfg });
         // If callers omit sessionKey, derive a target session key from the outbound route.
         const derivedRoute = !providedSessionKey

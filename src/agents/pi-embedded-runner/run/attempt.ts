@@ -883,6 +883,21 @@ export async function runEmbeddedAttempt(
           note: promptError ? "prompt error" : undefined,
         });
         anthropicPayloadLogger?.recordUsage(messagesSnapshot, promptError);
+        const hasResponseOutput =
+          assistantTexts.length > 0 ||
+          didSendViaMessagingTool() ||
+          getMessagingToolSentTexts().length > 0;
+        if (responseStartedAt === null && hasResponseOutput) {
+          responseStartedAt = promptStartedAt;
+          void emitInternalAgentHook("response:start", {
+            sessionId: params.sessionId,
+            runId: params.runId,
+            provider: params.provider,
+            model: params.modelId,
+            messageProvider: params.messageProvider,
+            messageChannel: params.messageChannel,
+          });
+        }
         if (responseStartedAt !== null) {
           void emitInternalAgentHook("response:end", {
             sessionId: params.sessionId,

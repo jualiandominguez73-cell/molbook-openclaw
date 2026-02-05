@@ -331,6 +331,8 @@ export type PluginHookAgentEndEvent = {
 export type PluginHookBeforeCompactionEvent = {
   messageCount: number;
   tokenCount?: number;
+  messageCountOriginal?: number;
+  tokenCountOriginal?: number;
 };
 
 export type PluginHookAfterCompactionEvent = {

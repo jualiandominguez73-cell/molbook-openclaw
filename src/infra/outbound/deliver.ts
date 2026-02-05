@@ -308,6 +308,7 @@ export async function deliverOutboundPayloads(params: {
     throwIfAborted(abortSignal);
     if (!handler.chunker || textLimit === undefined) {
       results.push(await handler.sendText(text));
+      await runMessageSentHook(text, true);
       return;
     }
     if (chunkMode === "newline") {
@@ -328,6 +329,7 @@ export async function deliverOutboundPayloads(params: {
         for (const chunk of chunks) {
           throwIfAborted(abortSignal);
           results.push(await handler.sendText(chunk));
+          await runMessageSentHook(chunk, true);
         }
       }
       return;
@@ -336,6 +338,7 @@ export async function deliverOutboundPayloads(params: {
     for (const chunk of chunks) {
       throwIfAborted(abortSignal);
       results.push(await handler.sendText(chunk));
+      await runMessageSentHook(chunk, true);
     }
   };
 
@@ -366,6 +369,7 @@ export async function deliverOutboundPayloads(params: {
     for (const chunk of signalChunks) {
       throwIfAborted(abortSignal);
       results.push(await sendSignalText(chunk.text, chunk.styles));
+      await runMessageSentHook(chunk.text, true);
     }
   };
 
@@ -417,7 +421,6 @@ export async function deliverOutboundPayloads(params: {
         } else {
           await sendTextChunks(payloadSummary.text);
         }
-        await runMessageSentHook(payloadSummary.text, true);
         continue;
       }
 

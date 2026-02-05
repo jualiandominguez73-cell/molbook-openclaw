@@ -429,6 +429,7 @@ export async function compactEmbeddedPiSessionDirect(
         const validated = transcriptPolicy.validateAnthropicTurns
           ? validateAnthropicTurns(validatedGemini)
           : validatedGemini;
+        const originalMessages = session.messages.slice();
         const limited = limitHistoryTurns(
           validated,
           getDmHistoryLimitFromSessionKey(params.sessionKey, params.config),
@@ -438,8 +439,18 @@ export async function compactEmbeddedPiSessionDirect(
         }
         const hookSessionKey = params.sessionKey ?? `session:${params.sessionId}`;
         const hookRunner = getGlobalHookRunner();
+        const messageCountOriginal = originalMessages.length;
         const messageCountBefore = session.messages.length;
+        let tokenCountOriginal: number | undefined;
         let tokenCountBefore: number | undefined;
+        try {
+          tokenCountOriginal = 0;
+          for (const message of originalMessages) {
+            tokenCountOriginal += estimateTokens(message);
+          }
+        } catch {
+          tokenCountOriginal = undefined;
+        }
         try {
           tokenCountBefore = 0;
           for (const message of session.messages) {
@@ -455,6 +466,8 @@ export async function compactEmbeddedPiSessionDirect(
             sessionId: params.sessionId,
             messageCount: messageCountBefore,
             tokenCount: tokenCountBefore,
+            messageCountOriginal,
+            tokenCountOriginal,
           });
           await triggerInternalHook(hookEvent);
         } catch (err) {
@@ -466,6 +479,8 @@ export async function compactEmbeddedPiSessionDirect(
               {
                 messageCount: messageCountBefore,
                 tokenCount: tokenCountBefore,
+                messageCountOriginal,
+                tokenCountOriginal,
               },
               {
                 agentId: sessionAgentId,

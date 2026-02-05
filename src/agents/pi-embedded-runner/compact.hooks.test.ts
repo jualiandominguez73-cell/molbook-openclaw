@@ -251,10 +251,12 @@ describe("compactEmbeddedPiSessionDirect hooks", () => {
     });
 
     expect(hookRunner.runBeforeCompaction).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         messageCount: 3,
         tokenCount: 30,
-      },
+        messageCountOriginal: 3,
+        tokenCountOriginal: 30,
+      }),
       expect.objectContaining({ sessionKey: "agent:main:session-1" }),
     );
     expect(hookRunner.runAfterCompaction).toHaveBeenCalledWith(

@@ -25,6 +25,14 @@ export function parseAgentSessionKey(
   return { agentId, rest };
 }
 
+export function normalizeSessionKey(sessionKey: string | undefined | null): string | undefined {
+  const raw = (sessionKey ?? "").trim();
+  if (!raw) {
+    return undefined;
+  }
+  return raw.toLowerCase();
+}
+
 export function isSubagentSessionKey(sessionKey: string | undefined | null): boolean {
   const raw = (sessionKey ?? "").trim();
   if (!raw) {

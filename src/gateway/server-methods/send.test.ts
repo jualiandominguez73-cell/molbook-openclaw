@@ -136,7 +136,7 @@ describe("gateway send mirroring", () => {
     );
   });
 
-  it("preserves provided session keys for mirroring", async () => {
+  it("lowercases provided session keys for mirroring", async () => {
     mocks.deliverOutboundPayloads.mockResolvedValue([{ messageId: "m-lower", channel: "slack" }]);
 
     const respond = vi.fn();
@@ -158,7 +158,7 @@ describe("gateway send mirroring", () => {
     expect(mocks.deliverOutboundPayloads).toHaveBeenCalledWith(
       expect.objectContaining({
         mirror: expect.objectContaining({
-          sessionKey: "agent:main:slack:channel:C123",
+          sessionKey: "agent:main:slack:channel:c123",
         }),
       }),
     );

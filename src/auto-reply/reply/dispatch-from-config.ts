@@ -12,6 +12,7 @@ import {
   logSessionStateChange,
 } from "../../logging/diagnostic.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
+import { normalizeSessionKey } from "../../sessions/session-key-utils.js";
 import { maybeApplyTtsToPayload, normalizeTtsAutoMode, resolveTtsConfig } from "../../tts/tts.js";
 import { getReplyFromConfig } from "../reply.js";
 import { formatAbortReplyText, tryFastAbortFromMessage } from "./abort.js";
@@ -67,7 +68,9 @@ const resolveSessionTtsAuto = (
   const storePath = resolveStorePath(cfg.session?.store, { agentId });
   try {
     const store = loadSessionStore(storePath);
-    const entry = store[sessionKey.toLowerCase()] ?? store[sessionKey];
+    const normalizedSessionKey = normalizeSessionKey(sessionKey);
+    const entry =
+      (normalizedSessionKey ? store[normalizedSessionKey] : undefined) ?? store[sessionKey];
     return normalizeTtsAutoMode(entry?.ttsAuto);
   } catch {
     return undefined;
