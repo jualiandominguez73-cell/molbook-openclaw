@@ -15,6 +15,8 @@ export {
   applyMoonshotProviderConfigCn,
   applyOpenrouterConfig,
   applyOpenrouterProviderConfig,
+  applyShengSuanYunConfig,
+  applyShengSuanYunProviderConfig,
   applySyntheticConfig,
   applySyntheticProviderConfig,
   applyVeniceConfig,

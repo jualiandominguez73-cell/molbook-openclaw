@@ -16,6 +16,10 @@ import { createSessionsHistoryTool } from "./tools/sessions-history-tool.js";
 import { createSessionsListTool } from "./tools/sessions-list-tool.js";
 import { createSessionsSendTool } from "./tools/sessions-send-tool.js";
 import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
+import {
+  createShengSuanYunGenerationTool,
+  createShengSuanYunStatusTool,
+} from "./tools/shengsuanyun-generation-tool.js";
 import { createTtsTool } from "./tools/tts-tool.js";
 import { createWebFetchTool, createWebSearchTool } from "./tools/web-tools.js";
 
@@ -64,6 +68,18 @@ export function createOpenClawTools(options?: {
         agentDir: options.agentDir,
         sandboxRoot: options?.sandboxRoot,
         modelHasVision: options?.modelHasVision,
+      })
+    : null;
+  const shengSuanYunGenerationTool = options?.agentDir?.trim()
+    ? createShengSuanYunGenerationTool({
+        config: options?.config,
+        agentDir: options.agentDir,
+      })
+    : null;
+  const shengSuanYunStatusTool = options?.agentDir?.trim()
+    ? createShengSuanYunStatusTool({
+        config: options?.config,
+        agentDir: options.agentDir,
       })
     : null;
   const webSearchTool = createWebSearchTool({
@@ -146,6 +162,8 @@ export function createOpenClawTools(options?: {
     ...(webSearchTool ? [webSearchTool] : []),
     ...(webFetchTool ? [webFetchTool] : []),
     ...(imageTool ? [imageTool] : []),
+    ...(shengSuanYunGenerationTool ? [shengSuanYunGenerationTool] : []),
+    ...(shengSuanYunStatusTool ? [shengSuanYunStatusTool] : []),
   ];
 
   const pluginTools = resolvePluginTools({
