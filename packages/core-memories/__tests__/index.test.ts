@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { getCoreMemories, CoreMemories, FlashEntry } from "../src/index.js";
+import { getCoreMemories, CoreMemories, FlashEntry } from "../src/index";
 
 // Detect CI environment
 const isCI = process.env.CI === "true" || process.env.CI === "1";

@@ -86,9 +86,9 @@ export async function createSmartReminder(params: SmartReminderParams): Promise<
     hook?: string;
   }> = [];
 
-  // Search by keywords
+  // Search by keywords (support sync or async implementations)
   for (const keyword of keywords) {
-    const results = cm.findByKeyword(keyword);
+    const results = await Promise.resolve(cm.findByKeyword(keyword));
     contextEntries.push(...results.flash, ...results.warm);
   }
 
@@ -168,7 +168,7 @@ export async function storeTaskWithContext(task: string): Promise<TaskEntry> {
   // Find related memories
   const relatedMemories: Array<{ keyword: string; flash: number; warm: number }> = [];
   for (const keyword of keywords.slice(0, 3)) {
-    const results = cm.findByKeyword(keyword);
+    const results = await Promise.resolve(cm.findByKeyword(keyword));
     if (results.flash.length > 0 || results.warm.length > 0) {
       relatedMemories.push({
         keyword,

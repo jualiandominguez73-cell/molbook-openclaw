@@ -249,29 +249,50 @@ function checkUserFlagged(text: string): boolean {
 }
 
 // Auto-detection: Check if Ollama is available
-export async function checkOllamaAvailable(): Promise<OllamaCheckResult> {
+export async function checkOllamaAvailable(endpoint?: string): Promise<OllamaCheckResult> {
   return new Promise((resolve) => {
-    const req = http.get("http://localhost:11434/api/tags", (res: http.IncomingMessage) => {
-      if (res.statusCode === 200) {
-        let data = "";
-        res.on("data", (chunk: Buffer) => (data += chunk.toString()));
-        res.on("end", () => {
-          try {
-            const models = JSON.parse(data) as { models?: Array<{ name: string }> };
-            resolve({ available: true, models: models.models || [] });
-          } catch {
-            resolve({ available: true, models: [] });
-          }
-        });
-      } else {
-        resolve({ available: false, models: [] });
+    let settled = false;
+    const settle = (value: OllamaCheckResult) => {
+      if (settled) {
+        return;
       }
+      settled = true;
+      resolve(value);
+    };
+
+    const base = endpoint ?? CONFIG?.engines?.local?.endpoint ?? "http://localhost:11434";
+    const url = `${base.replace(/\/$/, "")}/api/tags`;
+
+    const req = http.get(url, (res: http.IncomingMessage) => {
+      // Always drain the response to avoid socket leaks on repeated probes.
+      if (res.statusCode !== 200) {
+        res.resume();
+        return settle({ available: false, models: [] });
+      }
+
+      let data = "";
+      res.on("data", (chunk: Buffer) => {
+        data += chunk.toString();
+      });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data) as { models?: Array<{ name: string }> };
+          settle({ available: true, models: parsed.models || [] });
+        } catch {
+          settle({ available: true, models: [] });
+        }
+      });
+      res.on("error", () => {
+        settle({ available: false, models: [] });
+      });
     });
 
-    req.on("error", () => resolve({ available: false, models: [] }));
+    req.on("error", () => {
+      settle({ available: false, models: [] });
+    });
     req.setTimeout(2000, () => {
       req.destroy();
-      resolve({ available: false, models: [] });
+      settle({ available: false, models: [] });
     });
   });
 }
