@@ -16,6 +16,42 @@ export type HealthAgentEntry = {
   sessionCount: number;
 };
 
+export type SystemResourceMetrics = {
+  cpu: {
+    model: string;
+    cores: number;
+    loadAvg: [number, number, number];
+  };
+  memory: {
+    totalBytes: number;
+    freeBytes: number;
+    usedBytes: number;
+    usedPercent: number;
+    process: {
+      rssBytes: number;
+      heapUsedBytes: number;
+      heapTotalBytes: number;
+    };
+  };
+  disk: {
+    path: string;
+    totalBytes: number;
+    freeBytes: number;
+    usedBytes: number;
+    usedPercent: number;
+  } | null;
+  uptime: {
+    systemSeconds: number;
+    processSeconds: number;
+  };
+  platform: {
+    os: string;
+    arch: string;
+    nodeVersion: string;
+    hostname: string;
+  };
+};
+
 export type HealthData = {
   ok: boolean;
   ts: number;
@@ -26,6 +62,7 @@ export type HealthData = {
   sessionPath: string;
   channels: HealthChannelEntry[];
   agents: HealthAgentEntry[];
+  system: SystemResourceMetrics | null;
 };
 
 export type HealthState = {
@@ -64,6 +101,7 @@ type RawHealthResponse = {
     path?: string;
     count?: number;
   };
+  system?: SystemResourceMetrics;
 };
 
 export async function loadHealth(state: HealthState) {
@@ -120,6 +158,7 @@ export async function loadHealth(state: HealthState) {
       sessionPath: raw.sessions?.path ?? "",
       channels,
       agents,
+      system: raw.system ?? null,
     };
   } catch (err) {
     state.healthError = String(err);
@@ -128,7 +167,7 @@ export async function loadHealth(state: HealthState) {
   }
 }
 
-export async function loadHealthChannels(state: HealthState) {
+export async function loadHealthChannels(_state: HealthState) {
   // Channel data is now extracted from the health response directly.
   // This function is kept for compatibility but is a no-op.
 }
