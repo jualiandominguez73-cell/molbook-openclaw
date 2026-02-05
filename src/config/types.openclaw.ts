@@ -5,6 +5,7 @@ import type { DiagnosticsConfig, LoggingConfig, SessionConfig, WebConfig } from 
 import type { BrowserConfig } from "./types.browser.js";
 import type { ChannelsConfig } from "./types.channels.js";
 import type { CronConfig } from "./types.cron.js";
+import type { ExecutionConfig } from "./types.execution.js";
 import type {
   CanvasHostConfig,
   DiscoveryConfig,
@@ -101,6 +102,8 @@ export type OpenClawConfig = {
   talk?: TalkConfig;
   gateway?: GatewayConfig;
   memory?: MemoryConfig;
+  /** Execution layer configuration (feature flags for gradual migration). */
+  execution?: ExecutionConfig;
   overseer?: any; // TODO: Add proper OverseerConfig type
   onboarding?: any; // TODO: Add proper OnboardingConfig type
 };
