@@ -17,6 +17,7 @@ import { modelsHandlers } from "./server-methods/models.js";
 import { nodeHandlers } from "./server-methods/nodes.js";
 import { providersHealthHandlers } from "./server-methods/providers-health.js";
 import { providersHandlers } from "./server-methods/providers.js";
+import { securityHandlers } from "./server-methods/security.js";
 import { sendHandlers } from "./server-methods/send.js";
 import { sessionsHandlers } from "./server-methods/sessions.js";
 import { skillsHandlers } from "./server-methods/skills.js";
@@ -78,6 +79,15 @@ const READ_METHODS = new Set([
   "providers.list",
   "providers.usage",
   "providers.health",
+  // Security monitoring endpoints
+  "security.events.query",
+  "security.events.stats",
+  "security.alerts",
+  "security.blocked",
+  "security.session",
+  "security.ip",
+  "security.audit",
+  "security.summary",
 ]);
 const WRITE_METHODS = new Set([
   "send",
@@ -194,6 +204,7 @@ export const coreGatewayHandlers: GatewayRequestHandlers = {
   ...providersHandlers,
   ...providersHealthHandlers,
   ...authHandlers,
+  ...securityHandlers,
 };
 
 export async function handleGatewayRequest(

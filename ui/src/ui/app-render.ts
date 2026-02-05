@@ -55,6 +55,7 @@ import { loadLogs, LogsState } from "./controllers/logs.ts";
 import { loadNodes } from "./controllers/nodes.ts";
 import { loadPresence } from "./controllers/presence.ts";
 import { loadProvidersHealth, saveModelSelection } from "./controllers/providers-health.ts";
+import { loadSecurityData, runSecurityAudit, type SecurityState } from "./controllers/security.ts";
 import {
   compactSession,
   deleteSession,
@@ -97,6 +98,7 @@ import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderProviders } from "./views/providers.ts";
+import { renderSecurity } from "./views/security.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
 import { renderToastContainer } from "./views/toast.ts";
@@ -173,6 +175,18 @@ export function renderApp(state: AppViewState) {
             <span>Health</span>
             <span class="mono">${state.connected ? "OK" : "Offline"}</span>
           </div>
+          ${
+            state.providersPrimaryModel
+              ? html`
+                  <div class="pill" title="Default model: ${state.providersPrimaryModel}">
+                    <span>Model</span>
+                    <span class="mono" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${state.providersPrimaryModel.split("/").pop()}
+                    </span>
+                  </div>
+                `
+              : nothing
+          }
           ${state.clockDisplay ? html`<div class="pill"><span class="mono">${state.clockDisplay}</span></div>` : nothing}
           ${renderThemeToggle(state)}
         </div>
@@ -413,6 +427,7 @@ export function renderApp(state: AppViewState) {
                 agentRunning: Boolean(state.chatRunId || state.chatSending),
                 modelAllowlist: state.providersModelAllowlist,
                 primaryModel: state.providersPrimaryModel,
+                modelFallbacks: state.providersModelFallbacks,
                 modelsSaving: state.providersModelsSaving,
                 modelsCostFilter: state.providersModelsCostFilter,
                 authConfigProvider: state.authConfigProvider,
@@ -790,9 +805,15 @@ export function renderApp(state: AppViewState) {
                 onModelChange: (agentId, modelId) => {
                   const configState = state as unknown as ConfigState;
                   // Helper to get fresh config reference
-                  const getConfig = () =>
-                    configState.configForm as { agents?: { list?: unknown[] } } | null;
+                  type ConfigShape = {
+                    agents?: {
+                      list?: unknown[];
+                      defaults?: { models?: Record<string, unknown> };
+                    };
+                  };
+                  const getConfig = () => configState.configForm as ConfigShape | null;
                   const getList = () => getConfig()?.agents?.list;
+                  const getAllowlist = () => getConfig()?.agents?.defaults?.models;
 
                   // Ensure agents.list exists
                   if (!Array.isArray(getList())) {
@@ -824,20 +845,23 @@ export function renderApp(state: AppViewState) {
                     return;
                   }
 
-                  // Preserve existing fallbacks if any
-                  const freshList = getList();
-                  const entry = freshList?.[index] as { model?: unknown } | undefined;
-                  const existing = entry?.model;
-                  if (existing && typeof existing === "object" && !Array.isArray(existing)) {
-                    const fallbacks = (existing as { fallbacks?: unknown }).fallbacks;
-                    const next = {
-                      primary: modelId,
-                      ...(Array.isArray(fallbacks) ? { fallbacks } : {}),
-                    };
-                    updateConfigFormValue(configState, basePath, next);
-                  } else {
-                    updateConfigFormValue(configState, basePath, modelId);
+                  // Auto-populate fallbacks from allowlist (all models except primary)
+                  const allowlist = getAllowlist();
+                  const fallbacks: string[] = [];
+                  if (allowlist && typeof allowlist === "object") {
+                    for (const key of Object.keys(allowlist)) {
+                      if (key !== modelId) {
+                        fallbacks.push(key);
+                      }
+                    }
                   }
+
+                  // Set primary with auto-populated fallbacks
+                  const next = {
+                    primary: modelId,
+                    ...(fallbacks.length > 0 ? { fallbacks } : {}),
+                  };
+                  updateConfigFormValue(configState, basePath, next);
                 },
                 onModelFallbacksChange: (agentId, fallbacks) => {
                   const configState = state as unknown as ConfigState;
@@ -1217,6 +1241,54 @@ export function renderApp(state: AppViewState) {
                 onRefresh: () => {
                   void loadHealth(state as unknown as HealthState);
                   void loadHealthChannels(state as unknown as HealthState);
+                },
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "security"
+            ? renderSecurity({
+                loading: state.securityLoading,
+                error: state.securityError,
+                summary: state.securitySummary,
+                stats: state.securityStats,
+                events: state.securityEvents,
+                alerts: state.securityAlerts,
+                blocked: state.securityBlocked,
+                audit: state.securityAudit,
+                auditLoading: state.securityAuditLoading,
+                filterCategory: state.securityFilterCategory,
+                filterSeverity: state.securityFilterSeverity,
+                filterTimeRange: state.securityFilterTimeRange,
+                activeTab: state.securityActiveTab,
+                eventsPage: state.securityEventsPage,
+                eventsPerPage: state.securityEventsPerPage,
+                onRefresh: () => void loadSecurityData(state as unknown as SecurityState),
+                onTabChange: (tab) => {
+                  state.securityActiveTab = tab;
+                  void loadSecurityData(state as unknown as SecurityState);
+                },
+                onFilterCategoryChange: (category) => {
+                  state.securityFilterCategory = category;
+                  state.securityEventsPage = 0;
+                  void loadSecurityData(state as unknown as SecurityState);
+                },
+                onFilterSeverityChange: (severity) => {
+                  state.securityFilterSeverity = severity;
+                  state.securityEventsPage = 0;
+                  void loadSecurityData(state as unknown as SecurityState);
+                },
+                onFilterTimeRangeChange: (range) => {
+                  state.securityFilterTimeRange = range;
+                  state.securityEventsPage = 0;
+                  void loadSecurityData(state as unknown as SecurityState);
+                },
+                onRunAudit: (deep) =>
+                  void runSecurityAudit(state as unknown as SecurityState, deep),
+                onPageChange: (page) => {
+                  state.securityEventsPage = page;
+                  void loadSecurityData(state as unknown as SecurityState);
                 },
               })
             : nothing

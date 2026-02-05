@@ -6,6 +6,14 @@ import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
 import type { HealthData } from "./controllers/health.ts";
 import type { ProviderHealthEntry } from "./controllers/providers-health.ts";
+import type {
+  SecurityEvent,
+  SecurityEventCategory,
+  SecurityEventSeverity,
+  SecurityEventStats,
+  SecuritySummary,
+  SecurityAuditReport,
+} from "./controllers/security.ts";
 import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
@@ -179,6 +187,7 @@ export type AppViewState = {
   providersHealthExpanded: string | null;
   providersModelAllowlist: Set<string>;
   providersPrimaryModel: string | null;
+  providersModelFallbacks: string[];
   providersConfigHash: string | null;
   providersModelsSaving: boolean;
   providersModelsDirty: boolean;
@@ -199,6 +208,21 @@ export type AppViewState = {
   healthError: string | null;
   healthData: HealthData | null;
   healthChannels: Array<{ id: string; status: string }>;
+  securityLoading: boolean;
+  securityError: string | null;
+  securitySummary: SecuritySummary | null;
+  securityStats: SecurityEventStats | null;
+  securityEvents: SecurityEvent[];
+  securityAlerts: SecurityEvent[];
+  securityBlocked: SecurityEvent[];
+  securityAudit: SecurityAuditReport | null;
+  securityAuditLoading: boolean;
+  securityFilterCategory: SecurityEventCategory | "all";
+  securityFilterSeverity: SecurityEventSeverity | "all";
+  securityFilterTimeRange: "1h" | "24h" | "7d" | "30d" | "all";
+  securityActiveTab: "summary" | "events" | "alerts" | "blocked" | "audit";
+  securityEventsPage: number;
+  securityEventsPerPage: number;
   voiceLoading: boolean;
   voiceError: string | null;
   voiceTtsEnabled: boolean;
@@ -274,6 +298,7 @@ export type AppViewState = {
   handleLogsAutoFollowToggle: (next: boolean) => void;
   handleCallDebugMethod: (method: string, params: string) => Promise<void>;
   handleLoadProviders: () => Promise<void>;
+  handleLoadSecurity: () => Promise<void>;
   showToast: (type: ToastType, message: string) => void;
   dismissToast: (id: number) => void;
   showConfirm: (opts: {

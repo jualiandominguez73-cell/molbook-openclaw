@@ -738,6 +738,126 @@
 }
 
 /* ===========================================
+   Sortable Fallback Chips
+   =========================================== */
+
+.fallback-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.fallback-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--card);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: grab;
+  transition:
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease,
+    transform var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.fallback-chip:hover {
+  border-color: var(--border-strong);
+}
+
+.fallback-chip:active {
+  cursor: grabbing;
+}
+
+.fallback-chip.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.fallback-chip.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  box-shadow: var(--focus-ring);
+}
+
+.fallback-chip__handle {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.fallback-chip__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--primary-foreground);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.fallback-chip__label {
+  color: var(--text);
+}
+
+.fallback-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.fallback-chip__remove:hover {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.fallback-add-select {
+  padding: 6px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease;
+}
+
+.fallback-add-select:hover {
+  border-color: var(--border-strong);
+}
+
+.fallback-add-select:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: var(--focus-ring);
+}
+
+/* ===========================================
    Tables
    =========================================== */
 
@@ -1517,6 +1637,7 @@
 .agents-main {
   display: grid;
   gap: 16px;
+  align-content: start;
 }
 
 .agent-list {

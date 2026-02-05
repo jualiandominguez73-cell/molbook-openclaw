@@ -20,11 +20,13 @@ import {
 } from "../config/config.js";
 import { applyPluginAutoEnable } from "../config/plugin-auto-enable.js";
 import { clearAgentRunContext, onAgentEvent } from "../infra/agent-events.js";
+import { initializeCache } from "../infra/cache/index.js";
 import {
   ensureControlUiAssetsBuilt,
   resolveControlUiRootOverrideSync,
   resolveControlUiRootSync,
 } from "../infra/control-ui-assets.js";
+import { initializeStorage } from "../infra/database/index.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
 import { logAcceptedEnvOption } from "../infra/env.js";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
@@ -41,6 +43,7 @@ import {
 import { scheduleGatewayUpdateCheck } from "../infra/update-startup.js";
 import { startDiagnosticHeartbeat, stopDiagnosticHeartbeat } from "../logging/diagnostic.js";
 import { createSubsystemLogger, runtimeForLogger } from "../logging/subsystem.js";
+import { initializeSecurityEventsStore } from "../security/events-store.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
 import { startGatewayConfigReloader } from "./config-reload.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
@@ -224,6 +227,25 @@ export async function startGatewayServer(
   }
   setGatewaySigusr1RestartPolicy({ allowExternal: cfgAtStart.commands?.restart === true });
   initSubagentRegistry();
+
+  // Initialize storage and cache (non-blocking, with automatic fallback)
+  // Storage: PostgreSQL → SQLite → Memory
+  // Cache: Redis → Memory
+  const storageReady = initializeStorage().catch((err) => {
+    log.warn(`storage initialization error: ${String(err)}`);
+    return "memory" as const;
+  });
+  const cacheReady = initializeCache().catch((err) => {
+    log.warn(`cache initialization error: ${String(err)}`);
+    return "memory" as const;
+  });
+  // Initialize security events store
+  const securityEventsReady = initializeSecurityEventsStore().catch((err) => {
+    log.warn(`security events store initialization error: ${String(err)}`);
+  });
+  // Fire-and-forget: don't block gateway startup
+  Promise.all([storageReady, cacheReady, securityEventsReady]).catch(() => {});
+
   const defaultAgentId = resolveDefaultAgentId(cfgAtStart);
   const defaultWorkspaceDir = resolveAgentWorkspaceDir(cfgAtStart, defaultAgentId);
   const baseMethods = listGatewayMethods();

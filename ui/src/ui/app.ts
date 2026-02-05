@@ -262,6 +262,7 @@ export class OpenClawApp extends LitElement {
   @state() providersHealthExpanded: string | null = null;
   @state() providersModelAllowlist: Set<string> = new Set();
   @state() providersPrimaryModel: string | null = null;
+  @state() providersModelFallbacks: string[] = [];
   @state() providersConfigHash: string | null = null;
   @state() providersModelsSaving = false;
   @state() providersModelsDirty = false;
@@ -291,6 +292,27 @@ export class OpenClawApp extends LitElement {
   @state() healthData: HealthData | null = null;
   @state() healthChannels: Array<{ id: string; status: string }> = [];
   private healthPollInterval: number | null = null;
+
+  // Security monitoring tab
+  @state() securityLoading = false;
+  @state() securityError: string | null = null;
+  @state() securitySummary: import("./controllers/security.ts").SecuritySummary | null = null;
+  @state() securityStats: import("./controllers/security.ts").SecurityEventStats | null = null;
+  @state() securityEvents: import("./controllers/security.ts").SecurityEvent[] = [];
+  @state() securityAlerts: import("./controllers/security.ts").SecurityEvent[] = [];
+  @state() securityBlocked: import("./controllers/security.ts").SecurityEvent[] = [];
+  @state() securityAudit: import("./controllers/security.ts").SecurityAuditReport | null = null;
+  @state() securityAuditLoading = false;
+  @state() securityFilterCategory:
+    | import("./controllers/security.ts").SecurityEventCategory
+    | "all" = "all";
+  @state() securityFilterSeverity:
+    | import("./controllers/security.ts").SecurityEventSeverity
+    | "all" = "all";
+  @state() securityFilterTimeRange: "1h" | "24h" | "7d" | "30d" | "all" = "24h";
+  @state() securityActiveTab: "summary" | "events" | "alerts" | "blocked" | "audit" = "summary";
+  @state() securityEventsPage = 0;
+  @state() securityEventsPerPage = 50;
 
   // Voice controls tab
   @state() voiceLoading = false;
@@ -578,6 +600,11 @@ export class OpenClawApp extends LitElement {
 
   async handleLoadProviders() {
     await loadProvidersHealthInternal(this);
+  }
+
+  async handleLoadSecurity() {
+    const { loadSecurityData } = await import("./controllers/security.ts");
+    await loadSecurityData(this as unknown as import("./controllers/security.ts").SecurityState);
   }
 
   showToast(type: ToastType, message: string) {

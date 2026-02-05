@@ -17,7 +17,7 @@ export const TAB_GROUPS = [
     ],
   },
   { label: "Agent", tabs: ["agents", "skills", "nodes"] },
-  { label: "Settings", tabs: ["config", "debug", "logs"] },
+  { label: "Settings", tabs: ["config", "security", "debug", "logs"] },
 ] as const;
 
 export type Tab =
@@ -36,7 +36,8 @@ export type Tab =
   | "logs"
   | "usage"
   | "health"
-  | "voice";
+  | "voice"
+  | "security";
 
 const TAB_PATHS: Record<Tab, string> = {
   agents: "/agents",
@@ -50,6 +51,7 @@ const TAB_PATHS: Record<Tab, string> = {
   chat: "/chat",
   providers: "/providers",
   config: "/config",
+  security: "/security",
   debug: "/debug",
   logs: "/logs",
   usage: "/usage",
@@ -162,6 +164,8 @@ export function iconForTab(tab: Tab): IconName {
       return "plug";
     case "config":
       return "settings";
+    case "security":
+      return "shield";
     case "debug":
       return "bug";
     case "logs":
@@ -201,6 +205,8 @@ export function titleForTab(tab: Tab) {
       return "Providers";
     case "config":
       return "Config";
+    case "security":
+      return "Security";
     case "debug":
       return "Debug";
     case "logs":
@@ -240,6 +246,8 @@ export function subtitleForTab(tab: Tab) {
       return "Real-time LLM provider health, credentials, and usage.";
     case "config":
       return "Edit ~/.openclaw/openclaw.json safely.";
+    case "security":
+      return "Security events, alerts, blocked threats, and audit reports.";
     case "debug":
       return "Gateway snapshots, events, and manual RPC calls.";
     case "logs":
