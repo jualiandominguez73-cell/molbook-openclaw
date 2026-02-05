@@ -118,8 +118,9 @@
       "title": "Computer",
       "actions": {
         "snapshot": { "label": "snapshot" },
+        "wait": { "label": "wait", "detailKeys": ["durationMs"] },
         "move": { "label": "move", "detailKeys": ["x", "y"] },
-        "click": { "label": "click", "detailKeys": ["x", "y"] },
+        "click": { "label": "click", "detailKeys": ["x", "y", "button", "clicks"] },
         "dblclick": { "label": "dblclick", "detailKeys": ["x", "y"] },
         "right_click": { "label": "right click", "detailKeys": ["x", "y"] },
         "scroll": { "label": "scroll", "detailKeys": ["deltaY", "x", "y"] },

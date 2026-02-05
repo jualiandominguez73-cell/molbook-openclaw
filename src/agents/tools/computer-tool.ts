@@ -11,6 +11,7 @@ import { imageResultFromFile, jsonResult, type AnyAgentTool, readStringParam } f
 
 const COMPUTER_TOOL_ACTIONS = [
   "snapshot",
+  "wait",
   "move",
   "click",
   "dblclick",
@@ -46,6 +47,12 @@ const ComputerToolSchema = Type.Object({
   gatewayUrl: Type.Optional(Type.String()),
   gatewayToken: Type.Optional(Type.String()),
   timeoutMs: Type.Optional(Type.Number()),
+
+  // snapshot
+  overlay: Type.Optional(stringEnum(["none", "grid"] as const)),
+
+  // wait
+  durationMs: Type.Optional(Type.Number()),
 
   // Common action params
   x: Type.Optional(Type.Number()),
@@ -150,7 +157,9 @@ async function runPowerShellJson<T>(params: {
   try {
     return JSON.parse(raw) as T;
   } catch (err) {
-    throw new Error(`powershell did not return JSON: ${String(err)}\n${raw.slice(0, 2000)}`);
+    throw new Error(`powershell did not return JSON: ${String(err)}\n${raw.slice(0, 2000)}`, {
+      cause: err,
+    });
   }
 }
 
@@ -166,6 +175,72 @@ function requireNumber(params: Record<string, unknown>, key: string): number {
     }
   }
   throw new Error(`${key} required`);
+}
+
+function readPositiveInt(params: Record<string, unknown>, key: string, fallback: number) {
+  const value = params[key];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(1, Math.floor(value));
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) {
+      return Math.max(1, Math.floor(parsed));
+    }
+  }
+  return Math.max(1, Math.floor(fallback));
+}
+
+const SEND_KEYS_SPECIAL: Record<string, string> = {
+  enter: "{ENTER}",
+  return: "{ENTER}",
+  tab: "{TAB}",
+  esc: "{ESC}",
+  escape: "{ESC}",
+  backspace: "{BACKSPACE}",
+  bs: "{BACKSPACE}",
+  del: "{DELETE}",
+  delete: "{DELETE}",
+  insert: "{INSERT}",
+  ins: "{INSERT}",
+  home: "{HOME}",
+  end: "{END}",
+  pgup: "{PGUP}",
+  pageup: "{PGUP}",
+  pgdn: "{PGDN}",
+  pagedown: "{PGDN}",
+  up: "{UP}",
+  down: "{DOWN}",
+  left: "{LEFT}",
+  right: "{RIGHT}",
+  space: " ",
+};
+
+function normalizeSendKeysKey(raw: string) {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error("key required");
+  }
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    return trimmed;
+  }
+  const lower = trimmed.toLowerCase();
+  const special = SEND_KEYS_SPECIAL[lower];
+  if (special) {
+    return special;
+  }
+  const fnMatch = /^f(\d{1,2})$/i.exec(trimmed);
+  if (fnMatch?.[1]) {
+    const n = Number.parseInt(fnMatch[1], 10);
+    if (Number.isFinite(n) && n >= 1 && n <= 24) {
+      return `{F${n}}`;
+    }
+  }
+  if (trimmed.length === 1) {
+    return trimmed;
+  }
+  // Last resort: let SendKeys try (advanced syntax like {TAB 3}).
+  return trimmed;
 }
 
 function resolveTeachStatePath(agentDir: string, sessionKey: string) {
@@ -244,7 +319,7 @@ async function ensureApproval(params: {
 }
 
 function shouldApproveAction(action: ComputerToolAction): boolean {
-  if (action === "snapshot") {
+  if (action === "snapshot" || action === "wait") {
     return false;
   }
   if (action.startsWith("teach_")) {
@@ -377,21 +452,24 @@ async function renameSkillDir(params: {
   return { fromDir, toDir };
 }
 
-async function resolveSnapshot(): Promise<{
+async function resolveSnapshot(params?: { overlay?: "none" | "grid" }): Promise<{
   base64: string;
   width: number;
   height: number;
   cursorX?: number;
   cursorY?: number;
 }> {
+  const overlay = params?.overlay === "none" ? "none" : "grid";
   const script = `
 $ErrorActionPreference = 'Stop'
+
+$overlay = '${overlay}'
 
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class Dpi {
-  [DllImport(\"user32.dll\")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
 [void][Dpi]::SetProcessDPIAware()
@@ -399,29 +477,65 @@ public static class Dpi {
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-$gfx = [System.Drawing.Graphics]::FromImage($bmp)
-$gfx.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bmp.Size)
-$ms = New-Object System.IO.MemoryStream
-$bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-$base64 = [Convert]::ToBase64String($ms.ToArray())
-
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class CursorPos {
   [StructLayout(LayoutKind.Sequential)]
   public struct POINT { public int X; public int Y; }
-  [DllImport(\"user32.dll\")] public static extern bool GetCursorPos(out POINT pt);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT pt);
 }
 '@
 $pt = New-Object CursorPos+POINT
 [void][CursorPos]::GetCursorPos([ref]$pt)
 
-$out = @{ base64 = $base64; width = $bounds.Width; height = $bounds.Height; cursorX = $pt.X; cursorY = $pt.Y } | ConvertTo-Json -Compress
+$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$gfx = [System.Drawing.Graphics]::FromImage($bmp)
+$gfx.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bmp.Size)
+
+if ($overlay -eq 'grid') {
+  $step = 100
+  $labelStep = 200
+
+  $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(80, 0, 0, 0)), 1
+  for ($x = 0; $x -lt $bounds.Width; $x += $step) {
+    $gfx.DrawLine($pen, $x, 0, $x, $bounds.Height)
+  }
+  for ($y = 0; $y -lt $bounds.Height; $y += $step) {
+    $gfx.DrawLine($pen, 0, $y, $bounds.Width, $y)
+  }
+
+  $font = New-Object System.Drawing.Font 'Consolas', 12
+  $textBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(220, 255, 255, 255))
+  $bgBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(140, 0, 0, 0))
+
+  for ($x = 0; $x -lt $bounds.Width; $x += $labelStep) {
+    $label = [string]$x
+    $size = $gfx.MeasureString($label, $font)
+    $gfx.FillRectangle($bgBrush, $x + 2, 2, $size.Width, $size.Height)
+    $gfx.DrawString($label, $font, $textBrush, $x + 2, 2)
+  }
+  for ($y = 0; $y -lt $bounds.Height; $y += $labelStep) {
+    $label = [string]$y
+    $size = $gfx.MeasureString($label, $font)
+    $gfx.FillRectangle($bgBrush, 2, $y + 2, $size.Width, $size.Height)
+    $gfx.DrawString($label, $font, $textBrush, 2, $y + 2)
+  }
+
+  $cursorPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(220, 255, 0, 0)), 2
+  $gfx.DrawLine($cursorPen, $pt.X - 12, $pt.Y, $pt.X + 12, $pt.Y)
+  $gfx.DrawLine($cursorPen, $pt.X, $pt.Y - 12, $pt.X, $pt.Y + 12)
+}
+
+$ms = New-Object System.IO.MemoryStream
+$bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+$base64 = [Convert]::ToBase64String($ms.ToArray())
+
+$out = @{ base64 = $base64; width = $bounds.Width; height = $bounds.Height; cursorX = $pt.X; cursorY = $pt.Y; overlay = $overlay } | ConvertTo-Json -Compress
 Write-Output $out
 `;
+
 
   return await runPowerShellJson({ script, timeoutMs: 60_000 });
 }
@@ -441,7 +555,7 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class Dpi {
-  [DllImport(\"user32.dll\")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
 [void][Dpi]::SetProcessDPIAware()
@@ -452,8 +566,8 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class Mouse {
-  [DllImport(\"user32.dll\")] public static extern bool SetCursorPos(int X, int Y);
-  [DllImport(\"user32.dll\")] public static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
+  [DllImport("user32.dll")] public static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
 }
 '@
 
@@ -499,23 +613,23 @@ switch ('${action}') {
   }
   'click' {
     [void][Mouse]::SetCursorPos([int]$args.x, [int]$args.y)
-    [Mouse]::mouse_event(0x0002, 0, 0, 0, 0)
-    [Mouse]::mouse_event(0x0004, 0, 0, 0, 0)
-    Sleep-IfNeeded
-  }
-  'dblclick' {
-    [void][Mouse]::SetCursorPos([int]$args.x, [int]$args.y)
-    1..2 | ForEach-Object {
-      [Mouse]::mouse_event(0x0002, 0, 0, 0, 0)
-      [Mouse]::mouse_event(0x0004, 0, 0, 0, 0)
+
+    $button = 'left'
+    if ($args.PSObject.Properties.Name -contains 'button') { $button = [string]$args.button }
+    $clicks = 1
+    if ($args.PSObject.Properties.Name -contains 'clicks') { $clicks = [int]$args.clicks }
+    if ($clicks -lt 1) { $clicks = 1 }
+
+    $down = 0x0002
+    $up = 0x0004
+    if ($button -eq 'right') { $down = 0x0008; $up = 0x0010 }
+    if ($button -eq 'middle') { $down = 0x0020; $up = 0x0040 }
+
+    1..$clicks | ForEach-Object {
+      [Mouse]::mouse_event($down, 0, 0, 0, 0)
+      [Mouse]::mouse_event($up, 0, 0, 0, 0)
       Start-Sleep -Milliseconds 60
     }
-    Sleep-IfNeeded
-  }
-  'right_click' {
-    [void][Mouse]::SetCursorPos([int]$args.x, [int]$args.y)
-    [Mouse]::mouse_event(0x0008, 0, 0, 0, 0)
-    [Mouse]::mouse_event(0x0010, 0, 0, 0, 0)
     Sleep-IfNeeded
   }
   'scroll' {
@@ -605,7 +719,9 @@ export function createComputerTool(options?: {
       };
 
       if (action === "snapshot") {
-        const snap = await resolveSnapshot();
+        const overlayRaw = readStringParam(params, "overlay", { required: false });
+        const overlay = overlayRaw === "none" ? "none" : "grid";
+        const snap = await resolveSnapshot({ overlay });
         const buffer = Buffer.from(snap.base64, "base64");
         const saved = await saveMediaBuffer(buffer, "image/png", "computer", 20 * 1024 * 1024);
         return await imageResultFromFile({
@@ -618,6 +734,20 @@ export function createComputerTool(options?: {
             cursorY: snap.cursorY,
           },
         });
+      }
+
+      if (action === "wait") {
+        const durationMs = readPositiveInt(params, "durationMs", 500);
+        await new Promise((resolve) => setTimeout(resolve, durationMs));
+        if (agentDir) {
+          await recordTeachStep({
+            agentDir,
+            sessionKey,
+            action: "wait",
+            stepParams: { durationMs },
+          });
+        }
+        return jsonResult({ ok: true, waitedMs: durationMs });
       }
 
       if (action === "teach_start") {
@@ -692,9 +822,17 @@ export function createComputerTool(options?: {
       if (action === "click") {
         const x = requireNumber(params, "x");
         const y = requireNumber(params, "y");
-        await runInputAction({ action: "click", args: { x, y, delayMs } });
+        const buttonRaw = readStringParam(params, "button", { required: false });
+        const button = buttonRaw === "right" || buttonRaw === "middle" ? buttonRaw : "left";
+        const clicks = readPositiveInt(params, "clicks", 1);
+        await runInputAction({ action: "click", args: { x, y, button, clicks, delayMs } });
         if (agentDir) {
-          await recordTeachStep({ agentDir, sessionKey, action: "click", stepParams: { x, y, delayMs } });
+          await recordTeachStep({
+            agentDir,
+            sessionKey,
+            action: "click",
+            stepParams: { x, y, button, clicks, delayMs },
+          });
         }
         return jsonResult({ ok: true });
       }
@@ -702,9 +840,14 @@ export function createComputerTool(options?: {
       if (action === "dblclick") {
         const x = requireNumber(params, "x");
         const y = requireNumber(params, "y");
-        await runInputAction({ action: "dblclick", args: { x, y, delayMs } });
+        await runInputAction({ action: "click", args: { x, y, button: "left", clicks: 2, delayMs } });
         if (agentDir) {
-          await recordTeachStep({ agentDir, sessionKey, action: "dblclick", stepParams: { x, y, delayMs } });
+          await recordTeachStep({
+            agentDir,
+            sessionKey,
+            action: "dblclick",
+            stepParams: { x, y, delayMs },
+          });
         }
         return jsonResult({ ok: true });
       }
@@ -712,9 +855,14 @@ export function createComputerTool(options?: {
       if (action === "right_click") {
         const x = requireNumber(params, "x");
         const y = requireNumber(params, "y");
-        await runInputAction({ action: "right_click", args: { x, y, delayMs } });
+        await runInputAction({ action: "click", args: { x, y, button: "right", clicks: 1, delayMs } });
         if (agentDir) {
-          await recordTeachStep({ agentDir, sessionKey, action: "right_click", stepParams: { x, y, delayMs } });
+          await recordTeachStep({
+            agentDir,
+            sessionKey,
+            action: "right_click",
+            stepParams: { x, y, delayMs },
+          });
         }
         return jsonResult({ ok: true });
       }
@@ -760,25 +908,30 @@ export function createComputerTool(options?: {
       }
 
       if (action === "hotkey") {
-        const key = readStringParam(params, "key", { required: true });
+        const keyRaw = readStringParam(params, "key", { required: true });
+        const key = normalizeSendKeysKey(keyRaw);
         const ctrl = typeof params.ctrl === "boolean" ? params.ctrl : false;
         const alt = typeof params.alt === "boolean" ? params.alt : false;
         const shift = typeof params.shift === "boolean" ? params.shift : false;
         const meta = typeof params.meta === "boolean" ? params.meta : false;
-        await runInputAction({ action: "hotkey", args: { key, ctrl, alt, shift, meta, delayMs } });
+        if (meta) {
+          throw new Error("meta/win key is not supported yet");
+        }
+        await runInputAction({ action: "hotkey", args: { key, ctrl, alt, shift, delayMs } });
         if (agentDir) {
           await recordTeachStep({
             agentDir,
             sessionKey,
             action: "hotkey",
-            stepParams: { key, ctrl, alt, shift, meta, delayMs },
+            stepParams: { key, ctrl, alt, shift, delayMs },
           });
         }
         return jsonResult({ ok: true });
       }
 
       if (action === "press") {
-        const key = readStringParam(params, "key", { required: true });
+        const keyRaw = readStringParam(params, "key", { required: true });
+        const key = normalizeSendKeysKey(keyRaw);
         await runInputAction({ action: "press", args: { key, delayMs } });
         if (agentDir) {
           await recordTeachStep({ agentDir, sessionKey, action: "press", stepParams: { key, delayMs } });
@@ -786,7 +939,7 @@ export function createComputerTool(options?: {
         return jsonResult({ ok: true });
       }
 
-      throw new Error(`unsupported computer action: ${action}`);
+      throw new Error(`unsupported computer action: ${String(action)}`);
     },
   };
 }
