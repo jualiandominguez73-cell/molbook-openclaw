@@ -303,14 +303,58 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     try {
       const store = loadSessionStore(storePath);
       const entry = store[sessionKey];
-      if (entry?.groupActivation === "always") {
+      if (entry?.groupActivation === "always" || entry?.groupActivation === "auto") {
         return false;
       }
       if (entry?.groupActivation === "mention") {
         return true;
       }
+      // Fallback to configured policy: "auto" implies no mention required (smart reply)
+      // Check both account-level config and global channel config to be safe
+      const policy =
+        telegramCfg.groupPolicy ??
+        (cfg.channels?.telegram as { groupPolicy?: string })?.groupPolicy;
+      if (policy === "auto") {
+        return false;
+      }
+      return undefined;
     } catch (err) {
       logVerbose(`Failed to load session for activation check: ${String(err)}`);
+    }
+    // Fallback to configured policy: "auto" implies no mention required (smart reply)
+    // Check both account-level config and global channel config to be safe
+    const policy =
+      telegramCfg.groupPolicy ?? (cfg.channels?.telegram as { groupPolicy?: string })?.groupPolicy;
+    if (policy === "auto") {
+      return false;
+    }
+    return undefined;
+  };
+  const resolveGroupActivationMode = (params: {
+    chatId: string | number;
+    agentId?: string;
+    messageThreadId?: number;
+    sessionKey?: string;
+  }) => {
+    const agentId = params.agentId ?? resolveDefaultAgentId(cfg);
+    const sessionKey =
+      params.sessionKey ??
+      `agent:${agentId}:telegram:group:${buildTelegramGroupPeerId(params.chatId, params.messageThreadId)}`;
+    const storePath = resolveStorePath(cfg.session?.store, { agentId });
+    try {
+      const store = loadSessionStore(storePath);
+      const entry = store[sessionKey];
+      if (entry?.groupActivation) {
+        return entry.groupActivation;
+      }
+    } catch {
+      // ignore
+    }
+    // Fallback to configured policy
+    const policy =
+      telegramCfg.groupPolicy ?? (cfg.channels?.telegram as { groupPolicy?: string })?.groupPolicy;
+    if (policy === "auto") {
+      return "auto";
     }
     return undefined;
   };
@@ -348,6 +392,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     ackReactionScope,
     logger,
     resolveGroupActivation,
+    resolveGroupActivationMode,
     resolveGroupRequireMention,
     resolveTelegramGroupConfig,
     runtime,
@@ -479,7 +524,14 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     resolveGroupPolicy,
     resolveTelegramGroupConfig,
     shouldSkipUpdate,
-    processMessage,
+    processMessage: (ctx, allMedia, storeAllowFrom, options) =>
+      processMessage(ctx, allMedia, storeAllowFrom, {
+        ...options,
+        activationMode: resolveGroupActivationMode({
+          chatId: ctx.message.chat.id,
+          messageThreadId: (ctx.message as { message_thread_id?: number }).message_thread_id,
+        }),
+      }),
     logger,
   });
 
