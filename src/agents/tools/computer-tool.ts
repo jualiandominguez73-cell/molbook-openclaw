@@ -706,7 +706,7 @@ public static class Keyboard {
     }
   }
 
-  public static void Combo(bool ctrl, bool alt, bool shift, ushort vk, bool extended) {
+  public static void Combo(bool ctrl, bool alt, bool shift, bool meta, ushort vk, bool extended) {
     if (ctrl) {
       KeyDown(0x11, false);
     }
@@ -716,7 +716,13 @@ public static class Keyboard {
     if (shift) {
       KeyDown(0x10, false);
     }
+    if (meta) {
+      KeyDown(0x5B, false);
+    }
     KeyPress(vk, extended);
+    if (meta) {
+      KeyUp(0x5B, false);
+    }
     if (shift) {
       KeyUp(0x10, false);
     }
@@ -834,6 +840,9 @@ function Resolve-Key([string]$keyToken) {
     'LEFT' { $vk = 0x25; $extended = $true }
     'RIGHT' { $vk = 0x27; $extended = $true }
     'SPACE' { $vk = 0x20 }
+    'WIN' { $vk = 0x5B }
+    'LWIN' { $vk = 0x5B }
+    'RWIN' { $vk = 0x5C }
     default {
       if ($upper -match '^F(\d{1,2})$') {
         $n = [int]$Matches[1]
@@ -896,13 +905,14 @@ switch ('${action}') {
   'hotkey' {
     $keyToken = [string]$args.key
     if (-not $keyToken) { throw 'key required' }
-    $ctrl = $false; $alt = $false; $shift = $false
+    $ctrl = $false; $alt = $false; $shift = $false; $meta = $false
     if ($args.PSObject.Properties.Name -contains 'ctrl') { $ctrl = [bool]$args.ctrl }
     if ($args.PSObject.Properties.Name -contains 'alt') { $alt = [bool]$args.alt }
     if ($args.PSObject.Properties.Name -contains 'shift') { $shift = [bool]$args.shift }
+    if ($args.PSObject.Properties.Name -contains 'meta') { $meta = [bool]$args.meta }
 
     $resolved = Resolve-Key $keyToken
-    [Keyboard]::Combo($ctrl, $alt, $shift, [UInt16]$resolved.vk, [bool]$resolved.extended)
+    [Keyboard]::Combo($ctrl, $alt, $shift, $meta, [UInt16]$resolved.vk, [bool]$resolved.extended)
     Sleep-IfNeeded
   }
   'press' {
@@ -1148,16 +1158,13 @@ export function createComputerTool(options?: {
         const alt = typeof params.alt === "boolean" ? params.alt : false;
         const shift = typeof params.shift === "boolean" ? params.shift : false;
         const meta = typeof params.meta === "boolean" ? params.meta : false;
-        if (meta) {
-          throw new Error("meta/win key is not supported yet");
-        }
-        await runInputAction({ action: "hotkey", args: { key, ctrl, alt, shift, delayMs } });
+        await runInputAction({ action: "hotkey", args: { key, ctrl, alt, shift, meta, delayMs } });
         if (agentDir) {
           await recordTeachStep({
             agentDir,
             sessionKey,
             action: "hotkey",
-            stepParams: { key, ctrl, alt, shift, delayMs },
+            stepParams: { key, ctrl, alt, shift, meta, delayMs },
           });
         }
         return jsonResult({ ok: true });
