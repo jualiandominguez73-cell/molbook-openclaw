@@ -20,6 +20,7 @@ Docs: https://docs.openclaw.ai
 - Cron: delete one-shot jobs after success by default; add `--keep-after-run` for CLI.
 - Cron: suppress messaging tools during announce delivery so summaries post consistently.
 - Cron: avoid duplicate deliveries when isolated runs send messages directly.
+- Skills: add find-skills for SkillsMP marketplace search (25,000+ Agent Skills for Claude Code, Codex CLI, and ChatGPT).
 
 ### Fixes
 
