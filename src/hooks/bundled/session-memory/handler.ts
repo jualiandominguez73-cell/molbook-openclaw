@@ -116,8 +116,8 @@ const saveSessionToMemory: HookHandler = async (event) => {
       if (sessionContent && cfg) {
         console.log("[session-memory] Calling generateSlugViaLLM...");
         // Dynamically import the LLM slug generator (avoids module caching issues)
-        // When compiled, handler is at dist/hooks/bundled/session-memory/handler.js
-        // Going up ../.. puts us at dist/hooks/, so just add llm-slug-generator.js
+        // When compiled, handler is at dist/bundled/session-memory/handler.js
+        // Going up ../.. puts us at dist/, so just add llm-slug-generator.js
         const openclawRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
         const slugGenPath = path.join(openclawRoot, "llm-slug-generator.js");
         const { generateSlugViaLLM } = await import(slugGenPath);
