@@ -206,6 +206,13 @@ EOF
 
 > ⚠️ **Note:** `himalaya message write` always opens an interactive editor. Use `himalaya template send` with a heredoc or piped input for automated/scripted email sending.
 
+> **CRITICAL: `template send` vs `message send`**
+>
+> - `himalaya template send` - Processes MML tags (`<#multipart>`, `<#part>`) into proper MIME. **Use this for all programmatic/scripted sending.**
+> - `himalaya message send` - Sends raw MIME bytes WITHOUT processing MML tags. MML tags will appear as literal text in the recipient's inbox. **Do not use this for composing emails.**
+>
+> If you need to send an email non-interactively (heredoc, pipe, script), ALWAYS use `template send`.
+
 ### HTML Emails
 
 **Plain text is the default.** Only use styled formats when explicitly requested.
@@ -362,17 +369,20 @@ himalaya envelope list -f Sent -s 10 -o json
 
 These flags/options do NOT exist:
 
-| ❌ Wrong                     | ✅ Correct                                        |
-| ---------------------------- | ------------------------------------------------- |
-| `--limit 10`                 | `--page-size 10` or `-s 10`                       |
-| `--flag seen`                | `seen` (positional argument)                      |
-| `attachment download --dir`  | `attachment download` (no dir option)             |
-| `message write "body"`       | `template send <<EOF...EOF` (for non-interactive) |
-| `message move 42 "Folder"`   | `message move "Folder" 42` (folder first)         |
-| `message copy 42 "Folder"`   | `message copy "Folder" 42` (folder first)         |
-| Raw `<html>` in body         | Use `<#multipart>` + `<#part type=text/html>`     |
-| `**markdown**` in plain text | Use plain text formatting (CAPS, `-` for bullets) |
-| Sent folder empty            | Known bug with `save-copy=true` (see #619)        |
+| ❌ Wrong                     | ✅ Correct                                          |
+| ---------------------------- | --------------------------------------------------- |
+| `--limit 10`                 | `--page-size 10` or `-s 10`                         |
+| `--flag seen`                | `seen` (positional argument)                        |
+| `attachment download --dir`  | `attachment download` (no dir option)               |
+| `message write "body"`       | `template send <<EOF...EOF` (for non-interactive)   |
+| `message send <<EOF...EOF`   | `template send <<EOF...EOF` (processes MML tags)    |
+| `himalaya send`              | `himalaya template send` or `himalaya message send` |
+| `message move 42 "Folder"`   | `message move "Folder" 42` (folder first)           |
+| `message copy 42 "Folder"`   | `message copy "Folder" 42` (folder first)           |
+| Raw `<html>` in body         | Use `<#multipart>` + `<#part type=text/html>`       |
+| `<div>` layout in HTML email | Use `<table role="presentation">` (tables only)     |
+| `**markdown**` in plain text | Use plain text formatting (CAPS, `-` for bullets)   |
+| Sent folder empty            | Known bug with `save-copy=true` (see #619)          |
 
 ## Tips
 

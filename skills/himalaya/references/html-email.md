@@ -121,10 +121,19 @@ The Team
 
 ## Styled Email Rules
 
-1. **Tables are mandatory** - Outlook uses Word's rendering engine
-2. **Inline styles required** - Gmail strips `<style>` tags on mobile
+1. **Tables are mandatory** - Outlook uses Word's rendering engine. NEVER use `<div>` for layout.
+2. **Inline styles on EVERY element** - Gmail strips `<style>` tags on mobile. Nothing is inherited reliably.
 3. **600px width maximum** - Standard for email preview panes
-4. **`role="presentation"`** - On layout tables for accessibility
+4. **`role="presentation"`** - On ALL layout tables for accessibility
+5. **Outer centering table** - Always wrap content in a full-width outer table with an inner 600px table for centering
+
+## Do NOT Use in HTML Emails
+
+- `<div>` for layout - use `<table role="presentation">` with `<tr><td>` instead
+- `<style>` blocks - Gmail strips them on mobile; use inline `style=""` on every element
+- Flexbox or CSS Grid - no email client supports them reliably
+- External CSS / `<link>` stylesheets - never loaded in email clients
+- Inherited styles - every element needs its own inline `style`; child elements do not reliably inherit from parents
 
 ## Testing
 
