@@ -69,6 +69,7 @@ const ComputerToolSchema = Type.Object({
   delayMs: Type.Optional(Type.Number()),
   steps: Type.Optional(Type.Number()),
   stepDelayMs: Type.Optional(Type.Number()),
+  jitterPx: Type.Optional(Type.Number()),
 
   // scroll
   deltaY: Type.Optional(Type.Number()),
@@ -197,6 +198,20 @@ function readPositiveInt(params: Record<string, unknown>, key: string, fallback:
     }
   }
   return Math.max(1, Math.floor(fallback));
+}
+
+function readNonNegativeInt(params: Record<string, unknown>, key: string, fallback: number) {
+  const value = params[key];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.floor(value));
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, Math.floor(parsed));
+    }
+  }
+  return Math.max(0, Math.floor(fallback));
 }
 
 const KEY_TOKEN_SPECIAL: Record<string, string> = {
@@ -532,6 +547,7 @@ function formatApprovalCommand(action: string, params: Record<string, unknown>):
     "delayMs",
     "steps",
     "stepDelayMs",
+    "jitterPx",
   ];
   const parts: string[] = [];
   for (const key of allowedKeys) {
@@ -1076,11 +1092,16 @@ function Resolve-Key([string]$keyToken) {
   return @{ vk = [UInt16]$vk; extended = $extended }
 }
 
-function Smooth-MoveTo([int]$x2, [int]$y2, [int]$steps, [int]$stepDelay) {
+$rng = New-Object System.Random
+
+function Smooth-MoveTo([int]$x2, [int]$y2, [int]$steps, [int]$stepDelay, [int]$jitterPx) {
   if ($steps -lt 1) { $steps = 1 }
   if ($steps -gt 200) { $steps = 200 }
   if ($stepDelay -lt 0) { $stepDelay = 0 }
   if ($stepDelay -gt 200) { $stepDelay = 200 }
+
+  if ($jitterPx -lt 0) { $jitterPx = 0 }
+  if ($jitterPx -gt 6) { $jitterPx = 6 }
 
   $pt = New-Object InputApi+POINT
   [void][InputApi]::GetCursorPos([ref]$pt)
@@ -1094,11 +1115,26 @@ function Smooth-MoveTo([int]$x2, [int]$y2, [int]$steps, [int]$stepDelay) {
 
   $dx = ($x2 - $x1)
   $dy = ($y2 - $y1)
+
+  $phaseX = $rng.NextDouble() * 6.283185
+  $phaseY = $rng.NextDouble() * 6.283185
+  $freqX = 1.0 + ($rng.NextDouble() * 2.0)
+  $freqY = 1.0 + ($rng.NextDouble() * 2.0)
+
   for ($i = 1; $i -le $steps; $i++) {
     $t = $i / [double]$steps
     $e = ($t * $t) * (3.0 - (2.0 * $t))
-    $nx = [int][Math]::Round($x1 + ($dx * $e))
-    $ny = [int][Math]::Round($y1 + ($dy * $e))
+
+    $jx = 0.0
+    $jy = 0.0
+    if ($jitterPx -gt 0) {
+      $decay = 4.0 * $t * (1.0 - $t)
+      $jx = [Math]::Sin($phaseX + ($t * $freqX * 6.283185)) * $jitterPx * $decay
+      $jy = [Math]::Sin($phaseY + ($t * $freqY * 6.283185)) * $jitterPx * $decay
+    }
+
+    $nx = [int][Math]::Round($x1 + ($dx * $e) + $jx)
+    $ny = [int][Math]::Round($y1 + ($dy * $e) + $jy)
     [MouseInput]::MoveTo($nx, $ny)
     if ($stepDelay -gt 0) { Start-Sleep -Milliseconds $stepDelay }
   }
@@ -1115,7 +1151,10 @@ switch ('${action}') {
     $stepDelay = 5
     if ($args.PSObject.Properties.Name -contains 'stepDelayMs') { $stepDelay = [int]$args.stepDelayMs }
 
-    Smooth-MoveTo $x2 $y2 $steps $stepDelay
+    $jitter = 1
+    if ($args.PSObject.Properties.Name -contains 'jitterPx') { $jitter = [int]$args.jitterPx }
+
+    Smooth-MoveTo $x2 $y2 $steps $stepDelay $jitter
     Sleep-IfNeeded
   }
   'click' {
@@ -1128,7 +1167,10 @@ switch ('${action}') {
     $stepDelay = 5
     if ($args.PSObject.Properties.Name -contains 'stepDelayMs') { $stepDelay = [int]$args.stepDelayMs }
 
-    Smooth-MoveTo $x $y $steps $stepDelay
+    $jitter = 1
+    if ($args.PSObject.Properties.Name -contains 'jitterPx') { $jitter = [int]$args.jitterPx }
+
+    Smooth-MoveTo $x $y $steps $stepDelay $jitter
 
     $button = 'left'
     if ($args.PSObject.Properties.Name -contains 'button') { $button = [string]$args.button }
@@ -1150,7 +1192,10 @@ switch ('${action}') {
       $stepDelay = 5
       if ($args.PSObject.Properties.Name -contains 'stepDelayMs') { $stepDelay = [int]$args.stepDelayMs }
 
-      Smooth-MoveTo $x $y $steps $stepDelay
+    $jitter = 1
+    if ($args.PSObject.Properties.Name -contains 'jitterPx') { $jitter = [int]$args.jitterPx }
+
+    Smooth-MoveTo $x $y $steps $stepDelay $jitter
     }
     $delta = [int]$args.deltaY
     [MouseInput]::Wheel($delta)
@@ -1177,16 +1222,36 @@ switch ('${action}') {
     [MouseInput]::ButtonDown('left')
     Start-Sleep -Milliseconds 30
 
+    $jitter = 1
+    if ($args.PSObject.Properties.Name -contains 'jitterPx') { $jitter = [int]$args.jitterPx }
+
     if ($steps -eq 1) {
       [MouseInput]::MoveTo($x2, $y2)
     } else {
       $dx = ($x2 - $x1)
       $dy = ($y2 - $y1)
+
+      if ($jitter -lt 0) { $jitter = 0 }
+      if ($jitter -gt 6) { $jitter = 6 }
+      $phaseX = $rng.NextDouble() * 6.283185
+      $phaseY = $rng.NextDouble() * 6.283185
+      $freqX = 1.0 + ($rng.NextDouble() * 2.0)
+      $freqY = 1.0 + ($rng.NextDouble() * 2.0)
+
       for ($i = 1; $i -le $steps; $i++) {
         $t = $i / [double]$steps
         $e = ($t * $t) * (3.0 - (2.0 * $t))
-        $nx = [int][Math]::Round($x1 + ($dx * $e))
-        $ny = [int][Math]::Round($y1 + ($dy * $e))
+
+        $jx = 0.0
+        $jy = 0.0
+        if ($jitter -gt 0) {
+          $decay = 4.0 * $t * (1.0 - $t)
+          $jx = [Math]::Sin($phaseX + ($t * $freqX * 6.283185)) * $jitter * $decay
+          $jy = [Math]::Sin($phaseY + ($t * $freqY * 6.283185)) * $jitter * $decay
+        }
+
+        $nx = [int][Math]::Round($x1 + ($dx * $e) + $jx)
+        $ny = [int][Math]::Round($y1 + ($dy * $e) + $jy)
         [MouseInput]::MoveTo($nx, $ny)
         if ($stepDelay -gt 0) { Start-Sleep -Milliseconds $stepDelay }
       }
@@ -1437,13 +1502,14 @@ export function createComputerTool(options?: {
         const y = requireNumber(params, "y");
         const steps = readPositiveInt(params, "steps", 15);
         const stepDelayMs = readPositiveInt(params, "stepDelayMs", 5);
-        await runInputAction({ action: "move", args: { x, y, steps, stepDelayMs, delayMs } });
+        const jitterPx = readNonNegativeInt(params, "jitterPx", 1);
+        await runInputAction({ action: "move", args: { x, y, steps, stepDelayMs, jitterPx, delayMs } });
         if (agentDir) {
           await recordTeachStep({
             agentDir,
             sessionKey,
             action: "move",
-            stepParams: { x, y, steps, stepDelayMs, delayMs },
+            stepParams: { x, y, steps, stepDelayMs, jitterPx, delayMs },
           });
         }
         return jsonResult({ ok: true });
@@ -1457,13 +1523,17 @@ export function createComputerTool(options?: {
         const clicks = readPositiveInt(params, "clicks", 1);
         const steps = readPositiveInt(params, "steps", 8);
         const stepDelayMs = readPositiveInt(params, "stepDelayMs", 5);
-        await runInputAction({ action: "click", args: { x, y, button, clicks, steps, stepDelayMs, delayMs } });
+        const jitterPx = readNonNegativeInt(params, "jitterPx", 1);
+        await runInputAction({
+          action: "click",
+          args: { x, y, button, clicks, steps, stepDelayMs, jitterPx, delayMs },
+        });
         if (agentDir) {
           await recordTeachStep({
             agentDir,
             sessionKey,
             action: "click",
-            stepParams: { x, y, button, clicks, steps, stepDelayMs, delayMs },
+            stepParams: { x, y, button, clicks, steps, stepDelayMs, jitterPx, delayMs },
           });
         }
         return jsonResult({ ok: true });
@@ -1505,16 +1575,25 @@ export function createComputerTool(options?: {
         const y = typeof params.y === "number" ? params.y : undefined;
         const steps = readPositiveInt(params, "steps", 8);
         const stepDelayMs = readPositiveInt(params, "stepDelayMs", 5);
+        const jitterPx = readNonNegativeInt(params, "jitterPx", 1);
         await runInputAction({
           action: "scroll",
-          args: { ...(x !== undefined && y !== undefined ? { x, y, steps, stepDelayMs } : {}), deltaY, delayMs },
+          args: {
+            ...(x !== undefined && y !== undefined ? { x, y, steps, stepDelayMs, jitterPx } : {}),
+            deltaY,
+            delayMs,
+          },
         });
         if (agentDir) {
           await recordTeachStep({
             agentDir,
             sessionKey,
             action: "scroll",
-            stepParams: { ...(x !== undefined && y !== undefined ? { x, y, steps, stepDelayMs } : {}), deltaY, delayMs },
+            stepParams: {
+              ...(x !== undefined && y !== undefined ? { x, y, steps, stepDelayMs, jitterPx } : {}),
+              deltaY,
+              delayMs,
+            },
           });
         }
         return jsonResult({ ok: true });
@@ -1527,13 +1606,17 @@ export function createComputerTool(options?: {
         const y2 = requireNumber(params, "y2");
         const steps = readPositiveInt(params, "steps", 25);
         const stepDelayMs = readPositiveInt(params, "stepDelayMs", 10);
-        await runInputAction({ action: "drag", args: { x, y, x2, y2, steps, stepDelayMs, delayMs } });
+        const jitterPx = readNonNegativeInt(params, "jitterPx", 1);
+        await runInputAction({
+          action: "drag",
+          args: { x, y, x2, y2, steps, stepDelayMs, jitterPx, delayMs },
+        });
         if (agentDir) {
           await recordTeachStep({
             agentDir,
             sessionKey,
             action: "drag",
-            stepParams: { x, y, x2, y2, steps, stepDelayMs, delayMs },
+            stepParams: { x, y, x2, y2, steps, stepDelayMs, jitterPx, delayMs },
           });
         }
         return jsonResult({ ok: true });
