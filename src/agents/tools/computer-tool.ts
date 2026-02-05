@@ -774,6 +774,15 @@ public static class InputApi {
   public const int SM_CYSCREEN = 1;
 
   [StructLayout(LayoutKind.Sequential)]
+  public struct POINT {
+    public int X;
+    public int Y;
+  }
+
+  [DllImport("user32.dll")]
+  public static extern bool GetCursorPos(out POINT pt);
+
+  [StructLayout(LayoutKind.Sequential)]
   public struct INPUT {
     public int type;
     public InputUnion U;
@@ -1052,7 +1061,37 @@ function Resolve-Key([string]$keyToken) {
 
 switch ('${action}') {
   'move' {
-    [MouseInput]::MoveTo([int]$args.x, [int]$args.y)
+    $x2 = [int]$args.x
+    $y2 = [int]$args.y
+
+    $steps = 15
+    if ($args.PSObject.Properties.Name -contains 'steps') { $steps = [int]$args.steps }
+    if ($steps -lt 1) { $steps = 1 }
+    if ($steps -gt 200) { $steps = 200 }
+
+    $stepDelay = 5
+    if ($args.PSObject.Properties.Name -contains 'stepDelayMs') { $stepDelay = [int]$args.stepDelayMs }
+    if ($stepDelay -lt 0) { $stepDelay = 0 }
+    if ($stepDelay -gt 200) { $stepDelay = 200 }
+
+    $pt = New-Object InputApi+POINT
+    [void][InputApi]::GetCursorPos([ref]$pt)
+
+    if ($steps -eq 1) {
+      [MouseInput]::MoveTo($x2, $y2)
+    } else {
+      $x1 = [int]$pt.X
+      $y1 = [int]$pt.Y
+      $dx = ($x2 - $x1) / [double]$steps
+      $dy = ($y2 - $y1) / [double]$steps
+      for ($i = 1; $i -le $steps; $i++) {
+        $nx = [int][Math]::Round($x1 + ($dx * $i))
+        $ny = [int][Math]::Round($y1 + ($dy * $i))
+        [MouseInput]::MoveTo($nx, $ny)
+        if ($stepDelay -gt 0) { Start-Sleep -Milliseconds $stepDelay }
+      }
+    }
+
     Sleep-IfNeeded
   }
   'click' {
@@ -1352,9 +1391,16 @@ export function createComputerTool(options?: {
       if (action === "move") {
         const x = requireNumber(params, "x");
         const y = requireNumber(params, "y");
-        await runInputAction({ action: "move", args: { x, y, delayMs } });
+        const steps = readPositiveInt(params, "steps", 15);
+        const stepDelayMs = readPositiveInt(params, "stepDelayMs", 5);
+        await runInputAction({ action: "move", args: { x, y, steps, stepDelayMs, delayMs } });
         if (agentDir) {
-          await recordTeachStep({ agentDir, sessionKey, action: "move", stepParams: { x, y, delayMs } });
+          await recordTeachStep({
+            agentDir,
+            sessionKey,
+            action: "move",
+            stepParams: { x, y, steps, stepDelayMs, delayMs },
+          });
         }
         return jsonResult({ ok: true });
       }
