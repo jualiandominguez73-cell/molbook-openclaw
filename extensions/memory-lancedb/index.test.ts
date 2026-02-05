@@ -12,6 +12,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { detectProvider, vectorDimsForModel } from "./config.js";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-key";
 const HAS_OPENAI_KEY = Boolean(process.env.OPENAI_API_KEY);
@@ -156,6 +157,116 @@ describe("memory plugin e2e", () => {
 
       expect(category).toBe(expected);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests for detectProvider and vectorDimsForModel
+// ---------------------------------------------------------------------------
+
+describe("detectProvider", () => {
+  test("returns explicit provider when set", () => {
+    expect(detectProvider({ provider: "local" })).toBe("local");
+    expect(detectProvider({ provider: "openai" })).toBe("openai");
+  });
+
+  test("detects local from .gguf model", () => {
+    expect(detectProvider({ model: "nomic-embed-text-v1.5.f16.gguf" })).toBe("local");
+    expect(detectProvider({ model: "~/models/my-model.gguf" })).toBe("local");
+  });
+
+  test("detects local from hf: prefix", () => {
+    expect(
+      detectProvider({
+        model: "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.f16.gguf",
+      }),
+    ).toBe("local");
+  });
+
+  test("detects openai from text-embedding- prefix", () => {
+    expect(detectProvider({ model: "text-embedding-3-small" })).toBe("openai");
+    expect(detectProvider({ model: "text-embedding-3-large" })).toBe("openai");
+  });
+
+  test("defaults to openai with no hints", () => {
+    expect(detectProvider({})).toBe("openai");
+    expect(detectProvider({ model: "some-unknown-model" })).toBe("openai");
+  });
+});
+
+describe("vectorDimsForModel", () => {
+  test("returns correct dims for OpenAI models", () => {
+    expect(vectorDimsForModel("text-embedding-3-small")).toBe(1536);
+    expect(vectorDimsForModel("text-embedding-3-large")).toBe(3072);
+  });
+
+  test("returns default 768 for local .gguf models", () => {
+    expect(vectorDimsForModel("model.gguf")).toBe(768);
+    expect(vectorDimsForModel("~/models/nomic.gguf")).toBe(768);
+  });
+
+  test("returns default 768 for hf: models", () => {
+    expect(
+      vectorDimsForModel("hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.f16.gguf"),
+    ).toBe(768);
+  });
+
+  test("accepts custom localDimensions override", () => {
+    expect(vectorDimsForModel("model.gguf", 1024)).toBe(1024);
+    expect(vectorDimsForModel("hf:some/model", 384)).toBe(384);
+  });
+
+  test("throws for unknown non-local model", () => {
+    expect(() => vectorDimsForModel("some-random-model")).toThrow("Unsupported embedding model");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Config schema tests for local provider
+// ---------------------------------------------------------------------------
+
+describe("config schema - local provider", () => {
+  const dbPath = "/tmp/test-lancedb";
+
+  test("config schema accepts local provider without apiKey", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
+    const parsed = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        provider: "local",
+        model: "nomic-embed-text-v1.5.f16.gguf",
+      },
+      dbPath,
+      local: {
+        modelPath: "~/models/nomic-embed.gguf",
+      },
+    });
+    expect(parsed).toBeDefined();
+    expect(parsed?.embedding?.provider).toBe("local");
+    expect(parsed?.embedding?.apiKey).toBeUndefined();
+    expect(parsed?.local?.modelPath).toBe("~/models/nomic-embed.gguf");
+  });
+
+  test("config schema auto-detects local from .gguf model", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
+    const parsed = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        model: "my-embedding.gguf",
+      },
+      dbPath,
+    });
+    expect(parsed?.embedding?.provider).toBe("local");
+  });
+
+  test("config schema still requires apiKey for openai", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
+    expect(() => {
+      memoryPlugin.configSchema?.parse?.({
+        embedding: {
+          provider: "openai",
+        },
+        dbPath,
+      });
+    }).toThrow("embedding.apiKey is required");
   });
 });
 

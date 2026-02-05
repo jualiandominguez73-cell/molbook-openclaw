@@ -2,7 +2,8 @@
  * OpenClaw Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
- * Uses LanceDB for storage and OpenAI for embeddings.
+ * Uses LanceDB for storage with pluggable embedding providers
+ * (OpenAI API or local models via node-llama-cpp).
  * Provides seamless auto-recall and auto-capture via lifecycle hooks.
  */
 
@@ -15,6 +16,7 @@ import { stringEnum } from "openclaw/plugin-sdk";
 import {
   MEMORY_CATEGORIES,
   type MemoryCategory,
+  type MemoryConfig,
   memoryConfigSchema,
   vectorDimsForModel,
 } from "./config.js";
@@ -36,6 +38,14 @@ type MemorySearchResult = {
   entry: MemoryEntry;
   score: number;
 };
+
+// ============================================================================
+// Embedding Provider Interface
+// ============================================================================
+
+interface EmbeddingProvider {
+  embed(text: string): Promise<number[]>;
+}
 
 // ============================================================================
 // LanceDB Provider
@@ -143,10 +153,10 @@ class MemoryDB {
 }
 
 // ============================================================================
-// OpenAI Embeddings
+// OpenAI Embedding Provider
 // ============================================================================
 
-class Embeddings {
+class OpenAIEmbeddingProvider implements EmbeddingProvider {
   private client: OpenAI;
 
   constructor(
@@ -163,6 +173,83 @@ class Embeddings {
     });
     return response.data[0].embedding;
   }
+}
+
+// ============================================================================
+// Local Embedding Provider (node-llama-cpp)
+// ============================================================================
+
+class LocalEmbeddingProvider implements EmbeddingProvider {
+  private embeddingContext: unknown = null;
+  private initPromise: Promise<void> | null = null;
+
+  constructor(
+    private modelPath: string,
+    private modelCacheDir?: string,
+  ) {}
+
+  private async ensureInitialized(): Promise<void> {
+    if (this.embeddingContext) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    this.initPromise = this.doInitialize();
+    return this.initPromise;
+  }
+
+  private async doInitialize(): Promise<void> {
+    try {
+      const nodeLlamaCpp = await import("node-llama-cpp");
+      const llama = await nodeLlamaCpp.getLlama({ logLevel: nodeLlamaCpp.LlamaLogLevel.error });
+      const resolved = await nodeLlamaCpp.resolveModelFile(this.modelPath, this.modelCacheDir);
+      const model = await llama.loadModel({ modelPath: resolved });
+      this.embeddingContext = await model.createEmbeddingContext();
+    } catch (err) {
+      throw new Error(
+        `Failed to initialize local embedding model: ${String(err)}. ` +
+          `Ensure node-llama-cpp is installed (npm install node-llama-cpp).`,
+        { cause: err },
+      );
+    }
+  }
+
+  async embed(text: string): Promise<number[]> {
+    await this.ensureInitialized();
+    // node-llama-cpp's EmbeddingContext has getEmbeddingFor()
+    const ctx = this.embeddingContext as {
+      getEmbeddingFor(text: string): Promise<{ vector: Float32Array }>;
+    };
+    const result = await ctx.getEmbeddingFor(text);
+    const vector = Array.from(result.vector);
+    return this.normalize(vector);
+  }
+
+  private normalize(vec: number[]): number[] {
+    const sanitized = vec.map((v) => (Number.isFinite(v) ? v : 0));
+    const magnitude = Math.sqrt(sanitized.reduce((sum, v) => sum + v * v, 0));
+    if (magnitude < 1e-10) {
+      return sanitized;
+    }
+    return sanitized.map((v) => v / magnitude);
+  }
+}
+
+// ============================================================================
+// Embedding Provider Factory
+// ============================================================================
+
+function createEmbeddingProvider(cfg: MemoryConfig): EmbeddingProvider {
+  if (cfg.embedding.provider === "local") {
+    const modelPath =
+      cfg.local?.modelPath ??
+      cfg.embedding.model ??
+      "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.f16.gguf";
+    return new LocalEmbeddingProvider(modelPath, cfg.local?.modelCacheDir);
+  }
+  // OpenAI provider (default)
+  return new OpenAIEmbeddingProvider(cfg.embedding.apiKey!, cfg.embedding.model!);
 }
 
 // ============================================================================
@@ -238,7 +325,7 @@ const memoryPlugin = {
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
     const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = createEmbeddingProvider(cfg);
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);
 
