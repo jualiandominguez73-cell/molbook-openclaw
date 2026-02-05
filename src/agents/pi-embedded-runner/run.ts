@@ -377,6 +377,10 @@ export async function runEmbeddedPiAgent(
             enforceFinalTag: params.enforceFinalTag,
           });
 
+          if (!attempt) {
+            throw new Error("Embedded run attempt returned no result");
+          }
+
           const { aborted, promptError, timedOut, sessionIdUsed, lastAssistant } = attempt;
 
           if (promptError && !aborted) {

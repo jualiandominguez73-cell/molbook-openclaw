@@ -521,7 +521,7 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
             }),
           );
 
-        await runEmbeddedPiAgent({
+        const promise = runEmbeddedPiAgent({
           sessionId: "session:test",
           sessionKey: "agent:test:rotate-skip-cooldown",
           sessionFile: path.join(workspaceDir, "session.jsonl"),
@@ -536,6 +536,10 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
           timeoutMs: 5_000,
           runId: "run:rotate-skip-cooldown",
         });
+
+        // Advance timers to process any backoff sleeps
+        await vi.runAllTimersAsync();
+        await promise;
 
         expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(2);
 

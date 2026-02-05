@@ -142,6 +142,8 @@ vi.mock("../pi-embedded-helpers.js", async () => {
     pickFallbackThinkingLevel: vi.fn(() => null),
     isTimeoutErrorMessage: vi.fn(() => false),
     parseImageDimensionError: vi.fn(() => null),
+    isRateLimitErrorMessage: vi.fn(() => false),
+    isOverloadedErrorMessage: vi.fn(() => false),
   };
 });
 
