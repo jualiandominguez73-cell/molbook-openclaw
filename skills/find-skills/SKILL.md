@@ -6,16 +6,18 @@ metadata:
     "openclaw":
       {
         "emoji": "🔍",
-        "config":
-          [
-            {
-              "id": "skillsmp-api-key",
-              "label": "SkillsMP API Key",
-              "description": "Get free API key from https://skillsmp.com/docs/api",
-              "type": "string",
-              "pattern": "^sk_live_.*",
-              "placeholder": "sk_live_your_api_key",
-            },
+      "requires": {
+        "config": [
+          {
+            "id": "skillsmp-api-key",
+            "label": "SkillsMP API Key",
+            "description": "Get free API key from https://skillsmp.com/docs/api",
+            "type": "string",
+            "pattern": "^sk_live_.*",
+            "placeholder": "sk_live_your_api_key"
+          }
+        ]
+      }
           ],
       },
   }
