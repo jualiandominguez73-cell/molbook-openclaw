@@ -1582,7 +1582,9 @@ openclaw cron add \\
                   }
                 },
               },
-              replyOptions: {},
+              replyOptions: {
+                disableBlockStreaming: false,
+              },
             });
 
           // 等待分发完成或超时
