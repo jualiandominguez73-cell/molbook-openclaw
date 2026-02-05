@@ -431,11 +431,12 @@ export async function deliverOutboundPayloads(params: {
         first = false;
         if (isSignalChannel) {
           results.push(await sendSignalMedia(caption, url));
+          await runMessageSentHook(caption, true);
         } else {
           results.push(await handler.sendMedia(caption, url));
+          await runMessageSentHook(caption, true);
         }
       }
-      await runMessageSentHook(payloadSummary.text, true);
     } catch (err) {
       await runMessageSentHook(
         payloadSummary.text,

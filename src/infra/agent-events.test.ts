@@ -37,6 +37,7 @@ describe("agent-events sequencing", () => {
   });
 
   test("resets seq when clearing run context", async () => {
+    resetAgentRunContextForTest();
     const seqs: number[] = [];
     const stop = onAgentEvent((evt) => {
       if (evt.runId === "run-1") {
