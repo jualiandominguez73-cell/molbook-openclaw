@@ -182,7 +182,9 @@ himalaya message forward 42
 cat message.txt | himalaya template send
 ```
 
-### Prefill headers from CLI
+### Prefill editor from CLI
+
+Opens `$EDITOR` with headers and body prefilled:
 
 ```bash
 himalaya message write \
@@ -190,6 +192,8 @@ himalaya message write \
   -H "Subject:Quick Message" \
   "Message body here"
 ```
+
+For non-interactive sending (no editor), use `template send` with stdin instead.
 
 ## Tips
 
