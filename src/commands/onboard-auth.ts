@@ -5,6 +5,8 @@ export {
 export { VENICE_DEFAULT_MODEL_ID, VENICE_DEFAULT_MODEL_REF } from "../agents/venice-models.js";
 export {
   applyAuthProfileConfig,
+  applyCloudflareAiGatewayConfig,
+  applyCloudflareAiGatewayProviderConfig,
   applyErnieConfig,
   applyErnieProviderConfig,
   applyKimiCodeConfig,
@@ -39,8 +41,10 @@ export {
   applyOpencodeZenProviderConfig,
 } from "./onboard-auth.config-opencode.js";
 export {
+  CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
   setAnthropicApiKey,
+  setCloudflareAiGatewayConfig,
   setErnieApiKey,
   setGeminiApiKey,
   setKimiCodingApiKey,
