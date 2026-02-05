@@ -22,6 +22,7 @@ import {
 } from "../chat-abort.js";
 import {
   type ChatImageContent,
+  type NormalizedAttachment,
   getFirstAudioAttachment,
   parseMessageWithAttachments,
 } from "../chat-attachments.js";
@@ -433,6 +434,32 @@ export const chatHandlers: GatewayRequestHandlers = {
       return;
     }
 
+    let gatewayAudioPath: string | undefined;
+    let gatewayAudioType: string | undefined;
+    try {
+      const firstAudio = await getFirstAudioAttachment(
+        normalizedAttachments as NormalizedAttachment[],
+        MEDIA_DEFAULT_MAX_BYTES.audio,
+      );
+      if (firstAudio) {
+        const saved = await saveMediaBuffer(
+          firstAudio.buffer,
+          firstAudio.mimeType,
+          "gateway",
+          MEDIA_DEFAULT_MAX_BYTES.audio,
+        );
+        gatewayAudioPath = saved.path;
+        gatewayAudioType = saved.contentType ?? firstAudio.mimeType;
+      }
+    } catch (err) {
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.INVALID_REQUEST, err instanceof Error ? err.message : String(err)),
+      );
+      return;
+    }
+
     try {
       const abortController = new AbortController();
       context.chatAbortControllers.set(clientRunId, {
@@ -478,32 +505,12 @@ export const chatHandlers: GatewayRequestHandlers = {
         GatewayClientScopes: client?.connect?.scopes,
       };
 
-      try {
-        const firstAudio = await getFirstAudioAttachment(
-          normalizedAttachments,
-          MEDIA_DEFAULT_MAX_BYTES.audio,
-        );
-        if (firstAudio) {
-          const saved = await saveMediaBuffer(
-            firstAudio.buffer,
-            firstAudio.mimeType,
-            "gateway",
-            MEDIA_DEFAULT_MAX_BYTES.audio,
-          );
-          ctx.MediaPath = saved.path;
-          ctx.MediaType = saved.contentType ?? firstAudio.mimeType;
-          if (!ctx.Body?.trim()) {
-            ctx.Body = "<media:audio>";
-          }
+      if (gatewayAudioPath && gatewayAudioType) {
+        ctx.MediaPath = gatewayAudioPath;
+        ctx.MediaType = gatewayAudioType;
+        if (!ctx.Body?.trim()) {
+          ctx.Body = "<media:audio>";
         }
-      } catch (err) {
-        context.chatAbortControllers.delete(clientRunId);
-        respond(
-          false,
-          undefined,
-          errorShape(ErrorCodes.INVALID_REQUEST, err instanceof Error ? err.message : String(err)),
-        );
-        return;
       }
 
       const agentId = resolveSessionAgentId({
