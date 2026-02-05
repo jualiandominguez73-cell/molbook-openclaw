@@ -90,7 +90,9 @@ export async function readBody(
     const chunks: Buffer[] = [];
 
     const finish = (result: { ok: true; value: string } | { ok: false; error: string }) => {
-      if (done) return;
+      if (done) {
+        return;
+      }
       done = true;
       resolve(result);
     };
