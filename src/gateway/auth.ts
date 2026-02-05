@@ -1,8 +1,42 @@
-import { timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { GatewayAuthConfig, GatewayTailscaleMode } from "../config/config.js";
 import { readTailscaleWhoisIdentity, type TailscaleWhoisIdentity } from "../infra/tailscale.js";
 import { isTrustedProxyAddress, parseForwardedForClientIp, resolveGatewayClientIp } from "./net.js";
+
+/**
+ * Generate a cryptographically secure random token for gateway auth.
+ * 32 bytes = 256 bits of entropy, hex encoded to 64 chars.
+ */
+export function generateSecureGatewayToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
+/**
+ * Check if a token meets minimum security requirements.
+ * - At least 32 characters (256 bits of entropy if hex)
+ * - Not a common weak/default token
+ */
+export function isTokenSecure(token: string): boolean {
+  if (token.length < 32) return false;
+
+  // Block common weak patterns
+  const weakPatterns = [
+    "password",
+    "123456",
+    "secret",
+    "admin",
+    "token",
+    "default",
+    "changeme",
+  ];
+  const lowerToken = token.toLowerCase();
+  for (const pattern of weakPatterns) {
+    if (lowerToken.includes(pattern)) return false;
+  }
+
+  return true;
+}
 export type ResolvedGatewayAuthMode = "token" | "password";
 
 export type ResolvedGatewayAuth = {
