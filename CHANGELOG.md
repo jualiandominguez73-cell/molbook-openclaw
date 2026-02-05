@@ -27,6 +27,7 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
+- Models: require explicit provider prefix when setting models without a known alias; prevents `models set qwen2.5-coder:7b` from incorrectly defaulting to `anthropic/qwen2.5-coder:7b`. (#5790)
 - Compaction: remove orphaned `tool_result` messages during history pruning to prevent session corruption from aborted tool calls. (#9868, fixes #9769, #9724, #9672)
 - Telegram: pass `parentPeer` for forum topic binding inheritance so group-level bindings apply to all topics within the group. (#9789, fixes #9545, #9351)
 - CLI: pass `--disable-warning=ExperimentalWarning` as a Node CLI option when respawning (avoid disallowed `NODE_OPTIONS` usage; fixes npm pack). (#9691) Thanks @18-RAJAT.
