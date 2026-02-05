@@ -9,7 +9,7 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
     // the migration hasn't run yet or was bypassed.
     const sched = schedule as { at?: string; atMs?: number | string };
     const atMs =
-      typeof sched.atMs === "number"
+      typeof sched.atMs === "number" && Number.isFinite(sched.atMs) && sched.atMs > 0
         ? sched.atMs
         : typeof sched.atMs === "string"
           ? parseAbsoluteTimeMs(sched.atMs)

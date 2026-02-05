@@ -57,7 +57,7 @@ export function computeJobNextRunAtMs(job: CronJob, nowMs: number): number | und
     // the migration hasn't run yet or was bypassed.
     const schedule = job.schedule as { at?: string; atMs?: number | string };
     const atMs =
-      typeof schedule.atMs === "number"
+      typeof schedule.atMs === "number" && Number.isFinite(schedule.atMs) && schedule.atMs > 0
         ? schedule.atMs
         : typeof schedule.atMs === "string"
           ? parseAbsoluteTimeMs(schedule.atMs)
