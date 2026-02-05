@@ -22,7 +22,13 @@ function mergeProviderModels(implicit: ProviderConfig, explicit: ProviderConfig)
   const implicitModels = Array.isArray(implicit.models) ? implicit.models : [];
   const explicitModels = Array.isArray(explicit.models) ? explicit.models : [];
   if (implicitModels.length === 0) {
-    return { ...implicit, ...explicit };
+    // Destructure models from explicit to avoid overwriting with undefined
+    const { models: _explicitModels, ...explicitWithoutModels } = explicit;
+    return {
+      ...implicit,
+      ...explicitWithoutModels,
+      ...(explicitModels.length > 0 ? { models: explicitModels } : {}),
+    };
   }
 
   const getId = (model: unknown): string => {
