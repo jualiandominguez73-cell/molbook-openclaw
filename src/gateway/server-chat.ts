@@ -294,10 +294,10 @@ export function createAgentEventHandler({
         state: "final" as const,
         message: text
           ? {
-            role: "assistant",
-            content: [{ type: "text", text }],
-            timestamp: Date.now(),
-          }
+              role: "assistant",
+              content: [{ type: "text", text }],
+              timestamp: Date.now(),
+            }
           : undefined,
       };
       // Suppress webchat broadcast for heartbeat runs when showOk is false
@@ -358,11 +358,11 @@ export function createAgentEventHandler({
     const toolPayload =
       isToolEvent && toolVerbose !== "full"
         ? (() => {
-          const data = evt.data ? { ...evt.data } : {};
-          delete data.result;
-          delete data.partialResult;
-          return sessionKey ? { ...evt, sessionKey, data } : { ...evt, data };
-        })()
+            const data = evt.data ? { ...evt.data } : {};
+            delete data.result;
+            delete data.partialResult;
+            return sessionKey ? { ...evt, sessionKey, data } : { ...evt, data };
+          })()
         : agentPayload;
     if (evt.seq !== last + 1) {
       broadcast("agent", {
@@ -434,7 +434,6 @@ export function createAgentEventHandler({
     }
   };
 }
-
 
 
 function ensureTranscriptFile(params: { transcriptPath: string; sessionId: string }): {

@@ -60,7 +60,7 @@ export const spixiOnboardingAdapter: ChannelOnboardingAdapter = {
                 "",
                 "1. MQTT Broker (for real-time messages):",
                 "   • Mosquitto: https://mosquitto.org/download/",
-                "   • Aedes (Node.js): npm install aedes",
+                "   • or Aedes (Node.js): npm install aedes",
                 "",
                 "2. QuIXI Node (Ixian API bridge):",
                 "   • https://github.com/ixian-platform/QuIXI",

@@ -79,6 +79,16 @@ const formatLower = (allowFrom: Array<string | number>) =>
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Channel docks: lightweight channel metadata/behavior for shared code paths.
+//
+// Rules:
+// - keep this module *light* (no monitors, probes, puppeteer/web login, etc)
+// - OK: config readers, allowFrom formatting, mention stripping patterns, threading defaults
+// - shared code should import from here (and from `src/channels/registry.ts`), not from the plugins registry
+//
+// Adding a channel:
+// - add a new entry to `DOCKS`
+// - keep it cheap; push heavy logic into `src/channels/plugins/<id>.ts` or channel modules
 const DOCKS: Record<ChatChannelId, ChannelDock> = {
   telegram: {
     id: "telegram",
