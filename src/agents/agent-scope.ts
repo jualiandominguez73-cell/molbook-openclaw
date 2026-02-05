@@ -5,6 +5,7 @@ import { resolveStateDir } from "../config/paths.js";
 import {
   DEFAULT_AGENT_ID,
   normalizeAgentId,
+  normalizeSessionKey,
   parseAgentSessionKey,
 } from "../routing/session-key.js";
 import { resolveUserPath } from "../utils.js";
@@ -77,8 +78,7 @@ export function resolveSessionAgentIds(params: { sessionKey?: string; config?: O
   sessionAgentId: string;
 } {
   const defaultAgentId = resolveDefaultAgentId(params.config ?? {});
-  const sessionKey = params.sessionKey?.trim();
-  const normalizedSessionKey = sessionKey ? sessionKey.toLowerCase() : undefined;
+  const normalizedSessionKey = normalizeSessionKey(params.sessionKey);
   const parsed = normalizedSessionKey ? parseAgentSessionKey(normalizedSessionKey) : null;
   const sessionAgentId = parsed?.agentId ? normalizeAgentId(parsed.agentId) : defaultAgentId;
   return { defaultAgentId, sessionAgentId };

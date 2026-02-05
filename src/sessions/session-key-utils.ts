@@ -30,6 +30,7 @@ export function normalizeSessionKey(sessionKey: string | undefined | null): stri
   if (!raw) {
     return undefined;
   }
+  // Session keys are treated as case-insensitive identifiers across routing/storage.
   return raw.toLowerCase();
 }
 

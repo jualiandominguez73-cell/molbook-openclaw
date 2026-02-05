@@ -1,8 +1,13 @@
-import { parseAgentSessionKey, type ParsedAgentSessionKey } from "../sessions/session-key-utils.js";
+import {
+  normalizeSessionKey,
+  parseAgentSessionKey,
+  type ParsedAgentSessionKey,
+} from "../sessions/session-key-utils.js";
 
 export {
   isAcpSessionKey,
   isSubagentSessionKey,
+  normalizeSessionKey,
   parseAgentSessionKey,
   type ParsedAgentSessionKey,
 } from "../sessions/session-key-utils.js";
@@ -43,7 +48,7 @@ export function toAgentStoreSessionKey(params: {
   if (!raw || raw === DEFAULT_MAIN_KEY) {
     return buildAgentMainSessionKey({ agentId: params.agentId, mainKey: params.mainKey });
   }
-  const lowered = raw.toLowerCase();
+  const lowered = normalizeSessionKey(raw) ?? DEFAULT_MAIN_KEY;
   if (lowered.startsWith("agent:")) {
     return lowered;
   }
