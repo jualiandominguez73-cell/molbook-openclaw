@@ -51,7 +51,7 @@ openclaw onboard --auth-choice mistral-api-key --mistral-api-key "$MISTRAL_API_K
 ```json5
 {
   env: { MISTRAL_API_KEY: "..." },
-  agents: { defaults: { model: { primary: "mistral/mistral-large-latest" } } },
+  agents: { defaults: { model: { primary: "mistral/devstral-latest" } } },
 }
 ```
 

@@ -204,7 +204,7 @@ export async function setOpencodeZenApiKey(key: string, agentDir?: string) {
   });
 }
 
-export const MISTRAL_DEFAULT_MODEL_REF = "mistral/mistral-large-latest";
+export const MISTRAL_DEFAULT_MODEL_REF = "mistral/devstral-latest";
 
 export async function setMistralApiKey(key: string, agentDir?: string) {
   upsertAuthProfile({
