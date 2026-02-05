@@ -39,11 +39,11 @@ actor WhisperTranscriber {
             .appendingPathComponent(".local/share/whisper-cpp")
     }
 
-    /// Check if whisper-cpp CLI is available.
+    /// Check if whisper-cli (from whisper-cpp) is available.
     static func isAvailable() -> Bool {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        task.arguments = ["whisper-cpp"]
+        task.arguments = ["whisper-cli"]
         task.standardOutput = FileHandle.nullDevice
         task.standardError = FileHandle.nullDevice
         do {
@@ -93,7 +93,7 @@ actor WhisperTranscriber {
         self.logger.info("whisper transcribe model=\(model.rawValue, privacy: .public)")
 
         let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/whisper-cpp")
+        task.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/whisper-cli")
         task.arguments = [
             "-m", modelPath.path,
             "-f", audioURL.path,
@@ -178,11 +178,11 @@ actor WhisperTranscriber {
         var errorDescription: String? {
             switch self {
             case let .modelNotFound(model):
-                return "Whisper model '\(model)' not found. Run: brew install whisper-cpp && download models."
+                return "Whisper model '\(model)' not found. Download models to ~/.local/share/whisper-cpp/"
             case let .processLaunchFailed(error):
-                return "Failed to launch whisper-cpp: \(error.localizedDescription)"
+                return "Failed to launch whisper-cli: \(error.localizedDescription)"
             case let .processFailed(code):
-                return "whisper-cpp exited with code \(code)"
+                return "whisper-cli exited with code \(code)"
             case let .recordingFailed(error):
                 return "Recording failed: \(error?.localizedDescription ?? "unknown error")"
             }

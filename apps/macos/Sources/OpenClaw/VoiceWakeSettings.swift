@@ -48,19 +48,27 @@ struct VoiceWakeSettings: View {
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 14) {
+                // MARK: - Voice Wake Section
+                Text("Voice Wake")
+                    .font(.headline)
+                    .padding(.top, 4)
+
                 SettingsToggleRow(
                     title: "Enable Voice Wake",
-                    subtitle: "Listen for a wake phrase (e.g. \"Claude\") before running voice commands. "
-                        + "Voice recognition runs fully on-device.",
+                    subtitle: "Listens continuously for a wake phrase (e.g. \"Claude\"). Uses Apple Speech for efficient always-on detection.",
                     binding: self.voiceWakeBinding)
                     .disabled(!voiceWakeSupported)
 
+                Divider()
+                    .padding(.vertical, 4)
+
+                // MARK: - Push-to-Talk Section
+                Text("Push-to-Talk")
+                    .font(.headline)
+
                 SettingsToggleRow(
                     title: "Hold Right Option to talk",
-                    subtitle: """
-                    Push-to-talk mode that starts listening while you hold the key
-                    and shows the preview overlay.
-                    """,
+                    subtitle: "Only listens while you hold the key. Uses the transcription backend below for higher accuracy.",
                     binding: self.$state.voicePushToTalkEnabled)
                     .disabled(!voiceWakeSupported)
 
@@ -72,6 +80,17 @@ struct VoiceWakeSettings: View {
                         .background(Color.secondary.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
+
+                Divider()
+                    .padding(.vertical, 4)
+
+                // MARK: - Transcription Settings
+                Text("Transcription Settings")
+                    .font(.headline)
+
+                Text("Used by Push-to-Talk. Voice Wake always uses Apple Speech.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 self.localePicker
                 self.micPicker
@@ -463,10 +482,30 @@ struct VoiceWakeSettings: View {
             if !WhisperTranscriber.isAvailable() {
                 HStack(spacing: 10) {
                     Color.clear.frame(width: self.fieldLabelWidth, height: 1)
-                    Text("whisper-cpp not installed. Run: brew install whisper-cpp")
+                    Text("whisper-cli not installed. Run: brew install whisper-cpp")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
+            }
+            if WhisperTranscriber.availableModels().isEmpty {
+                HStack(spacing: 10) {
+                    Color.clear.frame(width: self.fieldLabelWidth, height: 1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("No models downloaded. Run:")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Text("mkdir -p ~/.local/share/whisper-cpp && curl -L -o ~/.local/share/whisper-cpp/ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+            HStack(spacing: 10) {
+                Color.clear.frame(width: self.fieldLabelWidth, height: 1)
+                Text("Whisper runs continuously for wake detection. Larger models use more CPU. For efficiency, consider Apple Speech or Tiny/Base models.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
