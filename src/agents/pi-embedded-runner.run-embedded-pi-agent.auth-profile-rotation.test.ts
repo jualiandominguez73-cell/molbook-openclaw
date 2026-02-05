@@ -506,10 +506,11 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
           .mockResolvedValueOnce(
             makeAttempt({
               assistantTexts: [],
-                          lastAssistant: buildAssistant({
-                            stopReason: "error",
-                            errorMessage: "unauthorized",
-                          }),            }),
+              lastAssistant: buildAssistant({
+                stopReason: "error",
+                errorMessage: "unauthorized",
+              }),
+            }),
           )
           .mockResolvedValueOnce(
             makeAttempt({
