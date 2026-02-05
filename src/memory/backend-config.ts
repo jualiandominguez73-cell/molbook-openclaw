@@ -157,6 +157,30 @@ function resolveEmbedIntervalMs(raw: string | undefined): number {
   }
 }
 
+/**
+ * Resolves a timeout value that can be either a string duration (e.g., "10s") or a legacy number (ms).
+ * Supports backward compatibility with existing configs using numeric values.
+ */
+function resolveMcpTimeout(value: string | number | undefined, defaultMs: number): number {
+  if (value === undefined) {
+    return defaultMs;
+  }
+  // Support legacy numeric values (already in ms)
+  if (typeof value === "number") {
+    return value > 0 ? Math.floor(value) : defaultMs;
+  }
+  // Parse string duration
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return defaultMs;
+  }
+  try {
+    return parseDurationMs(trimmed, { defaultUnit: "s" });
+  } catch {
+    return defaultMs;
+  }
+}
+
 function resolveDebounceMs(raw: number | undefined): number {
   if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) {
     return Math.floor(raw);
@@ -199,22 +223,28 @@ function resolveSessionConfig(
 
 function resolveMcpConfig(cfg: MemoryQmdMcpConfig | undefined): ResolvedQmdMcpConfig {
   const enabled = cfg?.enabled !== false; // Default to true
-  const startupTimeoutMs =
-    cfg?.startupTimeoutMs && cfg.startupTimeoutMs > 0
-      ? Math.floor(cfg.startupTimeoutMs)
-      : DEFAULT_QMD_MCP.startupTimeoutMs;
-  const requestTimeoutMs =
-    cfg?.requestTimeoutMs && cfg.requestTimeoutMs > 0
-      ? Math.floor(cfg.requestTimeoutMs)
-      : DEFAULT_QMD_MCP.requestTimeoutMs;
+
+  // Support both new string format (startupTimeout) and legacy number format (startupTimeoutMs)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cfgAny = cfg as any;
+  const startupTimeoutMs = resolveMcpTimeout(
+    cfg?.startupTimeout ?? cfgAny?.startupTimeoutMs,
+    DEFAULT_QMD_MCP.startupTimeoutMs,
+  );
+  const requestTimeoutMs = resolveMcpTimeout(
+    cfg?.requestTimeout ?? cfgAny?.requestTimeoutMs,
+    DEFAULT_QMD_MCP.requestTimeoutMs,
+  );
+  const retryDelayMs = resolveMcpTimeout(
+    cfg?.retryDelay ?? cfgAny?.retryDelayMs,
+    DEFAULT_QMD_MCP.retryDelayMs,
+  );
+
   const maxRetries =
     cfg?.maxRetries !== undefined && cfg.maxRetries >= 0
       ? Math.floor(cfg.maxRetries)
       : DEFAULT_QMD_MCP.maxRetries;
-  const retryDelayMs =
-    cfg?.retryDelayMs && cfg.retryDelayMs > 0
-      ? Math.floor(cfg.retryDelayMs)
-      : DEFAULT_QMD_MCP.retryDelayMs;
+
   return {
     enabled,
     startupTimeoutMs,
