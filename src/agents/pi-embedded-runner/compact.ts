@@ -496,3 +496,5 @@ export async function compactEmbeddedPiSession(
     enqueueGlobal(async () => compactEmbeddedPiSessionDirect(params)),
   );
 }
+
+// TRACK 3: Per-session compaction lanes for parallelism
