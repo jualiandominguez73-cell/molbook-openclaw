@@ -1,15 +1,15 @@
 import type { OpenClawConfig } from "../config/config.js";
 import {
+  buildCloudflareAiGatewayModelDefinition,
+  resolveCloudflareAiGatewayBaseUrl,
+} from "../agents/cloudflare-ai-gateway.js";
+import {
   AIMLAPI_BASE_URL,
   AIMLAPI_DEFAULT_MODEL_ID,
   buildAimlapiModelDefinition,
   buildXiaomiProvider,
   XIAOMI_DEFAULT_MODEL_ID,
 } from "../agents/models-config.providers.js";
-import {
-  buildCloudflareAiGatewayModelDefinition,
-  resolveCloudflareAiGatewayBaseUrl,
-} from "../agents/cloudflare-ai-gateway.js";
 import {
   buildSyntheticModelDefinition,
   SYNTHETIC_BASE_URL,
