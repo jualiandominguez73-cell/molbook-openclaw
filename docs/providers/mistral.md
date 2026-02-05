@@ -12,16 +12,25 @@ Mistral AI builds high-performance language models including Mistral Large, Code
 
 ## Available models
 
-| Model ID                                  | Description                   | Input           | Context | Best for                    |
-| ----------------------------------------- | ----------------------------- | --------------- | ------- | --------------------------- |
-| `mistral-large-latest`                    | Flagship model with reasoning | text, image     | 256K    | General-purpose, multimodal |
-| `mistral-medium-latest`                   | Balanced performance          | text, image     | 128K    | Cost-effective tasks        |
-| `mistral-small-latest`                    | Fast and efficient            | text, image     | 128K    | Quick responses             |
-| `codestral-latest`                        | Code-specialized              | text            | 128K    | Code generation             |
-| `devstral-latest`                         | Developer-focused             | text            | 256K    | Development workflows       |
-| `voxtral-mini-latest`                     | Audio transcription           | audio           | 32K     | Speech-to-text              |
-| `voxtral-mini-transcribe-realtime-latest` | Realtime transcription        | audio           | 32K     | Live transcription          |
-| `mistral-ocr-latest`                      | Document OCR                  | image, document | 128K    | Text extraction             |
+### Chat completion models
+
+| Model ID                | Description                   | Input       | Context | Best for                    |
+| ----------------------- | ----------------------------- | ----------- | ------- | --------------------------- |
+| `mistral-large-latest`  | Flagship model with reasoning | text, image | 256K    | General-purpose, multimodal |
+| `mistral-medium-latest` | Balanced performance          | text, image | 128K    | Cost-effective tasks        |
+| `mistral-small-latest`  | Fast and efficient            | text, image | 128K    | Quick responses             |
+| `codestral-latest`      | Code-specialized              | text        | 128K    | Code generation             |
+| `devstral-latest`       | Developer-focused             | text        | 256K    | Development workflows       |
+| `mistral-ocr-latest`    | Document OCR                  | image       | 128K    | Text extraction             |
+
+### Audio transcription models
+
+These models are used automatically for audio transcription when Mistral is configured as a provider. They are not available as chat completion models.
+
+| Model ID                                  | Description            | Best for           |
+| ----------------------------------------- | ---------------------- | ------------------ |
+| `voxtral-mini-latest`                     | Audio transcription    | Speech-to-text     |
+| `voxtral-mini-transcribe-realtime-latest` | Realtime transcription | Live transcription |
 
 ## Setup
 
@@ -64,7 +73,7 @@ Switch models by updating the primary model reference:
 
 - Model refs always use `provider/model` (see [/concepts/models](/concepts/models)).
 - Mistral uses an OpenAI-compatible API, so familiar patterns apply.
-- Codestral has a 256K context window, ideal for large codebases.
+- Codestral has a 128K context window, ideal for large codebases.
 
 ## Troubleshooting
 

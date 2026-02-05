@@ -65,23 +65,6 @@ export const MISTRAL_MODEL_CATALOG: MistralModelCatalogEntry[] = [
     contextWindow: 256000,
     maxTokens: 8192,
   },
-  // Voxtral models accept audio input (transcription) - using "text" as output type
-  {
-    id: "voxtral-mini-latest",
-    name: "Voxtral Mini",
-    reasoning: false,
-    input: ["text"],
-    contextWindow: 32000,
-    maxTokens: 8192,
-  },
-  {
-    id: "voxtral-mini-transcribe-realtime-latest",
-    name: "Voxtral Mini Transcribe Realtime",
-    reasoning: false,
-    input: ["text"],
-    contextWindow: 32000,
-    maxTokens: 8192,
-  },
   // OCR model for document/image text extraction
   {
     id: "mistral-ocr-latest",
