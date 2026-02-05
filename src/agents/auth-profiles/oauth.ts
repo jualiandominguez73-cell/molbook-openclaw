@@ -176,16 +176,33 @@ export async function resolveApiKeyForProfile(params: {
     return { apiKey: key, provider: cred.provider, email: cred.email };
   }
   if (cred.type === "token") {
+    const isExpired =
+      typeof cred.expires === "number" &&
+      Number.isFinite(cred.expires) &&
+      cred.expires > 0 &&
+      Date.now() >= cred.expires;
+
+    const isAzureProvider = cred.provider.startsWith("azure-") || cred.provider.includes("azure");
+
+    if (isAzureProvider && (!cred.token?.trim() || isExpired)) {
+      try {
+        const { getAzureCLIToken } = await import("../azure-discovery.js");
+        const resource =
+          cred.provider.includes("foundry") || cred.provider.includes("anthropic")
+            ? "https://ml.azure.com"
+            : "https://cognitiveservices.azure.com";
+        const token = await getAzureCLIToken(resource);
+        if (token) {
+          return { apiKey: token, provider: cred.provider, email: cred.email };
+        }
+      } catch {}
+    }
+
     const token = cred.token?.trim();
     if (!token) {
       return null;
     }
-    if (
-      typeof cred.expires === "number" &&
-      Number.isFinite(cred.expires) &&
-      cred.expires > 0 &&
-      Date.now() >= cred.expires
-    ) {
+    if (isExpired) {
       return null;
     }
     return { apiKey: token, provider: cred.provider, email: cred.email };

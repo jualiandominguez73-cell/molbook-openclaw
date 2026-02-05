@@ -122,8 +122,23 @@ function resolveAwsSdkAuthInfo(): { mode: "aws-sdk"; source: string } {
   return { mode: "aws-sdk", source: "aws-sdk default chain" };
 }
 
-function resolveAzureCliAuthInfo(): { mode: "azure-cli"; source: string } {
-  return { mode: "azure-cli", source: "azure-cli (az account get-access-token)" };
+async function resolveAzureCliAuthInfo(
+  provider: string,
+): Promise<{ mode: "azure-cli"; source: string; apiKey?: string }> {
+  try {
+    const { getAzureCLIToken } = await import("./azure-discovery.js");
+    const resource = provider.includes("foundry")
+      ? "https://ml.azure.com"
+      : "https://cognitiveservices.azure.com";
+    const token = await getAzureCLIToken(resource);
+    return {
+      mode: "azure-cli",
+      source: "azure-cli (az account get-access-token)",
+      apiKey: token ?? undefined,
+    };
+  } catch {
+    return { mode: "azure-cli", source: "azure-cli (az account get-access-token)" };
+  }
 }
 
 export type ResolvedProviderAuth = {
@@ -168,7 +183,7 @@ export async function resolveApiKeyForProvider(params: {
     return resolveAwsSdkAuthInfo();
   }
   if (authOverride === "azure-cli") {
-    return resolveAzureCliAuthInfo();
+    return resolveAzureCliAuthInfo(provider);
   }
 
   const order = resolveAuthProfileOrder({
@@ -195,6 +210,14 @@ export async function resolveApiKeyForProvider(params: {
         };
       }
     } catch {}
+  }
+
+  // Fallback to Azure CLI for Azure providers with token auth
+  if (authOverride === "token" && (provider.startsWith("azure-") || provider.includes("azure"))) {
+    const azureAuth = await resolveAzureCliAuthInfo(provider);
+    if (azureAuth.apiKey) {
+      return azureAuth;
+    }
   }
 
   const envResolved = resolveEnvApiKey(provider);

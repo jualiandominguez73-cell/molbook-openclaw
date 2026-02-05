@@ -940,22 +940,33 @@ export async function applyAuthChoiceApiProviders(
       nextConfig = applyAuthProfileConfig(nextConfig, {
         profileId: "azure-openai:default",
         provider: "azure-openai",
-        mode: hasAzureCLI ? "azure-cli" : "api_key",
+        mode: hasAzureCLI ? "token" : "api_key",
       });
 
       const modelRef = "azure-openai/gpt-4";
       if (params.setDefaultModel) {
         await params.prompter.note(`Set default model to ${modelRef}`, "Model configured");
+        const existingModel = nextConfig.agents?.defaults?.model;
+        const existingFallbacks =
+          typeof existingModel === "object" &&
+          existingModel !== null &&
+          "fallbacks" in existingModel
+            ? (existingModel as { fallbacks?: string[] }).fallbacks
+            : undefined;
         nextConfig = {
           ...nextConfig,
           agents: {
             ...nextConfig.agents,
             defaults: {
               ...nextConfig.agents?.defaults,
-              model: modelRef,
+              model: {
+                ...(existingFallbacks ? { fallbacks: existingFallbacks } : undefined),
+                primary: modelRef,
+              },
             },
           },
         };
+        agentModelOverride = modelRef;
       } else if (params.agentId) {
         await noteAgentModel(modelRef);
         agentModelOverride = modelRef;
@@ -1314,6 +1325,7 @@ export async function applyAuthChoiceApiProviders(
             [chatProviderName]: {
               baseUrl: endpointStr,
               api: chatApiType as any,
+              auth: hasAzureCLI ? "token" : undefined,
               models: [],
             },
           },
@@ -1323,7 +1335,7 @@ export async function applyAuthChoiceApiProviders(
       nextConfig = applyAuthProfileConfig(nextConfig, {
         profileId: `${chatProviderName}:default`,
         provider: chatProviderName,
-        mode: hasAzureCLI ? "azure-cli" : "api_key",
+        mode: hasAzureCLI ? "token" : "api_key",
       });
 
       const chatModelRef = `${chatProviderName}/${chatModelId}`;
@@ -1340,6 +1352,7 @@ export async function applyAuthChoiceApiProviders(
               [embedProviderName]: {
                 baseUrl: endpointStr,
                 api: embeddingApiType as any,
+                auth: hasAzureCLI ? "token" : undefined,
                 models: [],
               },
             },
@@ -1349,19 +1362,22 @@ export async function applyAuthChoiceApiProviders(
         nextConfig = applyAuthProfileConfig(nextConfig, {
           profileId: `${embedProviderName}:default`,
           provider: embedProviderName,
-          mode: hasAzureCLI ? "azure-cli" : "api_key",
+          mode: hasAzureCLI ? "token" : "api_key",
         });
 
         // Configure memory search to use Azure embeddings
         nextConfig = {
           ...nextConfig,
-          tools: {
-            ...nextConfig.tools,
-            memorySearch: {
-              ...nextConfig.tools?.memorySearch,
-              enabled: true,
-              provider: embedProviderName,
-              model: embeddingModelId,
+          agents: {
+            ...nextConfig.agents,
+            defaults: {
+              ...nextConfig.agents?.defaults,
+              memorySearch: {
+                ...nextConfig.agents?.defaults?.memorySearch,
+                enabled: true,
+                provider: embedProviderName,
+                model: embeddingModelId,
+              },
             },
           },
         };
@@ -1375,16 +1391,27 @@ export async function applyAuthChoiceApiProviders(
       }
 
       if (params.setDefaultModel) {
+        const existingModel = nextConfig.agents?.defaults?.model;
+        const existingFallbacks =
+          typeof existingModel === "object" &&
+          existingModel !== null &&
+          "fallbacks" in existingModel
+            ? (existingModel as { fallbacks?: string[] }).fallbacks
+            : undefined;
         nextConfig = {
           ...nextConfig,
           agents: {
             ...nextConfig.agents,
             defaults: {
               ...nextConfig.agents?.defaults,
-              model: chatModelRef,
+              model: {
+                ...(existingFallbacks ? { fallbacks: existingFallbacks } : undefined),
+                primary: chatModelRef,
+              },
             },
           },
         };
+        agentModelOverride = chatModelRef;
       } else if (params.agentId) {
         await noteAgentModel(chatModelRef);
         agentModelOverride = chatModelRef;

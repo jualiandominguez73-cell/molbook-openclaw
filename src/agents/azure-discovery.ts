@@ -107,21 +107,54 @@ function toModelDefinition(
   };
 }
 
-async function getAzureAccessToken(): Promise<string | null> {
+type CachedAzureToken = {
+  token: string;
+  expiresAt: number;
+  resource: string;
+};
+
+let cachedAzureTokens: Map<string, CachedAzureToken> = new Map();
+
+export async function getAzureCLIToken(resource: string): Promise<string | null> {
+  const cached = cachedAzureTokens.get(resource);
+  if (cached && cached.expiresAt > Date.now() + 300000) {
+    return cached.token;
+  }
+
   try {
     const { exec } = await import("node:child_process");
     const { promisify } = await import("node:util");
     const execAsync = promisify(exec);
 
     const { stdout } = await execAsync(
-      "az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken -o tsv",
+      `az account get-access-token --resource ${resource} --query accessToken -o tsv`,
       { timeout: 10000 },
     );
     const token = stdout.trim();
-    return token || null;
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+      const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + 3600000;
+      cachedAzureTokens.set(resource, { token, expiresAt, resource });
+    } catch {
+      cachedAzureTokens.set(resource, {
+        token,
+        expiresAt: Date.now() + 3600000,
+        resource,
+      });
+    }
+
+    return token;
   } catch {
     return null;
   }
+}
+
+async function getAzureAccessToken(): Promise<string | null> {
+  return getAzureCLIToken("https://cognitiveservices.azure.com");
 }
 
 type AzureOpenAIResource = {
@@ -258,20 +291,7 @@ type AzureFoundryDeployment = {
 };
 
 async function getAzureFoundryAccessToken(): Promise<string | null> {
-  try {
-    const { exec } = await import("node:child_process");
-    const { promisify } = await import("node:util");
-    const execAsync = promisify(exec);
-
-    const { stdout } = await execAsync(
-      "az account get-access-token --resource https://ml.azure.com --query accessToken -o tsv",
-      { timeout: 10000 },
-    );
-    const token = stdout.trim();
-    return token || null;
-  } catch {
-    return null;
-  }
+  return getAzureCLIToken("https://ml.azure.com");
 }
 
 export async function listAzureFoundryDeployments(
