@@ -1,7 +1,7 @@
 import { html, nothing } from "lit";
 import type { ChannelUiMetaEntry, CronJob, CronRunLogEntry, CronStatus } from "../types.ts";
 import type { CronFormState } from "../ui-types.ts";
-import { t } from "../../i18n/i18n";
+import { t } from "../../i18n/i18n.js";
 import { formatMs } from "../format.ts";
 import {
   formatCronPayload,

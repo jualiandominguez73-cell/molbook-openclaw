@@ -1,7 +1,7 @@
 import { html } from "lit";
 import type { GatewayHelloOk } from "../gateway.ts";
 import type { UiSettings } from "../storage.ts";
-import { t } from "../../i18n/i18n";
+import { t } from "../../i18n/i18n.js";
 import { formatAgo, formatDurationMs } from "../format.ts";
 import { formatNextRun } from "../presenter.ts";
 

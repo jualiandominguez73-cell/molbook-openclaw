@@ -1,14 +1,10 @@
-import { listChannelDocks } from "../channels/dock.js";
-import { getActivePluginRegistry } from "../plugins/runtime.js";
-import { listThinkingLevels } from "./thinking.js";
-import { COMMAND_ARG_FORMATTERS } from "./commands-args.js";
-import { t as i18nT, type Locale } from "../i18n/commands.js";
 import type {
   ChatCommandDefinition,
   CommandCategory,
   CommandScope,
 } from "./commands-registry.types.js";
 import { listChannelDocks } from "../channels/dock.js";
+import { t as i18nT, type Locale } from "../i18n/commands.js";
 import { getActivePluginRegistry } from "../plugins/runtime.js";
 import { COMMAND_ARG_FORMATTERS } from "./commands-args.js";
 import { listThinkingLevels } from "./thinking.js";

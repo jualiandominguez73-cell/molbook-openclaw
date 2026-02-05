@@ -1,8 +1,8 @@
 import { html } from "lit";
-import type { ConfigUiHints } from "../types";
-import type { ChannelsProps } from "./channels.types";
-import { t } from "../../i18n/i18n";
-import { analyzeConfigSchema, renderNode, schemaType, type JsonSchema } from "./config-form";
+import type { ConfigUiHints } from "../types.js";
+import type { ChannelsProps } from "./channels.types.js";
+import { t } from "../../i18n/i18n.js";
+import { analyzeConfigSchema, renderNode, schemaType, type JsonSchema } from "./config-form.js";
 
 type ChannelConfigFormProps = {
   channelId: string;

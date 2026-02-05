@@ -316,7 +316,7 @@ export function renderChat(props: ChatProps) {
         props.queue.length
           ? html`
             <div class="chat-queue" role="status" aria-live="polite">
-              <div class="chat-queue__title">${t("chat.queued_messages", { count: props.queue.length })}</div>
+              <div class="chat-queue__title">${t("chat.queued_messages", { count: String(props.queue.length) })}</div>
               <div class="chat-queue__list">
                 ${props.queue.map(
                   (item) => html`
@@ -325,7 +325,7 @@ export function renderChat(props: ChatProps) {
                         ${
                           item.text ||
                           (item.attachments?.length
-                            ? t("chat.image_count", { count: item.attachments.length })
+                            ? t("chat.image_count", { count: String(item.attachments.length) })
                             : "")
                         }
                       </div>

@@ -57,7 +57,7 @@ The locale can be switched dynamically using the dropdown selector in the topbar
 import { i18n } from "./i18n/i18n.js";
 
 // Programmatically switch locale
-i18n.setLocale('zh-CN'); // Switch to Simplified Chinese
+i18n.setLocale("zh-CN"); // Switch to Simplified Chinese
 ```
 
 ### Automatic Detection
@@ -73,12 +73,14 @@ The system automatically detects the preferred locale from:
 To test the implementation:
 
 1. Build the project:
+
    ```bash
    cd /Users/moltbot/moltbot/ui
    npm run build
    ```
 
 2. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -99,6 +101,7 @@ To add new translations:
 4. Use the key with the `t()` function in your components
 
 Example:
+
 ```typescript
 // Add to TranslationKeys interface
 'my.new.key': string;
@@ -106,7 +109,7 @@ Example:
 // Add to enTranslations
 'my.new.key': 'My New Text';
 
-// Add to zhCNTranslations  
+// Add to zhCNTranslations
 'my.new.key': '我的新文本';
 
 // Use in component

@@ -1,8 +1,8 @@
-import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
-import { i18n, type Locale } from './i18n.ts';
+import { LitElement, html, css } from "lit";
+import { customElement, state } from "lit/decorators.js";
+import { i18n, type Locale } from "./i18n.ts";
 
-@customElement('locale-selector')
+@customElement("locale-selector")
 export class LocaleSelector extends LitElement {
   @state()
   private currentLocale: Locale = i18n.getLocale();

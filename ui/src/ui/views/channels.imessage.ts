@@ -1,9 +1,9 @@
 import { html, nothing } from "lit";
-import type { IMessageStatus } from "../types";
-import type { ChannelsProps } from "./channels.types";
-import { t } from "../../i18n/i18n";
-import { formatAgo } from "../format";
-import { renderChannelConfigSection } from "./channels.config";
+import type { IMessageStatus } from "../types.js";
+import type { ChannelsProps } from "./channels.types.js";
+import { t } from "../../i18n/i18n.js";
+import { formatAgo } from "../format.js";
+import { renderChannelConfigSection } from "./channels.config.js";
 
 export function renderIMessageCard(params: {
   props: ChannelsProps;

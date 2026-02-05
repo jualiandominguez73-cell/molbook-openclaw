@@ -1,7 +1,7 @@
 import { html, nothing } from "lit";
 import type { SkillMessageMap } from "../controllers/skills.ts";
 import type { SkillStatusEntry, SkillStatusReport } from "../types.ts";
-import { t } from "../../i18n/i18n";
+import { t } from "../../i18n/i18n.js";
 import { clampText } from "../format.ts";
 
 type SkillGroup = {

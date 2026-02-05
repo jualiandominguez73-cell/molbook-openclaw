@@ -1,6 +1,6 @@
 import { html, nothing } from "lit";
 import type { GatewaySessionRow, SessionsListResult } from "../types.ts";
-import { t } from "../../i18n/i18n";
+import { t } from "../../i18n/i18n.js";
 import { formatAgo } from "../format.ts";
 import { pathForTab } from "../navigation.ts";
 import { formatSessionTokens } from "../presenter.ts";

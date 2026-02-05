@@ -1,6 +1,6 @@
 import { html, nothing } from "lit";
 import type { LogEntry, LogLevel } from "../types.ts";
-import { t } from "../../i18n/i18n";
+import { t } from "../../i18n/i18n.js";
 
 const LEVELS: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal"];
 

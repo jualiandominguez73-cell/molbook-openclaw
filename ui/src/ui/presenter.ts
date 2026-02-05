@@ -1,5 +1,5 @@
 import type { CronJob, GatewaySessionRow, PresenceEntry } from "./types.ts";
-import { t } from "../i18n/i18n";
+import { t } from "../i18n/i18n.js";
 import { formatAgo, formatDurationMs, formatMs } from "./format.ts";
 
 export function formatPresenceSummary(entry: PresenceEntry): string {

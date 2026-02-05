@@ -1,9 +1,9 @@
 import { html, nothing } from "lit";
-import type { ChannelAccountSnapshot, NostrStatus } from "../types";
-import type { ChannelsProps } from "./channels.types";
-import { t } from "../../i18n/i18n";
-import { formatAgo } from "../format";
-import { renderChannelConfigSection } from "./channels.config";
+import type { ChannelAccountSnapshot, NostrStatus } from "../types.js";
+import type { ChannelsProps } from "./channels.types.js";
+import { t } from "../../i18n/i18n.js";
+import { formatAgo } from "../format.js";
+import { renderChannelConfigSection } from "./channels.config.js";
 import {
   renderNostrProfileForm,
   type NostrProfileFormState,
