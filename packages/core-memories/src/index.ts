@@ -791,11 +791,33 @@ export class CoreMemories {
 
   private loadIndex(): IndexData {
     const indexPath = path.join(this.memoryDir, "index.json");
-    const data = JSON.parse(fs.readFileSync(indexPath, "utf-8")) as IndexData;
-    if (!data.timestamps) {
-      data.timestamps = {};
+
+    // Be resilient to missing/corrupted index files. Index corruption shouldn't crash the process.
+    if (!fs.existsSync(indexPath)) {
+      return { keywords: {}, timestamps: {}, lastUpdated: getCurrentTimestamp() };
     }
-    return data;
+
+    try {
+      const data = JSON.parse(fs.readFileSync(indexPath, "utf-8")) as IndexData;
+      if (!data.keywords) {
+        data.keywords = {};
+      }
+      if (!data.timestamps) {
+        data.timestamps = {};
+      }
+      if (!data.lastUpdated) {
+        data.lastUpdated = getCurrentTimestamp();
+      }
+      return data;
+    } catch {
+      try {
+        const badPath = `${indexPath}.corrupt.${Date.now()}`;
+        fs.renameSync(indexPath, badPath);
+      } catch {
+        // ignore
+      }
+      return { keywords: {}, timestamps: {}, lastUpdated: getCurrentTimestamp() };
+    }
   }
 
   private saveIndex(index: IndexData): void {
@@ -808,11 +830,12 @@ export class CoreMemories {
     const index = this.loadIndex();
 
     entry.keywords.forEach((keyword) => {
-      if (!index.keywords[keyword]) {
-        index.keywords[keyword] = [];
+      const normalized = keyword.toLowerCase();
+      if (!index.keywords[normalized]) {
+        index.keywords[normalized] = [];
       }
-      if (!index.keywords[keyword].includes(entry.id)) {
-        index.keywords[keyword].push(entry.id);
+      if (!index.keywords[normalized].includes(entry.id)) {
+        index.keywords[normalized].push(entry.id);
       }
     });
 
