@@ -95,6 +95,27 @@ function safeJsonStringify(value: unknown): string | null {
   }
 }
 
+function formatUnknownError(value: unknown, fallback = "unknown error"): string {
+  if (value instanceof Error) {
+    return value.message;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint" ||
+    typeof value === "symbol"
+  ) {
+    return String(value);
+  }
+  if (value && typeof value === "object") {
+    return safeJsonStringify(value) ?? fallback;
+  }
+  return fallback;
+}
+
 function digest(value: unknown): string | undefined {
   const serialized = safeJsonStringify(value);
   if (!serialized) {
@@ -125,11 +146,9 @@ function summarizeAssistant(messages: AgentMessage[]) {
     hasErrorMessage:
       typeof lastAssistant.errorMessage === "string" && lastAssistant.errorMessage.length > 0,
     errorMessage:
-      typeof lastAssistant.errorMessage === "string"
-        ? lastAssistant.errorMessage
-        : lastAssistant.errorMessage !== undefined
-          ? String(lastAssistant.errorMessage)
-          : undefined,
+      lastAssistant.errorMessage !== undefined
+        ? formatUnknownError(lastAssistant.errorMessage, "")
+        : undefined,
     content: lastAssistant.content,
   };
 }
@@ -237,7 +256,7 @@ export function createAimlapiPayloadLogger(params: {
   };
 
   const recordPromptError: AimlapiPayloadLogger["recordPromptError"] = (error) => {
-    const message = error instanceof Error ? error.message : String(error ?? "unknown error");
+    const message = formatUnknownError(error);
     record({
       ...base,
       ts: new Date().toISOString(),

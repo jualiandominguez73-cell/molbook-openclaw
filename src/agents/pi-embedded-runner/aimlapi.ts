@@ -52,6 +52,28 @@ function toRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function stringifyUnknown(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint" ||
+    typeof value === "symbol"
+  ) {
+    return String(value);
+  }
+  if (value === null || value === undefined) {
+    return "";
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
 function extractLiteralEnum(variants: unknown[]): { type?: string; enum: unknown[] } | null {
   if (variants.length === 0) {
     return null;
@@ -365,7 +387,7 @@ export function rollbackFailedAimlapiPrompt(params: {
   if (params.provider !== "aimlapi") {
     return false;
   }
-  const errorText = String(params.promptError ?? "");
+  const errorText = stringifyUnknown(params.promptError);
   if (!isAimlapiInvalidToolSchemaError(errorText)) {
     return false;
   }
