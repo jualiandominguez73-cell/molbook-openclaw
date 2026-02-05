@@ -62,24 +62,48 @@ function drainLane(lane: string) {
       state.active += 1;
       void (async () => {
         const startTime = Date.now();
+        const LANE_TASK_TIMEOUT_MS = parseInt(
+          process.env.OPENCLAW_LANE_TASK_TIMEOUT_MS || "300000",
+          10,
+        );
+        let settled = false;
+        const timeoutId = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            state.active -= 1;
+            diag.warn(
+              `lane task timeout: lane=${lane} durationMs=${Date.now() - startTime} timeoutMs=${LANE_TASK_TIMEOUT_MS} active=${state.active} queued=${state.queue.length}`,
+            );
+            pump();
+            entry.reject(new Error(`Lane task timed out after ${LANE_TASK_TIMEOUT_MS}ms`));
+          }
+        }, LANE_TASK_TIMEOUT_MS);
         try {
           const result = await entry.task();
-          state.active -= 1;
-          diag.debug(
-            `lane task done: lane=${lane} durationMs=${Date.now() - startTime} active=${state.active} queued=${state.queue.length}`,
-          );
-          pump();
-          entry.resolve(result);
-        } catch (err) {
-          state.active -= 1;
-          const isProbeLane = lane.startsWith("auth-probe:") || lane.startsWith("session:probe-");
-          if (!isProbeLane) {
-            diag.error(
-              `lane task error: lane=${lane} durationMs=${Date.now() - startTime} error="${String(err)}"`,
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            state.active -= 1;
+            diag.debug(
+              `lane task done: lane=${lane} durationMs=${Date.now() - startTime} active=${state.active} queued=${state.queue.length}`,
             );
+            pump();
+            entry.resolve(result);
           }
-          pump();
-          entry.reject(err);
+        } catch (err) {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            state.active -= 1;
+            const isProbeLane = lane.startsWith("auth-probe:") || lane.startsWith("session:probe-");
+            if (!isProbeLane) {
+              diag.error(
+                `lane task error: lane=${lane} durationMs=${Date.now() - startTime} error="${String(err)}"`,
+              );
+            }
+            pump();
+            entry.reject(err);
+          }
         }
       })();
     }
