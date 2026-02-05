@@ -13,6 +13,7 @@ Docs: https://docs.openclaw.ai
 - Security: guard skill installer downloads with SSRF checks (block private/localhost URLs).
 - Media understanding: apply SSRF guardrails to provider fetches; allow private baseUrl overrides explicitly.
 - Tests: stub SSRF DNS pinning in web auto-reply + Gemini video coverage. (#6619) Thanks @joshp123.
+- Tools: downgrade tool execution failure logs. (#9893) Thanks @ai-fanatic.
 
 ## 2026.2.1
 
