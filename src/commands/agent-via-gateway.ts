@@ -1,3 +1,4 @@
+import { isAgentExecutionDisabled } from "../cli/agent-exec-policy.js";
 import type { CliDeps } from "../cli/deps.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
@@ -172,12 +173,24 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
   return response;
 }
 
-export async function agentCliCommand(opts: AgentCliOpts, runtime: RuntimeEnv, deps?: CliDeps) {
+export async function agentCliCommand(
+  opts: AgentCliOpts,
+  runtime: RuntimeEnv,
+  deps?: CliDeps,
+) {
+  if (isAgentExecutionDisabled()) {
+    runtime.log?.(
+      "Agent execution is disabled (Phase 1 hardening). No gateway calls, embedded agents, models, tools, or memory were invoked.",
+    );
+    return;
+  }
+
   const localOpts = {
     ...opts,
     agentId: opts.agent,
     replyAccountId: opts.replyAccount,
   };
+
   if (opts.local === true) {
     return await agentCommand(localOpts, runtime, deps);
   }
@@ -185,7 +198,9 @@ export async function agentCliCommand(opts: AgentCliOpts, runtime: RuntimeEnv, d
   try {
     return await agentViaGatewayCommand(opts, runtime);
   } catch (err) {
-    runtime.error?.(`Gateway agent failed; falling back to embedded: ${String(err)}`);
+    runtime.error?.(
+      'Gateway agent failed; falling back to embedded: ${String(err)}'
+    );
     return await agentCommand(localOpts, runtime, deps);
   }
 }
