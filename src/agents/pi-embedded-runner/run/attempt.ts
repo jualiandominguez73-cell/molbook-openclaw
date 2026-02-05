@@ -27,6 +27,10 @@ import {
   listChannelSupportedActions,
   resolveChannelMessageToolHints,
 } from "../../channel-tools.js";
+import {
+  copilotInitiatorTracker,
+  createCopilotAwareStream,
+} from "../../copilot-initiator-header.js";
 import { resolveOpenClawDocsPath } from "../../docs-path.js";
 import { isTimeoutError } from "../../failover-error.js";
 import { resolveModelAuthMode } from "../../model-auth.js";
@@ -513,7 +517,14 @@ export async function runEmbeddedAttempt(
       });
 
       // Force a stable streamFn reference so vitest can reliably mock @mariozechner/pi-ai.
-      activeSession.agent.streamFn = streamSimple;
+      // Wrap with Copilot X-Initiator header injection for github-copilot provider.
+      const copilotAwareStream = createCopilotAwareStream(
+        params.provider,
+        activeSession.sessionId,
+        copilotInitiatorTracker,
+        streamSimple,
+      );
+      activeSession.agent.streamFn = copilotAwareStream;
 
       applyExtraParamsToAgent(
         activeSession.agent,
