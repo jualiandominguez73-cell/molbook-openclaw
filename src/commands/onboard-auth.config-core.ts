@@ -17,12 +17,6 @@ import {
   SYNTHETIC_MODEL_CATALOG,
 } from "../agents/synthetic-models.js";
 import {
-  buildSyntheticModelDefinition,
-  SYNTHETIC_BASE_URL,
-  SYNTHETIC_DEFAULT_MODEL_REF,
-  SYNTHETIC_MODEL_CATALOG,
-} from "../agents/synthetic-models.js";
-import {
   buildVeniceModelDefinition,
   VENICE_BASE_URL,
   VENICE_DEFAULT_MODEL_REF,
