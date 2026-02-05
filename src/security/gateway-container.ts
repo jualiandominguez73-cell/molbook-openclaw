@@ -9,6 +9,8 @@ const GATEWAY_CONTAINER_NAME = "openclaw-gateway-secure";
 
 export type GatewayContainerOptions = {
   proxyUrl: string;
+  /** Gateway WebSocket port (host and container) */
+  gatewayPort: number;
   env?: Record<string, string | undefined>;
   /** Bind mounts in format ["host:container:ro"] */
   binds?: string[];
@@ -30,10 +32,10 @@ const SECRET_SUFFIXES = [
 ];
 
 const SECRET_PREFIXES = [
-  "AWS_",           // AWS credentials: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
-  "AZURE_",         // Azure credentials
-  "GCP_",           // Google Cloud credentials
-  "GOOGLE_",        // Google credentials
+  "AWS_", // AWS credentials: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
+  "AZURE_", // Azure credentials
+  "GCP_", // Google Cloud credentials
+  "GOOGLE_", // Google credentials
 ];
 
 const SECRET_EXACT_MATCHES = new Set([
@@ -85,7 +87,7 @@ const SECRET_EXACT_MATCHES = new Set([
   "NVM_BIN",
   "NVM_INC",
   // Shell internals (contain host paths)
-  "_",  // Last executed command path
+  "_", // Last executed command path
 ]);
 
 /**
@@ -94,32 +96,32 @@ const SECRET_EXACT_MATCHES = new Set([
  */
 function filterSecretEnv(env: Record<string, string | undefined>): Record<string, string> {
   const filtered: Record<string, string> = {};
-  
+
   for (const [key, value] of Object.entries(env)) {
     if (!value) continue;
-    
+
     const upperKey = key.toUpperCase();
-    
+
     // Check exact matches first
     if (SECRET_EXACT_MATCHES.has(upperKey)) {
       logger.debug(`Filtered secret env var (exact match): ${key}`);
       continue;
     }
-    
+
     // Check suffixes
     const hasSuffix = SECRET_SUFFIXES.some((suffix) => upperKey.endsWith(suffix));
     if (hasSuffix) {
       logger.debug(`Filtered secret env var (suffix): ${key}`);
       continue;
     }
-    
+
     // Check prefixes (these cloud provider env vars often contain credentials)
     const hasPrefix = SECRET_PREFIXES.some((prefix) => upperKey.startsWith(prefix));
     if (hasPrefix) {
       logger.debug(`Filtered secret env var (prefix): ${key}`);
       continue;
     }
-    
+
     filtered[key] = value;
   }
 
@@ -138,28 +140,45 @@ export async function startGatewayContainer(opts: GatewayContainerOptions): Prom
   await stopGatewayContainer();
 
   const filteredEnv = filterSecretEnv(opts.env || process.env);
-  
+
   const args = [
     "run",
     "-d",
-    "--name", GATEWAY_CONTAINER_NAME,
-    "--network", "bridge",
-    "--add-host", `host.docker.internal:host-gateway`,
-    // Port mapping for gateway WebSocket server (default 18789)
-    "-p", "18789:18789",
+    "--name",
+    GATEWAY_CONTAINER_NAME,
+    "--network",
+    "bridge",
+    "--add-host",
+    `host.docker.internal:host-gateway`,
+    // Port mapping for gateway WebSocket server (uses configured port)
+    "-p",
+    `${opts.gatewayPort}:${opts.gatewayPort}`,
+    // Tell container to bind to the configured port
+    "-e",
+    `PORT=${opts.gatewayPort}`,
     // Set secure mode flag so gateway knows to use placeholders and fetch wrapper
-    "-e", "OPENCLAW_SECURE_MODE=1",
+    "-e",
+    "OPENCLAW_SECURE_MODE=1",
     // Tell the container where the proxy is
-    "-e", `PROXY_URL=${opts.proxyUrl}`,
+    "-e",
+    `PROXY_URL=${opts.proxyUrl}`,
     // Explicitly set container paths to prevent host paths from being used
-    "-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
-    "-e", "HOME=/home/node",
-    "-e", "USER=node",
-    "-e", "LOGNAME=node",
-    "-e", "PWD=/app",
-    "-e", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-    "-e", "XDG_CACHE_HOME=/home/node/.cache",
-    "-e", "XDG_CONFIG_HOME=/home/node/.config",
+    "-e",
+    "OPENCLAW_STATE_DIR=/home/node/.openclaw",
+    "-e",
+    "HOME=/home/node",
+    "-e",
+    "USER=node",
+    "-e",
+    "LOGNAME=node",
+    "-e",
+    "PWD=/app",
+    "-e",
+    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "-e",
+    "XDG_CACHE_HOME=/home/node/.cache",
+    "-e",
+    "XDG_CONFIG_HOME=/home/node/.config",
   ];
 
   // Add bind mounts for tools/skills
@@ -179,7 +198,7 @@ export async function startGatewayContainer(opts: GatewayContainerOptions): Prom
   }
 
   args.push(GATEWAY_IMAGE);
-  
+
   // Run gateway with allow-unconfigured flag for secure mode
   // --bind lan makes gateway listen on 0.0.0.0 so Docker port mapping works
   args.push("node", "dist/index.js", "gateway", "--allow-unconfigured", "--bind", "lan");
@@ -210,4 +229,3 @@ export async function getGatewayContainerLogs(lines: number = 50): Promise<strin
     return `Failed to get logs: ${String(err)}`;
   }
 }
-

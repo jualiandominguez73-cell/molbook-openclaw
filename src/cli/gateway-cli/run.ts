@@ -337,6 +337,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       try {
         containerName = await startGatewayContainer({
           proxyUrl,
+          gatewayPort: port,
           env: process.env,
           binds: sanitizedMounts.binds,
         });
@@ -389,6 +390,13 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
           gatewayLog.info("Secrets proxy stopped");
         } catch (err) {
           gatewayLog.error(`Error stopping proxy: ${String(err)}`);
+        }
+        // Cleanup sanitized mount files
+        try {
+          await cleanupSanitizedMounts(sanitizedMounts.sanitizedDir);
+          gatewayLog.info("Sanitized mounts cleaned up");
+        } catch (err) {
+          gatewayLog.error(`Error cleaning up sanitized mounts: ${String(err)}`);
         }
         defaultRuntime.exit(0);
       };
