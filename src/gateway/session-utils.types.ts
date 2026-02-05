@@ -98,4 +98,8 @@ export type SessionsPatchResult = {
   path: string;
   key: string;
   entry: SessionEntry;
+  resolved?: {
+    modelProvider?: string;
+    model?: string;
+  };
 };
