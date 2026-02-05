@@ -1,9 +1,6 @@
 import type { SkillCommandSpec } from "../agents/skills.js";
-import { getChatCommands, getNativeCommandSurfaces } from "./commands-registry.data.js";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
-import { resolveConfiguredModelRef } from "../agents/model-selection.js";
-import type { Locale } from "../i18n/commands.js";
 import type { OpenClawConfig } from "../config/types.js";
+import type { Locale } from "../i18n/commands.js";
 import type {
   ChatCommandDefinition,
   CommandArgChoiceContext,
@@ -45,7 +42,7 @@ let cachedTextAliasCommands: ChatCommandDefinition[] | null = null;
 let cachedDetection: CommandDetection | undefined;
 let cachedDetectionCommands: ChatCommandDefinition[] | null = null;
 
-function getLocaleFromConfig(cfg?: MoltbotConfig): Locale {
+function getLocaleFromConfig(cfg?: OpenClawConfig): Locale {
   return (cfg?.ui?.locale as Locale) ?? "en";
 }
 
