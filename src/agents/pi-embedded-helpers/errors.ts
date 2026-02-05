@@ -83,6 +83,17 @@ const HTTP_ERROR_HINTS = [
   "permission",
 ];
 
+// Shared user-facing error messages (avoids duplication between formatAssistantErrorText and sanitizeUserFacingText)
+export const BILLING_EXHAUSTED_MSG =
+  "API credits exhausted. Add more credits at your provider's billing page " +
+  "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing).";
+
+export const QUOTA_EXCEEDED_MSG =
+  "API quota exceeded. Check your spending limits and add credits if needed " +
+  "(e.g. console.anthropic.com/billing or platform.openai.com/settings/billing).";
+
+const OVERLOADED_MSG = "The AI service is temporarily overloaded. Please try again in a moment.";
+
 function stripFinalTagsFromText(text: string): string {
   if (!text) {
     return text;
@@ -364,8 +375,16 @@ export function formatAssistantErrorText(
     return `LLM request rejected: ${invalidRequest[1]}`;
   }
 
+  if (isBillingErrorMessage(raw)) {
+    return BILLING_EXHAUSTED_MSG;
+  }
+
+  if (isQuotaExhaustedErrorMessage(raw)) {
+    return QUOTA_EXCEEDED_MSG;
+  }
+
   if (isOverloadedErrorMessage(raw)) {
-    return "The AI service is temporarily overloaded. Please try again in a moment.";
+    return OVERLOADED_MSG;
   }
 
   if (isLikelyHttpErrorText(raw) || isRawApiErrorPayload(raw)) {
@@ -408,8 +427,16 @@ export function sanitizeUserFacingText(text: string): string {
   }
 
   if (ERROR_PREFIX_RE.test(trimmed)) {
+    if (isBillingErrorMessage(trimmed)) {
+      return BILLING_EXHAUSTED_MSG;
+    }
+    // Check quota before rate-limit so quota-specific errors get the right message
+    // (quota patterns overlap with rateLimit patterns)
+    if (isQuotaExhaustedErrorMessage(trimmed)) {
+      return QUOTA_EXCEEDED_MSG;
+    }
     if (isOverloadedErrorMessage(trimmed) || isRateLimitErrorMessage(trimmed)) {
-      return "The AI service is temporarily overloaded. Please try again in a moment.";
+      return OVERLOADED_MSG;
     }
     if (isTimeoutErrorMessage(trimmed)) {
       return "LLM request timed out.";
@@ -438,6 +465,15 @@ const ERROR_PATTERNS = {
     "resource_exhausted",
     "usage limit",
   ],
+  // Subset of rateLimit: quota/spending-limit errors (not transient rate limiting)
+  quotaExhausted: [
+    "exceeded your current quota",
+    "resource has been exhausted",
+    "quota exceeded",
+    "resource_exhausted",
+    "usage limit",
+    "spending limit",
+  ] as ErrorPattern[],
   overloaded: [/overloaded_error|"type"\s*:\s*"overloaded_error"/i, "overloaded"],
   timeout: ["timeout", "timed out", "deadline exceeded", "context deadline exceeded"],
   billing: [
@@ -495,6 +531,11 @@ function matchesErrorPatterns(raw: string, patterns: readonly ErrorPattern[]): b
 
 export function isRateLimitErrorMessage(raw: string): boolean {
   return matchesErrorPatterns(raw, ERROR_PATTERNS.rateLimit);
+}
+
+/** True for quota/spending-limit errors (not transient rate limiting). */
+export function isQuotaExhaustedErrorMessage(raw: string): boolean {
+  return matchesErrorPatterns(raw, ERROR_PATTERNS.quotaExhausted);
 }
 
 export function isTimeoutErrorMessage(raw: string): boolean {
