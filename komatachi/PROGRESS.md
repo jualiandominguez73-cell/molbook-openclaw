@@ -6,9 +6,9 @@
 
 | Aspect | State |
 |--------|-------|
-| **Phase** | Roadmap established; beginning Phase 1 (Storage & Session) |
+| **Phase** | Resolving decision points for each roadmap item |
 | **Last completed** | Distillation roadmap and autonomous execution framework |
-| **Next action** | Distill Storage module (Phase 1.1) |
+| **Next action** | Continue decision resolution (see ROADMAP.md per-module decisions) |
 | **Blockers** | None |
 
 ### What Exists Now
@@ -17,6 +17,8 @@
 - [x] Trial distillation: `src/compaction/` (44 tests)
 - [x] Embeddings sub-module: `src/embeddings/` (47 tests)
 - [x] Key architectural decisions (TypeScript+Rust, minimal viable agent, no gateway)
+- [x] Phased roadmap with autonomous execution framework (ROADMAP.md)
+- [ ] Per-module decision resolution (in progress -- may span multiple sessions)
 
 ### Current Focus: Roadmap Execution
 A phased distillation roadmap has been established. See [ROADMAP.md](./ROADMAP.md) for the full plan, decision authority framework, and session protocol. The roadmap covers 5 phases leading to a minimal viable single-agent, single-session system.
