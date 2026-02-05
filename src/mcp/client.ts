@@ -31,11 +31,34 @@ export class McpClientManager {
   }
 
   async connect() {
-    await this.client.connect(this.transport);
+    try {
+      await this.client.connect(this.transport);
+    } catch (err) {
+      // Ensure transport cleanup on connection failure
+      await this.transport.close?.().catch(() => {});
+      throw err;
+    }
   }
 
   async close() {
-    await this.client.close();
+    try {
+      await this.client.close();
+    } finally {
+      // Always close transport, even if client close fails
+      await this.transport.close?.().catch(() => {});
+    }
+  }
+
+  /**
+   * Execute an operation with guaranteed cleanup, even if errors occur
+   */
+  async withCleanup<T>(operation: () => Promise<T>): Promise<T> {
+    await this.connect();
+    try {
+      return await operation();
+    } finally {
+      await this.close();
+    }
   }
 
   async listTools(): Promise<AnyAgentTool[]> {

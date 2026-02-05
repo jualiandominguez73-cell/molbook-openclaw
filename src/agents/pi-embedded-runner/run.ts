@@ -173,7 +173,11 @@ export async function runEmbeddedPiAgent(
       let apiKeyInfo: ApiKeyInfo | null = null;
       let lastProfileId: string | undefined;
       let profileRetryCount = 0;
-      const MAX_PROFILE_RETRIES = params.config?.agents?.defaults?.model?.maxRetries ?? 2;
+      // Add sane upper bound to prevent effectively infinite retries
+      const MAX_PROFILE_RETRIES = Math.min(
+        params.config?.agents?.defaults?.model?.maxRetries ?? 2,
+        5,
+      );
 
       const resolveAuthProfileFailoverReason = (params: {
         allInCooldown: boolean;
@@ -372,6 +376,10 @@ export async function runEmbeddedPiAgent(
             ownerNumbers: params.ownerNumbers,
             enforceFinalTag: params.enforceFinalTag,
           });
+
+          if (!attempt) {
+            throw new Error("Embedded run attempt returned no result");
+          }
 
           const { aborted, promptError, timedOut, sessionIdUsed, lastAssistant } = attempt;
 
