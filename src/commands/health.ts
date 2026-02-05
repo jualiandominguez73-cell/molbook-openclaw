@@ -1,3 +1,4 @@
+import { inspect } from "util";
 import type { ChannelAccountSnapshot } from "../channels/plugins/types.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
@@ -11,7 +12,10 @@ import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
 import { info } from "../globals.js";
 import { isTruthyEnvValue } from "../infra/env.js";
 import { formatErrorMessage } from "../infra/errors.js";
-import { resolveHeartbeatSummaryForAgent } from "../infra/heartbeat-runner.js";
+import {
+  type HeartbeatSummary,
+  resolveHeartbeatSummaryForAgent,
+} from "../infra/heartbeat-runner.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { buildChannelAccountBindings, resolvePreferredAccountId } from "../routing/bindings.js";
 import { normalizeAgentId } from "../routing/session-key.js";
@@ -74,10 +78,11 @@ const log = createSubsystemLogger("commands/health");
 
 const debugHealth = (...args: unknown[]) => {
   if (isTruthyEnvValue(process.env.OPENCLAW_DEBUG_HEALTH)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     log.warn(
       "[health:debug] " +
-        args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "),
+        args
+          .map((a) => (typeof a === "string" ? a : inspect(a, { breakLength: Infinity })))
+          .join(" "),
     );
   }
 };
