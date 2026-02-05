@@ -23,9 +23,11 @@ fi
 
 OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR:-$HOME/.openclaw}"
 OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
+OPENCLAW_DOCKER_HOME="${OPENCLAW_DOCKER_HOME:-$HOME/.openclaw/docker-home}"
 
 mkdir -p "$OPENCLAW_CONFIG_DIR"
 mkdir -p "$OPENCLAW_WORKSPACE_DIR"
+mkdir -p "$OPENCLAW_DOCKER_HOME"
 
 export OPENCLAW_CONFIG_DIR
 export OPENCLAW_WORKSPACE_DIR
@@ -66,9 +68,10 @@ services:
 YAML
 
   if [[ -n "$home_volume" ]]; then
-    printf '      - %s:/home/node\n' "$home_volume" >>"$EXTRA_COMPOSE_FILE"
-    printf '      - %s:/home/node/.openclaw\n' "$OPENCLAW_CONFIG_DIR" >>"$EXTRA_COMPOSE_FILE"
-    printf '      - %s:/home/node/.openclaw/workspace\n' "$OPENCLAW_WORKSPACE_DIR" >>"$EXTRA_COMPOSE_FILE"
+    # Keep paths consistent with docker-compose.yml (root-based home)
+    printf '      - %s:/root\n' "$home_volume" >>"$EXTRA_COMPOSE_FILE"
+    printf '      - %s:/root/.openclaw\n' "$OPENCLAW_CONFIG_DIR" >>"$EXTRA_COMPOSE_FILE"
+    printf '      - %s:/root/.openclaw/workspace\n' "$OPENCLAW_WORKSPACE_DIR" >>"$EXTRA_COMPOSE_FILE"
   fi
 
   for mount in "${mounts[@]}"; do
@@ -81,9 +84,10 @@ YAML
 YAML
 
   if [[ -n "$home_volume" ]]; then
-    printf '      - %s:/home/node\n' "$home_volume" >>"$EXTRA_COMPOSE_FILE"
-    printf '      - %s:/home/node/.openclaw\n' "$OPENCLAW_CONFIG_DIR" >>"$EXTRA_COMPOSE_FILE"
-    printf '      - %s:/home/node/.openclaw/workspace\n' "$OPENCLAW_WORKSPACE_DIR" >>"$EXTRA_COMPOSE_FILE"
+    # Keep paths consistent with docker-compose.yml (root-based home)
+    printf '      - %s:/root\n' "$home_volume" >>"$EXTRA_COMPOSE_FILE"
+    printf '      - %s:/root/.openclaw\n' "$OPENCLAW_CONFIG_DIR" >>"$EXTRA_COMPOSE_FILE"
+    printf '      - %s:/root/.openclaw/workspace\n' "$OPENCLAW_WORKSPACE_DIR" >>"$EXTRA_COMPOSE_FILE"
   fi
 
   for mount in "${mounts[@]}"; do
@@ -129,7 +133,7 @@ upsert_env() {
   local -a keys=("$@")
   local tmp
   tmp="$(mktemp)"
-  declare -A seen=()
+  local seen=""
 
   if [[ -f "$file" ]]; then
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -138,7 +142,7 @@ upsert_env() {
       for k in "${keys[@]}"; do
         if [[ "$key" == "$k" ]]; then
           printf '%s=%s\n' "$k" "${!k-}" >>"$tmp"
-          seen["$k"]=1
+          seen="$seen $k "
           replaced=true
           break
         fi
@@ -150,7 +154,7 @@ upsert_env() {
   fi
 
   for k in "${keys[@]}"; do
-    if [[ -z "${seen[$k]:-}" ]]; then
+    if [[ "$seen" != *" $k "* ]]; then
       printf '%s=%s\n' "$k" "${!k-}" >>"$tmp"
     fi
   done
@@ -187,6 +191,30 @@ echo "  - Tailscale exposure: Off"
 echo "  - Install Gateway daemon: No"
 echo ""
 docker compose "${COMPOSE_ARGS[@]}" run --rm openclaw-cli onboard --no-install-daemon
+
+echo ""
+echo "==> Configuring gateway for Docker"
+# Sync the token from .env to config (onboard may generate a different one)
+CONFIG_FILE="$OPENCLAW_CONFIG_DIR/openclaw.json"
+if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
+  if [[ "${OPENCLAW_DOCKER_DISABLE_DEVICE_AUTH:-}" == "true" ]]; then
+    echo "WARNING: Disabling device auth as requested (OPENCLAW_DOCKER_DISABLE_DEVICE_AUTH=true)"
+    jq --arg token "$OPENCLAW_GATEWAY_TOKEN" \
+      '.gateway.auth.token = $token | .gateway.controlUi = {"dangerouslyDisableDeviceAuth": true}' \
+      "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    echo "Token synced and controlUi device auth disabled."
+  else
+    jq --arg token "$OPENCLAW_GATEWAY_TOKEN" \
+      '.gateway.auth.token = $token' \
+      "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    echo "Token synced."
+    echo ""
+    echo "NOTE: Device auth is enabled. If accessing from Docker bridge network,"
+    echo "you may need to set OPENCLAW_DOCKER_DISABLE_DEVICE_AUTH=true and re-run setup."
+  fi
+else
+  echo "Warning: Could not update config. Ensure gateway token matches: $OPENCLAW_GATEWAY_TOKEN"
+fi
 
 echo ""
 echo "==> Provider setup (optional)"
