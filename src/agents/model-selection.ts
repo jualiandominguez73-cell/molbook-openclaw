@@ -176,10 +176,12 @@ export function resolveConfiguredModelRef(params: {
       }
 
       // Default to anthropic if no provider is specified, but warn as this is deprecated.
+      // Special case: deepseek-chat routes to openai
+      const provider = trimmed === "deepseek-chat" ? "openai" : "anthropic";
       console.warn(
-        `[openclaw] Model "${trimmed}" specified without provider. Falling back to "anthropic/${trimmed}". Please use "anthropic/${trimmed}" in your config.`,
+        `[openclaw] Model "${trimmed}" specified without provider. Falling back to "${provider}/${trimmed}". Please use "${provider}/${trimmed}" in your config.`,
       );
-      return { provider: "anthropic", model: trimmed };
+      return { provider, model: trimmed };
     }
 
     const resolved = resolveModelRefFromString({

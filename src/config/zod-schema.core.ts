@@ -42,8 +42,10 @@ export const ModelDefinitionSchema = z
     maxTokens: z.number().positive().optional(),
     headers: z.record(z.string(), z.string()).optional(),
     compat: ModelCompatSchema,
+    provider: z.string().optional(),
+    baseUrl: z.string().optional(),
   })
-  .strict();
+  .passthrough();
 
 export const ModelProviderSchema = z
   .object({

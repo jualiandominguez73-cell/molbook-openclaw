@@ -11,6 +11,7 @@ const LineGroupConfigSchema = z
     systemPrompt: z.string().optional(),
     skills: z.array(z.string()).optional(),
   })
+
   .strict();
 
 const LineAccountConfigSchema = z
