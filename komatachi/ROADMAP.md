@@ -83,7 +83,7 @@ These involve cross-module architectural choices or scope changes:
 
 These were discussed during roadmap creation and are settled:
 
-1. **File-based storage, not SQLite** -- OpenClaw uses file-based storage (JSON metadata, JSONL transcripts) for sessions and conversation history. SQLite is only used for the derived memory search index. Since we are deferring vector search, there is no need for SQLite in the initial system. Storage is JSON/JSONL files with file locking.
+1. **File-based storage, not SQLite** -- OpenClaw uses file-based storage (JSON metadata, JSONL transcripts) for sessions and conversation history. SQLite is only used for the derived memory search index. Since we are deferring vector search, there is no need for SQLite in the initial system. Storage is JSON/JSONL files with atomic writes (no locking needed -- see decision #8).
 
 2. **Single-session assumption** -- The initial system manages one session at a time. Session Store is implemented, but multi-session management is deferred. The interface must support future multi-session without breaking callers.
 
@@ -97,6 +97,14 @@ These were discussed during roadmap creation and are settled:
 
 7. **Vector search, file sync, memory manager deferred** -- These compose the "smart memory" layer that requires SQLite + embeddings infrastructure. The minimal viable agent uses file-based conversation history and does not need semantic search over past sessions. When the time comes, the embeddings module (already built) and the storage interfaces (designed for extensibility) provide the foundation.
 
+8. **One agent per process, no file locking** -- Each agent is its own OS process. OpenClaw's 188-LOC advisory file locking exists because multiple agents in one process can concurrently access the same session files. With one agent per process, there is exactly one writer -- no concurrent access, no locking needed. Atomic writes (write-to-temp, rename) handle crash safety. This decision also eliminates session key namespacing, shared registries, and cross-agent access control within a process. Verified against OpenClaw source: agent-to-agent communication is already asynchronous message passing through session transcripts, not shared in-process state. Separate processes make this logical isolation physical.
+
+9. **Storage is generic, not session-aware** -- The Storage module provides file I/O primitives: read/write JSON, append/read JSONL. It does not know about sessions, messages, or metadata schemas. Session Store is the first consumer and adds session-specific semantics. This respects layer boundaries (Principle 8): a storage layer stores, it doesn't interpret. The interface cost is near zero (`read<T>(key)` vs `readSession(id)`) and the separation keeps Storage reusable if other consumers appear.
+
+10. **JSONL for transcripts, JSON for metadata** -- Transcripts are append-only logs (JSONL): O(1) append, no read-modify-write. Session metadata is a single JSON document: small, read-modify-write is fine with atomic writes. This matches OpenClaw's approach and the tradeoffs are sound for both current and future scale.
+
+11. **Base directory injection, no platform conventions** -- Storage accepts a base directory as a constructor parameter. No XDG, no ~/.config defaults, no platform detection. The caller decides where files live. This keeps Storage focused on I/O and makes testing trivial (use a temp directory).
+
 ---
 
 ## The Roadmap
@@ -107,22 +115,22 @@ The persistence layer everything else builds on.
 
 **1.1 -- Storage**
 
-Scope: File-based persistence primitives. JSON read/write with atomic operations. JSONL append-only logs. File locking for concurrency safety.
+Scope: Generic file-based persistence primitives. JSON read/write with atomic operations. JSONL append-only logs. No domain knowledge (sessions, messages, etc.).
 
-Source material: `scouting/session-management.md` (store.ts ~440 lines, transcript.ts ~133 lines, paths.ts ~73 lines).
+Source material: `scouting/session-management.md` (store.ts ~440 lines, transcript.ts ~133 lines, paths.ts ~73 lines). Study for patterns, not for domain coupling.
 
 What to build:
-- JSON store: read, write, atomic update (read-modify-write with lock)
-- JSONL log: append, read-all, read-range
-- File locking: advisory locks to prevent concurrent corruption
-- Path resolution: deterministic file paths from session/entity IDs
+- JSON store: `read<T>(path)`, `write<T>(path, data)` with atomic write (write-to-temp, rename)
+- JSONL log: `append<T>(path, entry)`, `readAll<T>(path)`, `readRange<T>(path, start, end)`
+- Base directory resolution: accept root dir as constructor/parameter, derive paths beneath it
+- Error types: `StorageNotFoundError`, `StorageCorruptionError`, `StorageIOError`
 
 What to omit:
 - SQLite (deferred -- see Pre-Resolved Decision #1)
-- Caching layer (if needed, it's a separate concern above storage)
+- File locking / advisory locks (unnecessary -- see Pre-Resolved Decision #8)
+- Caching layer (separate concern above storage)
 - Migration logic (no legacy data to migrate)
-
-Key interface question (pre-resolved): Storage is generic -- it doesn't know about sessions or messages. It stores and retrieves JSON documents and appends to JSONL logs. Session-specific semantics live in the Session Store layer above.
+- Session/message/metadata awareness (that's Session Store's job -- see Pre-Resolved Decision #9)
 
 **1.2 -- Session Store**
 
