@@ -1,5 +1,5 @@
-import type { ResolvedQQBotAccount, QQBotAccountConfig } from "./types.js";
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
+import type { ResolvedQQBotAccount, QQBotAccountConfig } from "./types.js";
 
 export const DEFAULT_ACCOUNT_ID = "default";
 
@@ -53,7 +53,7 @@ export function resolveDefaultQQBotAccountId(cfg: OpenClawConfig): string {
  */
 export function resolveQQBotAccount(
   cfg: OpenClawConfig,
-  accountId?: string | null
+  accountId?: string | null,
 ): ResolvedQQBotAccount {
   const resolvedAccountId = accountId ?? DEFAULT_ACCOUNT_ID;
   const qqbot = cfg.channels?.qqbot as QQBotChannelConfig | undefined;
@@ -123,7 +123,13 @@ export function resolveQQBotAccount(
 export function applyQQBotAccountConfig(
   cfg: OpenClawConfig,
   accountId: string,
-  input: { appId?: string; clientSecret?: string; clientSecretFile?: string; name?: string; imageServerBaseUrl?: string }
+  input: {
+    appId?: string;
+    clientSecret?: string;
+    clientSecretFile?: string;
+    name?: string;
+    imageServerBaseUrl?: string;
+  },
 ): OpenClawConfig {
   const next = { ...cfg };
 
@@ -131,7 +137,7 @@ export function applyQQBotAccountConfig(
     next.channels = {
       ...next.channels,
       qqbot: {
-        ...(next.channels?.qqbot as Record<string, unknown> || {}),
+        ...((next.channels?.qqbot as Record<string, unknown>) || {}),
         enabled: true,
         ...(input.appId ? { appId: input.appId } : {}),
         ...(input.clientSecret
@@ -147,7 +153,7 @@ export function applyQQBotAccountConfig(
     next.channels = {
       ...next.channels,
       qqbot: {
-        ...(next.channels?.qqbot as Record<string, unknown> || {}),
+        ...((next.channels?.qqbot as Record<string, unknown>) || {}),
         enabled: true,
         accounts: {
           ...((next.channels?.qqbot as QQBotChannelConfig)?.accounts || {}),
