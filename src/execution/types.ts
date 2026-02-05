@@ -283,6 +283,8 @@ export interface ExecutionRequest {
     disableTools?: boolean;
     /** Agent account ID for multi-account channels. */
     agentAccountId?: string;
+    /** Claude SDK session ID for native session resume. */
+    claudeSdkSessionId?: string;
   };
 }
 
