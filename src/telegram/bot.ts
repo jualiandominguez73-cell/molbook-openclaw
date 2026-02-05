@@ -309,24 +309,29 @@ export function createTelegramBot(opts: TelegramBotOptions) {
       if (entry?.groupActivation === "mention") {
         return true;
       }
-      // Fallback to configured policy: "auto" implies no mention required (smart reply)
-      // Check both account-level config and global channel config to be safe
-      const policy =
-        telegramCfg.groupPolicy ??
-        (cfg.channels?.telegram as { groupPolicy?: string })?.groupPolicy;
-      if (policy === "auto") {
+      // Fallback to configured activation
+      const activation =
+        telegramCfg.groupActivation ??
+        (cfg.channels?.telegram as { groupActivation?: string })?.groupActivation;
+      if (activation === "auto" || activation === "always") {
         return false;
+      }
+      if (activation === "mention") {
+        return true;
       }
       return undefined;
     } catch (err) {
       logVerbose(`Failed to load session for activation check: ${String(err)}`);
     }
-    // Fallback to configured policy: "auto" implies no mention required (smart reply)
-    // Check both account-level config and global channel config to be safe
-    const policy =
-      telegramCfg.groupPolicy ?? (cfg.channels?.telegram as { groupPolicy?: string })?.groupPolicy;
-    if (policy === "auto") {
+    // Fallback to configured activation
+    const activation =
+      telegramCfg.groupActivation ??
+      (cfg.channels?.telegram as { groupActivation?: string })?.groupActivation;
+    if (activation === "auto" || activation === "always") {
       return false;
+    }
+    if (activation === "mention") {
+      return true;
     }
     return undefined;
   };
@@ -350,10 +355,11 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     } catch {
       // ignore
     }
-    // Fallback to configured policy
-    const policy =
-      telegramCfg.groupPolicy ?? (cfg.channels?.telegram as { groupPolicy?: string })?.groupPolicy;
-    if (policy === "auto") {
+    // Fallback to configured activation
+    const activation =
+      telegramCfg.groupActivation ??
+      (cfg.channels?.telegram as { groupActivation?: string })?.groupActivation;
+    if (activation === "auto") {
       return "auto";
     }
     return undefined;
