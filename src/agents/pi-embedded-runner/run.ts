@@ -44,6 +44,7 @@ import {
   type FailoverReason,
 } from "../pi-embedded-helpers.js";
 import { normalizeUsage, type UsageLike } from "../usage.js";
+import { formatAimlapiToolSchemaError, isAimlapiInvalidToolSchemaError } from "./aimlapi.js";
 import { compactEmbeddedPiSessionDirect } from "./compact.js";
 import { resolveGlobalLane, resolveSessionLane } from "./lanes.js";
 import { log } from "./logger.js";
@@ -372,6 +373,39 @@ export async function runEmbeddedPiAgent(
 
           if (promptError && !aborted) {
             const errorText = describeUnknownError(promptError);
+            if (provider === "aimlapi") {
+              log.warn("aimlapi run: prompt failed before assistant response", {
+                runId: params.runId,
+                sessionId: params.sessionId,
+                model: `${provider}/${modelId}`,
+                error: errorText.slice(0, 800),
+              });
+            }
+            if (provider === "aimlapi" && isAimlapiInvalidToolSchemaError(errorText)) {
+              log.warn("aimlapi run: returning dedicated invalid-tool-schema payload", {
+                runId: params.runId,
+                sessionId: params.sessionId,
+                model: `${provider}/${modelId}`,
+              });
+              return {
+                payloads: [
+                  {
+                    text: formatAimlapiToolSchemaError(errorText),
+                    isError: true,
+                  },
+                ],
+                meta: {
+                  durationMs: Date.now() - started,
+                  agentMeta: {
+                    sessionId: sessionIdUsed,
+                    provider,
+                    model: model.id,
+                  },
+                  systemPromptReport: attempt.systemPromptReport,
+                  error: { kind: "aimlapi_invalid_tool_schema", message: errorText },
+                },
+              };
+            }
             if (isContextOverflowError(errorText)) {
               const isCompactionFailure = isCompactionFailureError(errorText);
               // Attempt auto-compaction on context overflow (not compaction_failure)

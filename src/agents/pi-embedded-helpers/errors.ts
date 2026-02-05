@@ -351,6 +351,17 @@ export function formatAssistantErrorText(
     );
   }
 
+  const provider = msg.provider?.toLowerCase();
+  const isAimlapiProvider = provider === "aimlapi" || raw.toLowerCase().includes("aimlapi");
+
+  if (isAimlapiProvider && isAuthErrorMessage(raw)) {
+    return (
+      "🔑 It looks like your AI/ML API key is missing or invalid. " +
+      "Do you already have a key? If not, open https://aimlapi.com/app/keys/, " +
+      "sign up/subscribe, then paste the key into the bot."
+    );
+  }
+
   if (isMissingToolCallInputError(raw)) {
     return (
       "Session history looks corrupted (tool call input missing). " +
@@ -463,6 +474,7 @@ const ERROR_PATTERNS = {
     /\b403\b/,
     "no credentials found",
     "no api key found",
+    "no api key resolved",
   ],
   format: [
     "string should match pattern",
