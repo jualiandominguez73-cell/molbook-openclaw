@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Avatar, AvatarFallback, Badge } from '../../ui';
+import { cn } from '@/lib/utils';
 import type { Message, TaskDefinition, Worker } from '../../../types';
-import styles from './MessageList.module.css';
 
 interface MessageListProps {
   messages: Message[];
@@ -16,10 +16,10 @@ function formatTime(timestamp: number): string {
 
 function TaskCard({ task }: { task: TaskDefinition }) {
   return (
-    <div className={styles.taskCard}>
-      <div className={styles.taskHeader}>
+    <div className="mt-3 p-3 bg-bg-card border border-border rounded-lg">
+      <div className="flex items-center gap-2 mb-2">
         <span>📋</span>
-        <span className={styles.taskTitle}>{task.title}</span>
+        <span className="text-[13px] font-semibold text-text-primary">{task.title}</span>
         <Badge
           variant={
             task.status === 'running'
@@ -34,9 +34,9 @@ function TaskCard({ task }: { task: TaskDefinition }) {
         </Badge>
       </div>
       {task.description && (
-        <div className={styles.taskDescription}>{task.description}</div>
+        <div className="text-xs text-text-secondary mb-2">{task.description}</div>
       )}
-      <div className={styles.taskMeta}>
+      <div className="flex gap-3 text-[11px] text-text-muted">
         <span>⚙ {task.workerType}</span>
         {task.queuePosition !== undefined && (
           <span>Queue #{task.queuePosition}</span>
@@ -48,13 +48,13 @@ function TaskCard({ task }: { task: TaskDefinition }) {
 
 function WorkerCard({ worker }: { worker: Worker }) {
   return (
-    <div className={styles.workerCard}>
+    <div className="mt-3 p-3 bg-bg-card border border-border rounded-lg flex items-center gap-3">
       <Avatar className="size-6">
         <AvatarFallback>{worker.name.charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
-      <div className={styles.workerInfo}>
-        <div className={styles.workerName}>{worker.name}</div>
-        <div className={styles.workerStatus}>
+      <div className="flex-1">
+        <div className="text-[13px] font-medium text-text-primary">{worker.name}</div>
+        <div className="text-[11px] text-text-secondary">
           {worker.status === 'active'
             ? `Working on: ${worker.taskDescription || 'Task'}`
             : worker.status}
@@ -63,6 +63,11 @@ function WorkerCard({ worker }: { worker: Worker }) {
     </div>
   );
 }
+
+const senderColorMap: Record<string, string> = {
+  user: 'text-purple',
+  worker: 'text-success',
+};
 
 function MessageItem({ message }: { message: Message }) {
 
@@ -73,7 +78,7 @@ function MessageItem({ message }: { message: Message }) {
       // Headers
       if (line.startsWith('### ')) {
         return (
-          <p key={i} style={{ fontSize: '14px', fontWeight: 600, marginTop: '12px' }}>
+          <p key={i} className="text-sm font-semibold mt-3">
             {line.slice(4)}
           </p>
         );
@@ -81,8 +86,8 @@ function MessageItem({ message }: { message: Message }) {
       // Bullet points
       if (line.startsWith('- ')) {
         return (
-          <p key={i} style={{ paddingLeft: '16px', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '4px' }}>•</span>
+          <p key={i} className="pl-4 relative">
+            <span className="absolute left-1">•</span>
             {line.slice(2)}
           </p>
         );
@@ -90,7 +95,7 @@ function MessageItem({ message }: { message: Message }) {
       // Numbered lists
       if (/^\d+\. /.test(line)) {
         return (
-          <p key={i} style={{ paddingLeft: '16px' }}>
+          <p key={i} className="pl-4">
             {line}
           </p>
         );
@@ -110,18 +115,25 @@ function MessageItem({ message }: { message: Message }) {
   const task = message.metadata?.task as TaskDefinition | undefined;
   const worker = message.metadata?.worker as Worker | undefined;
 
+  const isLead = message.sender === 'lead';
+  const senderClasses = isLead
+    ? 'bg-gradient-to-br from-accent to-purple bg-clip-text text-transparent'
+    : senderColorMap[message.sender] || 'text-text-primary';
+
   return (
-    <div className={styles.message}>
-      <div className={styles.header}>
+    <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div className="flex items-center gap-2.5">
         <Avatar className="size-6">
             <AvatarFallback>{message.senderName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-        <span className={`${styles.sender} ${styles[message.sender]}`}>
+        <span className={cn('text-[13px] font-semibold', senderClasses)}>
           {message.senderName}
         </span>
-        <span className={styles.time}>{formatTime(message.timestamp)}</span>
+        <span className="text-[11px] text-text-muted">{formatTime(message.timestamp)}</span>
       </div>
-      <div className={styles.content}>{renderContent()}</div>
+      <div className="pl-[38px] text-sm leading-relaxed text-text-primary whitespace-pre-wrap [&_p]:mb-2 [&_p:last-child]:mb-0">
+        {renderContent()}
+      </div>
 
       {/* Embedded cards based on metadata */}
       {task && <TaskCard task={task} />}
@@ -142,11 +154,11 @@ export function MessageList({ messages }: MessageListProps) {
 
   if (messages.length === 0) {
     return (
-      <div className={styles.container}>
-        <div className={styles.empty}>
-          <div className={styles.emptyIcon}>💬</div>
-          <div className={styles.emptyText}>No messages yet</div>
-          <div className={styles.emptyHint}>
+      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+        <div className="flex flex-col items-center justify-center h-full text-text-muted text-center">
+          <div className="text-5xl mb-4 opacity-50">💬</div>
+          <div className="text-sm">No messages yet</div>
+          <div className="text-xs mt-2 opacity-70">
             Start a conversation with the Lead Agent
           </div>
         </div>
@@ -155,7 +167,7 @@ export function MessageList({ messages }: MessageListProps) {
   }
 
   return (
-    <div ref={scrollRef} className={styles.container}>
+    <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
       {messages.map((message) => (
         <MessageItem key={message.id} message={message} />
       ))}

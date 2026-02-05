@@ -1,6 +1,6 @@
 import { ResizableLayout, Sidebar, ContextPanel, ContextSection } from '../components/layout';
 import { useDashboardStore } from '../stores/dashboardStore';
-import styles from './TimelineView.module.css';
+import { Badge, Card, CardContent } from '../components/ui';
 
 export function TimelineView() {
   const tracks = useDashboardStore((s) => s.tracks);
@@ -40,30 +40,41 @@ export function TimelineView() {
         />
       }
       main={
-        <div className={styles.container}>
-          <div className={styles.header}>
-            <h2 className={styles.title}>Timeline</h2>
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="flex items-center px-5 py-4 border-b border-[var(--color-border)]">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+              Timeline
+            </h2>
           </div>
-          <div className={styles.content}>
+          <div className="flex-1 overflow-auto p-5">
             {events.length === 0 ? (
-              <div className={styles.empty}>
-                <div className={styles.emptyIcon}>◷</div>
-                <div className={styles.emptyText}>No events yet</div>
+              <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] text-center">
+                <div className="text-5xl mb-4 opacity-50">&#9719;</div>
+                <div className="text-sm">No events yet</div>
               </div>
             ) : (
-              <div className={styles.timeline}>
+              <div className="flex flex-col gap-0 relative before:content-[''] before:absolute before:left-[3px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--color-border)]">
                 {events.map((event) => (
-                  <div key={event.id} className={styles.event}>
-                    <div className={styles.eventDot} />
-                    <div className={styles.eventContent}>
-                      <div className={styles.eventHeader}>
-                        <span className={styles.eventType}>{event.type}</span>
-                        <span className={styles.eventTime}>
+                  <div key={event.id} className="flex gap-4 py-3 relative">
+                    <div className="w-2 h-2 rounded-full bg-[var(--color-accent)] border-2 border-[var(--color-bg-primary)] mt-1.5 z-[1] shrink-0" />
+                    <div className="flex-1 p-3 bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-md">
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge
+                          variant={event.type === 'task' ? 'default' : 'purple'}
+                          size="sm"
+                        >
+                          {event.type}
+                        </Badge>
+                        <span className="text-[11px] text-[var(--color-text-muted)]">
                           {new Date(event.timestamp).toLocaleString()}
                         </span>
                       </div>
-                      <div className={styles.eventTitle}>{event.title}</div>
-                      <div className={styles.eventStatus}>{event.status}</div>
+                      <div className="text-[13px] font-medium text-[var(--color-text-primary)] mb-1">
+                        {event.title}
+                      </div>
+                      <div className="text-[11px] text-[var(--color-text-secondary)]">
+                        {event.status}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -75,19 +86,37 @@ export function TimelineView() {
       context={
         <ContextPanel>
           <ContextSection title="Activity Stats">
-            <div style={{ padding: '16px' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total Events</div>
-                <div style={{ fontSize: '18px', fontWeight: 600 }}>{events.length}</div>
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Tasks Created</div>
-                <div style={{ fontSize: '18px', fontWeight: 600 }}>{tasks.length}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Reviews Submitted</div>
-                <div style={{ fontSize: '18px', fontWeight: 600 }}>{reviews.length}</div>
-              </div>
+            <div className="flex flex-col gap-3">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-[11px] text-[var(--color-text-muted)]">
+                    Total Events
+                  </div>
+                  <div className="text-lg font-semibold text-[var(--color-text-primary)]">
+                    {events.length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-[11px] text-[var(--color-text-muted)]">
+                    Tasks Created
+                  </div>
+                  <div className="text-lg font-semibold text-[var(--color-text-primary)]">
+                    {tasks.length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-[11px] text-[var(--color-text-muted)]">
+                    Reviews Submitted
+                  </div>
+                  <div className="text-lg font-semibold text-[var(--color-text-primary)]">
+                    {reviews.length}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </ContextSection>
         </ContextPanel>

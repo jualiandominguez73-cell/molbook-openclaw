@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { ResizableLayout, Sidebar, TrackContextPanel } from '../components/layout';
 import { MessageList, MessageInput } from '../components/features/chat';
+import { Terminal } from '../components/features/terminal';
 import { useDashboardStore } from '../stores/dashboardStore';
 import { useGateway, useSendMessage } from '../hooks/useGateway';
-import styles from './ChatView.module.css';
 
 export function ChatView() {
   // Use individual selectors to prevent unnecessary re-renders
@@ -13,7 +13,7 @@ export function ChatView() {
   const reviews = useDashboardStore((s) => s.reviews);
   const selectedTrackId = useDashboardStore((s) => s.selectedTrackId);
   const selectTrack = useDashboardStore((s) => s.selectTrack);
-  
+
   const { connected } = useGateway();
   const sendMessage = useSendMessage();
 
@@ -42,7 +42,7 @@ export function ChatView() {
         />
       }
       main={
-        <div className={styles.chatContainer}>
+        <div className="flex flex-col h-full overflow-hidden">
           <MessageList messages={filteredMessages} />
           <MessageInput
             onSend={handleSend}
@@ -56,6 +56,7 @@ export function ChatView() {
         </div>
       }
       context={<TrackContextPanel />}
+      terminal={<Terminal />}
     />
   );
 }

@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { ResizableLayout } from '../components/layout';
-import { Button, Input } from '../components/ui';
-import styles from './SettingsView.module.css';
+import {
+  Button,
+  Input,
+  Switch,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../components/ui';
+import { cn } from '@/lib/utils';
 
 const navItems = [
   { id: 'preferences', label: 'Preferences' },
@@ -17,16 +26,25 @@ const navItems = [
 
 export function SettingsView() {
   const [activeSection, setActiveSection] = useState('preferences');
+  const [autoSave, setAutoSave] = useState(true);
+  const [confirmCommands, setConfirmCommands] = useState(true);
+  const [defaultModel, setDefaultModel] = useState('claude-3-opus');
 
   return (
     <ResizableLayout
       sidebar={
-        <nav className={styles.nav}>
-          <div className={styles.navTitle}>Settings</div>
+        <nav className="flex flex-col py-4">
+          <div className="text-base font-semibold px-4 pb-4 border-b border-[var(--color-border)] mb-2 text-[var(--color-text-primary)]">
+            Settings
+          </div>
           {navItems.map((item) => (
             <div
               key={item.id}
-              className={`${styles.navItem} ${activeSection === item.id ? styles.active : ''}`}
+              className={cn(
+                'px-4 py-2.5 text-[13px] cursor-pointer text-[var(--color-text-secondary)] border-l-2 border-transparent transition-all hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]',
+                activeSection === item.id &&
+                  'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-l-[var(--color-accent)]',
+              )}
               onClick={() => setActiveSection(item.id)}
             >
               {item.label}
@@ -35,54 +53,82 @@ export function SettingsView() {
         </nav>
       }
       main={
-        <div className={styles.content}>
-          <h2 className={styles.sectionTitle}>Preferences</h2>
+        <div className="flex-1 p-8 overflow-y-auto bg-[var(--color-bg-primary)]">
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-6">
+            Preferences
+          </h2>
 
-          <div className={styles.settingGroup}>
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <div className={styles.settingLabel}>Auto-save</div>
-                <div className={styles.settingDescription}>Automatically save changes as you work</div>
+          <div className="flex flex-col gap-4 mb-8">
+            <div className="flex items-center justify-between p-4 bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-lg">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                  Auto-save
+                </div>
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Automatically save changes as you work
+                </div>
               </div>
-              <label className={styles.toggle}>
-                <input type="checkbox" defaultChecked />
-                <span className={styles.slider}></span>
-              </label>
+              <Switch checked={autoSave} onCheckedChange={setAutoSave} />
             </div>
 
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <div className={styles.settingLabel}>Confirm before running commands</div>
-                <div className={styles.settingDescription}>Show confirmation dialog before executing shell commands</div>
+            <div className="flex items-center justify-between p-4 bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-lg">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                  Confirm before running commands
+                </div>
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Show confirmation dialog before executing shell commands
+                </div>
               </div>
-              <label className={styles.toggle}>
-                <input type="checkbox" defaultChecked />
-                <span className={styles.slider}></span>
-              </label>
+              <Switch
+                checked={confirmCommands}
+                onCheckedChange={setConfirmCommands}
+              />
             </div>
 
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <div className={styles.settingLabel}>Default model</div>
-                <div className={styles.settingDescription}>Model used for new conversations</div>
+            <div className="flex items-center justify-between p-4 bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-lg">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                  Default model
+                </div>
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Model used for new conversations
+                </div>
               </div>
-              <select className={styles.select}>
-                <option>claude-3-opus</option>
-                <option>claude-3-sonnet</option>
-                <option>claude-3-haiku</option>
-              </select>
+              <Select value={defaultModel} onValueChange={setDefaultModel}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="claude-3-opus">claude-3-opus</SelectItem>
+                  <SelectItem value="claude-3-sonnet">
+                    claude-3-sonnet
+                  </SelectItem>
+                  <SelectItem value="claude-3-haiku">
+                    claude-3-haiku
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <div className={styles.settingLabel}>Max workers</div>
-                <div className={styles.settingDescription}>Maximum concurrent worker agents</div>
+            <div className="flex items-center justify-between p-4 bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-lg">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                  Max workers
+                </div>
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Maximum concurrent worker agents
+                </div>
               </div>
-              <Input type="number" defaultValue={4} className={styles.numberInput} />
+              <Input
+                type="number"
+                defaultValue={4}
+                className="w-20 text-center"
+              />
             </div>
           </div>
 
-          <div className={styles.actions}>
+          <div className="flex gap-3 justify-end">
             <Button variant="secondary">Reset to defaults</Button>
             <Button>Save changes</Button>
           </div>
