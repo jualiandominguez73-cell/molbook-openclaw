@@ -342,25 +342,37 @@ export class DigitalWorld {
       },
     };
 
-    // Register on-chain
-    await this.onChainRegistry.registerSoul(
-      soulId,
-      soulState,
-      soul.metrics.reputationScore
-    );
+    // Register on-chain (optional - may fail in standalone mode)
+    try {
+      await this.onChainRegistry.registerSoul(
+        soulId,
+        soulState,
+        soul.metrics.reputationScore
+      );
+    } catch (error) {
+      this.payload.logger.warn(`On-chain registration skipped for ${soulId}: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
 
-    // Connect to platforms
+    // Connect to platforms (optional - may fail in standalone mode)
     if (params.platforms) {
       for (const platform of params.platforms) {
-        await social.connectPlatform(platform as never, {
-          platform: platform as never,
-          username: `${params.name}_${platform}`,
-        });
+        try {
+          await social.connectPlatform(platform as never, {
+            platform: platform as never,
+            username: `${params.name}_${platform}`,
+          });
+        } catch (error) {
+          this.payload.logger.warn(`Platform connection skipped for ${platform}: ${error instanceof Error ? error.message : 'unknown error'}`);
+        }
       }
     }
 
-    // Initialize economic agent
-    await economic.initialize();
+    // Initialize economic agent (optional - may fail in standalone mode)
+    try {
+      await economic.initialize();
+    } catch (error) {
+      this.payload.logger.warn(`Economic agent initialization skipped for ${soulId}: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
 
     // Activate soul
     soul.status = "active";
@@ -975,8 +987,16 @@ export class DigitalWorld {
   private async autoSave(): Promise<void> {
     for (const [soulId, soul] of this.souls) {
       if (soul.status === "active") {
-        await soul.persistence.createSnapshot(soul.state);
-        soul.metrics.lastCheckpoint = new Date();
+        try {
+          // Only call createSnapshot if it exists (may not be available in standalone mode)
+          if (soul.persistence && typeof soul.persistence.createSnapshot === 'function') {
+            await soul.persistence.createSnapshot(soul.state);
+          }
+          soul.metrics.lastCheckpoint = new Date();
+        } catch (error) {
+          // Auto-save failed, continue with other souls
+          this.payload.logger.warn(`Auto-save failed for soul ${soulId}: ${error instanceof Error ? error.message : 'unknown error'}`);
+        }
       }
     }
   }

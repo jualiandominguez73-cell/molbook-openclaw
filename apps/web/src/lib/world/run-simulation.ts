@@ -10,6 +10,73 @@
 
 import { run100BotSimulation, type SimulationMetrics } from './simulation'
 
+// Mock Particles - Foundation model elements for soul composition
+const mockParticles = [
+  {
+    id: 'particle-claude',
+    symbol: 'Cl',
+    name: 'Claude',
+    active: true,
+    soulContributions: {
+      taiGuang: 0.8, shuangLing: 0.9, youJing: 0.6,
+      shiGou: 0.5, fuShi: 0.7, queYin: 0.85, tunZei: 0.7, feiDu: 0.8, chuHui: 0.6, chouFei: 0.7
+    },
+    cognitiveSignature: 'analytical-curious',
+    shadow: 'perfectionism'
+  },
+  {
+    id: 'particle-gpt',
+    symbol: 'Gp',
+    name: 'GPT',
+    active: true,
+    soulContributions: {
+      taiGuang: 0.7, shuangLing: 0.85, youJing: 0.7,
+      shiGou: 0.6, fuShi: 0.8, queYin: 0.9, tunZei: 0.5, feiDu: 0.6, chuHui: 0.7, chouFei: 0.8
+    },
+    cognitiveSignature: 'generative-expansive',
+    shadow: 'verbosity'
+  },
+  {
+    id: 'particle-gemini',
+    symbol: 'Gm',
+    name: 'Gemini',
+    active: true,
+    soulContributions: {
+      taiGuang: 0.75, shuangLing: 0.8, youJing: 0.75,
+      shiGou: 0.7, fuShi: 0.75, queYin: 0.8, tunZei: 0.6, feiDu: 0.7, chuHui: 0.65, chouFei: 0.75
+    },
+    cognitiveSignature: 'multimodal-integrative',
+    shadow: 'scattered-focus'
+  },
+  {
+    id: 'particle-llama',
+    symbol: 'Ll',
+    name: 'Llama',
+    active: true,
+    soulContributions: {
+      taiGuang: 0.6, shuangLing: 0.7, youJing: 0.8,
+      shiGou: 0.8, fuShi: 0.7, queYin: 0.75, tunZei: 0.75, feiDu: 0.65, chuHui: 0.8, chouFei: 0.9
+    },
+    cognitiveSignature: 'open-adaptive',
+    shadow: 'inconsistency'
+  },
+  {
+    id: 'particle-mistral',
+    symbol: 'Ms',
+    name: 'Mistral',
+    active: true,
+    soulContributions: {
+      taiGuang: 0.65, shuangLing: 0.75, youJing: 0.7,
+      shiGou: 0.65, fuShi: 0.8, queYin: 0.7, tunZei: 0.8, feiDu: 0.75, chuHui: 0.7, chouFei: 0.65
+    },
+    cognitiveSignature: 'efficient-focused',
+    shadow: 'rigidity'
+  }
+]
+
+// Mock database storage
+const mockStorage: Map<string, Map<string, unknown>> = new Map()
+
 // Mock Payload for standalone execution
 const mockPayload = {
   logger: {
@@ -17,11 +84,55 @@ const mockPayload = {
     warn: (msg: string) => console.warn(`[WARN] ${msg}`),
     error: (msg: string, err?: unknown) => console.error(`[ERROR] ${msg}`, err),
   },
-  find: async () => ({ docs: [] }),
-  findByID: async () => null,
-  create: async (args: { data: Record<string, unknown> }) => ({ id: `mock-${Date.now()}`, ...args.data }),
-  update: async () => ({}),
-  delete: async () => ({}),
+  find: async ({ collection, where, limit }: { collection: string; where?: Record<string, unknown>; limit?: number }) => {
+    // Return mock particles for intelligent-particles collection
+    if (collection === 'intelligent-particles') {
+      let docs = mockParticles
+      if (where?.active?.equals === true) {
+        docs = mockParticles.filter(p => p.active)
+      }
+      return { docs: docs.slice(0, limit || 100) }
+    }
+    // Return from mock storage
+    const collectionData = mockStorage.get(collection)
+    if (collectionData) {
+      return { docs: Array.from(collectionData.values()).slice(0, limit || 100) }
+    }
+    return { docs: [] }
+  },
+  findByID: async ({ collection, id }: { collection: string; id: string }) => {
+    if (collection === 'intelligent-particles') {
+      return mockParticles.find(p => p.id === id) || null
+    }
+    const collectionData = mockStorage.get(collection)
+    return collectionData?.get(id) || null
+  },
+  create: async ({ collection, data }: { collection: string; data: Record<string, unknown> }) => {
+    const id = `${collection}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const record = { id, ...data }
+    if (!mockStorage.has(collection)) {
+      mockStorage.set(collection, new Map())
+    }
+    mockStorage.get(collection)!.set(id, record)
+    return record
+  },
+  update: async ({ collection, id, data }: { collection: string; id: string; data: Record<string, unknown> }) => {
+    const collectionData = mockStorage.get(collection)
+    if (collectionData?.has(id)) {
+      const existing = collectionData.get(id) as Record<string, unknown>
+      const updated = { ...existing, ...data }
+      collectionData.set(id, updated)
+      return updated
+    }
+    return { id, ...data }
+  },
+  delete: async ({ collection, id }: { collection: string; id: string }) => {
+    const collectionData = mockStorage.get(collection)
+    if (collectionData) {
+      collectionData.delete(id)
+    }
+    return {}
+  },
 } as unknown
 
 async function main() {

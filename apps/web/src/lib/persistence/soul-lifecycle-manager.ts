@@ -146,19 +146,35 @@ export class SoulLifecycleManager {
     // 1. Generate particles from chaos
     const particles = this.crystallizeParticles(chaosConfig)
 
-    // 2. Create soul composition
-    const soulComposition = await this.soulCompositionService.createSoul({
-      name,
-      threeHun: this.generateHunFromParticles(particles),
-      sevenPo: this.generatePoFromParticles(particles)
+    // 2. Create bot first (souls need a bot ID)
+    const bot = await this.payload.create({
+      collection: 'bots',
+      data: {
+        name,
+        active: true,
+        createdAt: new Date(),
+      }
     })
 
-    // 3. Initialize soul state
-    const soulState = await this.soulStateManager.initializeSoulState(soulComposition)
+    // 3. Create soul composition using proper signature
+    const soulId = await this.soulCompositionService.createSoul(
+      bot.id,
+      {
+        type: 'random',
+        parentSouls: chaosConfig?.inheritFrom?.map(id => ({
+          parent: id,
+          inheritanceType: 'genetic',
+          weight: 1 / (chaosConfig?.inheritFrom?.length || 1)
+        }))
+      }
+    )
 
-    // 4. Create initial snapshot
+    // 4. Initialize soul state using the soul ID
+    const soulState = await this.soulStateManager.initializeSoulState(soulId)
+
+    // 6. Create initial snapshot
     const snapshot = this.persistenceService.createInitialSnapshot(
-      soulComposition.id,
+      soulId,
       name,
       soulState
     )
