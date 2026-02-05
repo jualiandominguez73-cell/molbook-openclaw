@@ -101,6 +101,7 @@ const TAGLINES: string[] = [
   HOLIDAY_TAGLINES.halloween,
   HOLIDAY_TAGLINES.thanksgiving,
   HOLIDAY_TAGLINES.valentines,
+  "Keeping your shell shiny and your claws sharp.",
 ];
 
 type HolidayRule = (date: Date) => boolean;
