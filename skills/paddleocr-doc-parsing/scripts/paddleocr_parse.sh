@@ -129,7 +129,7 @@ else
         echo "Encoding $input_file to base64..." >&2
     fi
 
-    file_base64=$(base64 -i "$input_file" | tr -d '\n')
+    file_base64=$(cat "$input_file" | base64 | tr -d '\n')
 
     payload=$(cat <<EOF
 {
