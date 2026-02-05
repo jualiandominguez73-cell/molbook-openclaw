@@ -230,10 +230,29 @@ Use jobId as the canonical identifier; id is accepted for compatibility. Use con
             }),
           );
         case "add": {
-          if (!params.job || typeof params.job !== "object") {
-            throw new Error("job required");
+          let jobInput: Record<string, unknown>;
+          if (params.job && typeof params.job === "object") {
+            // Nested format: { action: "add", job: { name, schedule, ... } }
+            jobInput = params.job as Record<string, unknown>;
+          } else if (params.schedule || params.payload || params.sessionTarget) {
+            // Flat format: { action: "add", name, schedule, sessionTarget, payload, ... }
+            // Extract job properties from top-level params (exclude tool-specific params)
+            const {
+              action: _,
+              gatewayUrl: __,
+              gatewayToken: ___,
+              timeoutMs: ____,
+              contextMessages: _____,
+              job: ______,
+              ...rest
+            } = params;
+            jobInput = rest;
+          } else {
+            throw new Error(
+              "job required (as nested 'job' object or flat properties: schedule, sessionTarget, payload)",
+            );
           }
-          const job = normalizeCronJobCreate(params.job) ?? params.job;
+          const job = normalizeCronJobCreate(jobInput) ?? jobInput;
           if (job && typeof job === "object" && !("agentId" in job)) {
             const cfg = loadConfig();
             const agentId = opts?.agentSessionKey

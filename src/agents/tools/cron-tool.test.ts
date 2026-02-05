@@ -233,4 +233,27 @@ describe("cron tool", () => {
     expect(call.method).toBe("cron.add");
     expect(call.params?.agentId).toBeNull();
   });
+
+  it("supports flat params format for add action", async () => {
+    callGatewayMock.mockResolvedValueOnce({ ok: true });
+
+    const tool = createCronTool();
+    await tool.execute("call-flat", {
+      action: "add",
+      name: "flat-job",
+      schedule: { kind: "at", at: new Date(456).toISOString() },
+      sessionTarget: "main",
+      payload: { kind: "systemEvent", text: "flat params test" },
+    });
+
+    expect(callGatewayMock).toHaveBeenCalledTimes(1);
+    const call = callGatewayMock.mock.calls[0]?.[0] as {
+      method?: string;
+      params?: { name?: string; schedule?: unknown; sessionTarget?: string; payload?: unknown };
+    };
+    expect(call.method).toBe("cron.add");
+    expect(call.params?.name).toBe("flat-job");
+    expect(call.params?.sessionTarget).toBe("main");
+    expect(call.params?.payload).toEqual({ kind: "systemEvent", text: "flat params test" });
+  });
 });
