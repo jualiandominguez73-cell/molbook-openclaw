@@ -52,8 +52,8 @@ services:
       - HUBSPOT_CLIENT_SECRET=${HUBSPOT_CLIENT_SECRET}
       - MONGODB_URL=${MONGODB_URL}
 
-      # Enable HTTP Chat Completions endpoint
-      - OPENCLAW_GATEWAY_HTTP_ENDPOINTS_CHATCOMPLETIONS_ENABLED=true
+      # Enable HTTP Chat Completions endpoint (JSON format)
+      - OPENCLAW_CONFIG={"gateway":{"http":{"endpoints":{"chatCompletions":{"enabled":true}}}}}
     volumes:
       # We use names instead of paths for better Coolify compatibility
       - openclaw_config:/home/node/.openclaw
