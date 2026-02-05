@@ -157,7 +157,7 @@ export function wrapToolWithBeforeToolCallHook(
       if (outcome.blocked) {
         await runAfterToolCallHook({
           toolName,
-          params: outcome.params,
+          params,
           error: outcome.reason,
           durationMs: Date.now() - startedAt,
           toolCallId: hookToolCallId,
