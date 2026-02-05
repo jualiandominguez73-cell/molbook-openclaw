@@ -606,6 +606,30 @@ export function applySambanovaProviderConfig(cfg: OpenClawConfig): OpenClawConfi
     ...models["sambanova/gpt-oss-120b"],
     alias: models["sambanova/gpt-oss-120b"]?.alias ?? "GPT OSS 120B",
   };
+  models["sambanova/DeepSeek-V3.1"] = {
+    ...models["sambanova/DeepSeek-V3.1"],
+    alias: models["sambanova/DeepSeek-V3.1"]?.alias ?? "DeepSeek V3.1",
+  };
+  models["sambanova/DeepSeek-V3.2"] = {
+    ...models["sambanova/DeepSeek-V3.2"],
+    alias: models["sambanova/DeepSeek-V3.2"]?.alias ?? "DeepSeek V3.2",
+  };
+  models["sambanova/DeepSeek-V3-0324"] = {
+    ...models["sambanova/DeepSeek-V3-0324"],
+    alias: models["sambanova/DeepSeek-V3-0324"]?.alias ?? "DeepSeek V3 0324",
+  };
+  models["sambanova/Qwen3-32B"] = {
+    ...models["sambanova/Qwen3-32B"],
+    alias: models["sambanova/Qwen3-32B"]?.alias ?? "Qwen3 32B",
+  };
+  models["sambanova/Qwen3-235B"] = {
+    ...models["sambanova/Qwen3-235B"],
+    alias: models["sambanova/Qwen3-235B"]?.alias ?? "Qwen3 235B",
+  };
+  models["sambanova/Meta-Llama-3.3-70B-Instruct"] = {
+    ...models["sambanova/Meta-Llama-3.3-70B-Instruct"],
+    alias: models["sambanova/Meta-Llama-3.3-70B-Instruct"]?.alias ?? "Llama 3.3 70B",
+  };
 
   return {
     ...cfg,

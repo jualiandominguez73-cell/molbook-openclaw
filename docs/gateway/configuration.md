@@ -2687,7 +2687,7 @@ Notes:
 - Available model: `MiniMax-M2.1` (default).
 - Update pricing in `models.json` if you need exact cost tracking.
 
-### SambaNova (GLM 4.6 / 4.7)
+### SambaNova (Llama/GPT/Deepseek/Qwen)
 
 SambaNova provides inference with Llama, Gpt and DeepSeek models via their OpenAI-compatible endpoint.
 
@@ -2710,6 +2710,11 @@ clawdbot onboard --auth-choice sambanova-api-key
         "sambanova/Meta-Llama-3.3-70B-Instruct": { alias: "Llama 3.3 70B" },
         "sambanova/DeepSeek-V3.1-Terminus": { alias: "Deepseek V3.1 Terminus" },
         "sambanova/gpt-oss-120b": { alias: "GPT OSS 120B" },
+        "sambanova/DeepSeek-V3.1": { alias: "DeepSeek V3.1" },
+        "sambanova/DeepSeek-V3.2": { alias: "DeepSeek V3.2" },
+        "sambanova/DeepSeek-V3-0324": { alias: "DeepSeek V3 0324" },
+        "sambanova/Qwen3-32B": { alias: "Qwen3 32B" },
+        "sambanova/Qwen3-235B": { alias: "Qwen3 235B" },
       },
     },
   },
@@ -2725,6 +2730,11 @@ clawdbot onboard --auth-choice sambanova-api-key
           { id: "sambanova/Meta-Llama-3.3-70B-Instruct", name: "Llama 3.3 70B (SAMBANOVA)" },
           { id: "sambanova/DeepSeek-V3.1-Terminus", name: "Deepseek V3.1 Terminus (SAMBANOVA)" },
           { id: "sambanova/gpt-oss-120b", name: "Gpt OSS 120B (SAMBANOVA)" },
+          { id: "sambanova/DeepSeek-V3.1", name: "DeepSeek V3.1 (SAMBANOVA)" },
+          { id: "sambanova/DeepSeek-V3.2", name: "DeepSeek V3.2 (SAMBANOVA)" },
+          { id: "sambanova/DeepSeek-V3-0324", name: "DeepSeek V3 0324 (SAMBANOVA)" },
+          { id: "sambanova/Qwen3-32B", name: "Qwen3 32B (SAMBANOVA)" },
+          { id: "sambanova/Qwen3-235B", name: "Qwen3 235B (SAMBANOVA)" },
         ],
       },
     },

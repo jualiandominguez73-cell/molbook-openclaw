@@ -38,6 +38,11 @@ All models run at FP16 or FP16/FP8 precision:
 - `sambanova/Meta-Llama-3.3-70B-Instruct` - Llama 3.3 70B
 - `sambanova/DeepSeek-V3.1-Terminus` - Deepseek V3.1 Terminus
 - `sambanova/gpt-oss-120b` - GPT OSS 120B
+- `sambanova/DeepSeek-V3.1` - DeepSeek V3.1
+- `sambanova/DeepSeek-V3.2` - DeepSeek V3.2
+- `sambanova/DeepSeek-V3-0324` - DeepSeek V3 0324
+- `sambanova/Qwen3-32B` - Qwen3 32B
+- `sambanova/Qwen3-235B` - Qwen3 235B
 
 ## Notes
 

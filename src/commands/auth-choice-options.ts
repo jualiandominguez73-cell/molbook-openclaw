@@ -77,7 +77,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
   {
     value: "sambanova",
     label: "SambaNova",
-    hint: "Fast inference (Llama/GPT/Deepseek)",
+    hint: "Fast inference (Llama/GPT/Deepseek/Qwen)",
     choices: ["sambanova-api-key"],
   },
   {
@@ -163,7 +163,7 @@ export function buildAuthChoiceOptions(params: {
   options.push({
     value: "sambanova-api-key",
     label: "SambaNova API key",
-    hint: "Fast inference (Llama/GPT/Deepseek)",
+    hint: "Fast inference (Llama/GPT/Deepseek/Qwen)",
   });
   options.push({ value: "moonshot-api-key", label: "Moonshot AI API key" });
   options.push({ value: "kimi-code-api-key", label: "Kimi Coding API key" });
