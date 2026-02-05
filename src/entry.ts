@@ -38,7 +38,10 @@ function ensureExperimentalWarningSuppressed(): boolean {
   }
 
   process.env.OPENCLAW_NODE_OPTIONS_READY = "1";
-  process.env.NODE_OPTIONS = `${nodeOptions} ${EXPERIMENTAL_WARNING_FLAG}`.trim();
+  const newNodeOptions = nodeOptions
+    ? `${nodeOptions} ${EXPERIMENTAL_WARNING_FLAG}`
+    : EXPERIMENTAL_WARNING_FLAG;
+  process.env.NODE_OPTIONS = newNodeOptions;
 
   const child = spawn(process.execPath, [...process.execArgv, ...process.argv.slice(1)], {
     stdio: "inherit",
