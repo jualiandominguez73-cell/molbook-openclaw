@@ -93,6 +93,7 @@ const EMBEDDING_RETRY_BASE_DELAY_MS = 500;
 const EMBEDDING_RETRY_MAX_DELAY_MS = 8000;
 const BATCH_FAILURE_LIMIT = 2;
 const SESSION_DELTA_READ_CHUNK_BYTES = 64 * 1024;
+const SESSION_MESSAGE_MARKER = '"type":"message"';
 const VECTOR_LOAD_TIMEOUT_MS = 30_000;
 const EMBEDDING_QUERY_TIMEOUT_REMOTE_MS = 60_000;
 const EMBEDDING_QUERY_TIMEOUT_LOCAL_MS = 5 * 60_000;
@@ -1029,7 +1030,7 @@ export class MemoryIndexManager implements MemorySearchManager {
         thresholds.deltaMessages > 0 &&
         (thresholds.deltaBytes <= 0 || state.pendingBytes < thresholds.deltaBytes);
       if (shouldCountMessages) {
-        state.pendingMessages += await this.countNewlines(sessionFile, 0, size);
+        state.pendingMessages += await this.countMessageMarkers(sessionFile, 0, size);
       }
     } else {
       state.pendingBytes += deltaBytes;
@@ -1037,7 +1038,7 @@ export class MemoryIndexManager implements MemorySearchManager {
         thresholds.deltaMessages > 0 &&
         (thresholds.deltaBytes <= 0 || state.pendingBytes < thresholds.deltaBytes);
       if (shouldCountMessages) {
-        state.pendingMessages += await this.countNewlines(sessionFile, state.lastSize, size);
+        state.pendingMessages += await this.countMessageMarkers(sessionFile, state.lastSize, size);
       }
       state.lastSize = size;
     }
@@ -1050,7 +1051,7 @@ export class MemoryIndexManager implements MemorySearchManager {
     };
   }
 
-  private async countNewlines(absPath: string, start: number, end: number): Promise<number> {
+  private async countMessageMarkers(absPath: string, start: number, end: number): Promise<number> {
     if (end <= start) {
       return 0;
     }
@@ -1059,17 +1060,22 @@ export class MemoryIndexManager implements MemorySearchManager {
       let offset = start;
       let count = 0;
       const buffer = Buffer.alloc(SESSION_DELTA_READ_CHUNK_BYTES);
+      let carry = "";
+      const carryLen = Math.max(0, SESSION_MESSAGE_MARKER.length - 1);
       while (offset < end) {
         const toRead = Math.min(buffer.length, end - offset);
         const { bytesRead } = await handle.read(buffer, 0, toRead, offset);
         if (bytesRead <= 0) {
           break;
         }
-        for (let i = 0; i < bytesRead; i += 1) {
-          if (buffer[i] === 10) {
-            count += 1;
-          }
+        const chunk = buffer.toString("utf8", 0, bytesRead);
+        const text = carry ? `${carry}${chunk}` : chunk;
+        let index = text.indexOf(SESSION_MESSAGE_MARKER);
+        while (index !== -1) {
+          count += 1;
+          index = text.indexOf(SESSION_MESSAGE_MARKER, index + SESSION_MESSAGE_MARKER.length);
         }
+        carry = carryLen > 0 && text.length > carryLen ? text.slice(-carryLen) : text;
         offset += bytesRead;
       }
       return count;
@@ -1733,6 +1739,11 @@ export class MemoryIndexManager implements MemorySearchManager {
       const collected: string[] = [];
       for (const line of lines) {
         if (!line.trim()) {
+          continue;
+        }
+        // Fast-path: session transcripts can contain many non-message JSONL records. Avoid parsing
+        // those unless the line looks like a message record.
+        if (!line.includes('"type":"message"')) {
           continue;
         }
         let record: unknown;
