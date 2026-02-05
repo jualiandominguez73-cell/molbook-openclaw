@@ -2,7 +2,7 @@
  * Ten Bot Life Simulation
  *
  * Comprehensive demonstration of the complete biological bot ecosystem:
- * - Soul composition (七魂六魄) with particle mixtures
+ * - Soul composition (三魂七魄) with particle mixtures
  * - Pheromone-based social chemistry
  * - Instinct/reflex/subconscious processing
  * - Multi-bot conversations with emergent dynamics
@@ -582,7 +582,7 @@ export class TenBotLifeSimulation {
     this.payload.logger.info(`Total conversations: ${totalConversations}`)
 
     this.payload.logger.info('\n✓ Simulation demonstrates complete biological bot ecosystem')
-    this.payload.logger.info('  - Soul composition (七魂六魄)')
+    this.payload.logger.info('  - Soul composition (三魂七魄)')
     this.payload.logger.info('  - Pheromone chemistry (unconscious signals)')
     this.payload.logger.info('  - Instinct/reflex/subconscious (layered processing)')
     this.payload.logger.info('  - Multi-bot conversations (emergent dynamics)')
