@@ -455,7 +455,7 @@ async function runDuckDuckGoSearch(params: {
 
 async function runPerplexitySearch(params: {
   query: string;
-  apiKey: string;
+  apiKey?: string;
   baseUrl: string;
   model: string;
   timeoutSeconds: number;
@@ -497,7 +497,7 @@ async function runPerplexitySearch(params: {
 async function runWebSearch(params: {
   query: string;
   count: number;
-  apiKey: string;
+  apiKey?: string;
   timeoutSeconds: number;
   cacheTtlMs: number;
   provider: (typeof SEARCH_PROVIDERS)[number];
@@ -523,7 +523,7 @@ async function runWebSearch(params: {
   if (params.provider === "perplexity") {
     const { content, citations } = await runPerplexitySearch({
       query: params.query,
-      apiKey: params.apiKey,
+      apiKey: params.apiKey!,
       baseUrl: params.perplexityBaseUrl ?? DEFAULT_PERPLEXITY_BASE_URL,
       model: params.perplexityModel ?? DEFAULT_PERPLEXITY_MODEL,
       timeoutSeconds: params.timeoutSeconds,
@@ -582,7 +582,7 @@ async function runWebSearch(params: {
     method: "GET",
     headers: {
       Accept: "application/json",
-      "X-Subscription-Token": params.apiKey,
+      "X-Subscription-Token": params.apiKey!,
     },
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
   });

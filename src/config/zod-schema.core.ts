@@ -30,18 +30,19 @@ export const ModelDefinitionSchema = z
     id: z.string().min(1),
     name: z.string().min(1),
     api: ModelApiSchema.optional(),
-    reasoning: z.boolean(),
-    input: z.array(z.union([z.literal("text"), z.literal("image")])),
+    reasoning: z.boolean().optional(),
+    input: z.array(z.union([z.literal("text"), z.literal("image")])).optional(),
     cost: z
       .object({
-        input: z.number(),
-        output: z.number(),
-        cacheRead: z.number(),
-        cacheWrite: z.number(),
+        input: z.number().optional(),
+        output: z.number().optional(),
+        cacheRead: z.number().optional(),
+        cacheWrite: z.number().optional(),
       })
-      .strict(),
-    contextWindow: z.number().positive(),
-    maxTokens: z.number().positive(),
+      .strict()
+      .optional(),
+    contextWindow: z.number().positive().optional(),
+    maxTokens: z.number().positive().optional(),
     headers: z.record(z.string(), z.string()).optional(),
     compat: ModelCompatSchema,
   })
@@ -157,10 +158,12 @@ export const MarkdownConfigSchema = z
   .strict()
   .optional();
 
-export const TtsProviderSchema = z.enum(["elevenlabs", "openai"]);
+export const TtsProviderSchema = z.enum(["elevenlabs", "openai", "edge"]);
 export const TtsModeSchema = z.enum(["final", "all"]);
+export const TtsAutoSchema = z.enum(["off", "always", "inbound", "tagged"]);
 export const TtsConfigSchema = z
   .object({
+    auto: TtsAutoSchema.optional(),
     enabled: z.boolean().optional(),
     mode: TtsModeSchema.optional(),
     provider: TtsProviderSchema.optional(),
@@ -205,6 +208,21 @@ export const TtsConfigSchema = z
         apiKey: z.string().optional(),
         model: z.string().optional(),
         voice: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    edge: z
+      .object({
+        enabled: z.boolean().optional(),
+        voice: z.string().optional(),
+        lang: z.string().optional(),
+        outputFormat: z.string().optional(),
+        pitch: z.string().optional(),
+        rate: z.string().optional(),
+        volume: z.string().optional(),
+        saveSubtitles: z.boolean().optional(),
+        proxy: z.string().optional(),
+        timeoutMs: z.number().int().min(1000).max(120000).optional(),
       })
       .strict()
       .optional(),
