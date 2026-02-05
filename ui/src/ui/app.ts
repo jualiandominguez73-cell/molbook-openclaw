@@ -38,6 +38,7 @@ import {
   handleNostrProfileImport as handleNostrProfileImportInternal,
   handleNostrProfileSave as handleNostrProfileSaveInternal,
   handleNostrProfileToggleAdvanced as handleNostrProfileToggleAdvancedInternal,
+  handleSimplexInvite as handleSimplexInviteInternal,
   handleWhatsAppLogout as handleWhatsAppLogoutInternal,
   handleWhatsAppStart as handleWhatsAppStartInternal,
   handleWhatsAppWait as handleWhatsAppWaitInternal,
@@ -80,6 +81,7 @@ import { resolveInjectedAssistantIdentity } from "./assistant-identity.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
+import type { SimplexInviteMode } from "./controllers/channels.types.ts";
 
 declare global {
   interface Window {
@@ -190,6 +192,11 @@ export class OpenClawApp extends LitElement {
   @state() whatsappLoginQrDataUrl: string | null = null;
   @state() whatsappLoginConnected: boolean | null = null;
   @state() whatsappBusy = false;
+  @state() simplexInviteBusy = false;
+  @state() simplexInviteMode: SimplexInviteMode | null = null;
+  @state() simplexInviteLink: string | null = null;
+  @state() simplexInviteQrDataUrl: string | null = null;
+  @state() simplexInviteError: string | null = null;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
 
@@ -459,6 +466,10 @@ export class OpenClawApp extends LitElement {
 
   async handleWhatsAppLogout() {
     await handleWhatsAppLogoutInternal(this);
+  }
+
+  async handleSimplexInvite(mode: SimplexInviteMode) {
+    await handleSimplexInviteInternal(this, mode);
   }
 
   async handleChannelConfigSave() {
