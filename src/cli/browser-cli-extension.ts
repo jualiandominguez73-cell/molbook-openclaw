@@ -14,7 +14,10 @@ import { formatCliCommand } from "./command-format.js";
 
 function bundledExtensionRootDir() {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  return path.resolve(here, "../../assets/chrome-extension");
+  // When compiled: dist/index.js -> go up one level to package root -> assets/chrome-extension
+  // The bundled code is in dist/index.js, so we need to go up one level to reach the package root
+  const packageRoot = path.resolve(here, "..");
+  return path.join(packageRoot, "assets", "chrome-extension");
 }
 
 function installedExtensionRootDir() {
