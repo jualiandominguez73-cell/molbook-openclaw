@@ -395,9 +395,7 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
 
   let sdk;
   try {
-    log.trace("Loading Claude Agent SDK...");
     sdk = await loadClaudeAgentSdk();
-    log.trace("Claude Agent SDK loaded successfully");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
@@ -440,7 +438,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
 
   let bridgeResult;
   try {
-    log.trace(`Bridging ${params.tools.length} tools to MCP server "${mcpServerName}"...`);
     bridgeResult = await bridgeClawdbrainToolsToMcpServer({
       name: mcpServerName,
       tools: params.tools,
@@ -650,6 +647,30 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   let assistantMessageCount = 0;
   let userMessageCount = 0;
 
+  // Message boundary tracking (mirrors Pi agent's assistantTexts/assistantTextBaseline).
+  // Ensures the fallback (no SDKResultSuccess.result) returns only the LAST assistant
+  // message instead of concatenating all intermediate narration from every turn.
+  const assistantTexts: string[] = [];
+  let assistantTextBaseline = 0;
+
+  /**
+   * Consolidate the current message boundary's text entries into a single entry
+   * and advance the baseline. Called on each new message_start (to finalize the
+   * previous message) and before building the final result (to finalize the last).
+   *
+   * Mirrors Pi agent's finalizeAssistantTexts() in pi-embedded-subscribe.ts.
+   */
+  const finalizeCurrentMessage = () => {
+    if (assistantTexts.length > assistantTextBaseline) {
+      const messageChunks = assistantTexts.splice(assistantTextBaseline);
+      const consolidated = messageChunks.join("\n\n").trim();
+      if (consolidated) {
+        assistantTexts.push(consolidated);
+      }
+    }
+    assistantTextBaseline = assistantTexts.length;
+  };
+
   // Usage and turn tracking
   let accumulatedUsage: NormalizedUsage | undefined;
   let turnCount = 0;
@@ -670,8 +691,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
 
   try {
     emitEvent("sdk", { type: "query_start" });
-    const promptLen = typeof prompt === "string" ? prompt.length : "(async)";
-    log.trace(`Starting SDK query (prompt: ${promptLen} chars, maxTurns: ${sdkOptions.maxTurns})`);
 
     const stream = await coerceAsyncIterable(
       sdk.query({
@@ -679,7 +698,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         options: sdkOptions as Record<string, unknown>,
       }),
     );
-    log.trace("SDK query stream created, iterating events...");
 
     for await (const event of stream) {
       // Check abort before processing each event.
@@ -699,17 +717,23 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         const role = typeof message?.role === "string" ? message.role : event.role;
         // Some SDK versions omit role on message_start; treat it as assistant by default.
         if (role === "assistant" || !role) {
+          // Finalize previous message's text and advance baseline.
+          // Mirrors Pi agent's resetAssistantMessageState(assistantTexts.length).
+          finalizeCurrentMessage();
+
           assistantMessageCount += 1;
+          turnCount += 1;
+
           if (!didAssistantMessageStart) {
             didAssistantMessageStart = true;
-            turnCount += 1;
-            try {
-              void Promise.resolve(params.onAssistantMessageStart?.()).catch((err) => {
-                log.trace(`onAssistantMessageStart callback error: ${String(err)}`);
-              });
-            } catch (err) {
+          }
+          // Fire on every message_start (not just first), matching Pi agent behavior.
+          try {
+            void Promise.resolve(params.onAssistantMessageStart?.()).catch((err) => {
               log.trace(`onAssistantMessageStart callback error: ${String(err)}`);
-            }
+            });
+          } catch (err) {
+            log.trace(`onAssistantMessageStart callback error: ${String(err)}`);
           }
         } else if (role === "user") {
           userMessageCount += 1;
@@ -848,6 +872,8 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         if (typeof result === "string") {
           resultText = result;
         }
+        // Finalize current message boundary before processing result.
+        finalizeCurrentMessage();
         // If the SDK only emits a terminal result (no assistant deltas), treat it as a single
         // assistant message boundary so channel streaming can flush correctly.
         if (!didAssistantMessageStart) {
@@ -882,7 +908,6 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         const sessionId = event.session_id ?? event.sessionId;
         if (typeof sessionId === "string" && sessionId) {
           returnedSessionId = sessionId;
-          log.trace(`SDK session ID from system event: ${sessionId}`);
         }
       }
 
@@ -899,6 +924,8 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         }
 
         if (!didAssistantMessageStart) {
+          // Finalize any prior text (no-op on first message).
+          finalizeCurrentMessage();
           didAssistantMessageStart = true;
           if (assistantMessageCount === 0) {
             assistantMessageCount = 1;
@@ -919,6 +946,7 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
         }
 
         chunks.push(trimmed);
+        assistantTexts.push(trimmed); // Track per-message boundary
         extractedChars += trimmed.length;
 
         const prev = assistantSoFar;
@@ -1037,6 +1065,9 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
     }
   }
 
+  // Finalize the last assistant message's text entries before building the result.
+  finalizeCurrentMessage();
+
   // -------------------------------------------------------------------------
   // Step 6: Build result
   // -------------------------------------------------------------------------
@@ -1046,8 +1077,10 @@ export async function runSdkAgent(params: SdkRunnerParams): Promise<SdkRunnerRes
   );
 
   // Strip thinking/reasoning tags from the final text before delivering to channels.
+  // On error (resultText undefined), use only the last consolidated message instead of
+  // joining all intermediate narration from every turn (prevents leaking internal reasoning).
   const text = stripCompactionHandoffText(
-    stripReasoningTagsFromText((resultText ?? chunks.join("\n\n")).trim(), {
+    stripReasoningTagsFromText((resultText ?? assistantTexts.at(-1) ?? "").trim(), {
       mode: "strict",
       trim: "both",
     }),
