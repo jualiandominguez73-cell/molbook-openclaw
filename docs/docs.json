@@ -960,7 +960,8 @@
                   "providers/opencode",
                   "providers/glm",
                   "providers/zai",
-                  "providers/synthetic"
+                  "providers/synthetic",
+                  "providers/io-intelligence"
                 ]
               }
             ]
