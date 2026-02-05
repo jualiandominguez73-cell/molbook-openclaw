@@ -75,11 +75,17 @@ export class SessionContinuation {
       .toSorted((a: FlashEntry, b: FlashEntry) => b.emotionalSalience - a.emotionalSalience)
       .slice(0, this.config.maxMemoriesToShow);
 
-    const unfinishedTasks = flashEntries
-      .toSorted((a, b) => b.emotionalSalience - a.emotionalSalience)
-      .slice(0, 2);
+    // Prefer the most recent entry for "last topic" rather than relying on storage order.
+    const mostRecent = flashEntries
+      .toSorted((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
-    const lastTopic = flashEntries[0]?.content;
+    // Only treat explicit task/action entries as unfinished; don't label arbitrary memories as tasks.
+    const unfinishedTasks = flashEntries
+      .filter((e) => e.type === "task" || e.type === "action" || e.content.startsWith("Task created:"))
+      .toSorted((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 3);
+
+    const lastTopic = mostRecent?.content;
     const context = { topMemories, lastTopic, unfinishedTasks };
 
     let message: string | undefined;
@@ -122,7 +128,7 @@ export class SessionContinuation {
     }
 
     if (unfinishedTasks.length > 0) {
-      message += `**Unfinished:**\n`;
+      message += `**Open tasks:**\n`;
       unfinishedTasks.forEach((t: FlashEntry) => {
         message += `⏳ ${this.summarizeEntry(t)}\n`;
       });
