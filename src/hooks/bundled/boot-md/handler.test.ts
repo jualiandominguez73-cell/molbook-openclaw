@@ -87,36 +87,39 @@ describe("boot-md handler", () => {
 
   it("rate limits multiple calls within 60 seconds", async () => {
     const event = createGatewayStartupEvent();
+    const startTime = new Date("2024-01-01T00:00:00Z").getTime();
 
     // First call should succeed
     await handler(event);
     expect(mockRunBootOnce).toHaveBeenCalledTimes(1);
 
     // Second call immediately after should be rate limited
+    vi.setSystemTime(startTime + 100); // 100ms later
     await handler(event);
     expect(mockRunBootOnce).toHaveBeenCalledTimes(1); // Still 1, not 2
 
     // Third call after 30 seconds should still be rate limited
-    vi.advanceTimersByTime(30_000);
+    vi.setSystemTime(startTime + 30_000);
     await handler(event);
     expect(mockRunBootOnce).toHaveBeenCalledTimes(1); // Still 1
 
     // Fourth call after exactly 60 seconds should succeed
     // (60000 - 60000 = 0, which is NOT < 60000, so rate limit check passes)
-    vi.advanceTimersByTime(30_000); // Total 60 seconds
+    vi.setSystemTime(startTime + 60_000); // Total 60 seconds
     await handler(event);
     expect(mockRunBootOnce).toHaveBeenCalledTimes(2); // Now 2
   });
 
   it("allows call after rate limit window expires", async () => {
     const event = createGatewayStartupEvent();
+    const startTime = new Date("2024-01-01T00:00:00Z").getTime();
 
     // First call
     await handler(event);
     expect(mockRunBootOnce).toHaveBeenCalledTimes(1);
 
     // Wait for rate limit to expire
-    vi.advanceTimersByTime(60_001); // 60 seconds + 1ms
+    vi.setSystemTime(startTime + 60_001); // 60 seconds + 1ms
 
     // Second call should succeed
     await handler(event);
