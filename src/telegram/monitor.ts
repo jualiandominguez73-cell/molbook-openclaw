@@ -309,6 +309,8 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
   } finally {
     // Always clean up instance state and unregister handler on exit.
     // Use resolvedAccountId which is always available (initialized before try block).
+    // Clear both running AND starting flags to prevent stuck state on errors.
+    setInstanceStarting(resolvedAccountId, false);
     setInstanceRunning(resolvedAccountId, false);
     logInfo(`[telegram:${resolvedAccountId}] provider stopped`);
     unregisterHandler();
