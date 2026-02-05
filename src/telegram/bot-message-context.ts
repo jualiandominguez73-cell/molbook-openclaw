@@ -309,9 +309,14 @@ export const buildTelegramMessageContext = async ({
       senderId,
       senderUsername,
     });
-    if (!allowed) {
+    // For groups: only enforce sender allowlist if the group itself is NOT in the allowlist
+    // If the group is allowlisted, accept messages from any group member
+    const isGroupInAllowlist = effectiveGroupAllow.hasWildcard ||
+      (effectiveGroupAllow.hasEntries && String(chatId) && effectiveGroupAllow.entries.includes(String(chatId)));
+
+    if (!allowed && !isGroupInAllowlist) {
       logVerbose(
-        `Blocked telegram group sender ${senderId || "unknown"} (group allowFrom override)`,
+        `Blocked telegram group sender ${senderId || "unknown"} (group allowFrom override, group not in allowlist)`,
       );
       return null;
     }
