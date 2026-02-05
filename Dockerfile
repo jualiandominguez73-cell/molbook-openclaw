@@ -24,20 +24,11 @@ RUN pnpm build
 ENV PLAYWRIGHT_BROWSERS_PATH=/data/playwright-browsers
 RUN pnpm add -w playwright && pnpm exec playwright install chromium
 
-# Data folder maken
-RUN mkdir -p /data/.clawdbot
-
 # Entrypoint instellen
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-
-# Allow non-root user to write files during runtime
-RUN chown -R node:node /app /data
-
-# Security hardening: run as non-root
-USER node
 
 # Default: start the gateway
 # --bind lan ensures 0.0.0.0 binding for Railway healthchecks

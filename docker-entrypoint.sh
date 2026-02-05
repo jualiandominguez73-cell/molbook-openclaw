@@ -191,6 +191,13 @@ NODE
              "$OPENCLAW_DATA_DIR/browser-profiles/tiktok" \
              "$OPENCLAW_DATA_DIR/browser-profiles/github"
 
+    if [ "$(id -u)" -eq 0 ]; then
+        chown -R node:node "$OPENCLAW_DATA_DIR" /app 2>/dev/null || true
+        if command -v su >/dev/null 2>&1; then
+            exec su -p -s /bin/sh node -c "node /app/openclaw.mjs gateway run --bind lan --token \"$OPENCLAW_GATEWAY_TOKEN\" --port \"$OPENCLAW_GATEWAY_PORT\" --allow-unconfigured --verbose"
+        fi
+    fi
+
     exec node /app/openclaw.mjs gateway run \
         --bind lan \
         --token "$OPENCLAW_GATEWAY_TOKEN" \
