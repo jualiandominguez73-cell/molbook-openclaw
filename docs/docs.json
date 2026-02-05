@@ -1057,7 +1057,8 @@
                   "platforms/exe-dev",
                   "railway",
                   "render",
-                  "northflank"
+                  "northflank",
+                  "clowdbot"
                 ]
               },
               {
@@ -1540,7 +1541,8 @@
                   "zh-CN/platforms/exe-dev",
                   "zh-CN/railway",
                   "zh-CN/render",
-                  "zh-CN/northflank"
+                  "zh-CN/northflank",
+                  "zh-CN/clowdbot"
                 ]
               },
               {
