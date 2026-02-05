@@ -300,6 +300,18 @@ Architectural distillation requires verification, not just intuition. Before com
 
 The bar for removing an architectural assumption is high because the consequences are pervasive. But when the evidence supports it, the payoff is proportionally large.
 
+### Simplification Is Not the Objective
+
+Architectural distillation is powerful, but it is a tool, not a goal. The objective is a system that is correct, understandable, and maintainable -- not one that is maximally collapsed.
+
+Every abstraction, interface boundary, and named concept has a cost (indirection, more files, more types) and a value (separation of concerns, testability, replaceability, clarity of intent). When we eliminated sessions, it was because the *value* of sessions had disappeared once we removed multi-agent-per-process. The *cost* remained. That's when you eliminate.
+
+But if the value is real, the cost is justified. A Storage layer separate from Conversation Store is "more code" than putting file I/O inline. We keep it because the separation has real value: testability, reusability, clear layer boundaries. Collapsing it would save lines but lose clarity.
+
+**The test**: When considering whether to collapse or eliminate something, ask: "Does this concept earn its existence?" If the answer is "yes, because it makes the system easier to understand/test/change," keep it. If the answer is "it exists because the old system needed it, but we don't," eliminate it.
+
+Unchecked simplification is its own form of accidental complexity -- you end up with a monolith where everything is coupled because there are no boundaries left. The goal is the *right* boundaries, not *fewer* boundaries.
+
 ### Prefer Hard Boundaries Over Soft Conventions
 
 OS process isolation is better than in-process access control. File system separation is better than namespace prefixes. Type system enforcement is better than documented conventions. When a boundary can be enforced by the platform, prefer that over enforcing it in application code.
