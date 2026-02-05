@@ -31,11 +31,9 @@ const SECRET_SUFFIXES = [
   "_PRIVATE_KEY",
 ];
 
-const SECRET_PREFIXES = [
-  "AWS_", // AWS credentials: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
-  "AZURE_", // Azure credentials
-  "GCP_", // Google Cloud credentials
-  "GOOGLE_", // Google credentials
+const SECRET_PREFIXES: string[] = [
+  // Removed AWS_, AZURE_, GOOGLE_, GCP_ - too broad, blocks non-secret config
+  // like AWS_REGION, GOOGLE_CLOUD_PROJECT. Use exact matches instead.
 ];
 
 const SECRET_EXACT_MATCHES = new Set([

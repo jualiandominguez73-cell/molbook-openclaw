@@ -23,13 +23,21 @@ const originalFetch = globalThis.fetch;
  * (which would allow container to access host services without allowlist).
  */
 function shouldBypassProxy(url: string): boolean {
-  // Only bypass for actual loopback - container talking to itself
-  if (url.startsWith("http://localhost") || url.startsWith("http://127.0.0.1")) {
-    return true;
-  }
-  // Also bypass requests TO the proxy itself to avoid infinite loop
-  if (PROXY_URL && url.startsWith(PROXY_URL)) {
-    return true;
+  try {
+    const parsed = new URL(url);
+    // Only bypass for exact loopback hostnames - not localhost.example.com
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      return true;
+    }
+    // Also bypass requests TO the proxy itself to avoid infinite loop
+    if (PROXY_URL) {
+      const proxyParsed = new URL(PROXY_URL);
+      if (parsed.hostname === proxyParsed.hostname && parsed.port === proxyParsed.port) {
+        return true;
+      }
+    }
+  } catch {
+    // Invalid URL, don't bypass
   }
   return false;
 }

@@ -33,29 +33,49 @@ const PATTERNS = {
 
 /**
  * Resolve CONFIG placeholder by traversing the config secrets object.
+ * Maps placeholder paths to the correct registry subtrees.
  */
-function resolveConfigPath(path: string, registry: SecretRegistry): string | null {
+function resolveConfigPath(path: string, registry: SecretRegistry): string | object | null {
   const parts = path.split(".");
-  let current: any = registry;
 
-  // Navigate: channels.discord.token -> registry.channelSecrets.discord.token
-  if (parts[0] === "channels") {
-    current = registry.channelSecrets[parts[1] as keyof typeof registry.channelSecrets];
-    if (parts.length === 3 && current) {
-      return current[parts[2]] ?? null;
+  // channels.X.Y -> registry.channelSecrets.X.Y
+  if (parts[0] === "channels" && parts.length >= 3) {
+    const channel = parts[1] as keyof typeof registry.channelSecrets;
+    const channelSecrets = registry.channelSecrets[channel];
+    if (channelSecrets && typeof channelSecrets === "object") {
+      const key = parts[2] as keyof typeof channelSecrets;
+      return ((channelSecrets as Record<string, unknown>)[key] as string | object | null) ?? null;
     }
-  } else if (parts[0] === "gateway") {
-    // gateway.auth.token -> registry.gatewaySecrets.authToken
-    const key = parts.slice(1).join(""); // auth.token -> authToken
-    const camelKey = key.charAt(0).toLowerCase() + key.slice(1).replace(/\./g, "");
-    return (registry.gatewaySecrets as any)[camelKey] ?? null;
-  } else if (parts[0] === "talk" && parts[1] === "apiKey") {
+    return null;
+  }
+
+  // gateway.auth.token -> registry.gatewaySecrets.authToken
+  // gateway.auth.password -> registry.gatewaySecrets.authPassword
+  // gateway.remote.token -> registry.gatewaySecrets.remoteToken
+  // gateway.remote.password -> registry.gatewaySecrets.remotePassword
+  if (parts[0] === "gateway" && parts.length === 3) {
+    const section = parts[1]; // "auth" or "remote"
+    const field = parts[2]; // "token" or "password"
+    // Convert to camelCase: auth + Token = authToken, remote + Password = remotePassword
+    const camelKey = `${section}${field.charAt(0).toUpperCase()}${field.slice(1)}`;
+    return (registry.gatewaySecrets as Record<string, string | undefined>)[camelKey] ?? null;
+  }
+
+  // talk.apiKey -> registry.gatewaySecrets.talkApiKey
+  if (parts[0] === "talk" && parts[1] === "apiKey") {
     return registry.gatewaySecrets.talkApiKey ?? null;
-  } else if (parts[0] === "tools") {
-    // Traverse tools.* paths: tools.web.search.apiKey, tools.web.fetch.firecrawl.apiKey, etc.
-    current = registry.toolSecrets;
+  }
+
+  // env.vars.KEY -> registry.envVars.KEY
+  if (parts[0] === "env" && parts[1] === "vars" && parts.length === 3) {
+    return registry.envVars[parts[2]] ?? null;
+  }
+
+  // tools.* -> registry.toolSecrets.*
+  if (parts[0] === "tools") {
+    let current: unknown = registry.toolSecrets;
     for (let i = 1; i < parts.length && current; i++) {
-      current = current[parts[i]];
+      current = (current as Record<string, unknown>)[parts[i]];
     }
     return typeof current === "string" ? current : null;
   }
@@ -157,10 +177,11 @@ export type SecretsProxyOptions = {
 };
 
 export async function startSecretsProxy(opts: SecretsProxyOptions): Promise<http.Server> {
-  const allowedDomains = loadAllowlist();
   const { registry } = opts;
 
   const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
+    // Load allowlist per-request so CLI changes take effect without restart
+    const allowedDomains = loadAllowlist();
     // Set request timeout
     req.setTimeout(REQUEST_TIMEOUT_MS, () => {
       logger.warn(`Request timeout after ${REQUEST_TIMEOUT_MS}ms`);
