@@ -463,4 +463,57 @@ describe("getApiKeyForModel", () => {
       }
     }
   });
+
+  it("resolves Huawei Cloud MAAS API key from env", async () => {
+    const previousHuaweiMaas = process.env.HUAWEI_MAAS_API_KEY;
+
+    try {
+      process.env.HUAWEI_MAAS_API_KEY = "huawei-test-key";
+
+      vi.resetModules();
+      const { resolveApiKeyForProvider } = await import("./model-auth.js");
+
+      const resolved = await resolveApiKeyForProvider({
+        provider: "huawei-maas",
+        store: { version: 1, profiles: {} },
+      });
+      expect(resolved.apiKey).toBe("huawei-test-key");
+      expect(resolved.source).toContain("HUAWEI_MAAS_API_KEY");
+    } finally {
+      if (previousHuaweiMaas === undefined) {
+        delete process.env.HUAWEI_MAAS_API_KEY;
+      } else {
+        process.env.HUAWEI_MAAS_API_KEY = previousHuaweiMaas;
+      }
+    }
+  });
+
+  it("throws when Huawei Cloud MAAS API key is missing", async () => {
+    const previousHuaweiMaas = process.env.HUAWEI_MAAS_API_KEY;
+
+    try {
+      delete process.env.HUAWEI_MAAS_API_KEY;
+
+      vi.resetModules();
+      const { resolveApiKeyForProvider } = await import("./model-auth.js");
+
+      let error: unknown = null;
+      try {
+        await resolveApiKeyForProvider({
+          provider: "huawei-maas",
+          store: { version: 1, profiles: {} },
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      expect(String(error)).toContain('No API key found for provider "huawei-maas".');
+    } finally {
+      if (previousHuaweiMaas === undefined) {
+        delete process.env.HUAWEI_MAAS_API_KEY;
+      } else {
+        process.env.HUAWEI_MAAS_API_KEY = previousHuaweiMaas;
+      }
+    }
+  });
 });

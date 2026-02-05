@@ -103,4 +103,14 @@ describe("buildAuthChoiceOptions", () => {
 
     expect(options.some((opt) => opt.value === "qwen-portal")).toBe(true);
   });
+
+  it("includes Huawei Cloud MAAS auth choice", () => {
+    const store: AuthProfileStore = { version: 1, profiles: {} };
+    const options = buildAuthChoiceOptions({
+      store,
+      includeSkip: false,
+    });
+
+    expect(options.some((opt) => opt.value === "huawei-maas-api-key")).toBe(true);
+  });
 });

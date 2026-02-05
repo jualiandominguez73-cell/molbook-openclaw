@@ -9,6 +9,7 @@ import {
   loadProviderUsageSummary,
   type UsageSummary,
 } from "./provider-usage.js";
+import { resolveHuaweiMaasApiKey } from "./provider-usage.auth.js";
 
 describe("provider usage formatting", () => {
   it("returns null when no usage is available", () => {
@@ -77,7 +78,7 @@ describe("provider usage loading", () => {
       return new Response(payload, { status, headers });
     };
 
-    const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+    const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes("api.anthropic.com")) {
@@ -124,7 +125,7 @@ describe("provider usage loading", () => {
         { provider: "minimax", token: "token-1b" },
         { provider: "zai", token: "token-2" },
       ],
-      fetch: mockFetch,
+      fetch: mockFetch as any,
     });
 
     expect(summary.providers).toHaveLength(3);
@@ -144,7 +145,7 @@ describe("provider usage loading", () => {
       return new Response(payload, { status, headers });
     };
 
-    const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+    const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes("api.minimaxi.com/v1/api/openplatform/coding_plan/remains")) {
@@ -166,7 +167,7 @@ describe("provider usage loading", () => {
     const summary = await loadProviderUsageSummary({
       now: Date.UTC(2026, 0, 7, 0, 0, 0),
       auth: [{ provider: "minimax", token: "token-1b" }],
-      fetch: mockFetch,
+      fetch: mockFetch as any,
     });
 
     const minimax = summary.providers.find((p) => p.provider === "minimax");
@@ -182,7 +183,7 @@ describe("provider usage loading", () => {
       return new Response(payload, { status, headers });
     };
 
-    const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+    const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes("api.minimaxi.com/v1/api/openplatform/coding_plan/remains")) {
@@ -202,7 +203,7 @@ describe("provider usage loading", () => {
     const summary = await loadProviderUsageSummary({
       now: Date.UTC(2026, 0, 7, 0, 0, 0),
       auth: [{ provider: "minimax", token: "token-1b" }],
-      fetch: mockFetch,
+      fetch: mockFetch as any,
     });
 
     const minimax = summary.providers.find((p) => p.provider === "minimax");
@@ -217,7 +218,7 @@ describe("provider usage loading", () => {
       return new Response(payload, { status, headers });
     };
 
-    const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+    const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes("api.minimaxi.com/v1/api/openplatform/coding_plan/remains")) {
@@ -241,7 +242,7 @@ describe("provider usage loading", () => {
     const summary = await loadProviderUsageSummary({
       now: Date.UTC(2026, 0, 7, 0, 0, 0),
       auth: [{ provider: "minimax", token: "token-1b" }],
-      fetch: mockFetch,
+      fetch: mockFetch as any,
     });
 
     const minimax = summary.providers.find((p) => p.provider === "minimax");
@@ -291,7 +292,7 @@ describe("provider usage loading", () => {
           return new Response(payload, { status, headers });
         };
 
-        const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(
+        const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
           async (input, init) => {
             const url =
               typeof input === "string"
@@ -317,7 +318,7 @@ describe("provider usage loading", () => {
           now: Date.UTC(2026, 0, 7, 0, 0, 0),
           providers: ["anthropic"],
           agentDir,
-          fetch: mockFetch,
+          fetch: mockFetch as any,
         });
 
         expect(summary.providers).toHaveLength(1);
@@ -346,7 +347,7 @@ describe("provider usage loading", () => {
         return new Response(payload, { status, headers });
       };
 
-      const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+      const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input) => {
         const url =
           typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
         if (url.includes("api.anthropic.com/api/oauth/usage")) {
@@ -374,7 +375,7 @@ describe("provider usage loading", () => {
       const summary = await loadProviderUsageSummary({
         now: Date.UTC(2026, 0, 7, 0, 0, 0),
         auth: [{ provider: "anthropic", token: "sk-ant-oauth-1" }],
-        fetch: mockFetch,
+        fetch: mockFetch as any,
       });
 
       expect(summary.providers).toHaveLength(1);
@@ -390,4 +391,105 @@ describe("provider usage loading", () => {
       }
     }
   });
+
+  it("loads Huawei MAAS usage from token auth", async () => {
+    await withTempHome(
+      async (tempHome) => {
+        const agentDir = path.join(
+          process.env.OPENCLAW_STATE_DIR ?? path.join(tempHome, ".openclaw"),
+          "agents",
+          "main",
+          "agent",
+        );
+        fs.mkdirSync(agentDir, { recursive: true, mode: 0o700 });
+        fs.writeFileSync(
+          path.join(agentDir, "auth-profiles.json"),
+          `${JSON.stringify(
+            {
+              version: 1,
+              order: { "huawei-maas": ["huawei-maas:default"] },
+              profiles: {
+                "huawei-maas:default": {
+                  type: "api_key",
+                  provider: "huawei-maas",
+                  key: "sk-huawei-test",
+                },
+              },
+            },
+            null,
+            2,
+          )}\n`,
+          "utf8",
+        );
+        const store = ensureAuthProfileStore(agentDir, {
+          allowKeychainPrompt: false,
+        });
+        expect(listProfilesForProvider(store, "huawei-maas")).toContain("huawei-maas:default");
+
+        const summary = await loadProviderUsageSummary({
+          now: Date.UTC(2026, 0, 7, 0, 0, 0),
+          providers: ["huawei-maas"],
+          agentDir,
+        });
+
+        expect(summary.providers).toHaveLength(1);
+        const huawei = summary.providers[0];
+        expect(huawei?.provider).toBe("huawei-maas");
+        expect(huawei?.displayName).toBe("Huawei Cloud MAAS");
+        expect(huawei?.windows).toEqual([]);
+      },
+      {
+        env: {
+          OPENCLAW_STATE_DIR: (home) => path.join(home, ".openclaw"),
+        },
+        prefix: "openclaw-provider-usage-huawei-",
+      },
+    );
+  });
+
+  it("tests Huawei MAAS API key resolution", async () => {
+    const previousKey = process.env.HUAWEI_MAAS_API_KEY;
+    try {
+      // Test with environment variable
+      process.env.HUAWEI_MAAS_API_KEY = "sk-huawei-env-test";
+      expect(resolveHuaweiMaasApiKey()).toBe("sk-huawei-env-test");
+
+      // Test without environment variable
+      delete process.env.HUAWEI_MAAS_API_KEY;
+      expect(resolveHuaweiMaasApiKey()).toBeUndefined();
+    } finally {
+      if (previousKey === undefined) {
+        delete process.env.HUAWEI_MAAS_API_KEY;
+      } else {
+        process.env.HUAWEI_MAAS_API_KEY = previousKey;
+      }
+    }
+  });
+
+  it("loads Huawei MAAS usage with injected auth", async () => {
+    const makeResponse = (status: number, body: unknown): Response => {
+      const payload = typeof body === "string" ? body : JSON.stringify(body);
+      const headers = typeof body === "string" ? undefined : { "Content-Type": "application/json" };
+      return new Response(payload, { status, headers });
+    };
+
+    const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(async (input) => {
+      return makeResponse(404, "not found");
+    });
+
+    const summary = await loadProviderUsageSummary({
+      now: Date.UTC(2026, 0, 7, 0, 0, 0),
+      auth: [
+        { provider: "huawei-maas", token: "sk-huawei-test" },
+      ],
+      fetch: mockFetch as any,
+    });
+
+    expect(summary.providers).toHaveLength(1);
+    const huawei = summary.providers.find((p) => p.provider === "huawei-maas");
+    expect(huawei?.provider).toBe("huawei-maas");
+    expect(huawei?.displayName).toBe("Huawei Cloud MAAS");
+    expect(huawei?.windows).toEqual([]);
+  });
+
 });
