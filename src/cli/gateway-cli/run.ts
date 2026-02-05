@@ -288,12 +288,31 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
         `Loaded ${registry.oauthProfiles.size} OAuth profiles, ${registry.apiKeys.size} API keys`,
       );
 
-      // Start secrets proxy first - bind to localhost only for security
-      // Docker connects via host.docker.internal which routes to 127.0.0.1
+      // Start secrets proxy first
+      // Detect Docker bridge gateway IP dynamically - only reachable from Docker containers
+      // This is more secure than 0.0.0.0 (all interfaces) while still allowing
+      // container access via host.docker.internal
+      let dockerBridgeIp = "172.17.0.1"; // fallback default
+      try {
+        const { execSync } = await import("child_process");
+        const output = execSync(
+          "docker network inspect bridge --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'",
+          {
+            encoding: "utf8",
+            timeout: 5000,
+          },
+        ).trim();
+        if (output && /^\d+\.\d+\.\d+\.\d+$/.test(output)) {
+          dockerBridgeIp = output;
+        }
+      } catch {
+        gatewayLog.warn(`Could not detect Docker bridge IP, using default ${dockerBridgeIp}`);
+      }
+
       let proxyServer: Awaited<ReturnType<typeof startSecretsProxy>>;
       try {
-        proxyServer = await startSecretsProxy({ port: proxyPort, registry });
-        gatewayLog.info(`Secrets proxy started on 127.0.0.1:${proxyPort}`);
+        proxyServer = await startSecretsProxy({ port: proxyPort, registry, bind: dockerBridgeIp });
+        gatewayLog.info(`Secrets proxy started on ${dockerBridgeIp}:${proxyPort}`);
       } catch (err) {
         gatewayLog.error(`Failed to start secrets proxy: ${String(err)}`);
         defaultRuntime.exit(1);
