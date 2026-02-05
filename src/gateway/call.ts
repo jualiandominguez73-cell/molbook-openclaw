@@ -154,7 +154,11 @@ const MAX_SAFE_TIMEOUT_MS = 2_147_483_647; // 2^31 - 1
 export async function callGateway<T = Record<string, unknown>>(
   opts: CallGatewayOptions,
 ): Promise<T> {
-  const timeoutMs = Math.min(opts.timeoutMs ?? 10_000, MAX_SAFE_TIMEOUT_MS);
+  const rawTimeout = opts.timeoutMs ?? 10_000;
+  const timeoutMs =
+    Number.isFinite(rawTimeout) && rawTimeout >= 1
+      ? Math.min(Math.floor(rawTimeout), MAX_SAFE_TIMEOUT_MS)
+      : 10_000;
   const config = opts.config ?? loadConfig();
   const isRemoteMode = config.gateway?.mode === "remote";
   const remote = isRemoteMode ? config.gateway?.remote : undefined;
