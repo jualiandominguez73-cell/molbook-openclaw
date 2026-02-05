@@ -6,9 +6,9 @@
 
 | Aspect | State |
 |--------|-------|
-| **Phase** | Decision resolution complete. Ready for Phase 1 implementation. |
-| **Last completed** | Per-module decision resolution (20 pre-resolved decisions in ROADMAP.md) |
-| **Next action** | Begin Phase 1.1 -- Storage module implementation |
+| **Phase** | Phase 1 complete. Ready for Phase 2 implementation. |
+| **Last completed** | Phase 1: Storage & Conversation Foundation (Storage module + Conversation Store) |
+| **Next action** | Begin Phase 2.1 -- Context Window implementation |
 | **Blockers** | None |
 
 ### What Exists Now
@@ -19,9 +19,11 @@
 - [x] Key architectural decisions (TypeScript+Rust, minimal viable agent, no gateway)
 - [x] Phased roadmap with autonomous execution framework (ROADMAP.md)
 - [x] Per-module decision resolution (20 pre-resolved decisions)
+- [x] Storage module: `src/storage/` (49 tests)
+- [x] Conversation Store module: `src/conversation/` (41 tests)
 
-### Current Focus: Phase 1 Implementation
-All decision points have been resolved. The roadmap (ROADMAP.md) contains 20 pre-resolved decisions covering every phase. Claude can now execute the distillation cycle autonomously, following the session protocol. Next: Phase 1.1 -- Storage module.
+### Current Focus: Phase 2 Implementation
+Phase 1 is complete. The persistence layer (Storage + Conversation Store) is built and validated. Next: Phase 2.1 -- Context Window (pure function for message selection within token budgets).
 
 ---
 
@@ -204,7 +206,7 @@ Traced cross-agent communication in OpenClaw. The gateway is a WebSocket-based J
 
 See [ROADMAP.md](./ROADMAP.md) for the full sequenced plan. Summary:
 
-- [ ] **Phase 1**: Storage & Conversation Foundation (Storage, Conversation Store)
+- [x] **Phase 1**: Storage & Conversation Foundation (Storage, Conversation Store)
 - [ ] **Phase 2**: Context Pipeline (Context Window with History Management folded in)
 - [ ] **Phase 3**: Agent Identity (System Prompt with identity loading, Tool Registry)
 - [ ] **Phase 4**: Agent Loop (main execution loop wiring everything together)
@@ -277,6 +279,75 @@ Files updated:
 - `ROADMAP.md` - Phase 1.1, 1.2, 2.1, 4.1 specs updated with gap resolutions
 - `docs/INDEX.md` - Added integration-trace.md
 
+### 12. Phase 1.1: Storage Module (Complete)
+
+Distilled generic file-based persistence primitives from OpenClaw's session store:
+
+| Metric | OpenClaw | Distilled |
+|--------|----------|-----------|
+| Lines of code (store + transcript + paths + locks) | ~834 | ~196 |
+| File locking | Advisory locks (188 LOC) | None (one writer per process) |
+| Caching | TTL + mtime invalidation | None (consumer's responsibility) |
+| Path resolution | Session key + agent ID derivation | Base directory + relative paths |
+| Domain awareness | Session-specific CRUD | Generic JSON/JSONL primitives |
+
+**What was built**:
+- JSON read/write with atomic operations (write-to-temp, rename)
+- JSONL append-only logs with crash-resilient reading (partial trailing line handling)
+- JSONL atomic rewrite (for compaction transcript replacement)
+- JSONL range reading
+- Three specific error types: `StorageNotFoundError`, `StorageCorruptionError`, `StorageIOError`
+- 49 tests covering all operations, crash resilience, round-trips, edge cases
+
+**Key decisions**:
+- Factory function pattern (`createStorage(baseDir)`) consistent with existing modules
+- Auto-create parent directories on write, not on read
+- Partial trailing JSONL lines from crashes silently skipped; corrupt non-trailing lines throw
+- `readRangeJsonl` implemented naively (read-all + slice) -- adequate with compaction keeping transcripts manageable
+
+**Deviation from plan**: Added `@types/node` as a devDependency. Storage is the first module to use Node.js filesystem APIs; previous modules (compaction, embeddings) are pure TypeScript.
+
+Files created:
+- `src/storage/index.ts` - Storage interface + implementation
+- `src/storage/index.test.ts` - 49 tests
+- `src/storage/DECISIONS.md` - Architectural decision record
+
+### 13. Phase 1.2: Conversation Store Module (Complete)
+
+Distilled conversation persistence from OpenClaw's session management:
+
+| Metric | OpenClaw | Distilled |
+|--------|----------|-----------|
+| Lines of code (store + types + reset + metadata) | ~871 | ~188 |
+| Session multiplexing | Multi-session per process | One conversation per agent |
+| Session keys | Agent-prefixed compound keys | None (directory path) |
+| Lifecycle | State machine with reset policies | Exists or doesn't |
+| Message types | Provider-agnostic format | Claude API format directly |
+
+**What was built**:
+- `ConversationStore` interface with `load()`, `initialize()`, `appendMessage()`, `getMessages()`, `getMetadata()`, `replaceTranscript()`, `updateMetadata()`
+- Claude API message types: `Message`, `TextBlock`, `ToolUseBlock`, `ToolResultBlock`, `ContentBlock`
+- `ConversationMetadata` with timestamps, compaction count, model
+- In-memory state management: loaded on `load()`, synced to disk on writes, served from memory on reads
+- Error types: `ConversationNotLoadedError`, `ConversationAlreadyExistsError`
+- 41 tests covering initialization, loading, appending, compaction (replaceTranscript), metadata updates, full lifecycle, tool use round-trips, edge cases
+
+**Key decisions**:
+- Messages use Claude API format directly (Decision #13): `{ role: "user" | "assistant", content: string | ContentBlock[] }`
+- `initialize()` is explicit, not implicit -- conversation must be explicitly created before use
+- `replaceTranscript()` makes defensive copies (ownership semantics, Rust-compatible)
+- `updateMetadata()` restricts updatable fields to prevent accidental corruption of immutable fields like `createdAt`
+- Tests use real Storage implementation (not mocks) per testing strategy for orchestration layers
+
+**Interface gaps resolved**:
+- Gap #1 from integration trace: `replaceTranscript()` implemented
+- Gap #5 from integration trace: In-memory state with `ConversationNotLoadedError` guard
+
+Files created:
+- `src/conversation/index.ts` - ConversationStore interface + implementation + message types
+- `src/conversation/index.test.ts` - 41 tests
+- `src/conversation/DECISIONS.md` - Architectural decision record
+
 ## Open Questions
 
 None currently.
@@ -291,7 +362,7 @@ komatachi/
 ├── PROGRESS.md         # This file - update as work progresses
 ├── ROADMAP.md          # Phased plan, decision authority, session protocol
 ├── DISTILLATION.md     # Principles and process
-├── package.json        # Dependencies (vitest, typescript)
+├── package.json        # Dependencies (vitest, typescript, @types/node)
 ├── tsconfig.json       # TypeScript config
 ├── vitest.config.ts    # Test runner config
 ├── docs/               # Supplementary documentation
@@ -305,13 +376,21 @@ komatachi/
 │   ├── agent-alignment.md
 │   └── session-management.md
 └── src/
-    ├── compaction/     # First distilled module (validated)
+    ├── compaction/     # Trial distillation (validated)
     │   ├── index.ts
     │   ├── index.test.ts   # 44 tests
     │   └── DECISIONS.md
-    └── embeddings/     # Second distilled module (validated)
-        ├── index.ts        # Provider interface + OpenAI + utilities
-        ├── index.test.ts   # 47 tests
+    ├── embeddings/     # Embeddings sub-module (validated)
+    │   ├── index.ts        # Provider interface + OpenAI + utilities
+    │   ├── index.test.ts   # 47 tests
+    │   └── DECISIONS.md
+    ├── storage/        # Phase 1.1: Generic file-based persistence
+    │   ├── index.ts        # Storage interface + createStorage()
+    │   ├── index.test.ts   # 49 tests
+    │   └── DECISIONS.md
+    └── conversation/   # Phase 1.2: Conversation persistence
+        ├── index.ts        # ConversationStore + Claude API message types
+        ├── index.test.ts   # 41 tests
         └── DECISIONS.md
 ```
 
