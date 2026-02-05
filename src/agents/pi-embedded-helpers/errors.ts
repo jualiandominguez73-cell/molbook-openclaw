@@ -409,17 +409,20 @@ export function sanitizeUserFacingText(text: string): string {
     );
   }
 
+  // Check rate limit and overloaded errors early, before raw API payload handling.
+  // This ensures consistent user-facing messages regardless of error format.
+  if (isRateLimitErrorMessage(trimmed)) {
+    return "Rate limit exceeded. Please wait a moment before trying again.";
+  }
+  if (isOverloadedErrorMessage(trimmed)) {
+    return "The AI service is temporarily overloaded. Please try again in a moment.";
+  }
+
   if (isRawApiErrorPayload(trimmed) || isLikelyHttpErrorText(trimmed)) {
     return formatRawAssistantErrorForUi(trimmed);
   }
 
   if (ERROR_PREFIX_RE.test(trimmed)) {
-    if (isRateLimitErrorMessage(trimmed)) {
-      return "Rate limit exceeded. Please wait a moment before trying again.";
-    }
-    if (isOverloadedErrorMessage(trimmed)) {
-      return "The AI service is temporarily overloaded. Please try again in a moment.";
-    }
     if (isTimeoutErrorMessage(trimmed)) {
       return "LLM request timed out.";
     }
