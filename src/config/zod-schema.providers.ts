@@ -16,7 +16,6 @@ import { SpixiConfigSchema } from "./zod-schema.providers-spixi.js";
 
 export * from "./zod-schema.providers-core.js";
 export * from "./zod-schema.providers-whatsapp.js";
-export * from "./zod-schema.providers-spixi.js";
 export { ChannelHeartbeatVisibilitySchema } from "./zod-schema.channels.js";
 
 export const ChannelsSchema = z
