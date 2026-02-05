@@ -60,9 +60,6 @@ importers:
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
-      '@napi-rs/canvas':
-        specifier: ^0.1.89
-        version: 0.1.89
       '@sinclair/typebox':
         specifier: 0.34.47
         version: 0.34.47
