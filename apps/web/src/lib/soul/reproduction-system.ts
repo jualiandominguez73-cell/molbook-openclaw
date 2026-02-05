@@ -87,10 +87,19 @@ export class ReproductionSystem {
         }
       })
 
-      // Boost random aspects
-      const aspectsToBoost = ['taiGuang', 'shuangLing', 'youJing']
-      for (const aspect of aspectsToBoost) {
+      // Boost Hun aspects (三魂)
+      const hunAspects = ['taiGuang', 'shuangLing', 'youJing']
+      for (const aspect of hunAspects) {
         const current = offspringSoul.threeHun[aspect]
+        if (current) {
+          current.strength = Math.min(0.95, current.strength * 1.15)
+        }
+      }
+
+      // Boost Po aspects (七魄)
+      const poAspects = ['shiGou', 'fuShi', 'queYin', 'tunZei', 'feiDu', 'chuHui', 'chouFei']
+      for (const aspect of poAspects) {
+        const current = offspringSoul.sevenPo[aspect]
         if (current) {
           current.strength = Math.min(0.95, current.strength * 1.15)
         }
@@ -145,8 +154,12 @@ export class ReproductionSystem {
 
       if (weakParent1Aspects.length > 0 && weakParent2Aspects.length > 0) {
         const recessiveAspect = weakParent1Aspects[0] // Simplified - would check for shared weak aspects
+
+        // Check both threeHun and sevenPo for the recessive aspect
         if (offspringSoul.threeHun[recessiveAspect]) {
           offspringSoul.threeHun[recessiveAspect].strength *= 1.4 // Unexpected boost
+        } else if (offspringSoul.sevenPo[recessiveAspect]) {
+          offspringSoul.sevenPo[recessiveAspect].strength *= 1.4 // Unexpected boost
         }
 
         mutations.push(`recessive_${recessiveAspect}`)
@@ -354,14 +367,24 @@ export class ReproductionSystem {
   }
 
   /**
-   * Find weak aspects in a soul
+   * Find weak aspects in a soul (checks both threeHun and sevenPo)
    */
   private findWeakAspects(soul: any): string[] {
     const weak: string[] = []
 
+    // Check threeHun (三魂)
     for (const [aspectName, aspect] of Object.entries(soul.threeHun)) {
       if (aspect && typeof aspect === 'object' && 'strength' in aspect) {
-        if (aspect.strength < 0.4) {
+        if ((aspect as { strength: number }).strength < 0.4) {
+          weak.push(aspectName)
+        }
+      }
+    }
+
+    // Check sevenPo (七魄)
+    for (const [aspectName, aspect] of Object.entries(soul.sevenPo)) {
+      if (aspect && typeof aspect === 'object' && 'strength' in aspect) {
+        if ((aspect as { strength: number }).strength < 0.4) {
           weak.push(aspectName)
         }
       }

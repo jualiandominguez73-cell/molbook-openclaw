@@ -229,14 +229,20 @@ export class DreamingSystem {
     // All aspects gradually return toward baseline during rest
     // (Like neurotransmitter levels normalize during sleep)
 
+    // Three Hun (三魂) + Seven Po (七魄) = 10 aspects total
     const aspectNames = [
+      // Three Hun (三魂)
       'taiGuang',
       'shuangLing',
       'youJing',
-      'shuangLing',
-      'youJing',
-      'youJing',
-      'taiGuang'
+      // Seven Po (七魄)
+      'shiGou',
+      'fuShi',
+      'queYin',
+      'tunZei',
+      'feiDu',
+      'chuHui',
+      'chouFei'
     ]
 
     for (const aspectName of aspectNames) {

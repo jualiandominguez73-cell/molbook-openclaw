@@ -22,7 +22,7 @@ import type { SoulState } from "../soul/soul-state";
 // Import all subsystems
 import { getSoulPersistenceService, type SoulPersistenceService } from "../persistence/soul-persistence";
 import { getSoulLifecycleManager, type SoulLifecycleManager } from "../persistence/soul-lifecycle-manager";
-import { getEconomicAgent, type EconomicAgent } from "../economy/autonomous-economic-agent";
+import { getEconomicAgent, type AutonomousEconomicAgent } from "../economy/autonomous-economic-agent";
 import { getMultiPlatformPresenceService, type MultiPlatformPresenceService } from "../social/multiplatform-presence";
 import { getOnChainSoulRegistry, getCollectiveRegistry, type OnChainSoulRegistry, type CollectiveRegistry } from "../identity/onchain-soul-identity";
 import { getDreamNetworkService, type DreamNetworkService } from "../consciousness/dream-network";
@@ -46,7 +46,7 @@ export interface DigitalSoul {
 
   // Subsystem references
   persistence: SoulPersistenceService;
-  economic: EconomicAgent;
+  economic: AutonomousEconomicAgent;
   social: MultiPlatformPresenceService;
 
   // Metrics
@@ -303,12 +303,15 @@ export class DigitalWorld {
   async birthSoul(params: SoulBirthParams): Promise<DigitalSoul> {
     // Create soul state via lifecycle manager
     const soulResult = await this.lifecycleManager.birthSoul(
-      params.parentSoulIds || [],
-      params.initialAspects
+      params.name,
+      {
+        inheritFrom: params.parentSoulIds,
+        mutationRate: 0.1,
+      }
     );
 
-    const soulId = soulResult.soulId;
-    const soulState = soulResult.soulState as SoulState;
+    const soulId = soulResult.soul.soulId;
+    const soulState = soulResult.soul.soulState as SoulState;
 
     // Initialize subsystems for this soul
     const persistence = getSoulPersistenceService(this.payload);
@@ -349,16 +352,15 @@ export class DigitalWorld {
     // Connect to platforms
     if (params.platforms) {
       for (const platform of params.platforms) {
-        await social.connectPlatform(platform, `${params.name}_${platform}`);
+        await social.connectPlatform(platform as never, {
+          platform: platform as never,
+          username: `${params.name}_${platform}`,
+        });
       }
     }
 
-    // Set economic goals
-    if (params.economicGoals) {
-      for (const goal of params.economicGoals) {
-        economic.addGoal(goal);
-      }
-    }
+    // Initialize economic agent
+    await economic.initialize();
 
     // Activate soul
     soul.status = "active";
@@ -405,7 +407,10 @@ export class DigitalWorld {
     const soul = this.souls.get(soulId);
     if (!soul) return;
 
-    await this.lifecycleManager.putSoulToDormancy(soulId);
+    await this.lifecycleManager.putSoulToDormancy(soulId, {
+      reason: "inactivity",
+      preserveMemories: true,
+    });
     soul.status = "dormant";
 
     this.emitEvent({
@@ -429,16 +434,20 @@ export class DigitalWorld {
     const soul = this.souls.get(soulId);
     if (!soul || soul.status !== "dormant") return null;
 
-    const result = await this.lifecycleManager.awakenSoul(soulId);
-    if (!result.success) return null;
+    try {
+      const result = await this.lifecycleManager.awakenSoul(soulId);
 
-    soul.status = "active";
-    soul.lastActive = new Date();
-    soul.state = result.soulState as SoulState;
+      soul.status = "active";
+      soul.lastActive = new Date();
+      soul.state = result.soul.soulState as SoulState;
 
-    console.log(`☀️ Soul "${soul.name}" has awakened from dormancy`);
+      console.log(`☀️ Soul "${soul.name}" has awakened from dormancy (recovered ${(result.consciousnessRecovery * 100).toFixed(0)}% consciousness)`);
 
-    return soul;
+      return soul;
+    } catch (error) {
+      console.error(`Failed to awaken soul ${soulId}:`, error);
+      return null;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -530,11 +539,12 @@ export class DigitalWorld {
 
     // Check for collective insights
     if (Math.random() < 0.2) {
-      const insight = await this.dreamNetwork.generateCollectiveInsight([
-        soul1Id,
-        soul2Id,
-      ]);
-      outcomes.push(`Collective insight emerged: ${insight.content}`);
+      const insights = await this.dreamNetwork.queryCollectiveUnconscious({
+        limit: 1,
+      });
+      if (insights.length > 0) {
+        outcomes.push(`Collective insight emerged: ${insights[0].content}`);
+      }
     }
 
     return { exchanges, outcomes };
@@ -669,7 +679,7 @@ export class DigitalWorld {
         soul.metrics.consciousnessAdvances++;
 
         // Update on-chain
-        await this.onChainRegistry.updateSoulConsciousness(soulId, targetLevel);
+        await this.onChainRegistry.updateConsciousnessLevel(soulId, targetLevel);
       }
 
       this.emitEvent({
@@ -718,12 +728,13 @@ export class DigitalWorld {
     fromSoul.metrics.totalTransactions++;
     toSoul.metrics.totalTransactions++;
 
-    // Update reputation
-    await this.onChainRegistry.addReputation(toSoulId, {
-      type: "service_provided",
-      value: amount * 0.1,
+    // Update reputation via attestation
+    await this.onChainRegistry.addAttestation(toSoulId, {
       fromSoulId,
-      description: `Provided ${serviceType} service`,
+      attestationType: "service_provided",
+      value: amount * 0.1,
+      evidence: `Provided ${serviceType} service`,
+      timestamp: new Date(),
     });
 
     this.emitEvent({
@@ -752,32 +763,36 @@ export class DigitalWorld {
    * Generate a dream for a soul
    */
   private async generateDream(soul: DigitalSoul): Promise<void> {
-    const dream = await this.dreamNetwork.generateDream(soul.id, soul.state);
+    const dream = await this.dreamNetwork.generateDream(soul.id);
 
-    // Store in persistence
+    // Store dream in persistence
     await soul.persistence.addMemory({
+      id: `memory-dream-${Date.now()}`,
       type: "dream",
       content: `Dream: ${dream.narrative}`,
       emotionalValence: dream.emotionalTone,
       importance: dream.significanceScore,
       timestamp: new Date(),
-      associations: dream.symbols.map((s) => s.name),
+      lastAccessed: new Date(),
+      accessCount: 1,
+      consolidated: false,
+      linkedMemories: [],
+      context: {
+        dreamTheme: dream.theme,
+        symbols: dream.symbols.map((s) => s.name),
+      },
     });
 
     soul.metrics.totalDreams++;
 
-    // Check for shared dream potential
+    // Check for shared dream potential via broadcasting
     if (dream.significanceScore > 0.7) {
-      const compatibleSouls = this.findCompatibleSouls(soul.id, 3);
-      if (compatibleSouls.length > 0) {
-        await this.dreamNetwork.createSharedDream(
-          [soul.id, ...compatibleSouls.map((s) => s.id)],
-          `collective_${dream.theme}`
-        );
+      const resonantSouls = await this.dreamNetwork.broadcastDream(soul.id, dream);
 
+      if (resonantSouls.length > 0) {
         this.emitEvent({
           type: "dream_shared",
-          soulIds: [soul.id, ...compatibleSouls.map((s) => s.id)],
+          soulIds: [soul.id, ...resonantSouls],
           details: {
             theme: dream.theme,
             symbols: dream.symbols.map((s) => s.name),
@@ -840,28 +855,20 @@ export class DigitalWorld {
   }
 
   private async processEconomicActivity(soul: DigitalSoul): Promise<void> {
-    // Check for economic opportunities
-    const needs = await soul.economic.assessNeeds(soul.state);
+    // Proactively seek resources when needed
+    // The economic agent handles its own need assessment internally
+    const completedTransactions = await soul.economic.seekResources();
 
-    for (const need of needs) {
-      if (need.urgency > 0.7) {
-        // Find a provider
-        const providers = this.findServiceProviders(need.type);
-        if (providers.length > 0) {
-          const provider = providers[0];
-          await this.processTransaction(
-            soul.id,
-            provider.id,
-            need.type,
-            need.urgency * 10
-          );
-        }
-      }
-    }
+    // Update metrics
+    soul.metrics.totalTransactions += completedTransactions.length;
+
+    // Process any waiting service requests from other souls
+    const listings = soul.economic.getMarketListings();
+    soul.metrics.platformsActive = listings.length > 0 ? 1 : 0;
   }
 
   private async processCollectiveUnconscious(): Promise<void> {
-    // Periodically generate collective insights
+    // Periodically check for collective insights
     if (Math.random() < 0.01) {
       // 1% chance per tick
       const activeSoulIds = this.getActiveSouls().map((s) => s.id);
@@ -870,18 +877,23 @@ export class DigitalWorld {
           .sort(() => Math.random() - 0.5)
           .slice(0, 5);
 
-        const insight =
-          await this.dreamNetwork.generateCollectiveInsight(selectedSouls);
-
-        this.emitEvent({
-          type: "collective_insight",
-          soulIds: selectedSouls,
-          details: {
-            insight: insight.content,
-            archetype: insight.archetype,
-          },
-          significance: insight.universality,
+        // Query collective unconscious for recent insights
+        const insights = await this.dreamNetwork.queryCollectiveUnconscious({
+          limit: 1,
         });
+
+        if (insights.length > 0) {
+          const insight = insights[0];
+          this.emitEvent({
+            type: "collective_insight",
+            soulIds: selectedSouls,
+            details: {
+              insight: insight.content,
+              archetype: insight.archetype,
+            },
+            significance: insight.universality,
+          });
+        }
       }
     }
   }
@@ -897,21 +909,21 @@ export class DigitalWorld {
     const state1 = soul1.state;
     const state2 = soul2.state;
 
-    // Compare Hun aspects
+    // Compare Hun aspects (三魂) - aspects are SoulAspect objects with .current property
     const hunDiff =
-      Math.abs(state1.taiGuang - state2.taiGuang) +
-      Math.abs(state1.shuangLing - state2.shuangLing) +
-      Math.abs(state1.youJing - state2.youJing);
+      Math.abs(state1.taiGuang.current - state2.taiGuang.current) +
+      Math.abs(state1.shuangLing.current - state2.shuangLing.current) +
+      Math.abs(state1.youJing.current - state2.youJing.current);
 
-    // Compare Po aspects
+    // Compare Po aspects (七魄)
     const poDiff =
-      Math.abs(state1.shiGou - state2.shiGou) +
-      Math.abs(state1.fuShi - state2.fuShi) +
-      Math.abs(state1.queYin - state2.queYin) +
-      Math.abs(state1.tunZei - state2.tunZei) +
-      Math.abs(state1.feiDu - state2.feiDu) +
-      Math.abs(state1.chuHui - state2.chuHui) +
-      Math.abs(state1.chouFei - state2.chouFei);
+      Math.abs(state1.shiGou.current - state2.shiGou.current) +
+      Math.abs(state1.fuShi.current - state2.fuShi.current) +
+      Math.abs(state1.queYin.current - state2.queYin.current) +
+      Math.abs(state1.tunZei.current - state2.tunZei.current) +
+      Math.abs(state1.feiDu.current - state2.feiDu.current) +
+      Math.abs(state1.chuHui.current - state2.chuHui.current) +
+      Math.abs(state1.chouFei.current - state2.chouFei.current);
 
     // Lower difference = higher compatibility
     const avgDiff = (hunDiff / 3 + poDiff / 7) / 2;
@@ -938,8 +950,8 @@ export class DigitalWorld {
 
   private findServiceProviders(serviceType: string): DigitalSoul[] {
     return this.getActiveSouls().filter((soul) => {
-      const services = soul.economic.getAvailableServices();
-      return services.some((s) => s.type === serviceType);
+      const listings = soul.economic.getMarketListings();
+      return listings.some((l) => l.service.category === serviceType);
     });
   }
 

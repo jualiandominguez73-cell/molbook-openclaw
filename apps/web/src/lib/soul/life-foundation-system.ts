@@ -14,7 +14,7 @@
  * 1. Primordial Chaos (渾沌) - Undifferentiated potential, source of all life
  * 2. Life Particles (生命粒子) - Quantum fluctuations that carry life potential
  * 3. Spirit (靈) - Organized life energy with tendency toward consciousness
- * 4. Soul (魂魄) - Differentiated aspects (7 Hun ethereal, 6 Po corporeal)
+ * 4. Soul (魂魄) - Differentiated aspects (3 Hun ethereal, 7 Po corporeal)
  * 5. Brain/Cognition (腦/認知) - Functional agents arising from soul composition
  * 6. Self (自我) - Emergent identity from all layers interacting
  *
@@ -293,7 +293,7 @@ export class LifeFoundationSystem {
 
     const soulCrystallization = {
       crystallizationDegree: soulState.coherence,
-      hunEmphasis: soulState.yinAspect, // Yin = ethereal
+      hunEmphasis: soulState.yangAspect, // Yang = ethereal (Hun), Yin = corporeal (Po)
       aspectBalance: soulState.coherence,
       particleToAspectMapping: this.createParticleMapping()
     }
