@@ -259,6 +259,7 @@ export const dispatchTelegramMessage = async ({
         message_thread_id: threadSpec.id,
         disable_notification: true,
       });
+      // Store message ID for transient cleanup (on response or no-response)
       if (telegramCfg.thinkingIndicator === "transient") {
         thinkingMessageId = result.message_id;
       }
@@ -266,6 +267,9 @@ export const dispatchTelegramMessage = async ({
       // Ignore send errors
     }
   }
+
+  // Track transient tool activity timeouts for cleanup
+  const toolActivityTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   const { queuedFinal } = await dispatchReplyWithBufferedBlockDispatcher({
     ctx: ctxPayload,
@@ -350,13 +354,14 @@ export const dispatchTelegramMessage = async ({
                     });
                     // Auto-delete transient messages after 3 seconds
                     if (telegramCfg.toolActivity === "transient" && result.message_id) {
-                      setTimeout(async () => {
+                      const timeoutId = setTimeout(async () => {
                         try {
                           await bot.api.deleteMessage(chatId, result.message_id);
                         } catch {
                           // Ignore deletion errors
                         }
                       }, 3000);
+                      toolActivityTimeouts.push(timeoutId);
                     }
                   } catch {
                     // Ignore send errors
@@ -386,6 +391,21 @@ export const dispatchTelegramMessage = async ({
   }
 
   const hasFinalResponse = queuedFinal || sentFallback;
+
+  // Clean up transient thinking indicator if no response was delivered
+  if (!hasFinalResponse && thinkingMessageId) {
+    try {
+      await bot.api.deleteMessage(chatId, thinkingMessageId);
+    } catch {
+      // Ignore deletion errors
+    }
+  }
+
+  // Clear any pending tool activity timeouts
+  for (const timeoutId of toolActivityTimeouts) {
+    clearTimeout(timeoutId);
+  }
+
   if (!hasFinalResponse) {
     if (isGroup && historyKey) {
       clearHistoryEntriesIfEnabled({ historyMap: groupHistories, historyKey, limit: historyLimit });

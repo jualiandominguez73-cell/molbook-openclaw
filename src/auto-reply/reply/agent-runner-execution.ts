@@ -43,7 +43,7 @@ function formatToolActivitySummary(toolName: string, args?: Record<string, unkno
   const name = toolName.toLowerCase();
   switch (name) {
     case "read": {
-      const path = typeof args?.path === "string" ? args.path : "";
+      const path = typeof args?.file_path === "string" ? args.file_path : "";
       const filename = path.split("/").pop() || path;
       return `📖 Reading ${filename || "file"}...`;
     }
@@ -79,7 +79,14 @@ function formatToolActivitySummary(toolName: string, args?: Record<string, unkno
     case "web_fetch":
     case "webfetch": {
       const url = typeof args?.url === "string" ? args.url : "";
-      const host = url ? new URL(url).hostname : "";
+      let host = "";
+      if (url) {
+        try {
+          host = new URL(url).hostname;
+        } catch {
+          host = url.length > 30 ? url.slice(0, 27) + "..." : url;
+        }
+      }
       return `🌐 Fetching: ${host || "page"}`;
     }
     default:
