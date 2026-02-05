@@ -20,10 +20,10 @@
     "channel": {
       "id": "simplex",
       "label": "SimpleX",
-      "selectionLabel": "SimpleX (bot API)",
+      "selectionLabel": "SimpleX (CLI)",
       "docsPath": "/channels/simplex",
       "docsLabel": "simplex",
-      "blurb": "SimpleX Chat bot over CLI WebSocket API.",
+      "blurb": "SimpleX Chat over CLI WebSocket API.",
       "order": 95,
       "quickstartAllowFrom": true
     },
