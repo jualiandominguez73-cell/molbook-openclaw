@@ -30,6 +30,7 @@ import {
 import { setupInternalHooks } from "../commands/onboard-hooks.js";
 import { promptRemoteGatewayConfig } from "../commands/onboard-remote.js";
 import { setupSkills } from "../commands/onboard-skills.js";
+import { setupStorage } from "../commands/onboard-storage.js";
 import {
   DEFAULT_GATEWAY_PORT,
   readConfigFileSnapshot,
@@ -441,6 +442,9 @@ export async function runOnboardingWizard(
   await ensureWorkspaceAndSessions(workspaceDir, runtime, {
     skipBootstrap: Boolean(nextConfig.agents?.defaults?.skipBootstrap),
   });
+
+  // Initialize and display storage backend status
+  await setupStorage(nextConfig, runtime, prompter);
 
   if (opts.skipSkills) {
     await prompter.note("Skipping skills setup.", "Skills");
