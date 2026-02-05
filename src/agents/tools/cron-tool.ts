@@ -2,10 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { CronDelivery, CronMessageChannel } from "../../cron/types.js";
 import { loadConfig } from "../../config/config.js";
 import { normalizeCronJobCreate, normalizeCronJobPatch } from "../../cron/normalize.js";
-import {
-  parseAgentSessionKey,
-  resolveThreadParentSessionKey,
-} from "../../sessions/session-key-utils.js";
+import { parseAgentSessionKey } from "../../sessions/session-key-utils.js";
 import { truncateUtf16Safe } from "../../utils.js";
 import { resolveSessionAgentId } from "../agent-scope.js";
 import { optionalStringEnum, stringEnum } from "../schema/typebox.js";
@@ -162,13 +159,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function stripThreadSuffixFromSessionKey(sessionKey: string): string {
+  const normalized = sessionKey.toLowerCase();
+  const idx = normalized.lastIndexOf(":thread:");
+  if (idx <= 0) {
+    return sessionKey;
+  }
+  const parent = sessionKey.slice(0, idx).trim();
+  return parent ? parent : sessionKey;
+}
+
 function inferDeliveryFromSessionKey(agentSessionKey?: string): CronDelivery | null {
   const rawSessionKey = agentSessionKey?.trim();
   if (!rawSessionKey) {
     return null;
   }
-  const baseSessionKey = resolveThreadParentSessionKey(rawSessionKey) ?? rawSessionKey;
-  const parsed = parseAgentSessionKey(baseSessionKey);
+  const parsed = parseAgentSessionKey(stripThreadSuffixFromSessionKey(rawSessionKey));
   if (!parsed || !parsed.rest) {
     return null;
   }
@@ -187,7 +193,8 @@ function inferDeliveryFromSessionKey(agentSessionKey?: string): CronDelivery | n
   // - <channel>:<accountId>:dm:<peerId>
   // - <channel>:group:<peerId>
   // - <channel>:channel:<peerId>
-  // Threads append :thread:<id> or :topic:<id>, which we already strip.
+  // Threaded sessions append :thread:<id>, which we strip so delivery targets the parent peer.
+  // NOTE: Telegram forum topics encode as <chatId>:topic:<topicId> and should be preserved.
   const markerIndex = parts.findIndex(
     (part) => part === "dm" || part === "group" || part === "channel",
   );

@@ -259,6 +259,31 @@ describe("cron tool", () => {
     });
   });
 
+  it("preserves telegram forum topics when inferring delivery", async () => {
+    callGatewayMock.mockResolvedValueOnce({ ok: true });
+
+    const tool = createCronTool({
+      agentSessionKey: "agent:main:telegram:group:-1001234567890:topic:99",
+    });
+    await tool.execute("call-telegram-topic", {
+      action: "add",
+      job: {
+        name: "reminder",
+        schedule: { at: new Date(123).toISOString() },
+        payload: { kind: "agentTurn", message: "hello" },
+      },
+    });
+
+    const call = callGatewayMock.mock.calls[0]?.[0] as {
+      params?: { delivery?: { mode?: string; channel?: string; to?: string } };
+    };
+    expect(call?.params?.delivery).toEqual({
+      mode: "announce",
+      channel: "telegram",
+      to: "-1001234567890:topic:99",
+    });
+  });
+
   it("infers delivery when delivery is null", async () => {
     callGatewayMock.mockResolvedValueOnce({ ok: true });
 
