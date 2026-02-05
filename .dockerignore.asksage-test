@@ -1,0 +1,44 @@
+# Minimal dockerignore for Ask Sage test build
+# We need most files for building inside container
+
+.git
+.worktrees
+.bun-cache
+.bun
+.tmp
+**/.tmp
+.DS_Store
+**/.DS_Store
+node_modules/.cache
+**/node_modules/.cache
+.pnpm-store
+**/.pnpm-store
+.turbo
+**/.turbo
+.next
+**/.next
+coverage
+**/coverage
+*.log
+
+# We need the dist folder for the test container
+# dist is built on host and copied in
+
+# Large app trees not needed for CLI
+apps/macos/.build
+apps/ios/build
+Peekaboo/
+Swabble/
+Core/
+Users/
+
+# Media files not needed for testing
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.mp4
+*.mov
+*.wav
+*.mp3

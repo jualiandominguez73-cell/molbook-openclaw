@@ -1,0 +1,33 @@
+FROM node:22-alpine
+
+# Install basic tools
+RUN apk add --no-cache bash curl git
+
+# Set working directory
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@10.23.0
+
+# Copy package files first (for layer caching)
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+# Skip postinstall scripts to avoid building native modules we don't need
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+# Copy built distribution and runtime files
+COPY dist ./dist
+COPY openclaw.mjs ./
+COPY skills ./skills
+COPY extensions/memory-core ./extensions/memory-core
+COPY docs/reference/templates ./docs/reference/templates
+
+# Note: Build happens on host machine, we just copy the dist folder
+# This keeps the Docker image lightweight and build fast
+
+# Set up environment
+ENV NODE_ENV=production
+ENV PATH="/app/node_modules/.bin:$PATH"
+
+CMD ["/bin/bash"]
