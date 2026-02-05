@@ -41,6 +41,7 @@ type HookDispatchers = {
   dispatchWakeHook: (value: { text: string; mode: "now" | "next-heartbeat" }) => void;
   dispatchAgentHook: (value: {
     message: string;
+    agentId?: string;
     name: string;
     wakeMode: "now" | "next-heartbeat";
     sessionKey: string;
@@ -178,6 +179,7 @@ export function createHooksRequestHandler(
           }
           const runId = dispatchAgentHook({
             message: mapped.action.message,
+            agentId: mapped.action.agentId,
             name: mapped.action.name ?? "Hook",
             wakeMode: mapped.action.wakeMode,
             sessionKey: mapped.action.sessionKey ?? "",
