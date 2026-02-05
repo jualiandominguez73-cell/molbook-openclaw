@@ -6,6 +6,7 @@ import {
   DEFAULT_BROWSER_CONTROL_PORT,
 } from "../config/port-defaults.js";
 import {
+  DEFAULT_BROWSER_ACT_TIMEOUT_MS,
   DEFAULT_OPENCLAW_BROWSER_COLOR,
   DEFAULT_OPENCLAW_BROWSER_ENABLED,
   DEFAULT_BROWSER_EVALUATE_ENABLED,
@@ -23,6 +24,7 @@ export type ResolvedBrowserConfig = {
   cdpIsLoopback: boolean;
   remoteCdpTimeoutMs: number;
   remoteCdpHandshakeTimeoutMs: number;
+  actTimeoutMs: number;
   color: string;
   executablePath?: string;
   headless: boolean;
@@ -161,6 +163,7 @@ export function resolveBrowserConfig(
     cfg?.remoteCdpHandshakeTimeoutMs,
     Math.max(2000, remoteCdpTimeoutMs * 2),
   );
+  const actTimeoutMs = normalizeTimeoutMs(cfg?.actTimeoutMs, DEFAULT_BROWSER_ACT_TIMEOUT_MS);
 
   const derivedCdpRange = deriveDefaultBrowserCdpPortRange(controlPort);
 
@@ -217,6 +220,7 @@ export function resolveBrowserConfig(
     cdpIsLoopback: isLoopbackHost(cdpInfo.parsed.hostname),
     remoteCdpTimeoutMs,
     remoteCdpHandshakeTimeoutMs,
+    actTimeoutMs,
     color: defaultColor,
     executablePath,
     headless,
