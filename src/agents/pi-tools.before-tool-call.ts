@@ -25,11 +25,6 @@ export async function runBeforeToolCallHook(args: {
 	toolCallId?: string;
 	ctx?: HookContext;
 }): Promise<HookOutcome> {
-	const hookRunner = getGlobalHookRunner();
-	if (!hookRunner?.hasHooks("before_tool_call")) {
-		return { blocked: false, params: args.params };
-	}
-
 	const toolName = normalizeToolName(args.toolName || "tool");
 	const params = args.params;
 	const hookSessionKey = args.ctx?.sessionKey ?? `tool:${toolName}`;
@@ -42,6 +37,10 @@ export async function runBeforeToolCallHook(args: {
 		await triggerInternalHook(hookEvent);
 	} catch (err) {
 		log.warn(`agent:tool:start hook failed: tool=${toolName} error=${String(err)}`);
+	}
+	const hookRunner = getGlobalHookRunner();
+	if (!hookRunner?.hasHooks("before_tool_call")) {
+		return { blocked: false, params: args.params };
 	}
 	try {
 		const normalizedParams = isPlainObject(params) ? params : {};
@@ -156,6 +155,17 @@ export function wrapToolWithBeforeToolCallHook(
 				},
 			});
 			if (outcome.blocked) {
+				await runAfterToolCallHook({
+					toolName,
+					params: outcome.params,
+					error: outcome.reason,
+					durationMs: Date.now() - startedAt,
+					toolCallId: hookToolCallId,
+					ctx: {
+						...ctx,
+						toolCallId: hookToolCallId,
+					},
+				});
 				throw new Error(outcome.reason);
 			}
 			try {
