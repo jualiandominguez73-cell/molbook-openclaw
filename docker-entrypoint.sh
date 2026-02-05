@@ -107,7 +107,6 @@ if (!configPath) {
   throw new Error('Missing OPENCLAW_CONFIG_PATH');
 }
 
-const dataDir = process.env.OPENCLAW_DATA_DIR || '/data';
 const gatewayToken = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 
 let cfg = {};
@@ -126,37 +125,30 @@ cfg.gateway.auth.token = gatewayToken;
 // Remove invalid key from previous deployment
 delete cfg.gateway.customBindHost;
 
-// Browser profiles - persistent sessions on /data volume
-cfg.browser = cfg.browser || {};
-cfg.browser.profiles = cfg.browser.profiles || {};
-cfg.browser.profiles.main = {
-  userDataDir: `${dataDir}/browser-profiles/main`,
-  headless: true
-};
-cfg.browser.profiles.google = {
-  userDataDir: `${dataDir}/browser-profiles/google`,
-  headless: true
-};
-cfg.browser.profiles.facebook = {
-  userDataDir: `${dataDir}/browser-profiles/facebook`,
-  headless: true
-};
-cfg.browser.profiles.instagram = {
-  userDataDir: `${dataDir}/browser-profiles/instagram`,
-  headless: true
-};
-cfg.browser.profiles.linkedin = {
-  userDataDir: `${dataDir}/browser-profiles/linkedin`,
-  headless: true
-};
-cfg.browser.profiles.tiktok = {
-  userDataDir: `${dataDir}/browser-profiles/tiktok`,
-  headless: true
-};
-cfg.browser.profiles.github = {
-  userDataDir: `${dataDir}/browser-profiles/github`,
-  headless: true
-};
+// Clean up legacy browser profile keys that are no longer valid.
+if (cfg.browser && cfg.browser.profiles) {
+  for (const [key, profile] of Object.entries(cfg.browser.profiles)) {
+    if (!profile || typeof profile !== 'object') {
+      delete cfg.browser.profiles[key];
+      continue;
+    }
+    delete profile.userDataDir;
+    delete profile.headless;
+    if (typeof profile.color !== 'string') {
+      delete cfg.browser.profiles[key];
+      continue;
+    }
+    if (Object.keys(profile).length === 0) {
+      delete cfg.browser.profiles[key];
+    }
+  }
+  if (Object.keys(cfg.browser.profiles).length === 0) {
+    delete cfg.browser.profiles;
+  }
+  if (Object.keys(cfg.browser).length === 0) {
+    delete cfg.browser;
+  }
+}
 
 // Agent model config - Opus brain with OpenRouter muscle fallback
 cfg.agents = cfg.agents || {};
@@ -179,17 +171,10 @@ cfg.agents.defaults.replyPipeline.enabled = true;
 fs.mkdirSync(path.dirname(configPath), { recursive: true });
 fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
 console.log('[entrypoint] Config written');
-console.log('[entrypoint] Browser profiles:', Object.keys(cfg.browser.profiles).join(', '));
+if (cfg.browser && cfg.browser.profiles) {
+  console.log('[entrypoint] Browser profiles:', Object.keys(cfg.browser.profiles).join(', '));
+}
 NODE
-
-    # Create browser profile directories
-    mkdir -p "$OPENCLAW_DATA_DIR/browser-profiles/main" \
-             "$OPENCLAW_DATA_DIR/browser-profiles/google" \
-             "$OPENCLAW_DATA_DIR/browser-profiles/facebook" \
-             "$OPENCLAW_DATA_DIR/browser-profiles/instagram" \
-             "$OPENCLAW_DATA_DIR/browser-profiles/linkedin" \
-             "$OPENCLAW_DATA_DIR/browser-profiles/tiktok" \
-             "$OPENCLAW_DATA_DIR/browser-profiles/github"
 
     if [ "$(id -u)" -eq 0 ]; then
         chown -R node:node "$OPENCLAW_DATA_DIR" /app 2>/dev/null || true
