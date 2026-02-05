@@ -43,6 +43,7 @@ import {
   wrapToolParamNormalization,
 } from "./pi-tools.read.js";
 import { cleanToolSchemaForGemini, normalizeToolParameters } from "./pi-tools.schema.js";
+import { listSecurityAgentTools } from "./security-tools.js";
 import {
   buildPluginToolGroups,
   collectExplicitAllowlist,
@@ -316,6 +317,8 @@ export function createOpenClawCodingTools(options?: {
     processTool as unknown as AnyAgentTool,
     // Channel docking: include channel-defined agent tools (login, etc.).
     ...listChannelAgentTools({ cfg: options?.config }),
+    // Security monitoring tools for the cybersecurity agent.
+    ...(listSecurityAgentTools() as unknown as AnyAgentTool[]),
     ...createOpenClawTools({
       sandboxBrowserBridgeUrl: sandbox?.browser?.bridgeUrl,
       allowHostBrowserControl: sandbox ? sandbox.browserAllowHostControl : true,
