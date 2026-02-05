@@ -77,9 +77,7 @@ export function createEventHandlers(context: EventHandlerContext) {
       if (evt.state === "delta") {
         return;
       }
-      if (evt.state === "final") {
-        return;
-      }
+      // Don't return for "final" - it needs to render the actual response
     }
     noteSessionRun(evt.runId);
     if (!state.activeChatRunId) {

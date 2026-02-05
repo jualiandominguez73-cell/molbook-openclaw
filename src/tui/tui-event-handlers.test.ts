@@ -224,4 +224,45 @@ describe("tui-event-handlers: handleAgentEvent", () => {
     expect(setActivityStatus).not.toHaveBeenCalled();
     expect(tui.requestRender).not.toHaveBeenCalled();
   });
+
+  it("processes final event even when runId is already in finalizedRuns (#9203)", () => {
+    const state = makeState({ activeChatRunId: null });
+    const { chatLog, tui, setActivityStatus } = makeContext(state);
+    const { handleChatEvent } = createEventHandlers({
+      // oxlint-disable-next-line typescript/no-explicit-any
+      chatLog: chatLog as any,
+      // oxlint-disable-next-line typescript/no-explicit-any
+      tui: tui as any,
+      state,
+      setActivityStatus,
+    });
+
+    const runId = "run-race-condition";
+    const sessionKey = state.currentSessionKey;
+
+    // First, send a delta event to mark the run as active
+    handleChatEvent({
+      runId,
+      sessionKey,
+      state: "delta",
+      message: { content: "partial" },
+    });
+
+    expect(chatLog.updateAssistant).toHaveBeenCalledWith("partial", runId);
+    chatLog.updateAssistant.mockClear();
+
+    // Simulate a race condition: final event arrives after runId is marked finalized
+    // (e.g., due to out-of-order events or duplicate/retry events)
+    // The final event should still be processed and render the response
+    handleChatEvent({
+      runId,
+      sessionKey,
+      state: "final",
+      message: { content: "complete response" },
+    });
+
+    // Verify that finalizeAssistant was called (the final response was rendered)
+    expect(chatLog.finalizeAssistant).toHaveBeenCalledWith("complete response", runId);
+    expect(setActivityStatus).toHaveBeenCalledWith("idle");
+  });
 });
