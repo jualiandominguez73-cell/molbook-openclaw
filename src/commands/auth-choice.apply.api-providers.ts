@@ -683,10 +683,10 @@ export async function applyAuthChoiceApiProviders(
       const applied = await applyDefaultModelChoice({
         config: nextConfig,
         setDefaultModel: params.setDefaultModel,
-        defaultModel: "huawei-maas:deepseek-v3.2",
+        defaultModel: "huawei-maas/deepseek-v3.2",
         applyDefaultConfig: applyHuaweiMaasConfig,
         applyProviderConfig: applyHuaweiMaasProviderConfig,
-        noteDefault: "huawei-maas:deepseek-v3.2",
+        noteDefault: "huawei-maas/deepseek-v3.2",
         noteAgentModel,
         prompter: params.prompter,
       });
