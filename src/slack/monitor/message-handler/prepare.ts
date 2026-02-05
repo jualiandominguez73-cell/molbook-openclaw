@@ -501,17 +501,18 @@ export async function prepareSlackMessage(params: {
     // Fetch full thread history for new thread sessions
     // This provides context of previous messages (including bot replies) in the thread
     // Use the thread session key (not base session key) to determine if this is a new session
+    const threadInitialHistoryLimit = account.config?.thread?.initialHistoryLimit ?? 20;
     const threadSessionPreviousTimestamp = readSessionUpdatedAt({
       storePath,
       sessionKey, // Thread-specific session key
     });
-    if (!threadSessionPreviousTimestamp) {
+    if (threadInitialHistoryLimit > 0 && !threadSessionPreviousTimestamp) {
       const threadHistory = await resolveSlackThreadHistory({
         channelId: message.channel,
         threadTs,
         client: ctx.app.client,
         currentMessageTs: message.ts,
-        limit: 20,
+        limit: threadInitialHistoryLimit,
       });
 
       if (threadHistory.length > 0) {
