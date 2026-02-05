@@ -3,7 +3,7 @@ import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import type { RunEmbeddedPiAgentParams } from "./run/params.js";
 import type { EmbeddedPiAgentMeta, EmbeddedPiRunResult } from "./types.js";
 import { enqueueCommandInLane } from "../../process/command-queue.js";
-import { resolveUserPath } from "../../utils.js";
+import { resolveUserPath, sleep } from "../../utils.js";
 import { isMarkdownCapableMessageChannel } from "../../utils/message-channel.js";
 import { resolveOpenClawAgentDir } from "../agent-paths.js";
 import {
@@ -57,6 +57,8 @@ type ApiKeyInfo = ResolvedProviderAuth;
 // Avoid Anthropic's refusal test token poisoning session transcripts.
 const ANTHROPIC_MAGIC_STRING_TRIGGER_REFUSAL = "ANTHROPIC_MAGIC_STRING_TRIGGER_REFUSAL";
 const ANTHROPIC_MAGIC_STRING_REPLACEMENT = "ANTHROPIC MAGIC STRING TRIGGER REFUSAL (redacted)";
+const CLOUD_CODE_ASSIST_RATE_LIMIT_RE =
+  /Cloud Code Assist API error\s*\(429\):.*?reset after\s+(\d+)\s*s/i;
 
 function scrubAnthropicRefusalMagic(prompt: string): string {
   if (!prompt.includes(ANTHROPIC_MAGIC_STRING_TRIGGER_REFUSAL)) {
@@ -66,6 +68,21 @@ function scrubAnthropicRefusalMagic(prompt: string): string {
     ANTHROPIC_MAGIC_STRING_TRIGGER_REFUSAL,
     ANTHROPIC_MAGIC_STRING_REPLACEMENT,
   );
+}
+
+function parseCloudCodeAssistRetryAfterMs(message: string): number | null {
+  if (!message) {
+    return null;
+  }
+  const match = message.match(CLOUD_CODE_ASSIST_RATE_LIMIT_RE);
+  if (!match?.[1]) {
+    return null;
+  }
+  const seconds = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return null;
+  }
+  return seconds * 1000;
 }
 
 export async function runEmbeddedPiAgent(
@@ -304,6 +321,7 @@ export async function runEmbeddedPiAgent(
       }
 
       let overflowCompactionAttempted = false;
+      let cloudCodeAssistRetryUsed = false;
       try {
         while (true) {
           attemptedThinking.add(thinkLevel);
@@ -482,6 +500,18 @@ export async function runEmbeddedPiAgent(
                 },
               };
             }
+            const retryAfterMs =
+              provider === "google-gemini-cli" ? parseCloudCodeAssistRetryAfterMs(errorText) : null;
+            if (!aborted && retryAfterMs !== null && !cloudCodeAssistRetryUsed) {
+              cloudCodeAssistRetryUsed = true;
+              const delayMs = Math.min(Math.max(retryAfterMs, 0), 60_000);
+              const secondsLabel = Math.max(0, Math.round(delayMs / 1000));
+              log.warn(
+                `Cloud Code Assist rate limited; retrying in ${secondsLabel}s for ${provider}/${modelId}`,
+              );
+              await sleep(delayMs);
+              continue;
+            }
             const promptFailoverReason = classifyFailoverReason(errorText);
             if (promptFailoverReason && promptFailoverReason !== "timeout" && lastProfileId) {
               await markAuthProfileFailure({
@@ -560,6 +590,22 @@ export async function runEmbeddedPiAgent(
             log.warn(
               `Profile ${lastProfileId} rejected image payload${details ? ` (${details})` : ""}.`,
             );
+          }
+
+          const errorText = lastAssistant?.errorMessage ?? "";
+          const retryAfterMs =
+            (lastAssistant?.provider ?? provider) === "google-gemini-cli"
+              ? parseCloudCodeAssistRetryAfterMs(errorText)
+              : null;
+          if (!aborted && retryAfterMs !== null && !cloudCodeAssistRetryUsed) {
+            cloudCodeAssistRetryUsed = true;
+            const delayMs = Math.min(Math.max(retryAfterMs, 0), 60_000);
+            const secondsLabel = Math.max(0, Math.round(delayMs / 1000));
+            log.warn(
+              `Cloud Code Assist rate limited; retrying in ${secondsLabel}s for ${provider}/${modelId}`,
+            );
+            await sleep(delayMs);
+            continue;
           }
 
           // Treat timeout as potential rate limit (Antigravity hangs on rate limit)
