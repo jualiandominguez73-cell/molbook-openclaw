@@ -4,7 +4,20 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
 import type { ExecApprovalsResolved } from "../infra/exec-approvals.js";
-import { createOpenClawCodingTools } from "./pi-tools.js";
+
+vi.mock("../infra/shell-env.js", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../infra/shell-env.js")>();
+  return {
+    ...mod,
+    getShellPathFromLoginShell: vi.fn(() => "/usr/bin"),
+    resolveShellEnvFallbackTimeoutMs: vi.fn(() => 0),
+  };
+});
+
+vi.mock("../plugins/tools.js", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../plugins/tools.js")>();
+  return { ...mod, resolvePluginTools: () => [] };
+});
 
 vi.mock("../infra/exec-approvals.js", async (importOriginal) => {
   const mod = await importOriginal<typeof import("../infra/exec-approvals.js")>();
@@ -46,6 +59,9 @@ describe("createOpenClawCodingTools safeBins", () => {
       return;
     }
 
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    const originalPath = process.env.PATH;
+    process.env.PATH = "/usr/bin:/bin";
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-safe-bins-"));
     const cfg: OpenClawConfig = {
       tools: {
@@ -58,23 +74,27 @@ describe("createOpenClawCodingTools safeBins", () => {
       },
     };
 
-    const tools = createOpenClawCodingTools({
-      config: cfg,
-      sessionKey: "agent:main:main",
-      workspaceDir: tmpDir,
-      agentDir: path.join(tmpDir, "agent"),
-    });
-    const execTool = tools.find((tool) => tool.name === "exec");
-    expect(execTool).toBeDefined();
+    try {
+      const tools = createOpenClawCodingTools({
+        config: cfg,
+        sessionKey: "agent:main:main",
+        workspaceDir: tmpDir,
+        agentDir: path.join(tmpDir, "agent"),
+      });
+      const execTool = tools.find((tool) => tool.name === "exec");
+      expect(execTool).toBeDefined();
 
-    const marker = `safe-bins-${Date.now()}`;
-    const result = await execTool!.execute("call1", {
-      command: `echo ${marker}`,
-      workdir: tmpDir,
-    });
-    const text = result.content.find((content) => content.type === "text")?.text ?? "";
+      const marker = `safe-bins-${Date.now()}`;
+      const result = await execTool!.execute("call1", {
+        command: `echo ${marker}`,
+        workdir: tmpDir,
+      });
+      const text = result.content.find((content) => content.type === "text")?.text ?? "";
 
-    expect(result.details.status).toBe("completed");
-    expect(text).toContain(marker);
-  });
+      expect(result.details.status).toBe("completed");
+      expect(text).toContain(marker);
+    } finally {
+      process.env.PATH = originalPath;
+    }
+  }, 300_000);
 });

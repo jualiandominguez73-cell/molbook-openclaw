@@ -77,7 +77,7 @@ describe("lobster plugin tool", () => {
     });
 
     const originalPath = process.env.PATH;
-    process.env.PATH = `${fake.dir}${path.delimiter}${originalPath ?? ""}`;
+    process.env.PATH = `${fake.dir}${path.delimiter}${path.dirname(process.execPath)}`;
 
     try {
       const tool = createLobsterTool(fakeApi());
@@ -103,7 +103,7 @@ describe("lobster plugin tool", () => {
     );
 
     const originalPath = process.env.PATH;
-    process.env.PATH = `${dir}${path.delimiter}${originalPath ?? ""}`;
+    process.env.PATH = `${dir}${path.delimiter}${path.dirname(process.execPath)}`;
 
     try {
       const tool = createLobsterTool(fakeApi());
@@ -125,7 +125,7 @@ describe("lobster plugin tool", () => {
     });
 
     const originalPath = process.env.PATH;
-    process.env.PATH = `${fake.dir}${path.delimiter}${originalPath ?? ""}`;
+    process.env.PATH = `${fake.dir}${path.delimiter}${path.dirname(process.execPath)}`;
 
     try {
       const tool = createLobsterTool(fakeApi());
@@ -147,7 +147,7 @@ describe("lobster plugin tool", () => {
     });
 
     const originalPath = process.env.PATH;
-    process.env.PATH = `${fake.dir}${path.delimiter}${originalPath ?? ""}`;
+    process.env.PATH = `${fake.dir}${path.delimiter}${path.dirname(process.execPath)}`;
 
     try {
       const tool = createLobsterTool(fakeApi());
@@ -216,7 +216,7 @@ describe("lobster plugin tool", () => {
     );
 
     const originalPath = process.env.PATH;
-    process.env.PATH = `${dir}${path.delimiter}${originalPath ?? ""}`;
+    process.env.PATH = `${dir}${path.delimiter}${path.dirname(process.execPath)}`;
 
     try {
       const tool = createLobsterTool(fakeApi());

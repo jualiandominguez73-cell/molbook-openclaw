@@ -40,6 +40,10 @@ vi.mock("../commands/onboard.js", () => ({ onboardCommand }));
 vi.mock("../runtime.js", () => ({ defaultRuntime: runtime }));
 vi.mock("./channel-auth.js", () => ({ runChannelLogin, runChannelLogout }));
 vi.mock("../tui/tui.js", () => ({ runTui }));
+vi.mock("./plugin-registry.js", () => ({ ensurePluginRegistryLoaded: vi.fn() }));
+vi.mock("./program/config-guard.js", () => ({
+  ensureConfigReady: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("../gateway/call.js", () => ({
   callGateway,
   randomIdempotencyKey: () => "idem-test",

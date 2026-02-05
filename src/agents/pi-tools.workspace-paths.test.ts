@@ -1,8 +1,40 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { createOpenClawCodingTools } from "./pi-tools.js";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../infra/shell-env.js", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../infra/shell-env.js")>();
+  return {
+    ...mod,
+    getShellPathFromLoginShell: vi.fn(() => "/usr/bin"),
+    resolveShellEnvFallbackTimeoutMs: vi.fn(() => 0),
+  };
+});
+
+vi.mock("@mariozechner/pi-coding-agent", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@mariozechner/pi-coding-agent")>();
+  const fsModule = await import("node:fs/promises");
+  const pathModule = await import("node:path");
+  return {
+    ...mod,
+    createReadTool: (cwd: string) => ({
+      name: "read",
+      label: "read",
+      parameters: {},
+      execute: async (_toolCallId: string, params: { path?: string }) => {
+        const target = params?.path ? pathModule.resolve(cwd, params.path) : cwd;
+        const text = await fsModule.readFile(target, "utf8");
+        return { content: [{ type: "text", text }] };
+      },
+    }),
+  };
+});
+
+vi.mock("../plugins/tools.js", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../plugins/tools.js")>();
+  return { ...mod, resolvePluginTools: () => [] };
+});
 
 async function withTempDir<T>(prefix: string, fn: (dir: string) => Promise<T>) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -13,6 +45,16 @@ async function withTempDir<T>(prefix: string, fn: (dir: string) => Promise<T>) {
   }
 }
 
+async function withMinimalPath<T>(fn: () => Promise<T>) {
+  const originalPath = process.env.PATH;
+  process.env.PATH = "/usr/bin:/bin";
+  try {
+    return await fn();
+  } finally {
+    process.env.PATH = originalPath;
+  }
+}
+
 function getTextContent(result?: { content?: Array<{ type: string; text?: string }> }) {
   const textBlock = result?.content?.find((block) => block.type === "text");
   return textBlock?.text ?? "";
@@ -20,126 +62,141 @@ function getTextContent(result?: { content?: Array<{ type: string; text?: string
 
 describe("workspace path resolution", () => {
   it("reads relative paths against workspaceDir even after cwd changes", async () => {
-    await withTempDir("openclaw-ws-", async (workspaceDir) => {
-      await withTempDir("openclaw-cwd-", async (otherDir) => {
-        const prevCwd = process.cwd();
-        const testFile = "read.txt";
-        const contents = "workspace read ok";
-        await fs.writeFile(path.join(workspaceDir, testFile), contents, "utf8");
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    await withMinimalPath(async () => {
+      await withTempDir("openclaw-ws-", async (workspaceDir) => {
+        await withTempDir("openclaw-cwd-", async (otherDir) => {
+          const prevCwd = process.cwd();
+          const testFile = "read.txt";
+          const contents = "workspace read ok";
+          await fs.writeFile(path.join(workspaceDir, testFile), contents, "utf8");
 
-        process.chdir(otherDir);
-        try {
-          const tools = createOpenClawCodingTools({ workspaceDir });
-          const readTool = tools.find((tool) => tool.name === "read");
-          expect(readTool).toBeDefined();
+          process.chdir(otherDir);
+          try {
+            const tools = createOpenClawCodingTools({ workspaceDir });
+            const readTool = tools.find((tool) => tool.name === "read");
+            expect(readTool).toBeDefined();
 
-          const result = await readTool?.execute("ws-read", { path: testFile });
-          expect(getTextContent(result)).toContain(contents);
-        } finally {
-          process.chdir(prevCwd);
-        }
+            const result = await readTool?.execute("ws-read", { path: testFile });
+            expect(getTextContent(result)).toContain(contents);
+          } finally {
+            process.chdir(prevCwd);
+          }
+        });
       });
     });
-  });
+  }, 300_000);
 
   it("writes relative paths against workspaceDir even after cwd changes", async () => {
-    await withTempDir("openclaw-ws-", async (workspaceDir) => {
-      await withTempDir("openclaw-cwd-", async (otherDir) => {
-        const prevCwd = process.cwd();
-        const testFile = "write.txt";
-        const contents = "workspace write ok";
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    await withMinimalPath(async () => {
+      await withTempDir("openclaw-ws-", async (workspaceDir) => {
+        await withTempDir("openclaw-cwd-", async (otherDir) => {
+          const prevCwd = process.cwd();
+          const testFile = "write.txt";
+          const contents = "workspace write ok";
 
-        process.chdir(otherDir);
-        try {
-          const tools = createOpenClawCodingTools({ workspaceDir });
-          const writeTool = tools.find((tool) => tool.name === "write");
-          expect(writeTool).toBeDefined();
+          process.chdir(otherDir);
+          try {
+            const tools = createOpenClawCodingTools({ workspaceDir });
+            const writeTool = tools.find((tool) => tool.name === "write");
+            expect(writeTool).toBeDefined();
 
-          await writeTool?.execute("ws-write", {
-            path: testFile,
-            content: contents,
-          });
+            await writeTool?.execute("ws-write", {
+              path: testFile,
+              content: contents,
+            });
 
-          const written = await fs.readFile(path.join(workspaceDir, testFile), "utf8");
-          expect(written).toBe(contents);
-        } finally {
-          process.chdir(prevCwd);
-        }
+            const written = await fs.readFile(path.join(workspaceDir, testFile), "utf8");
+            expect(written).toBe(contents);
+          } finally {
+            process.chdir(prevCwd);
+          }
+        });
       });
     });
-  });
+  }, 300_000);
 
   it("edits relative paths against workspaceDir even after cwd changes", async () => {
-    await withTempDir("openclaw-ws-", async (workspaceDir) => {
-      await withTempDir("openclaw-cwd-", async (otherDir) => {
-        const prevCwd = process.cwd();
-        const testFile = "edit.txt";
-        await fs.writeFile(path.join(workspaceDir, testFile), "hello world", "utf8");
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    await withMinimalPath(async () => {
+      await withTempDir("openclaw-ws-", async (workspaceDir) => {
+        await withTempDir("openclaw-cwd-", async (otherDir) => {
+          const prevCwd = process.cwd();
+          const testFile = "edit.txt";
+          await fs.writeFile(path.join(workspaceDir, testFile), "hello world", "utf8");
 
-        process.chdir(otherDir);
-        try {
-          const tools = createOpenClawCodingTools({ workspaceDir });
-          const editTool = tools.find((tool) => tool.name === "edit");
-          expect(editTool).toBeDefined();
+          process.chdir(otherDir);
+          try {
+            const tools = createOpenClawCodingTools({ workspaceDir });
+            const editTool = tools.find((tool) => tool.name === "edit");
+            expect(editTool).toBeDefined();
 
-          await editTool?.execute("ws-edit", {
-            path: testFile,
-            oldText: "world",
-            newText: "openclaw",
-          });
+            await editTool?.execute("ws-edit", {
+              path: testFile,
+              oldText: "world",
+              newText: "openclaw",
+            });
 
-          const updated = await fs.readFile(path.join(workspaceDir, testFile), "utf8");
-          expect(updated).toBe("hello openclaw");
-        } finally {
-          process.chdir(prevCwd);
-        }
+            const updated = await fs.readFile(path.join(workspaceDir, testFile), "utf8");
+            expect(updated).toBe("hello openclaw");
+          } finally {
+            process.chdir(prevCwd);
+          }
+        });
       });
     });
   });
 
   it("defaults exec cwd to workspaceDir when workdir is omitted", async () => {
-    await withTempDir("openclaw-ws-", async (workspaceDir) => {
-      const tools = createOpenClawCodingTools({ workspaceDir });
-      const execTool = tools.find((tool) => tool.name === "exec");
-      expect(execTool).toBeDefined();
-
-      const result = await execTool?.execute("ws-exec", {
-        command: "echo ok",
-      });
-      const cwd =
-        result?.details && typeof result.details === "object" && "cwd" in result.details
-          ? (result.details as { cwd?: string }).cwd
-          : undefined;
-      expect(cwd).toBeTruthy();
-      const [resolvedOutput, resolvedWorkspace] = await Promise.all([
-        fs.realpath(String(cwd)),
-        fs.realpath(workspaceDir),
-      ]);
-      expect(resolvedOutput).toBe(resolvedWorkspace);
-    });
-  });
-
-  it("lets exec workdir override the workspace default", async () => {
-    await withTempDir("openclaw-ws-", async (workspaceDir) => {
-      await withTempDir("openclaw-override-", async (overrideDir) => {
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    await withMinimalPath(async () => {
+      await withTempDir("openclaw-ws-", async (workspaceDir) => {
         const tools = createOpenClawCodingTools({ workspaceDir });
         const execTool = tools.find((tool) => tool.name === "exec");
         expect(execTool).toBeDefined();
 
-        const result = await execTool?.execute("ws-exec-override", {
+        const result = await execTool?.execute("ws-exec", {
           command: "echo ok",
-          workdir: overrideDir,
         });
         const cwd =
           result?.details && typeof result.details === "object" && "cwd" in result.details
             ? (result.details as { cwd?: string }).cwd
             : undefined;
         expect(cwd).toBeTruthy();
-        const [resolvedOutput, resolvedOverride] = await Promise.all([
+        const [resolvedOutput, resolvedWorkspace] = await Promise.all([
           fs.realpath(String(cwd)),
-          fs.realpath(overrideDir),
+          fs.realpath(workspaceDir),
         ]);
-        expect(resolvedOutput).toBe(resolvedOverride);
+        expect(resolvedOutput).toBe(resolvedWorkspace);
+      });
+    });
+  });
+
+  it("lets exec workdir override the workspace default", async () => {
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    await withMinimalPath(async () => {
+      await withTempDir("openclaw-ws-", async (workspaceDir) => {
+        await withTempDir("openclaw-override-", async (overrideDir) => {
+          const tools = createOpenClawCodingTools({ workspaceDir });
+          const execTool = tools.find((tool) => tool.name === "exec");
+          expect(execTool).toBeDefined();
+
+          const result = await execTool?.execute("ws-exec-override", {
+            command: "echo ok",
+            workdir: overrideDir,
+          });
+          const cwd =
+            result?.details && typeof result.details === "object" && "cwd" in result.details
+              ? (result.details as { cwd?: string }).cwd
+              : undefined;
+          expect(cwd).toBeTruthy();
+          const [resolvedOutput, resolvedOverride] = await Promise.all([
+            fs.realpath(String(cwd)),
+            fs.realpath(overrideDir),
+          ]);
+          expect(resolvedOutput).toBe(resolvedOverride);
+        });
       });
     });
   });
@@ -147,61 +204,64 @@ describe("workspace path resolution", () => {
 
 describe("sandboxed workspace paths", () => {
   it("uses sandbox workspace for relative read/write/edit", async () => {
-    await withTempDir("openclaw-sandbox-", async (sandboxDir) => {
-      await withTempDir("openclaw-workspace-", async (workspaceDir) => {
-        const sandbox = {
-          enabled: true,
-          sessionKey: "sandbox:test",
-          workspaceDir: sandboxDir,
-          agentWorkspaceDir: workspaceDir,
-          workspaceAccess: "rw",
-          containerName: "openclaw-sbx-test",
-          containerWorkdir: "/workspace",
-          docker: {
-            image: "openclaw-sandbox:bookworm-slim",
-            containerPrefix: "openclaw-sbx-",
-            workdir: "/workspace",
-            readOnlyRoot: true,
-            tmpfs: [],
-            network: "none",
-            user: "1000:1000",
-            capDrop: ["ALL"],
-            env: { LANG: "C.UTF-8" },
-          },
-          tools: { allow: [], deny: [] },
-          browserAllowHostControl: false,
-        };
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    await withMinimalPath(async () => {
+      await withTempDir("openclaw-sandbox-", async (sandboxDir) => {
+        await withTempDir("openclaw-workspace-", async (workspaceDir) => {
+          const sandbox = {
+            enabled: true,
+            sessionKey: "sandbox:test",
+            workspaceDir: sandboxDir,
+            agentWorkspaceDir: workspaceDir,
+            workspaceAccess: "rw",
+            containerName: "openclaw-sbx-test",
+            containerWorkdir: "/workspace",
+            docker: {
+              image: "openclaw-sandbox:bookworm-slim",
+              containerPrefix: "openclaw-sbx-",
+              workdir: "/workspace",
+              readOnlyRoot: true,
+              tmpfs: [],
+              network: "none",
+              user: "1000:1000",
+              capDrop: ["ALL"],
+              env: { LANG: "C.UTF-8" },
+            },
+            tools: { allow: [], deny: [] },
+            browserAllowHostControl: false,
+          };
 
-        const testFile = "sandbox.txt";
-        await fs.writeFile(path.join(sandboxDir, testFile), "sandbox read", "utf8");
-        await fs.writeFile(path.join(workspaceDir, testFile), "workspace read", "utf8");
+          const testFile = "sandbox.txt";
+          await fs.writeFile(path.join(sandboxDir, testFile), "sandbox read", "utf8");
+          await fs.writeFile(path.join(workspaceDir, testFile), "workspace read", "utf8");
 
-        const tools = createOpenClawCodingTools({ workspaceDir, sandbox });
-        const readTool = tools.find((tool) => tool.name === "read");
-        const writeTool = tools.find((tool) => tool.name === "write");
-        const editTool = tools.find((tool) => tool.name === "edit");
+          const tools = createOpenClawCodingTools({ workspaceDir, sandbox });
+          const readTool = tools.find((tool) => tool.name === "read");
+          const writeTool = tools.find((tool) => tool.name === "write");
+          const editTool = tools.find((tool) => tool.name === "edit");
 
-        expect(readTool).toBeDefined();
-        expect(writeTool).toBeDefined();
-        expect(editTool).toBeDefined();
+          expect(readTool).toBeDefined();
+          expect(writeTool).toBeDefined();
+          expect(editTool).toBeDefined();
 
-        const result = await readTool?.execute("sbx-read", { path: testFile });
-        expect(getTextContent(result)).toContain("sandbox read");
+          const result = await readTool?.execute("sbx-read", { path: testFile });
+          expect(getTextContent(result)).toContain("sandbox read");
 
-        await writeTool?.execute("sbx-write", {
-          path: "new.txt",
-          content: "sandbox write",
+          await writeTool?.execute("sbx-write", {
+            path: "new.txt",
+            content: "sandbox write",
+          });
+          const written = await fs.readFile(path.join(sandboxDir, "new.txt"), "utf8");
+          expect(written).toBe("sandbox write");
+
+          await editTool?.execute("sbx-edit", {
+            path: "new.txt",
+            oldText: "write",
+            newText: "edit",
+          });
+          const edited = await fs.readFile(path.join(sandboxDir, "new.txt"), "utf8");
+          expect(edited).toBe("sandbox edit");
         });
-        const written = await fs.readFile(path.join(sandboxDir, "new.txt"), "utf8");
-        expect(written).toBe("sandbox write");
-
-        await editTool?.execute("sbx-edit", {
-          path: "new.txt",
-          oldText: "write",
-          newText: "edit",
-        });
-        const edited = await fs.readFile(path.join(sandboxDir, "new.txt"), "utf8");
-        expect(edited).toBe("sandbox edit");
       });
     });
   });
