@@ -39,7 +39,6 @@ export class SimplexWsClient {
   private ws: WebSocket | null = null;
   private pending = new Map<string, PendingCommand>();
   private eventHandlers = new Set<(event: SimplexWsEvent) => void>();
-  private closedByUser = false;
 
   constructor(options: SimplexWsClientOptions) {
     this.url = options.url;
@@ -58,14 +57,17 @@ export class SimplexWsClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return;
     }
-    this.closedByUser = false;
     await new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(this.url);
       this.ws = ws;
 
       const timeout = setTimeout(() => {
+        const timeoutError = new Error(
+          `SimpleX WS connect timeout after ${this.connectTimeoutMs}ms`,
+        );
+        this.handleSocketDisconnect(ws, timeoutError);
         ws.terminate();
-        reject(new Error(`SimpleX WS connect timeout after ${this.connectTimeoutMs}ms`));
+        reject(timeoutError);
       }, this.connectTimeoutMs);
 
       ws.on("open", () => {
@@ -81,21 +83,20 @@ export class SimplexWsClient {
       ws.on("close", () => {
         clearTimeout(timeout);
         this.logger?.warn?.("SimpleX WS closed");
-        if (!this.closedByUser) {
-          this.rejectAllPending(new Error("SimpleX WS closed"));
-        }
+        this.handleSocketDisconnect(ws, new Error("SimpleX WS closed"));
       });
 
       ws.on("error", (err) => {
         clearTimeout(timeout);
-        this.logger?.error?.(`SimpleX WS error: ${String(err)}`);
-        reject(err instanceof Error ? err : new Error(String(err)));
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.logger?.error?.(`SimpleX WS error: ${String(error)}`);
+        this.handleSocketDisconnect(ws, error);
+        reject(error);
       });
     });
   }
 
   async close(): Promise<void> {
-    this.closedByUser = true;
     this.rejectAllPending(new Error("SimpleX WS closed"));
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       await new Promise<void>((resolve) => {
@@ -180,5 +181,14 @@ export class SimplexWsClient {
       pending.reject(error);
       this.pending.delete(corrId);
     }
+  }
+
+  private handleSocketDisconnect(ws: WebSocket, error: Error): void {
+    // Ignore stale events from an older socket after reconnect.
+    if (this.ws !== ws) {
+      return;
+    }
+    this.ws = null;
+    this.rejectAllPending(error);
   }
 }

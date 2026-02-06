@@ -68,4 +68,42 @@ describe("SimplexWsClient", () => {
 
     await client.close();
   });
+
+  it("rejects pending command on unexpected close and reconnects cleanly", async () => {
+    if (!server) {
+      throw new Error("server not initialized");
+    }
+
+    let connectionCount = 0;
+    server.wss.on("connection", (socket) => {
+      connectionCount += 1;
+      socket.on("message", (data) => {
+        let text: string;
+        if (typeof data === "string") {
+          text = data;
+        } else if (Buffer.isBuffer(data)) {
+          text = data.toString("utf8");
+        } else if (Array.isArray(data)) {
+          text = Buffer.concat(data).toString("utf8");
+        } else {
+          text = Buffer.from(data).toString("utf8");
+        }
+        const parsed = JSON.parse(text) as { corrId?: string };
+
+        if (connectionCount === 1) {
+          socket.close();
+          return;
+        }
+        socket.send(Buffer.from(JSON.stringify({ corrId: parsed.corrId, resp: { type: "ok" } })));
+      });
+    });
+
+    const client = new SimplexWsClient({ url: server.url });
+    await expect(client.sendCommand("/first", 5_000)).rejects.toThrow("SimpleX WS closed");
+
+    const second = await client.sendCommand("/second");
+    expect(second.resp?.type).toBe("ok");
+
+    await client.close();
+  });
 });
