@@ -802,13 +802,7 @@
               },
               {
                 "group": "Other install methods",
-                "pages": [
-                  "install/node",
-                  "install/docker",
-                  "install/nix",
-                  "install/ansible",
-                  "install/bun"
-                ]
+                "pages": ["install/docker", "install/nix", "install/ansible", "install/bun"]
               },
               {
                 "group": "Maintenance",
@@ -1221,6 +1215,7 @@
               {
                 "group": "Environment and debugging",
                 "pages": [
+                  "install/node",
                   "environment",
                   "debugging",
                   "testing",
