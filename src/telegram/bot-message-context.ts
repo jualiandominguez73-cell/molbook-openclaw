@@ -202,6 +202,21 @@ export const buildTelegramMessageContext = async ({
     return null;
   }
 
+  // Compute requireMention early for preflight transcription gating
+  const activationOverride = resolveGroupActivation({
+    chatId,
+    messageThreadId: resolvedThreadId,
+    sessionKey: sessionKey,
+    agentId: route.agentId,
+  });
+  const baseRequireMention = resolveGroupRequireMention(chatId);
+  const requireMention = firstDefined(
+    activationOverride,
+    topicConfig?.requireMention,
+    groupConfig?.requireMention,
+    baseRequireMention,
+  );
+
   const sendTyping = async () => {
     await withTelegramApiErrorLogging({
       operation: "sendChatAction",
@@ -393,7 +408,8 @@ export const buildTelegramMessageContext = async ({
   // This allows voice notes to be checked for mentions before being dropped
   let preflightTranscript: string | undefined;
   const hasAudio = allMedia.some((media) => media.contentType?.startsWith("audio/"));
-  const needsPreflightTranscription = isGroup && hasAudio && !rawBody && mentionRegexes.length > 0;
+  const needsPreflightTranscription =
+    isGroup && requireMention && hasAudio && !rawBody && mentionRegexes.length > 0;
 
   if (needsPreflightTranscription) {
     try {
@@ -433,19 +449,6 @@ export const buildTelegramMessageContext = async ({
     });
     return null;
   }
-  const activationOverride = resolveGroupActivation({
-    chatId,
-    messageThreadId: resolvedThreadId,
-    sessionKey: sessionKey,
-    agentId: route.agentId,
-  });
-  const baseRequireMention = resolveGroupRequireMention(chatId);
-  const requireMention = firstDefined(
-    activationOverride,
-    topicConfig?.requireMention,
-    groupConfig?.requireMention,
-    baseRequireMention,
-  );
   // Reply-chain detection: replying to a bot message acts like an implicit mention.
   const botId = primaryCtx.me?.id;
   const replyFromId = msg.reply_to_message?.from?.id;
