@@ -1,7 +1,6 @@
 import type { ReplyPayload } from "../../auto-reply/types.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { GroupToolPolicyConfig } from "../../config/types.tools.js";
-import { ChannelMessage } from "../../gateway/server-channels.ts";
 import type { OutboundDeliveryResult, OutboundSendDeps } from "../../infra/outbound/deliver.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import type {
@@ -19,6 +18,7 @@ import type {
   ChannelSetupInput,
   ChannelStatusIssue,
 } from "./types.core.js";
+import { ChannelMessage } from "../../gateway/server-channels.ts";
 
 export type ChannelSetupAdapter = {
   resolveAccountId?: (params: { cfg: OpenClawConfig; accountId?: string }) => string;

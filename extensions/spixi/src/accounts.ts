@@ -3,9 +3,13 @@ import { type ResolvedSpixiAccount, type SpixiAccountConfig } from "./types.js";
 
 export function listSpixiAccountIds(cfg: unknown): string[] {
   // Type guard for config shape
-  const channels = typeof cfg === "object" && cfg !== null && "channels" in cfg && typeof (cfg as unknown as { channels?: unknown }).channels === "object"
-    ? (cfg as unknown as { channels?: unknown }).channels
-    : undefined;
+  const channels =
+    typeof cfg === "object" &&
+    cfg !== null &&
+    "channels" in cfg &&
+    typeof (cfg as unknown as { channels?: unknown }).channels === "object"
+      ? (cfg as unknown as { channels?: unknown }).channels
+      : undefined;
   const spixi = channels && typeof channels.spixi === "object" ? channels.spixi : undefined;
   const accounts = spixi && typeof spixi.accounts === "object" ? spixi.accounts : undefined;
   if (!accounts) {
@@ -13,11 +17,12 @@ export function listSpixiAccountIds(cfg: unknown): string[] {
   }
   const ids = new Set<string>();
   for (const key of Object.keys(accounts)) {
-    if (!key) { continue; }
+    if (!key) {
+      continue;
+    }
     ids.add(normalizeAccountId(key));
   }
   return [...ids].toSorted((a, b) => a.localeCompare(b));
-
 }
 
 export function resolveSpixiAccount(params: {
@@ -25,9 +30,13 @@ export function resolveSpixiAccount(params: {
   accountId?: string | null;
 }): ResolvedSpixiAccount {
   // Type guard for config shape
-  const channels = typeof params.cfg === "object" && params.cfg !== null && "channels" in params.cfg && typeof (params.cfg as unknown as { channels?: unknown }).channels === "object"
-    ? (params.cfg as unknown as { channels?: unknown }).channels
-    : undefined;
+  const channels =
+    typeof params.cfg === "object" &&
+    params.cfg !== null &&
+    "channels" in params.cfg &&
+    typeof (params.cfg as unknown as { channels?: unknown }).channels === "object"
+      ? (params.cfg as unknown as { channels?: unknown }).channels
+      : undefined;
   const spixi = channels && typeof channels.spixi === "object" ? channels.spixi : undefined;
   const accounts = spixi && typeof spixi.accounts === "object" ? spixi.accounts : {};
   const accountId = normalizeAccountId(params.accountId);
@@ -40,7 +49,7 @@ export function resolveSpixiAccount(params: {
     merged.mqttHost?.trim() ||
     merged.quixiApiUrl?.trim() ||
     merged.myWalletAddress?.trim() ||
-    typeof merged.mqttPort === "number"
+    typeof merged.mqttPort === "number",
   );
 
   return {

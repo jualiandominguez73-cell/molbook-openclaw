@@ -1,24 +1,31 @@
-import { normalizeVerboseLevel } from "../auto-reply/thinking.js";
-import { loadConfig } from "../config/config.js";
-import { type AgentEventPayload, getAgentRunContext } from "../infra/agent-events.js";
-import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
-import { loadSessionEntry, resolveGatewaySessionStoreTarget, getSessionDefaults } from "./session-utils.js";
-import { formatForLog } from "./ws-log.js";
+import { CURRENT_SESSION_VERSION } from "@mariozechner/pi-coding-agent";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
-import { CURRENT_SESSION_VERSION } from "@mariozechner/pi-coding-agent";
-import { updateSessionStore } from "../config/sessions.js";
-import { dispatchInboundMessage } from "../auto-reply/dispatch.js";
-import { resolveEffectiveMessagesConfig, resolveIdentityName } from "../agents/identity.js";
-import { createReplyDispatcher } from "../auto-reply/reply/reply-dispatcher.js";
-import { extractShortModelName, type ResponsePrefixContext } from "../auto-reply/reply/response-prefix-template.js";
-import { injectTimestamp, timestampOptsFromConfig } from "./server-methods/agent-timestamp.js";
-import { type MsgContext } from "../auto-reply/templating.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { SubsystemLogger } from "../logging/subsystem.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
+import { resolveEffectiveMessagesConfig, resolveIdentityName } from "../agents/identity.js";
+import { dispatchInboundMessage } from "../auto-reply/dispatch.js";
+import { createReplyDispatcher } from "../auto-reply/reply/reply-dispatcher.js";
+import {
+  extractShortModelName,
+  type ResponsePrefixContext,
+} from "../auto-reply/reply/response-prefix-template.js";
+import { type MsgContext } from "../auto-reply/templating.js";
+import { normalizeVerboseLevel } from "../auto-reply/thinking.js";
+import { loadConfig } from "../config/config.js";
+import { updateSessionStore } from "../config/sessions.js";
+import { type AgentEventPayload, getAgentRunContext } from "../infra/agent-events.js";
+import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
 import { ChannelMessage } from "./server-channels.js";
+import { injectTimestamp, timestampOptsFromConfig } from "./server-methods/agent-timestamp.js";
+import {
+  loadSessionEntry,
+  resolveGatewaySessionStoreTarget,
+  getSessionDefaults,
+} from "./session-utils.js";
+import { formatForLog } from "./ws-log.js";
 
 /**
  * Check if webchat broadcasts should be suppressed for heartbeat runs.
@@ -427,7 +434,6 @@ export function createAgentEventHandler({
   };
 }
 
-
 function ensureTranscriptFile(params: { transcriptPath: string; sessionId: string }): {
   ok: boolean;
   error?: string;
@@ -458,7 +464,9 @@ function appendTranscriptMessage(params: {
   storePath: string | undefined;
   sessionFile?: string;
 }): { ok: boolean; message?: Record<string, unknown>; error?: string } {
-  if (!params.storePath) {return { ok: false, error: "store path missing" };}
+  if (!params.storePath) {
+    return { ok: false, error: "store path missing" };
+  }
 
   const transcriptPath = params.sessionFile
     ? params.sessionFile
@@ -466,7 +474,9 @@ function appendTranscriptMessage(params: {
 
   if (!fs.existsSync(transcriptPath)) {
     const ensured = ensureTranscriptFile({ transcriptPath, sessionId: params.sessionId });
-    if (!ensured.ok) {return { ok: false, error: ensured.error }};
+    if (!ensured.ok) {
+      return { ok: false, error: ensured.error };
+    }
   }
 
   const now = Date.now();
@@ -515,72 +525,77 @@ export function createChannelMessageHandler(deps: {
     const cfg = deps.loadConfig();
     const sessionKey = deps.resolveSessionKey(channelId, msg.from);
 
-    deps.log.info(`[${channelId}:${accountId}] Inbound message from ${msg.from} to session ${sessionKey}`);
+    deps.log.info(
+      `[${channelId}:${accountId}] Inbound message from ${msg.from} to session ${sessionKey}`,
+    );
 
     // EXPLICITLY ENSURE SESSION EXISTS
     const target = resolveGatewaySessionStoreTarget({ cfg, key: sessionKey });
 
-      let sessionId: string | undefined;
-      let storePath = target.storePath;
-      let sessionFile: string | undefined;
+    let sessionId: string | undefined;
+    let storePath = target.storePath;
+    let sessionFile: string | undefined;
 
-      if (!storePath) {
-        deps.log.error(`[${channelId}] Cannot resolve storePath for sessionKey: ${sessionKey}`);
-        return;
-      }
+    if (!storePath) {
+      deps.log.error(`[${channelId}] Cannot resolve storePath for sessionKey: ${sessionKey}`);
+      return;
+    }
 
+    await updateSessionStore(storePath, (store) => {
+      const primaryKey = target.storeKeys[0] ?? sessionKey;
+      const existingKey = target.storeKeys.find((candidate) => store[candidate]);
 
-      await updateSessionStore(storePath, (store) => {
-        const primaryKey = target.storeKeys[0] ?? sessionKey;
-        const existingKey = target.storeKeys.find((candidate) => store[candidate]);
+      let entry = existingKey ? store[existingKey] : undefined;
+      const forceAllow = cfg.channels?.forceAllowSendPolicy === true;
+      if (!entry) {
+        // Create new session entry
+        const defaults = getSessionDefaults(cfg);
+        deps.log.info(
+          `[${channelId}] Initializing new session ${sessionKey} with defaults: model=${defaults.model}, provider=${defaults.modelProvider}`,
+        );
 
-        let entry = existingKey ? store[existingKey] : undefined;
-        const forceAllow = cfg.channels?.forceAllowSendPolicy === true;
-        if (!entry) {
-          // Create new session entry
-          const defaults = getSessionDefaults(cfg);
-          deps.log.info(`[${channelId}] Initializing new session ${sessionKey} with defaults: model=${defaults.model}, provider=${defaults.modelProvider}`);
-
-          entry = {
-            sessionId: randomUUID(),
-            updatedAt: Date.now(),
-            systemSent: false,
-            abortedLastRun: false,
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-            label: `Channel ${msg.from}`,
-            origin: { },
-            lastChannel: channelId,
-            lastTo: msg.from,
-            // Only force allow if config option is set
-            ...(forceAllow ? { sendPolicy: "allow" } : {}),
-            contextTokens: defaults.contextTokens ?? undefined,
-            model: defaults.model ?? undefined,
-            modelProvider: defaults.modelProvider ?? undefined,
-          };
-          store[primaryKey] = entry;
-          deps.log.info(`[${channelId}] Created new session entry for ${sessionKey} (si=${entry.sessionId})`);
-        } else {
-          // Update entry
-          entry.updatedAt = Date.now();
-          entry.lastChannel = channelId;
-          entry.lastTo = msg.from;
+        entry = {
+          sessionId: randomUUID(),
+          updatedAt: Date.now(),
+          systemSent: false,
+          abortedLastRun: false,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          label: `Channel ${msg.from}`,
+          origin: {},
+          lastChannel: channelId,
+          lastTo: msg.from,
           // Only force allow if config option is set
-          if (forceAllow && (!entry.sendPolicy || (entry.sendPolicy as unknown) === "auto")) {
-            entry.sendPolicy = "allow";
-          }
+          ...(forceAllow ? { sendPolicy: "allow" } : {}),
+          contextTokens: defaults.contextTokens ?? undefined,
+          model: defaults.model ?? undefined,
+          modelProvider: defaults.modelProvider ?? undefined,
+        };
+        store[primaryKey] = entry;
+        deps.log.info(
+          `[${channelId}] Created new session entry for ${sessionKey} (si=${entry.sessionId})`,
+        );
+      } else {
+        // Update entry
+        entry.updatedAt = Date.now();
+        entry.lastChannel = channelId;
+        entry.lastTo = msg.from;
+        // Only force allow if config option is set
+        if (forceAllow && (!entry.sendPolicy || (entry.sendPolicy as unknown) === "auto")) {
+          entry.sendPolicy = "allow";
         }
-        sessionId = entry.sessionId;
-        sessionFile = entry.sessionFile;
-        // Don't return anything to imply "no structural change" other than in-place mutation which updateSessionStore handles
-        return undefined;
-      });
-
-      if (!sessionId) {
-        deps.log.error(`[${channelId}] Failed to resolve sessionId for ${sessionKey}`);
-        return;
       }
+      sessionId = entry.sessionId;
+      sessionFile = entry.sessionFile;
+      // Don't return anything to imply "no structural change" other than in-place mutation which updateSessionStore handles
+      return undefined;
+    });
+
+    if (!sessionId) {
+      deps.log.error(`[${channelId}] Failed to resolve sessionId for ${sessionKey}`);
+      return;
+    }
 
     // APPEND USER MESSAGE TO TRANSCRIPT
     appendTranscriptMessage({
@@ -588,7 +603,7 @@ export function createChannelMessageHandler(deps: {
       message: msg.text,
       sessionId,
       storePath,
-      sessionFile
+      sessionFile,
     });
 
     const clientRunId = msg.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -629,9 +644,13 @@ export function createChannelMessageHandler(deps: {
         deps.log.warn(`[${channelId}] dispatch failed: ${formatForLog(err)}`);
       },
       deliver: async (payload, info) => {
-        if (info.kind !== "final") { return; }
+        if (info.kind !== "final") {
+          return;
+        }
         const text = payload.text?.trim() ?? "";
-        if (text) { finalReplyParts.push(text); }
+        if (text) {
+          finalReplyParts.push(text);
+        }
       },
     });
 
@@ -650,7 +669,7 @@ export function createChannelMessageHandler(deps: {
             prefixContext.modelFull = `${ctx.provider}/${ctx.model}`;
             prefixContext.thinkingLevel = ctx.thinkLevel ?? "off";
           },
-        }
+        },
       });
 
       // Send reply back to channel?
@@ -658,7 +677,7 @@ export function createChannelMessageHandler(deps: {
       // But dispatcher.deliver pushes to finalReplyParts.
       // We need to sending these parts BACK to the channel.
       // The channel plugin should have "outbound" capability.
-      // But wait, the Agent (via tools) sends messages. 
+      // But wait, the Agent (via tools) sends messages.
       // Or specific auto-reply logic?
       // In webchat, we just broadcast the reply to the UI.
       // For CHANNELS, the agent should used "sendMessage" tool OR the system should auto-reply if it's a "chat" response.
@@ -680,7 +699,6 @@ export function createChannelMessageHandler(deps: {
           await deps.onReply(channelId, accountId, msg.from, replyText);
         }
       }
-
     } catch (err) {
       deps.log.error(`[${channelId}] dispatch error: ${err}`);
     }

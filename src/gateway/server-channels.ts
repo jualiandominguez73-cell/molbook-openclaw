@@ -2,12 +2,12 @@ import type { ChannelAccountSnapshot } from "../channels/plugins/types.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { createSubsystemLogger } from "../logging/subsystem.js";
 import type { RuntimeEnv } from "../runtime.js";
+import { ReplyPayload } from "../auto-reply/types.ts";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { type ChannelId, getChannelPlugin, listChannelPlugins } from "../channels/plugins/index.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { resetDirectoryCache } from "../infra/outbound/target-resolver.js";
 import { DEFAULT_ACCOUNT_ID } from "../routing/session-key.js";
-import { ReplyPayload } from "../auto-reply/types.ts";
 
 export type ChannelRuntimeSnapshot = {
   channels: Partial<Record<ChannelId, ChannelAccountSnapshot>>;
@@ -167,8 +167,7 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
           log,
           getStatus: () => getRuntime(channelId, id),
           setStatus: (next) => setRuntime(channelId, id, next),
-          onMessage: (msg: ChannelMessage) =>
-            handleChannelMessage?.(channelId, id, msg),
+          onMessage: (msg: ChannelMessage) => handleChannelMessage?.(channelId, id, msg),
         });
         const tracked = Promise.resolve(task)
           .catch((err) => {

@@ -2,9 +2,7 @@
   "id": "spixi",
   "name": "Spixi",
   "description": "Decentralized P2P messaging via Ixian network",
-  "channels": [
-    "spixi"
-  ],
+  "channels": ["spixi"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

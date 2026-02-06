@@ -379,8 +379,6 @@ export async function startGatewayServer(
   });
   let { cron, storePath: cronStorePath } = cronState;
 
-
-
   const handleChannelMessage = createChannelMessageHandler({
     loadConfig,
     log,
@@ -406,7 +404,11 @@ export async function startGatewayServer(
 
       const runtime = channelRuntimeEnvs[channelId];
       // Type guard for Spixi channel capability
-      function hasSpixiChannel(obj: unknown): obj is { channel: { spixi: { sendMessage: (to: string, text: string) => Promise<void> } } } {
+      function hasSpixiChannel(
+        obj: unknown,
+      ): obj is {
+        channel: { spixi: { sendMessage: (to: string, text: string) => Promise<void> } };
+      } {
         return (
           typeof obj === "object" &&
           obj !== null &&
@@ -448,14 +450,14 @@ export async function startGatewayServer(
       } else {
         log.warn(`[${channelId}:${accountId}] No outbound.sendText capability found`);
       }
-    }
+    },
   });
 
   const channelManager = createChannelManager({
     loadConfig,
     channelLogs,
     channelRuntimeEnvs,
-    handleChannelMessage
+    handleChannelMessage,
   });
   const { getRuntimeSnapshot, startChannels, startChannel, stopChannel, markChannelLoggedOut } =
     channelManager;

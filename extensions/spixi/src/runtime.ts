@@ -1,5 +1,5 @@
-import { type ExtensionRuntime } from "openclaw/plugin-sdk";
 import axios from "axios";
+import { type ExtensionRuntime } from "openclaw/plugin-sdk";
 
 export interface SpixiRuntime extends ExtensionRuntime {
   channel: {
@@ -26,8 +26,8 @@ export const getSpixiRuntime = () => {
     // Fallback if runtime not yet set (e.g. tests or early init)
     runtime = {
       channel: {
-        spixi: undefined as unknown as SpixiRuntime["channel"]["spixi"]
-      }
+        spixi: undefined as unknown as SpixiRuntime["channel"]["spixi"],
+      },
     } as SpixiRuntime;
   }
 
@@ -49,7 +49,7 @@ export const getSpixiRuntime = () => {
           const res = await axios.get(url.toString());
           return {
             messageId: `spixi-${Date.now()}`,
-            ...res.data
+            ...res.data,
           };
         } catch (e: unknown) {
           if (e instanceof Error) {
@@ -67,7 +67,7 @@ export const getSpixiRuntime = () => {
           return {
             success: true,
             address,
-            ...res.data
+            ...res.data,
           };
         } catch (e: unknown) {
           if (e instanceof Error) {
@@ -83,7 +83,13 @@ export const getSpixiRuntime = () => {
           const res = await axios.get(url.toString());
           const contacts = res.data || [];
           return Array.isArray(contacts)
-            ? contacts.map((c: { address?: string } | string) => typeof c === "object" && c !== null && "address" in c ? (c as { address?: string }).address : c).filter(Boolean) as string[]
+            ? (contacts
+                .map((c: { address?: string } | string) =>
+                  typeof c === "object" && c !== null && "address" in c
+                    ? (c as { address?: string }).address
+                    : c,
+                )
+                .filter(Boolean) as string[])
             : [];
         } catch (e: unknown) {
           if (e instanceof Error) {
@@ -101,7 +107,7 @@ export const getSpixiRuntime = () => {
           return {
             success: true,
             address,
-            ...res.data
+            ...res.data,
           };
         } catch (e: unknown) {
           if (e instanceof Error) {
@@ -109,7 +115,7 @@ export const getSpixiRuntime = () => {
           }
           throw new Error("Spixi acceptContact failed: Unknown error", { cause: e });
         }
-      }
+      },
     };
     runtime.channel.spixi = spixiMethods;
   }
@@ -120,4 +126,3 @@ export const getSpixiRuntime = () => {
 export const setSpixiRuntime = (r: SpixiRuntime) => {
   runtime = r;
 };
-

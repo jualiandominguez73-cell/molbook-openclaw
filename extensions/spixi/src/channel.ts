@@ -1,15 +1,15 @@
+import mqtt from "mqtt";
 import {
   getChatChannelMeta,
   type ChannelPlugin,
   type ChannelGatewayContext,
   buildChannelConfigSchema,
 } from "openclaw/plugin-sdk";
-import { getSpixiRuntime, setSpixiBaseUrl } from "./runtime.js";
 import { listSpixiAccountIds, resolveSpixiAccount } from "./accounts.js";
-import { type ResolvedSpixiAccount } from "./types.js";
-import { SpixiConfigSchema } from "./schema.js";
 import { spixiOnboardingAdapter } from "./onboarding.js";
-import mqtt from "mqtt";
+import { getSpixiRuntime, setSpixiBaseUrl } from "./runtime.js";
+import { SpixiConfigSchema } from "./schema.js";
+import { type ResolvedSpixiAccount } from "./types.js";
 
 const meta = getChatChannelMeta("spixi");
 
@@ -24,7 +24,8 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
   configSchema: buildChannelConfigSchema(SpixiConfigSchema),
   config: {
     listAccountIds: (cfg: unknown) => listSpixiAccountIds(cfg),
-    resolveAccount: (cfg: unknown, accountId: string | null | undefined) => resolveSpixiAccount({ cfg, accountId }),
+    resolveAccount: (cfg: unknown, accountId: string | null | undefined) =>
+      resolveSpixiAccount({ cfg, accountId }),
     isConfigured: (account: ResolvedSpixiAccount) => account.configured,
   },
   agentTools: () => [
@@ -76,7 +77,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
     sendText: async ({ to, text }: { to: string; text: string }) => {
       const runtime = getSpixiRuntime();
       const result = await runtime.channel.spixi.sendMessage(to, text);
-      return { channel: "spixi", ...(typeof result === 'object' && result !== null ? result : {}) };
+      return { channel: "spixi", ...(typeof result === "object" && result !== null ? result : {}) };
     },
   },
   gateway: {
@@ -85,14 +86,17 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
       const config = account.config;
 
       // Debug logging
-      log?.info(`[${account.accountId}] Spixi config:`, JSON.stringify({
-        enabled: account.enabled,
-        configured: account.configured,
-        mqttHost: config.mqttHost,
-        mqttPort: config.mqttPort,
-        quixiApiUrl: config.quixiApiUrl,
-        allowFrom: config.allowFrom,
-      }));
+      log?.info(
+        `[${account.accountId}] Spixi config:`,
+        JSON.stringify({
+          enabled: account.enabled,
+          configured: account.configured,
+          mqttHost: config.mqttHost,
+          mqttPort: config.mqttPort,
+          quixiApiUrl: config.quixiApiUrl,
+          allowFrom: config.allowFrom,
+        }),
+      );
 
       const mqttUrl = `mqtt://${config.mqttHost || "127.0.0.1"}:${config.mqttPort || 1883}`;
 
@@ -108,12 +112,14 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
       // Auto-friend sync: fetch existing friends, add any from allowFrom that are missing
       try {
         const existingFriends = await runtime.channel.spixi.getFriendList();
-        const existingSet = new Set(existingFriends.map(addr => addr.toLowerCase()));
+        const existingSet = new Set(existingFriends.map((addr) => addr.toLowerCase()));
 
         const allowFrom = config.allowFrom || [];
         for (const address of allowFrom) {
           const trimmed = address?.trim();
-          if (!trimmed || trimmed === "*") { continue; }
+          if (!trimmed || trimmed === "*") {
+            continue;
+          }
 
           if (!existingSet.has(trimmed.toLowerCase())) {
             log?.info(`[${account.accountId}] Auto-adding friend: ${trimmed}`);
@@ -127,7 +133,9 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
           }
         }
 
-        log?.info(`[${account.accountId}] Friend sync complete. ${existingFriends.length} existing friends.`);
+        log?.info(
+          `[${account.accountId}] Friend sync complete. ${existingFriends.length} existing friends.`,
+        );
       } catch (e: unknown) {
         const err = e as Error;
         log?.warn(`[${account.accountId}] Could not sync friends: ${err.message}`);
@@ -164,7 +172,12 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
               const sender = (d as { sender: string }).sender;
               // Prefer d.data?.data, fallback to d.message
               let text: string | undefined;
-              if ("data" in d && typeof (d as any).data === "object" && (d as any).data !== null && "data" in (d as any).data) {
+              if (
+                "data" in d &&
+                typeof (d as any).data === "object" &&
+                (d as any).data !== null &&
+                "data" in (d as any).data
+              ) {
                 text = (d as any).data.data;
               } else if ("message" in d) {
                 text = (d as any).message;
@@ -199,11 +212,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
           // Incoming friend request
           const d = data as unknown;
           let sender: string | undefined;
-          if (
-            typeof d === "object" &&
-            d !== null &&
-            ("sender" in d || "address" in d)
-          ) {
+          if (typeof d === "object" && d !== null && ("sender" in d || "address" in d)) {
             sender = (d as any).sender || (d as any).address;
           }
           log?.info(`[${account.accountId}] Received Friend Request from: ${sender}`);
@@ -211,7 +220,9 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
           // Check if in allowFrom
           const allowFrom = (config.allowFrom || []).map((a: string) => a.toLowerCase().trim());
           if (sender && allowFrom.includes(sender.toLowerCase())) {
-            log?.info(`[${account.accountId}] Auto-accepting friend request from allowed sender: ${sender}`);
+            log?.info(
+              `[${account.accountId}] Auto-accepting friend request from allowed sender: ${sender}`,
+            );
             try {
               const runtime = getSpixiRuntime();
               await runtime.channel.spixi.acceptContact(sender);
@@ -221,18 +232,16 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
               log?.error(`[${account.accountId}] Failed to accept friend: ${err.message}`);
             }
           } else {
-            log?.info(`[${account.accountId}] Friend request from ${sender} pending (not in allowFrom)`);
+            log?.info(
+              `[${account.accountId}] Friend request from ${sender} pending (not in allowFrom)`,
+            );
             // TODO: Ideally create a system notification or similar
           }
         } else if (topic === "AcceptAdd2") {
           // Friend request accepted by other party
           const d = data as unknown;
           let sender: string | undefined;
-          if (
-            typeof d === "object" &&
-            d !== null &&
-            ("sender" in d || "address" in d)
-          ) {
+          if (typeof d === "object" && d !== null && ("sender" in d || "address" in d)) {
             sender = (d as any).sender || (d as any).address;
           }
           log?.info(`[${account.accountId}] Friend request ACCEPTED by: ${sender}`);

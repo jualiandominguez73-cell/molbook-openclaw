@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  DmPolicySchema,
-  GroupPolicySchema,
-} from "../../../src/config/zod-schema.core.js";
+import { DmPolicySchema, GroupPolicySchema } from "../../../src/config/zod-schema.core.js";
 
 export const SpixiAccountSchemaBase = z
   .object({
@@ -13,14 +10,14 @@ export const SpixiAccountSchemaBase = z
       .optional()
       .default("http://localhost:8001")
       .describe(
-        "URL of the QuIXI API. WARNING: Requires a running QuIXI node on the server. Repo: https://github.com/ixian-platform/QuIXI"
+        "URL of the QuIXI API. WARNING: Requires a running QuIXI node on the server. Repo: https://github.com/ixian-platform/QuIXI",
       ),
     mqttHost: z
       .string()
       .optional()
       .default("127.0.0.1")
       .describe(
-        "Hostname of the MQTT broker. WARNING: Requires an MQTT broker (e.g. Aedes or Mosquitto) for real-time messages."
+        "Hostname of the MQTT broker. WARNING: Requires an MQTT broker (e.g. Aedes or Mosquitto) for real-time messages.",
       ),
     mqttPort: z
       .number()

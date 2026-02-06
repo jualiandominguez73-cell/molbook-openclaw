@@ -1,6 +1,6 @@
-import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { SpixiAccountConfig } from "../config/types.spixi.js";
+import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 
 export type ResolvedSpixiAccount = {
   accountId: string;
@@ -16,7 +16,9 @@ export function listSpixiAccountIds(cfg: OpenClawConfig): string[] {
   }
   const ids = new Set<string>();
   for (const key of Object.keys(accounts)) {
-    if (!key) { continue; }
+    if (!key) {
+      continue;
+    }
     ids.add(normalizeAccountId(key));
   }
   return [...ids].toSorted((a, b) => a.localeCompare(b));

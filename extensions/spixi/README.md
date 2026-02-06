@@ -57,20 +57,20 @@ channels:
     mqttPort: 1883
     quixiApiUrl: "http://localhost:8001"
     myWalletAddress: "your-ixian-wallet-address"
-    dmPolicy: pairing  # pairing | allowlist | open | disabled
+    dmPolicy: pairing # pairing | allowlist | open | disabled
 ```
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable/disable the channel |
-| `mqttHost` | string | `127.0.0.1` | MQTT broker hostname |
-| `mqttPort` | number | `1883` | MQTT broker port |
-| `quixiApiUrl` | string | `http://localhost:8001` | QuIXI REST API URL |
-| `myWalletAddress` | string | - | Your Ixian wallet (filters self-messages) |
-| `dmPolicy` | string | `pairing` | DM access policy |
-| `allowFrom` | array | `[]` | Allowed sender addresses |
+| Option            | Type    | Default                 | Description                               |
+| ----------------- | ------- | ----------------------- | ----------------------------------------- |
+| `enabled`         | boolean | `false`                 | Enable/disable the channel                |
+| `mqttHost`        | string  | `127.0.0.1`             | MQTT broker hostname                      |
+| `mqttPort`        | number  | `1883`                  | MQTT broker port                          |
+| `quixiApiUrl`     | string  | `http://localhost:8001` | QuIXI REST API URL                        |
+| `myWalletAddress` | string  | -                       | Your Ixian wallet (filters self-messages) |
+| `dmPolicy`        | string  | `pairing`               | DM access policy                          |
+| `allowFrom`       | array   | `[]`                    | Allowed sender addresses                  |
 
 ## Commands
 
@@ -90,13 +90,14 @@ openclaw channels status --probe
 
 The extension uses these QuIXI endpoints:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/sendChatMessage?address=&message=&channel=` | GET | Send text message |
-| `/addContact?address=` | GET | Add contact |
-| `/contacts` | GET | List contacts |
+| Endpoint                                      | Method | Description       |
+| --------------------------------------------- | ------ | ----------------- |
+| `/sendChatMessage?address=&message=&channel=` | GET    | Send text message |
+| `/addContact?address=`                        | GET    | Add contact       |
+| `/contacts`                                   | GET    | List contacts     |
 
 MQTT Topics subscribed:
+
 - `Chat` - Incoming chat messages
 
 ## Agent Tool

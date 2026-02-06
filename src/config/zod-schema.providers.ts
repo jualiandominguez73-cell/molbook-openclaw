@@ -11,8 +11,8 @@ import {
   SlackConfigSchema,
   TelegramConfigSchema,
 } from "./zod-schema.providers-core.js";
-import { WhatsAppConfigSchema } from "./zod-schema.providers-whatsapp.js";
 import { SpixiConfigSchema } from "./zod-schema.providers-spixi.js";
+import { WhatsAppConfigSchema } from "./zod-schema.providers-whatsapp.js";
 
 export * from "./zod-schema.providers-core.js";
 export * from "./zod-schema.providers-whatsapp.js";
