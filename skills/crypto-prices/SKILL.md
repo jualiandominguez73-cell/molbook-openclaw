@@ -15,17 +15,17 @@ metadata:
               "kind": "brew",
               "formula": "jq",
               "bins": ["jq"],
-              "label": "Install jq (brew)",
+              "label": "Install jq (brew)"
             },
             {
               "id": "apt-jq",
               "kind": "apt",
               "package": "jq",
               "bins": ["jq"],
-              "label": "Install jq (apt)",
-            },
-          ],
-      },
+              "label": "Install jq (apt)"
+            }
+          ]
+      }
   }
 ---
 

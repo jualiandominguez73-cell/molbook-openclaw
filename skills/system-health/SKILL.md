@@ -8,8 +8,8 @@ metadata:
       {
         "emoji": "💻",
         "requires": { "bins": ["top", "df", "free"] },
-        "platforms": ["macos", "linux"],
-      },
+        "platforms": ["macos", "linux"]
+      }
   }
 ---
 
