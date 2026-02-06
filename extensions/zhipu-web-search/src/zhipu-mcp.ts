@@ -50,9 +50,12 @@ interface McpJsonRpcResponse {
 interface McpSearchResult {
   title?: string;
   url?: string;
+  link?: string;
   content?: string;
   media?: string;
   icon?: string;
+  refer?: string;
+  publish_date?: string;
 }
 
 /**
@@ -330,9 +333,23 @@ export async function mcpSearch(params: {
     return { error: "mcp_empty_result", message: "MCP returned empty search results." };
   }
 
-  // The MCP server may return structured JSON or plain text
+  // The MCP server may return structured JSON or plain text.
+  // Zhipu sometimes double-encodes: the text field contains a JSON string
+  // that itself is a stringified JSON array — need to unwrap.
   try {
-    const parsed = JSON.parse(textContent);
+    let parsed = JSON.parse(textContent);
+    // Handle double-encoded JSON (string → parse again)
+    if (typeof parsed === "string") {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {
+        // Not double-encoded, treat as plain text
+        return {
+          results: [{ title: "Search Result", content: parsed }],
+          tookMs: Date.now() - start,
+        };
+      }
+    }
     const results: McpSearchResult[] = Array.isArray(parsed)
       ? parsed
       : Array.isArray(parsed?.search_result)
@@ -359,9 +376,11 @@ export function formatMcpResults(
 ): Record<string, unknown> {
   const mapped = raw.results.map((entry) => ({
     title: entry.title ? wrapExternal(entry.title) : "",
-    url: entry.url || "",
+    url: entry.link || entry.url || "",
     description: entry.content ? wrapExternal(entry.content) : "",
+    published: entry.publish_date ? wrapExternal(entry.publish_date) : undefined,
     media: entry.media || undefined,
+    source: entry.refer ? wrapExternal(entry.refer) : undefined,
   }));
 
   return {
