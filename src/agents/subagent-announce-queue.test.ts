@@ -87,4 +87,94 @@ describe("subagent announce queue drain", () => {
       expect.stringContaining("announce queue drain timed out for test-slow"),
     );
   });
+
+  it("logs error and recovers when send throws", async () => {
+    const { enqueueAnnounce } = await import("./subagent-announce-queue.js");
+
+    const send = vi.fn(async () => {
+      throw new Error("gateway unreachable");
+    });
+
+    enqueueAnnounce({
+      key: "test-err",
+      item: { prompt: "will-fail", enqueuedAt: Date.now(), sessionKey: "s1" },
+      settings: { mode: "followup", debounceMs: 0 },
+      send,
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(runtimeMock.error).toHaveBeenCalledWith(
+      expect.stringContaining("announce queue drain failed for test-err"),
+    );
+
+    // Queue should recover — a subsequent enqueue should start a new drain.
+    const send2 = vi.fn(async () => {});
+    enqueueAnnounce({
+      key: "test-err",
+      item: { prompt: "retry", enqueuedAt: Date.now(), sessionKey: "s1" },
+      settings: { mode: "followup", debounceMs: 0 },
+      send: send2,
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(send2).toHaveBeenCalledTimes(1);
+  });
+
+  it("discards remaining items on timeout without rescheduling", async () => {
+    const { enqueueAnnounce } = await import("./subagent-announce-queue.js");
+
+    const send = vi.fn(async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50_000));
+    });
+
+    for (let i = 0; i < 5; i++) {
+      enqueueAnnounce({
+        key: "test-discard",
+        item: { prompt: `d-${i}`, enqueuedAt: Date.now(), sessionKey: "s1" },
+        settings: { mode: "followup", debounceMs: 0 },
+        send,
+      });
+    }
+
+    // Drain past the 120s deadline.
+    for (let step = 0; step < 6; step++) {
+      await vi.advanceTimersByTimeAsync(25_000);
+    }
+
+    expect(send).toHaveBeenCalledTimes(3);
+    runtimeMock.error.mockClear();
+
+    // Advance another full cycle — no reschedule should fire (items were discarded).
+    for (let step = 0; step < 6; step++) {
+      await vi.advanceTimersByTimeAsync(25_000);
+    }
+
+    // send should NOT have been called again — queue was cleaned up.
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(runtimeMock.error).not.toHaveBeenCalled();
+  });
+
+  it("drains a single item without errors", async () => {
+    const { enqueueAnnounce } = await import("./subagent-announce-queue.js");
+
+    const sent: string[] = [];
+    const send = vi.fn(async (item: { prompt: string }) => {
+      sent.push(item.prompt);
+    });
+
+    enqueueAnnounce({
+      key: "test-single",
+      item: { prompt: "only-one", enqueuedAt: Date.now(), sessionKey: "s1" },
+      settings: { mode: "followup", debounceMs: 0 },
+      send,
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(sent).toEqual(["only-one"]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(runtimeMock.error).not.toHaveBeenCalled();
+  });
 });
