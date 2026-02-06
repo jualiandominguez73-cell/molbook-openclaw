@@ -73,6 +73,11 @@ async function safeSaveCreds(
       try {
         JSON.parse(raw);
         fsSync.copyFileSync(credsPath, backupPath);
+        try {
+          fsSync.chmodSync(backupPath, 0o600);
+        } catch {
+          // best-effort on platforms that support it
+        }
       } catch {
         // keep existing backup
       }
