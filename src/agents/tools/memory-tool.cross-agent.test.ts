@@ -112,8 +112,8 @@ describe("memory tools cross-agent access", () => {
     const details = result.details as { results: Array<{ agentId: string; score?: number }> };
     expect(details.results).toHaveLength(3);
     expect(details.results[0]?.agentId).toBe("ops");
-    expect(details.results.map((entry) => entry.agentId).sort()).toEqual(
-      ["main", "ops", "research"].sort(),
+    expect(details.results.map((entry) => entry.agentId).toSorted()).toEqual(
+      ["main", "ops", "research"].toSorted(),
     );
   });
 });

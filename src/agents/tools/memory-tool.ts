@@ -225,14 +225,14 @@ export function createMemorySearchTool(options: {
             error: errors.map((entry) => `${entry.agentId}: ${entry.error}`).join("; "),
           });
         }
-        const sorted = results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        const sorted = results.toSorted((a, b) => (b.score ?? 0) - (a.score ?? 0));
         const limited =
           typeof maxResults === "number" && Number.isFinite(maxResults)
             ? sorted.slice(0, maxResults)
             : sorted;
         return jsonResult({
           results: limited,
-          ...(firstStatus ?? {}),
+          ...firstStatus,
           citations: citationsMode,
           ...(errors.length > 0 ? { errors } : {}),
         });
