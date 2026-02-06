@@ -168,7 +168,6 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
       ...preparation.turnPrefixMessages,
     ]);
     const toolFailureSection = formatToolFailuresSection(toolFailures);
-    const fallbackSummary = `${FALLBACK_SUMMARY}${toolFailureSection}${fileOpsSummary}`;
 
     const model = ctx.model;
     if (!model) {
