@@ -18,6 +18,10 @@ RUN if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY ui/package.json ./ui/package.json
+# Copy workspace package manifests so pnpm resolves extension/package deps
+COPY --parents extensions/*/package.json packages/*/package.json ./
+# Copy postinstall scripts needed during install
+COPY --parents packages/*/scripts/ ./
 COPY patches ./patches
 COPY scripts ./scripts
 
