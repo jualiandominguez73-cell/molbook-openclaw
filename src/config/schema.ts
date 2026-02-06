@@ -353,6 +353,7 @@ const FIELD_LABELS: Record<string, string> = {
   "channels.discord.maxLinesPerMessage": "Discord Max Lines Per Message",
   "channels.discord.intents.presence": "Discord Presence Intent",
   "channels.discord.intents.guildMembers": "Discord Guild Members Intent",
+  "channels.discord.proxy": "Discord Gateway Proxy",
   "channels.discord.pluralkit.enabled": "Discord PluralKit Enabled",
   "channels.discord.pluralkit.token": "Discord PluralKit Token",
   "channels.slack.dm.policy": "Slack DM Policy",
@@ -745,6 +746,8 @@ const FIELD_HELP: Record<string, string> = {
     "Enable the Guild Presences privileged intent. Must also be enabled in the Discord Developer Portal. Allows tracking user activities (e.g. Spotify). Default: false.",
   "channels.discord.intents.guildMembers":
     "Enable the Guild Members privileged intent. Must also be enabled in the Discord Developer Portal. Default: false.",
+  "channels.discord.proxy":
+    "HTTP(S) proxy URL for Discord gateway WebSocket connections (e.g. http://127.0.0.1:5780).",
   "channels.discord.pluralkit.enabled":
     "Resolve PluralKit proxied messages and treat system members as distinct senders.",
   "channels.discord.pluralkit.token":
