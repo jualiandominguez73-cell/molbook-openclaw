@@ -440,7 +440,6 @@ export async function initializeConfig(): Promise<CoreMemoriesConfig> {
     if (!hasPreferred && ollamaCheck.models.length > 0) {
       CONFIG.engines.local.model = ollamaCheck.models[0].name;
     }
-
   } else {
     // No local LLM detected.
   }
@@ -956,7 +955,9 @@ export class CoreMemories {
 
       const keywordsRaw = raw.keywords;
       const keywords: Record<string, GlobalLinkRef[]> =
-        keywordsRaw && typeof keywordsRaw === "object" ? (keywordsRaw as Record<string, GlobalLinkRef[]>) : {};
+        keywordsRaw && typeof keywordsRaw === "object"
+          ? (keywordsRaw as Record<string, GlobalLinkRef[]>)
+          : {};
 
       return {
         keywords,
@@ -1461,7 +1462,8 @@ export type CoreMemoriesInitOptions = {
 };
 
 export async function getCoreMemories(opts: CoreMemoriesInitOptions = {}): Promise<CoreMemories> {
-  const memoryDir = typeof opts.memoryDir === "string" && opts.memoryDir.trim() ? opts.memoryDir : undefined;
+  const memoryDir =
+    typeof opts.memoryDir === "string" && opts.memoryDir.trim() ? opts.memoryDir : undefined;
   if (!instance || (memoryDir && instanceDir !== memoryDir)) {
     instance = new CoreMemories(memoryDir ?? ".openclaw/memory");
     instanceDir = memoryDir ?? ".openclaw/memory";
