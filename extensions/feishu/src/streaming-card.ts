@@ -65,6 +65,9 @@ export class FeishuStreamingSession {
   private queue: Promise<void> = Promise.resolve();
   private closed = false;
   private log?: (msg: string) => void;
+  private lastUpdateTime = 0;
+  private pendingText: string | null = null;
+  private updateThrottleMs = 100; // Throttle updates to max 10/sec
 
   constructor(client: Client, creds: Credentials, log?: (msg: string) => void) {
     this.client = client;
@@ -133,6 +136,15 @@ export class FeishuStreamingSession {
     if (!this.state || this.closed) {
       return;
     }
+    // Throttle: skip if updated recently, but remember pending text
+    const now = Date.now();
+    if (now - this.lastUpdateTime < this.updateThrottleMs) {
+      this.pendingText = text;
+      return;
+    }
+    this.pendingText = null;
+    this.lastUpdateTime = now;
+
     this.queue = this.queue.then(async () => {
       if (!this.state || this.closed) {
         return;
@@ -163,7 +175,8 @@ export class FeishuStreamingSession {
     this.closed = true;
     await this.queue;
 
-    const text = finalText ?? this.state.currentText;
+    // Use finalText, or pending throttled text, or current text
+    const text = finalText ?? this.pendingText ?? this.state.currentText;
     const apiBase = resolveApiBase(this.creds.domain);
 
     // Only send final update if content differs from what's already displayed

@@ -83,34 +83,40 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
   // Streaming state
   let streaming: FeishuStreamingSession | null = null;
-  let streamingStartPromise: Promise<void> | null = null;
   let streamText = "";
   let lastPartial = "";
   let partialUpdateQueue: Promise<void> = Promise.resolve();
+  let streamingStartPromise: Promise<void> | null = null;
 
-  const startStreaming = async () => {
-    if (streaming || !streamingEnabled) {
+  // Start streaming when agent begins reply (lazy init)
+  const startStreaming = () => {
+    if (!streamingEnabled || streamingStartPromise) {
       return;
     }
-    const creds =
-      account.appId && account.appSecret
-        ? { appId: account.appId, appSecret: account.appSecret, domain: account.domain }
-        : null;
-    if (!creds) {
-      return;
-    }
-    streaming = new FeishuStreamingSession(createFeishuClient(account), creds, (m) =>
-      params.runtime.log?.(`feishu[${account.accountId}] ${m}`),
-    );
-    try {
-      await streaming.start(chatId, resolveReceiveIdType(chatId));
-    } catch (e) {
-      params.runtime.error?.(`feishu: streaming start failed: ${String(e)}`);
-      streaming = null;
-    }
+    streamingStartPromise = (async () => {
+      const creds =
+        account.appId && account.appSecret
+          ? { appId: account.appId, appSecret: account.appSecret, domain: account.domain }
+          : null;
+      if (!creds) {
+        return;
+      }
+      streaming = new FeishuStreamingSession(createFeishuClient(account), creds, (m) =>
+        params.runtime.log?.(`feishu[${account.accountId}] ${m}`),
+      );
+      try {
+        await streaming.start(chatId, resolveReceiveIdType(chatId));
+      } catch (e) {
+        params.runtime.error?.(`feishu: streaming start failed: ${String(e)}`);
+        streaming = null;
+      }
+    })();
   };
 
   const closeStreaming = async () => {
+    if (streamingStartPromise) {
+      await streamingStartPromise;
+    }
     await partialUpdateQueue;
     if (streaming?.isActive()) {
       let text = streamText;
@@ -120,7 +126,6 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       await streaming.close(text);
     }
     streaming = null;
-    streamingStartPromise = null;
     streamText = "";
   };
 
@@ -129,21 +134,20 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       responsePrefix: prefixContext.responsePrefix,
       responsePrefixContextProvider: prefixContext.responsePrefixContextProvider,
       humanDelay: core.channel.reply.resolveHumanDelayConfig(cfg, agentId),
-      onReplyStart: typingCallbacks.onReplyStart,
+      onReplyStart: () => {
+        // Start streaming when agent begins replying (not when dispatcher created)
+        startStreaming();
+        void typingCallbacks.onReplyStart?.();
+      },
       deliver: async (payload: ReplyPayload, info) => {
         const text = payload.text ?? "";
         if (!text.trim()) {
           return;
         }
 
-        // Streaming: ensure session started before processing block/final
-        if ((info?.kind === "block" || info?.kind === "final") && streamingEnabled) {
-          if (!streamingStartPromise && !streaming) {
-            streamingStartPromise = startStreaming();
-          }
-          if (streamingStartPromise) {
-            await streamingStartPromise;
-          }
+        // Wait for streaming to be ready
+        if (streamingStartPromise) {
+          await streamingStartPromise;
         }
 
         // Streaming active: onPartialReply handles updates, deliver(final) closes
@@ -212,21 +216,23 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     replyOptions: {
       ...replyOptions,
       onModelSelected: prefixContext.onModelSelected,
-      onReplyStart: async () => {
-        await replyOptions.onReplyStart?.();
-        if (streamingEnabled && !streaming && !streamingStartPromise) {
-          streamingStartPromise = startStreaming();
-          await streamingStartPromise;
-        }
-      },
       onPartialReply: streamingEnabled
         ? (payload: ReplyPayload) => {
-            if (!streaming?.isActive() || !payload.text || payload.text === lastPartial) {
+            if (!payload.text || payload.text === lastPartial) {
               return;
             }
             lastPartial = payload.text;
             streamText = payload.text;
-            partialUpdateQueue = partialUpdateQueue.then(() => streaming?.update(payload.text));
+            // Queue throttled update (streaming started in onReplyStart)
+            partialUpdateQueue = partialUpdateQueue.then(async () => {
+              if (streamingStartPromise) {
+                await streamingStartPromise;
+              }
+              // Use latest streamText (may have accumulated multiple partials)
+              if (streaming?.isActive()) {
+                await streaming.update(streamText);
+              }
+            });
           }
         : undefined,
     },
