@@ -12,6 +12,14 @@ import { ensureLoaded, persist } from "./store.js";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
+/**
+ * Maximum delay between timer wakes. Ensures the scheduler re-checks at least
+ * this often, catching jobs whose original setTimeout was lost (e.g. macOS
+ * sleep/wake, GC pause, process throttling). Acts as a built-in drift guard
+ * without requiring a separate setInterval.
+ */
+const DRIFT_GUARD_MAX_DELAY_MS = 60_000;
+
 export function armTimer(state: CronServiceState) {
   if (state.timer) {
     clearTimeout(state.timer);
@@ -25,8 +33,9 @@ export function armTimer(state: CronServiceState) {
     return;
   }
   const delay = Math.max(nextAt - state.deps.nowMs(), 0);
-  // Avoid TimeoutOverflowWarning when a job is far in the future.
-  const clampedDelay = Math.min(delay, MAX_TIMEOUT_MS);
+  // Clamp: avoid overflow AND ensure we wake at least every DRIFT_GUARD_MAX_DELAY_MS
+  // so that missed slots are caught even if the original timer was lost.
+  const clampedDelay = Math.min(delay, MAX_TIMEOUT_MS, DRIFT_GUARD_MAX_DELAY_MS);
   state.timer = setTimeout(() => {
     void onTimer(state).catch((err) => {
       state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
