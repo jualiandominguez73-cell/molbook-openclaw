@@ -6,14 +6,26 @@ This proxy translates OpenAI API requests to Cursor's internal HTTP/2 + protobuf
 allowing integration with tools like OpenClaw that expect OpenAI-compatible endpoints.
 
 Usage:
-    python3 proxy.py [--port PORT]
+    python3 proxy.py [--port PORT] [--config CONFIG]
 
 Environment variables:
-    CURSOR_PROXY_PORT - Port to listen on (default: 3011)
+    CURSOR_PROXY_PORT      - Port to listen on (default: 3011)
+    CURSOR_MODEL_ALLOWLIST - Comma-separated list of models to expose (default: curated list)
+    CURSOR_MODEL_PREFIXES  - Comma-separated prefixes to filter by (e.g., "claude-,gpt-5")
+
+Config file (~/.cursor-proxy.json):
+    {
+      "models": {
+        "allowlist": ["claude-4-sonnet", "gpt-5.2-high"],
+        "prefixes": ["claude-", "gpt-5"],
+        "blocklist": ["*-fast", "*-low"]
+      }
+    }
 """
 
 import argparse
 import asyncio
+import fnmatch
 import json
 import os
 import re
@@ -21,30 +33,69 @@ import sys
 import time
 import uuid
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from pathlib import Path
 
 import httpx
 
-# Import the Cursor HTTP/2 client (from cursor_api_demo)
+# Import the Cursor HTTP/2 client
 try:
     from cursor_http2_client import CursorHTTP2Client
 except ImportError:
     print("Error: cursor_http2_client.py not found.")
-    print("Please ensure all cursor_*.py files are in the same directory.")
     sys.exit(1)
 
-# Fallback models if dynamic fetch fails
-FALLBACK_MODELS = [
+# Default curated model list (popular/useful models)
+DEFAULT_MODELS = [
+    "claude-4-sonnet",
+    "claude-4.5-sonnet",
+    "claude-4.5-opus-high",
+    "claude-4.5-opus-high-thinking",
+    "claude-4.6-opus-high-thinking",
     "gpt-4o",
     "gpt-5.2-high",
-    "claude-4-sonnet",
-    "claude-4.5-opus-high-thinking",
+    "gpt-5.1-codex-max",
+    "gemini-3-pro",
 ]
 
-# Global client instance
+# Global state
 client = None
-cached_models = None
-cached_models_time = 0
+cached_all_models = None
+cached_all_models_time = 0
 MODELS_CACHE_TTL = 300  # 5 minutes
+config = {}
+
+
+def load_config(config_path: str = None):
+    """Load configuration from file or environment."""
+    global config
+    
+    # Try config file
+    paths = [
+        config_path,
+        os.path.expanduser("~/.cursor-proxy.json"),
+        ".cursor-proxy.json",
+    ]
+    
+    for path in paths:
+        if path and os.path.exists(path):
+            try:
+                with open(path) as f:
+                    config = json.load(f)
+                print(f"✓ Loaded config from {path}")
+                return
+            except Exception as e:
+                print(f"Warning: Failed to load {path}: {e}")
+    
+    # Fall back to environment variables
+    config = {"models": {}}
+    
+    allowlist = os.environ.get("CURSOR_MODEL_ALLOWLIST", "")
+    if allowlist:
+        config["models"]["allowlist"] = [m.strip() for m in allowlist.split(",") if m.strip()]
+    
+    prefixes = os.environ.get("CURSOR_MODEL_PREFIXES", "")
+    if prefixes:
+        config["models"]["prefixes"] = [p.strip() for p in prefixes.split(",") if p.strip()]
 
 
 def get_client():
@@ -55,13 +106,12 @@ def get_client():
     return client
 
 
-def fetch_available_models():
-    """Fetch available models from Cursor API."""
-    global cached_models, cached_models_time
+def fetch_all_models_from_api():
+    """Fetch all available models from Cursor API."""
+    global cached_all_models, cached_all_models_time
     
-    # Return cached if fresh
-    if cached_models and (time.time() - cached_models_time) < MODELS_CACHE_TTL:
-        return cached_models
+    if cached_all_models and (time.time() - cached_all_models_time) < MODELS_CACHE_TTL:
+        return cached_all_models
     
     try:
         cursor_client = get_client()
@@ -83,15 +133,14 @@ def fetch_available_models():
             )
             
             if resp.status_code != 200:
-                print(f"Warning: AvailableModels returned {resp.status_code}")
-                return FALLBACK_MODELS
+                return DEFAULT_MODELS
             
             # Parse model names from protobuf response
             content = resp.content
             model_names = []
             i = 0
             while i < len(content):
-                if content[i] == 0x0a:  # protobuf string field tag
+                if content[i] == 0x0a:
                     i += 1
                     if i < len(content):
                         length = content[i]
@@ -99,7 +148,6 @@ def fetch_available_models():
                         if 0 < length < 100 and i + length <= len(content):
                             try:
                                 name = content[i:i+length].decode('utf-8')
-                                # Model names: lowercase, digits, dots, hyphens
                                 if re.match(r'^[a-z0-9][\w\.\-]*$', name) and len(name) < 50:
                                     if name not in model_names:
                                         model_names.append(name)
@@ -110,15 +158,52 @@ def fetch_available_models():
                 i += 1
             
             if model_names:
-                cached_models = model_names
-                cached_models_time = time.time()
-                print(f"Fetched {len(model_names)} models from Cursor API")
+                cached_all_models = model_names
+                cached_all_models_time = time.time()
                 return model_names
             
     except Exception as e:
         print(f"Warning: Failed to fetch models: {e}")
     
-    return FALLBACK_MODELS
+    return DEFAULT_MODELS
+
+
+def filter_models(all_models: list) -> list:
+    """Apply configured filters to model list."""
+    models_config = config.get("models", {})
+    
+    # If explicit allowlist, use only those
+    allowlist = models_config.get("allowlist", [])
+    if allowlist:
+        return [m for m in allowlist if m in all_models]
+    
+    # Apply prefix filter
+    prefixes = models_config.get("prefixes", [])
+    if prefixes:
+        filtered = []
+        for m in all_models:
+            for prefix in prefixes:
+                if m.startswith(prefix):
+                    filtered.append(m)
+                    break
+        if filtered:
+            all_models = filtered
+    
+    # Apply blocklist (glob patterns)
+    blocklist = models_config.get("blocklist", [])
+    if blocklist:
+        all_models = [
+            m for m in all_models
+            if not any(fnmatch.fnmatch(m, pattern) for pattern in blocklist)
+        ]
+    
+    return all_models if all_models else DEFAULT_MODELS
+
+
+def get_exposed_models():
+    """Get the filtered list of models to expose."""
+    all_models = fetch_all_models_from_api()
+    return filter_models(all_models)
 
 
 class ProxyHandler(BaseHTTPRequestHandler):
@@ -127,11 +212,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def log_message(self, format, *args):
-        """Custom log format."""
         print(f"[{self.log_date_time_string()}] {format % args}")
 
     def send_json(self, data, status=200):
-        """Send JSON response."""
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -141,11 +224,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def send_error_json(self, status, message):
-        """Send error as JSON."""
         self.send_json({"error": {"message": message, "type": "api_error"}}, status)
 
     def do_OPTIONS(self):
-        """Handle CORS preflight."""
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -153,24 +234,46 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        """Handle GET requests."""
         if self.path == "/v1/models":
             self.handle_models()
+        elif self.path == "/v1/models/all":
+            # Hidden endpoint: return ALL models (for discovery)
+            self.handle_all_models()
         elif self.path == "/health" or self.path == "/":
-            self.send_json({"status": "ok", "service": "cursor-openai-proxy"})
+            self.send_json({
+                "status": "ok",
+                "service": "cursor-openai-proxy",
+                "models_exposed": len(get_exposed_models()),
+            })
         else:
             self.send_error_json(404, "Not Found")
 
     def do_POST(self):
-        """Handle POST requests."""
         if self.path == "/v1/chat/completions":
             self.handle_chat_completions()
         else:
             self.send_error_json(404, "Not Found")
 
     def handle_models(self):
-        """Return available models (fetched from Cursor API)."""
-        models = fetch_available_models()
+        """Return filtered models based on config."""
+        models = get_exposed_models()
+        response = {
+            "object": "list",
+            "data": [
+                {
+                    "id": model,
+                    "object": "model",
+                    "created": int(time.time()),
+                    "owned_by": "cursor",
+                }
+                for model in models
+            ],
+        }
+        self.send_json(response)
+
+    def handle_all_models(self):
+        """Return ALL available models (for discovery)."""
+        models = fetch_all_models_from_api()
         response = {
             "object": "list",
             "data": [
@@ -186,8 +289,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_json(response)
 
     def handle_chat_completions(self):
-        """Handle chat completion requests."""
-        # Read request body
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length == 0:
             self.send_error_json(400, "Empty request body")
@@ -200,8 +301,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.send_error_json(400, f"Invalid JSON: {e}")
             return
 
-        # Extract parameters
-        model = req.get("model", "gpt-4")
+        model = req.get("model", "claude-4-sonnet")
         messages = req.get("messages", [])
         stream = req.get("stream", False)
 
@@ -209,7 +309,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.send_error_json(400, "messages is required")
             return
 
-        # Build prompt from messages
+        # Build prompt
         prompt_parts = []
         for m in messages:
             role = m.get("role", "user")
@@ -221,7 +321,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
             prompt_parts.append(f"{role}: {content}")
         prompt = "\n".join(prompt_parts)
 
-        # Call Cursor API
         try:
             cursor_client = get_client()
             response_text = asyncio.run(
@@ -243,25 +342,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 "object": "chat.completion",
                 "created": created,
                 "model": model,
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": response_text or "",
-                        },
-                        "finish_reason": "stop",
-                    }
-                ],
-                "usage": {
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0,
-                },
+                "choices": [{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": response_text or ""},
+                    "finish_reason": "stop",
+                }],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
             })
 
     def send_streaming_response(self, response_id, model, created, content):
-        """Send streaming SSE response."""
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
@@ -269,73 +358,52 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
 
-        # Send role chunk
-        self.write_sse_chunk({
-            "id": response_id,
-            "object": "chat.completion.chunk",
-            "created": created,
-            "model": model,
-            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
-        })
-
-        # Send content chunk
-        if content:
-            self.write_sse_chunk({
+        chunks = [
+            {"delta": {"role": "assistant"}, "finish_reason": None},
+            {"delta": {"content": content or ""}, "finish_reason": None},
+            {"delta": {}, "finish_reason": "stop"},
+        ]
+        for chunk in chunks:
+            data = {
                 "id": response_id,
                 "object": "chat.completion.chunk",
                 "created": created,
                 "model": model,
-                "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": None}],
-            })
-
-        # Send finish chunk
-        self.write_sse_chunk({
-            "id": response_id,
-            "object": "chat.completion.chunk",
-            "created": created,
-            "model": model,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-        })
+                "choices": [{"index": 0, **chunk}],
+            }
+            self.wfile.write(f"data: {json.dumps(data)}\n\n".encode())
+            self.wfile.flush()
 
         self.wfile.write(b"data: [DONE]\n\n")
-        self.wfile.flush()
-
-    def write_sse_chunk(self, data):
-        """Write a single SSE chunk."""
-        self.wfile.write(f"data: {json.dumps(data)}\n\n".encode())
         self.wfile.flush()
 
 
 def main():
     parser = argparse.ArgumentParser(description="Cursor OpenAI Proxy")
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.environ.get("CURSOR_PROXY_PORT", 3011)),
-        help="Port to listen on (default: 3011)",
-    )
-    parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help="Host to bind to (default: 127.0.0.1)",
-    )
+    parser.add_argument("--port", type=int, default=int(os.environ.get("CURSOR_PROXY_PORT", 3011)))
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--config", help="Path to config file")
     args = parser.parse_args()
 
-    # Verify client can be initialized
+    load_config(args.config)
+
     try:
         get_client()
-        print("✓ Cursor client initialized successfully")
+        print("✓ Cursor client initialized")
     except Exception as e:
         print(f"✗ Failed to initialize Cursor client: {e}")
         sys.exit(1)
 
-    # Pre-fetch models
-    models = fetch_available_models()
-    print(f"✓ {len(models)} models available")
+    models = get_exposed_models()
+    all_count = len(fetch_all_models_from_api())
+    print(f"✓ Exposing {len(models)}/{all_count} models")
+    print(f"  Models: {', '.join(models[:5])}{'...' if len(models) > 5 else ''}")
 
     server = HTTPServer((args.host, args.port), ProxyHandler)
-    print(f"Cursor OpenAI Proxy listening on http://{args.host}:{args.port}")
-    print("Press Ctrl+C to stop")
+    print(f"\nCursor OpenAI Proxy: http://{args.host}:{args.port}")
+    print("  /v1/models      - Filtered model list")
+    print("  /v1/models/all  - All available models")
+    print("Press Ctrl+C to stop\n")
 
     try:
         server.serve_forever()
