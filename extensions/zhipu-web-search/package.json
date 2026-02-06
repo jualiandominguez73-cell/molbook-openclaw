@@ -1,0 +1,17 @@
+{
+  "name": "@openclaw/zhipu-web-search",
+  "version": "0.1.0",
+  "description": "OpenClaw plugin: Zhipu AI web search provider",
+  "type": "module",
+  "devDependencies": {
+    "openclaw": "workspace:*"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.1.26"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
