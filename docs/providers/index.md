@@ -49,6 +49,7 @@ See [Venice AI](/providers/venice).
 - [GLM models](/providers/glm)
 - [MiniMax](/providers/minimax)
 - [Venice (Venice AI, privacy-focused)](/providers/venice)
+- [Apertis AI (multi-model proxy)](/providers/apertis)
 - [Ollama (local models)](/providers/ollama)
 
 ## Transcription providers
