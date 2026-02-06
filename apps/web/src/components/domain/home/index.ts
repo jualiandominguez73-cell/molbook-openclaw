@@ -4,3 +4,7 @@ export { ActiveWorkstreamsSection } from "./ActiveWorkstreamsSection";
 export { UpcomingRitualsPanel } from "./UpcomingRitualsPanel";
 export { GoalProgressPanel } from "./GoalProgressPanel";
 export { RecentMemoriesPanel } from "./RecentMemoriesPanel";
+export { SuggestedStarters } from "./SuggestedStarters";
+export { RecentWork } from "./RecentWork";
+export { ApprovalsInbox } from "./ApprovalsInbox";
+export { StatusIndicator } from "./StatusIndicator";

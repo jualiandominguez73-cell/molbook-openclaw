@@ -1,9 +1,11 @@
 "use client";
 
+import * as React from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Calendar, Sun, Moon, Sunrise, Sunset } from "lucide-react";
-
+import { useUIStore } from "@/stores/useUIStore";
+import { ModeToggle } from "@/components/composed/ModeToggle";
 import {
   QuickChatBox,
   TeamAgentGrid,
@@ -11,6 +13,10 @@ import {
   UpcomingRitualsPanel,
   GoalProgressPanel,
   RecentMemoriesPanel,
+  SuggestedStarters,
+  RecentWork,
+  ApprovalsInbox,
+  StatusIndicator,
 } from "@/components/domain/home";
 
 export const Route = createFileRoute("/")({
@@ -59,9 +65,10 @@ function HomePage() {
   const navigate = useNavigate();
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
+  const powerUserMode = useUIStore((s) => s.powerUserMode);
+  const [composerValue, setComposerValue] = React.useState("");
 
   const handleQuickChatSend = (message: string, agentId: string) => {
-    // Navigate to new session with agent, passing the message
     const sessionKey = `session-${Date.now()}`;
     navigate({
       to: "/agents/$agentId/session/$sessionKey",
@@ -71,12 +78,15 @@ function HomePage() {
   };
 
   const handleChatWithAgent = (agentId: string) => {
-    // Navigate to the current session for the agent
     navigate({
       to: "/agents/$agentId/session/$sessionKey",
       params: { agentId, sessionKey: "current" },
       search: { newSession: false },
     });
+  };
+
+  const handleStarterSelect = (prompt: string) => {
+    setComposerValue(prompt);
   };
 
   return (
@@ -85,34 +95,56 @@ function HomePage() {
       initial="hidden"
       animate="visible"
     >
-        {/* Header Section */}
-        <motion.header variants={itemVariants} className="mb-8">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <GreetingIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  {greeting.text}, User!
-                </h1>
-                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+      {/* Header Section */}
+      <motion.header variants={itemVariants} className="mb-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+              <GreetingIcon className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {greeting.text}
+              </h1>
+              <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
                   <span>{formatDate()}</span>
                 </div>
+                <StatusIndicator />
               </div>
             </div>
           </div>
-        </motion.header>
+          <ModeToggle />
+        </div>
+      </motion.header>
 
-        {/* Main Dashboard Grid */}
+      {/* Approvals inbox - prominent when there are pending approvals */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <ApprovalsInbox />
+      </motion.div>
+
+      {/* Primary action: "Start a task" composer */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <QuickChatBox onSend={handleQuickChatSend} />
+      </motion.div>
+
+      {/* Suggested starters (always visible, more useful in Simple mode) */}
+      {!powerUserMode && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <SuggestedStarters onSelect={handleStarterSelect} />
+        </motion.div>
+      )}
+
+      {/* Recent work */}
+      <motion.div variants={itemVariants} className="mb-8">
+        <RecentWork maxItems={3} />
+      </motion.div>
+
+      {/* Advanced mode: full dashboard panels */}
+      {powerUserMode && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Quick Chat - Full width on small, 1 col on larger */}
-          <motion.div variants={itemVariants} className="lg:col-span-1">
-            <QuickChatBox onSend={handleQuickChatSend} />
-          </motion.div>
-
-          {/* Team Agents - Takes 2 columns on large screens */}
+          {/* Team Agents */}
           <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-2">
             <TeamAgentGrid
               maxAgents={6}
@@ -135,16 +167,12 @@ function HomePage() {
             <UpcomingRitualsPanel maxRituals={4} />
           </motion.div>
 
-          {/* Recent Memories - Full width on medium, 2 cols on large */}
+          {/* Recent Memories */}
           <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-2">
             <RecentMemoriesPanel maxMemories={5} />
           </motion.div>
-
-          {/* Additional space for future widgets */}
-          <motion.div variants={itemVariants} className="lg:col-span-1">
-            {/* Placeholder for future widget - could be activity feed, notifications, etc. */}
-          </motion.div>
         </div>
+      )}
     </motion.div>
   );
 }

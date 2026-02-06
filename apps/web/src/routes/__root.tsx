@@ -31,9 +31,10 @@ function RootLayout() {
   // Check if we should enable gateway auth guard
   // In dev mode, only enable when useLiveGateway is true
   // In production, always enable
+  // Public pages (e.g. /landing) never connect to gateway
   const useLiveGateway = useUIStore((state) => state.useLiveGateway);
   const isDev = import.meta.env?.DEV ?? false;
-  const gatewayEnabled = !isDev || useLiveGateway;
+  const gatewayEnabled = !isPublic && (!isDev || useLiveGateway);
 
   // Enable gateway stream handler to process streaming events
   // Disable for public paths that don't need gateway

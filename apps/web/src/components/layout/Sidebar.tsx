@@ -5,6 +5,8 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import {
   Home,
   MessageCircle,
+  ShieldCheck,
+  Clock,
   Target,
   Brain,
   User,
@@ -12,6 +14,7 @@ import {
   ListTodo,
   RefreshCw,
   Zap,
+  Monitor,
   Settings,
   Plug,
   ChevronLeft,
@@ -20,9 +23,7 @@ import {
   Bug,
   HardDrive,
   Calendar,
-  Monitor,
   Share2,
-  Activity,
 } from "lucide-react";
 import { useUIStore } from "@/stores/useUIStore";
 import { NavItem } from "./NavItem";
@@ -127,7 +128,7 @@ export function Sidebar({ className }: SidebarProps) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden whitespace-nowrap font-semibold text-foreground"
               >
-                Second Brain
+                Clawdbrain
               </motion.span>
             )}
           </AnimatePresence>
@@ -142,16 +143,50 @@ export function Sidebar({ className }: SidebarProps) {
           <NavItem
             href="/conversations"
             icon={MessageCircle}
-            label="Conversations"
+            label="Chat"
+            collapsed={sidebarCollapsed}
+          />
+          <NavItem
+            href="/agent-status"
+            icon={ShieldCheck}
+            label="Approvals"
+            collapsed={sidebarCollapsed}
+          />
+          <NavItem
+            href="/workstreams"
+            icon={Clock}
+            label="Activity"
             collapsed={sidebarCollapsed}
           />
         </nav>
 
         <Separator className="mx-2" />
 
-        {/* Your Brain Section */}
+        {/* Explore Section - collapsed by default in Simple mode */}
         <div className="px-2">
-          <NavSection title="Your Brain" collapsed={sidebarCollapsed}>
+          <NavSection
+            title="Explore"
+            collapsed={sidebarCollapsed}
+            defaultOpen={powerUserMode}
+          >
+            <NavItem
+              href="/agents"
+              icon={Bot}
+              label="Agents"
+              collapsed={sidebarCollapsed}
+            />
+            <NavItem
+              href="/workstreams"
+              icon={ListTodo}
+              label="Workstreams"
+              collapsed={sidebarCollapsed}
+            />
+            <NavItem
+              href="/automations"
+              icon={Zap}
+              label="Automations"
+              collapsed={sidebarCollapsed}
+            />
             <NavItem
               href="/goals"
               icon={Target}
@@ -165,47 +200,21 @@ export function Sidebar({ className }: SidebarProps) {
               collapsed={sidebarCollapsed}
             />
             <NavItem
-              href="/you"
-              icon={User}
-              label="You"
-              collapsed={sidebarCollapsed}
-            />
-          </NavSection>
-        </div>
-
-        <Separator className="mx-2" />
-
-        {/* Team Section */}
-        <div className="px-2">
-          <NavSection title="Team" collapsed={sidebarCollapsed}>
-            <NavItem
-              href="/agents"
-              icon={Bot}
-              label="Agents"
-              collapsed={sidebarCollapsed}
-            />
-            <NavItem
-              href="/agent-status"
-              icon={Activity}
-              label="Agent Status"
-              collapsed={sidebarCollapsed}
-            />
-            <NavItem
-              href="/workstreams"
-              icon={ListTodo}
-              label="Workstreams"
-              collapsed={sidebarCollapsed}
-            />
-            <NavItem
               href="/rituals"
               icon={RefreshCw}
               label="Rituals"
               collapsed={sidebarCollapsed}
             />
             <NavItem
-              href="/automations"
-              icon={Zap}
-              label="Automations"
+              href="/nodes"
+              icon={Monitor}
+              label="Nodes"
+              collapsed={sidebarCollapsed}
+            />
+            <NavItem
+              href="/you"
+              icon={User}
+              label="You"
               collapsed={sidebarCollapsed}
             />
           </NavSection>
@@ -239,12 +248,6 @@ export function Sidebar({ className }: SidebarProps) {
                   href="/jobs"
                   icon={Calendar}
                   label="Jobs"
-                  collapsed={sidebarCollapsed}
-                />
-                <NavItem
-                  href="/nodes"
-                  icon={Monitor}
-                  label="Nodes"
                   collapsed={sidebarCollapsed}
                 />
               </NavSection>
