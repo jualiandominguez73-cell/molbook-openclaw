@@ -151,8 +151,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
       });
 
       client.on("message", async (topic: string, message: mqtt.Packet) => {
-        // Treat message as Buffer, then parse JSON
-        const msgStr = message.toString();
+        const msgStr = message;
         let data: unknown;
         try {
           data = JSON.parse(msgStr);
