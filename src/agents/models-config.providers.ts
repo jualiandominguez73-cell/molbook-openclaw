@@ -80,6 +80,17 @@ const OLLAMA_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+const CHUTES_BASE_URL = "https://llm.chutes.ai/v1";
+const CHUTES_DEFAULT_CONTEXT_WINDOW = 128000;
+const CHUTES_DEFAULT_MAX_TOKENS = 8192;
+const CHUTES_OAUTH_PLACEHOLDER = "chutes-oauth";
+const CHUTES_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 interface OllamaModel {
   name: string;
   modified_at: string;
@@ -134,6 +145,45 @@ async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
     });
   } catch (error) {
     console.warn(`Failed to discover Ollama models: ${String(error)}`);
+    return [];
+  }
+}
+
+async function discoverChutesModels(apiKey: string): Promise<ModelDefinitionConfig[]> {
+  // Skip Chutes discovery in test environments
+  if (process.env.VITEST || process.env.NODE_ENV === "test") {
+    return [];
+  }
+  try {
+    const response = await fetch(`${CHUTES_BASE_URL}/models`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+      console.warn(`Failed to discover Chutes models: ${response.status}`);
+      return [];
+    }
+    const data = (await response.json()) as { data: Array<{ id: string }> };
+    if (!data.data || data.data.length === 0) {
+      console.warn("No Chutes models found");
+      return [];
+    }
+    return data.data.map((model) => {
+      const modelId = model.id;
+      const isReasoning =
+        modelId.toLowerCase().includes("r1") || modelId.toLowerCase().includes("reasoning");
+      return {
+        id: modelId,
+        name: modelId,
+        reasoning: isReasoning,
+        input: ["text"],
+        cost: CHUTES_DEFAULT_COST,
+        contextWindow: CHUTES_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: CHUTES_DEFAULT_MAX_TOKENS,
+      };
+    });
+  } catch (error) {
+    console.warn(`Failed to discover Chutes models: ${String(error)}`);
     return [];
   }
 }
@@ -267,6 +317,14 @@ export function normalizeProviders(params: {
   }
 
   return mutated ? next : providers;
+}
+
+function buildChutesProvider(models: ModelDefinitionConfig[]): ProviderConfig {
+  return {
+    baseUrl: CHUTES_BASE_URL,
+    api: "openai-completions",
+    models,
+  };
 }
 
 function buildMinimaxProvider(): ProviderConfig {
@@ -496,6 +554,17 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
   if (ollamaKey) {
     providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
+  }
+
+  // Chutes provider
+  const chutesKey =
+    resolveEnvApiKeyVarName("chutes") ??
+    resolveApiKeyFromProfiles({ provider: "chutes", store: authStore });
+  const chutesOauthProfiles = listProfilesForProvider(authStore, "chutes");
+  if (chutesKey || chutesOauthProfiles.length > 0) {
+    const apiKey = chutesKey ?? CHUTES_OAUTH_PLACEHOLDER;
+    const models = await discoverChutesModels(apiKey === CHUTES_OAUTH_PLACEHOLDER ? "" : apiKey);
+    providers.chutes = { ...buildChutesProvider(models), apiKey };
   }
 
   return providers;

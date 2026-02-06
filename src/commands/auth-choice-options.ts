@@ -23,6 +23,7 @@ export type AuthChoiceGroupId =
   | "synthetic"
   | "venice"
   | "qwen"
+  | "chutes"
   | "xai";
 
 export type AuthChoiceGroup = {
@@ -85,6 +86,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Qwen",
     hint: "OAuth",
     choices: ["qwen-portal"],
+  },
+  {
+    value: "chutes",
+    label: "Chutes.ai",
+    hint: "OAuth + API key",
+    choices: ["chutes-oauth", "chutes"],
   },
   {
     value: "zai",
@@ -153,7 +160,8 @@ export function buildAuthChoiceOptions(params: {
     value: "openai-codex",
     label: "OpenAI Codex (ChatGPT OAuth)",
   });
-  options.push({ value: "chutes", label: "Chutes (OAuth)" });
+  options.push({ value: "chutes-oauth", label: "Chutes.ai (OAuth)" });
+  options.push({ value: "chutes", label: "Chutes.ai (API key)" });
   options.push({ value: "openai-api-key", label: "OpenAI API key" });
   options.push({ value: "openrouter-api-key", label: "OpenRouter API key" });
   options.push({ value: "xai-api-key", label: "xAI (Grok) API key" });

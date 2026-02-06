@@ -705,3 +705,46 @@ export function applyAuthProfileConfig(
     },
   };
 }
+
+export function applyChutesProviderConfig(cfg: OpenClawConfig, modelId: string = "deepseek-ai/DeepSeek-V3"): OpenClawConfig {
+  const modelRef = `chutes/${modelId}`;
+  const models = { ...cfg.agents?.defaults?.models };
+  models[modelRef] = {
+    ...models[modelRef],
+    alias: models[modelRef]?.alias ?? "Chutes.ai",
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+  };
+}
+
+export function applyChutesConfig(cfg: OpenClawConfig, modelId: string = "deepseek-ai/DeepSeek-V3"): OpenClawConfig {
+  const next = applyChutesProviderConfig(cfg, modelId);
+  const modelRef = `chutes/${modelId}`;
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: modelRef,
+        },
+      },
+    },
+  };
+}
