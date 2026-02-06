@@ -1,5 +1,5 @@
 // Internationalization manager for OpenClaw UI
-import { locales, defaultLocale } from "./locales.js"; // 添加 .js 扩展名
+import { locales, defaultLocale } from "./locales.js";
 
 export type Locale = keyof typeof locales;
 
@@ -68,11 +68,11 @@ export class I18nManager {
     try {
       // Split the key by dots to navigate the nested object
       const keys = key.split(".");
-      let value: unknown = locales[locale];
+      let value: any = locales[locale];
 
       for (const k of keys) {
         if (value && typeof value === "object" && k in value) {
-          value = value[k];
+          value = value[k as keyof typeof value];
         } else {
           // If key not found in current locale, fallback to default
           if (locale !== defaultLocale) {
