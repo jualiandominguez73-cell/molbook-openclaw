@@ -2,8 +2,8 @@ import type { FeishuProbeResult } from "./types.js";
 import { createFeishuClient, type FeishuClientCredentials } from "./client.js";
 
 let lastProbeAt = 0;
-let botName = '';
-let botOpenId = '';
+let botName = "";
+let botOpenId = "";
 
 export async function probeFeishu(creds?: FeishuClientCredentials): Promise<FeishuProbeResult> {
   const now = Date.now();
@@ -43,8 +43,8 @@ export async function probeFeishu(creds?: FeishuClientCredentials): Promise<Feis
     }
 
     const bot = response.bot || response.data?.bot;
-    botName = bot?.bot_name || '';
-    botOpenId = bot?.open_id || '';
+    botName = bot?.bot_name || "";
+    botOpenId = bot?.open_id || "";
     return {
       ok: true,
       appId: creds.appId,
