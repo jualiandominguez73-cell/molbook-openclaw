@@ -43,50 +43,83 @@ describe("checkBrowserOrigin", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("allows private IP (192.168.x.x) without origin", () => {
+  it("rejects private IP (192.168.x.x) without origin for Control UI", () => {
     const result = checkBrowserOrigin({
       requestHost: "gateway.local:18789",
       remoteAddress: "192.168.1.100",
+      isNodeConnection: false,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("allows private IP (192.168.x.x) without origin for node connections", () => {
+    const result = checkBrowserOrigin({
+      requestHost: "gateway.local:18789",
+      remoteAddress: "192.168.1.100",
+      isNodeConnection: true,
     });
     expect(result.ok).toBe(true);
   });
 
-  it("allows private IP (10.x.x.x) without origin", () => {
+  it("allows private IP (10.x.x.x) without origin for node connections", () => {
     const result = checkBrowserOrigin({
       requestHost: "gateway.local:18789",
       remoteAddress: "10.0.1.50",
+      isNodeConnection: true,
     });
     expect(result.ok).toBe(true);
   });
 
-  it("allows private IP (172.16-31.x.x) without origin", () => {
+  it("allows private IP (172.16-31.x.x) without origin for node connections", () => {
     const result = checkBrowserOrigin({
       requestHost: "gateway.local:18789",
       remoteAddress: "172.16.5.10",
+      isNodeConnection: true,
     });
     expect(result.ok).toBe(true);
   });
 
-  it("allows Tailscale IP (100.64-127.x.x) without origin", () => {
+  it("allows Tailscale IP (100.64-127.x.x) without origin for node connections", () => {
     const result = checkBrowserOrigin({
       requestHost: "gateway.local:18789",
       remoteAddress: "100.116.101.114",
+      isNodeConnection: true,
     });
     expect(result.ok).toBe(true);
   });
 
-  it("allows loopback (127.x.x.x) without origin", () => {
+  it("allows loopback (127.x.x.x) without origin for node connections", () => {
     const result = checkBrowserOrigin({
       requestHost: "localhost:18789",
       remoteAddress: "127.0.0.1",
+      isNodeConnection: true,
     });
     expect(result.ok).toBe(true);
   });
 
-  it("allows IPv6 loopback (::1) without origin", () => {
+  it("allows IPv6 loopback (::1) without origin for node connections", () => {
     const result = checkBrowserOrigin({
       requestHost: "localhost:18789",
       remoteAddress: "::1",
+      isNodeConnection: true,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows IPv6-mapped IPv4 private address (::ffff:192.168.x.x) for node connections", () => {
+    const result = checkBrowserOrigin({
+      requestHost: "gateway.local:18789",
+      remoteAddress: "::ffff:192.168.1.10",
+      isNodeConnection: true,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows IPv6-mapped IPv4 Tailscale address (::ffff:100.x.x.x) for node connections", () => {
+    const result = checkBrowserOrigin({
+      requestHost: "gateway.local:18789",
+      remoteAddress: "::ffff:100.116.101.114",
+      isNodeConnection: true,
     });
     expect(result.ok).toBe(true);
   });

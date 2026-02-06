@@ -374,6 +374,7 @@ export function attachGatewayWsMessageHandler(params: {
             origin: requestOrigin,
             allowedOrigins: configSnapshot.gateway?.controlUi?.allowedOrigins,
             remoteAddress: remoteAddr,
+            isNodeConnection: false, // Control UI/Webchat must provide Origin even from private IPs
           });
           if (!originCheck.ok) {
             const errorMessage =

@@ -54,31 +54,63 @@ function isLoopbackHost(hostname: string): boolean {
   return false;
 }
 
-function isPrivateIP(ip?: string): boolean {
+function normalizeIPAddress(ip?: string): string | null {
   if (!ip) {
+    return null;
+  }
+  
+  // Strip brackets (e.g., "[::1]" -> "::1")
+  let normalized = ip.replace(/^\[|\]$/g, "");
+  
+  // Strip port if present (e.g., "192.168.1.1:8080" -> "192.168.1.1")
+  const portIndex = normalized.lastIndexOf(":");
+  if (portIndex !== -1) {
+    // Check if it's IPv6 (multiple colons) or IPv4:port (single colon)
+    const colonCount = (normalized.match(/:/g) || []).length;
+    if (colonCount === 1) {
+      // IPv4:port format
+      normalized = normalized.substring(0, portIndex);
+    }
+  }
+  
+  // Handle IPv6-mapped IPv4 addresses (e.g., "::ffff:192.168.1.10" -> "192.168.1.10")
+  if (normalized.startsWith("::ffff:")) {
+    const mapped = normalized.substring(7);
+    // Check if it's a valid IPv4 address after the prefix
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(mapped)) {
+      normalized = mapped;
+    }
+  }
+  
+  return normalized;
+}
+
+function isPrivateIP(ip?: string): boolean {
+  const normalized = normalizeIPAddress(ip);
+  if (!normalized) {
     return false;
   }
   
   // IPv6 loopback
-  if (ip === "::1" || ip === "::ffff:127.0.0.1") {
+  if (normalized === "::1") {
     return true;
   }
   
   // IPv4 loopback
-  if (ip.startsWith("127.")) {
+  if (normalized.startsWith("127.")) {
     return true;
   }
   
   // RFC1918 private ranges
-  if (ip.startsWith("10.")) {
+  if (normalized.startsWith("10.")) {
     return true;
   }
-  if (ip.startsWith("192.168.")) {
+  if (normalized.startsWith("192.168.")) {
     return true;
   }
   
   // 172.16.0.0/12 range
-  const match = ip.match(/^172\.(\d+)\./);
+  const match = normalized.match(/^172\.(\d+)\./);
   if (match) {
     const octet = parseInt(match[1], 10);
     if (octet >= 16 && octet <= 31) {
@@ -87,12 +119,12 @@ function isPrivateIP(ip?: string): boolean {
   }
   
   // Link-local (169.254.0.0/16)
-  if (ip.startsWith("169.254.")) {
+  if (normalized.startsWith("169.254.")) {
     return true;
   }
   
   // Tailscale CGNAT range (100.64.0.0/10)
-  const tailscaleMatch = ip.match(/^100\.(\d+)\./);
+  const tailscaleMatch = normalized.match(/^100\.(\d+)\./);
   if (tailscaleMatch) {
     const octet = parseInt(tailscaleMatch[1], 10);
     if (octet >= 64 && octet <= 127) {
@@ -108,14 +140,16 @@ export function checkBrowserOrigin(params: {
   origin?: string;
   allowedOrigins?: string[];
   remoteAddress?: string;
+  isNodeConnection?: boolean;
 }): OriginCheckResult {
   const parsedOrigin = parseOrigin(params.origin);
   if (!parsedOrigin) {
     // CVE-2026-25253 mitigation: Validate origin for Control UI connections
-    // However, native mobile apps (ClawReach, Android app) connecting from
+    // However, native mobile apps (ClawReach, Android app) connecting as nodes from
     // private networks don't send Origin headers - allow these through
-    if (isPrivateIP(params.remoteAddress)) {
-      // Private network connection without Origin header is allowed
+    // Control UI connections MUST provide Origin even from private IPs
+    if (params.isNodeConnection && isPrivateIP(params.remoteAddress)) {
+      // Private network node connection without Origin header is allowed
       // These use separate crypto challenge authentication
       return { ok: true };
     }
