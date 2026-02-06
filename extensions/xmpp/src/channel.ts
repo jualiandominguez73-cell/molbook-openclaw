@@ -129,9 +129,11 @@ async function startAccount(ctx: {
     server: account.server,
     resource: account.resource,
   });
-  await client.connect();
 
+  // Add to map before connecting so probe can detect client is starting
   clients.set(accountId, client);
+
+  await client.connect();
   log(`[XMPP] Connected as ${account.jid}`);
 
   // Wait longer for session to be fully established before joining rooms
@@ -750,6 +752,27 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
         return {
           ok: false,
           error: "Account not configured",
+          elapsedMs: 0,
+        };
+      }
+
+      // If a client exists for this account (running or starting), use its state
+      // instead of creating a new probe connection (avoids stream-management conflicts)
+      const accountId = normalizeAccountId(account.accountId) || DEFAULT_ACCOUNT_ID;
+      const existingClient = clients.get(accountId);
+      if (existingClient) {
+        // Client exists - check if connected
+        if (existingClient.isConnected()) {
+          return {
+            ok: true,
+            connectedJid: existingClient.getJid(),
+            elapsedMs: 0,
+          };
+        }
+        // Client exists but not connected yet (starting up) - report as starting
+        return {
+          ok: true,
+          connectedJid: null,
           elapsedMs: 0,
         };
       }
