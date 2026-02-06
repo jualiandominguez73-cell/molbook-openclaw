@@ -19,8 +19,7 @@ models from the API and wire the provider without manual model lists.
 ```bash
 openclaw onboard \
   --auth-choice nebius-token-factory-api-key \
-  --nebius-token-factory-api-key "$NEBIUS_TOKEN_FACTORY" \
-  --set-default
+  --nebius-token-factory-api-key "$NEBIUS_TOKEN_FACTORY"
 ```
 
 3. Or launch the interactive flow and pick **Nebius Token Factory**:
@@ -57,7 +56,7 @@ You usually don't need a manual `models.providers` block, but you can pin it exp
 
 ## Auth keys
 
-- Env var: `NEBIUS_TOKEN_FACTORY`
+- Env var: `NEBIUS_TOKEN_FACTORY` (preferred), `NEBIUS_API_KEY` (fallback)
 - CLI flag: `--nebius-token-factory-api-key`
 
 If the env var is set, onboarding and non-interactive flows auto-detect it.

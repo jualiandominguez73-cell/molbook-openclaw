@@ -474,7 +474,8 @@ export async function applyAuthChoiceApiProviders(
     {
       const applied = await applyDefaultModelChoice({
         config: nextConfig,
-        setDefaultModel: NEBIUS_TOKEN_FACTORY_DEFAULT_MODEL_REF,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: NEBIUS_TOKEN_FACTORY_DEFAULT_MODEL_REF,
         applyDefaultConfig: applyNebiusTokenFactoryConfig,
         applyProviderConfig: applyNebiusTokenFactoryProviderConfig,
         noteDefault: NEBIUS_TOKEN_FACTORY_DEFAULT_MODEL_REF,
