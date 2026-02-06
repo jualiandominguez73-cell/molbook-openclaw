@@ -238,11 +238,15 @@ export function renderChat(props: ChatProps) {
           }
 
           if (item.kind === "group") {
+            // Use senderIdentity from group if available (direct announce mode)
+            const effectiveName = item.senderIdentity?.name ?? props.assistantName;
+            const effectiveAvatar =
+              item.senderIdentity?.avatar ?? item.senderIdentity?.emoji ?? assistantIdentity.avatar;
             return renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
-              assistantName: props.assistantName,
-              assistantAvatar: assistantIdentity.avatar,
+              assistantName: effectiveName,
+              assistantAvatar: effectiveAvatar,
             });
           }
 
@@ -417,6 +421,22 @@ export function renderChat(props: ChatProps) {
 
 const CHAT_HISTORY_RENDER_LIMIT = 200;
 
+function extractSenderIdentity(
+  message: unknown,
+): { agentId?: string; name?: string; emoji?: string; avatar?: string } | undefined {
+  const m = message as Record<string, unknown>;
+  const identity = m.senderIdentity as Record<string, unknown> | undefined;
+  if (!identity) {
+    return undefined;
+  }
+  return {
+    agentId: typeof identity.agentId === "string" ? identity.agentId : undefined,
+    name: typeof identity.name === "string" ? identity.name : undefined,
+    emoji: typeof identity.emoji === "string" ? identity.emoji : undefined,
+    avatar: typeof identity.avatar === "string" ? identity.avatar : undefined,
+  };
+}
+
 function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
   const result: Array<ChatItem | MessageGroup> = [];
   let currentGroup: MessageGroup | null = null;
@@ -434,18 +454,28 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
     const normalized = normalizeMessage(item.message);
     const role = normalizeRoleForGrouping(normalized.role);
     const timestamp = normalized.timestamp || Date.now();
+    const senderIdentity = extractSenderIdentity(item.message);
+    // Create a grouping key that includes sender identity for subagent messages
+    const senderKey = senderIdentity?.agentId ?? "";
 
-    if (!currentGroup || currentGroup.role !== role) {
+    // Start new group if role or sender changed
+    const shouldStartNewGroup =
+      !currentGroup ||
+      currentGroup.role !== role ||
+      (currentGroup.senderIdentity?.agentId ?? "") !== senderKey;
+
+    if (shouldStartNewGroup) {
       if (currentGroup) {
         result.push(currentGroup);
       }
       currentGroup = {
         kind: "group",
-        key: `group:${role}:${item.key}`,
+        key: `group:${role}:${senderKey}:${item.key}`,
         role,
         messages: [{ message: item.message, key: item.key }],
         timestamp,
         isStreaming: false,
+        senderIdentity,
       };
     } else {
       currentGroup.messages.push({ message: item.message, key: item.key });

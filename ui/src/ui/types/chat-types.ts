@@ -8,6 +8,14 @@ export type ChatItem =
   | { kind: "stream"; key: string; text: string; startedAt: number }
   | { kind: "reading-indicator"; key: string };
 
+/** Sender identity for direct announce mode (Slack-like display) */
+export type SenderIdentity = {
+  agentId?: string;
+  name?: string;
+  emoji?: string;
+  avatar?: string;
+};
+
 /** A group of consecutive messages from the same role (Slack-style layout) */
 export type MessageGroup = {
   kind: "group";
@@ -16,6 +24,8 @@ export type MessageGroup = {
   messages: Array<{ message: unknown; key: string }>;
   timestamp: number;
   isStreaming: boolean;
+  /** Optional sender identity for subagent messages (direct announce mode) */
+  senderIdentity?: SenderIdentity;
 };
 
 /** Content item types in a normalized message */

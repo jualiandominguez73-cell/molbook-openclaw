@@ -17,6 +17,8 @@ import {
   mergeDeliveryContext,
   normalizeDeliveryContext,
 } from "../utils/delivery-context.js";
+import { resolveAgentConfig } from "./agent-scope.js";
+import { resolveAgentIdentity } from "./identity.js";
 import { isEmbeddedPiRunActive, queueEmbeddedPiMessage } from "./pi-embedded.js";
 import { type AnnounceQueueItem, enqueueAnnounce } from "./subagent-announce-queue.js";
 import { readLatestAssistantReply } from "./tools/agent-step.js";
@@ -432,20 +434,55 @@ export async function runSubagentAnnounceFlow(params: {
             ? `failed: ${outcome.error || "unknown error"}`
             : "finished with unknown status";
 
-    // Build instructional message for main agent
+    // Check announce mode from config
+    const cfg = loadConfig();
+    const childAgentId = resolveAgentIdFromSessionKey(params.childSessionKey);
+    const announceMode = cfg.agents?.defaults?.subagents?.announceMode ?? "system";
+
+    // Build message based on announce mode
     const taskLabel = params.label || params.task || "background task";
-    const triggerMessage = [
-      `A background task "${taskLabel}" just ${statusLabel}.`,
-      "",
-      "Findings:",
-      reply || "(no output)",
-      "",
-      statsLine,
-      "",
-      "Summarize this naturally for the user. Keep it brief (1-2 sentences). Flow it into the conversation naturally.",
-      "Do not mention technical details like tokens, stats, or that this was a background task.",
-      "You can respond with NO_REPLY if no announcement is needed (e.g., internal task with no user-facing result).",
-    ].join("\n");
+    let triggerMessage: string;
+    let useDirectInject = false;
+
+    // Resolve agent identity for direct mode
+    const identity = resolveAgentIdentity(cfg, childAgentId);
+    const agentConfig = resolveAgentConfig(cfg, childAgentId);
+    const senderEmoji = identity?.emoji ?? "🤖";
+    const senderName = agentConfig?.name ?? identity?.name ?? childAgentId;
+    const senderAvatar = identity?.avatar ?? identity?.avatarUrl;
+
+    if (announceMode === "direct") {
+      // Direct mode: inject response with agent identity, no main agent processing
+      if (outcome.status === "ok" && reply) {
+        // Success: use plain response (identity will be shown via senderIdentity)
+        triggerMessage = reply;
+        useDirectInject = true;
+      } else {
+        // Error/timeout: still show with identity but indicate issue
+        const errorNote =
+          outcome.status === "timeout"
+            ? "(tempo esgotado)"
+            : outcome.status === "error"
+              ? `(erro: ${outcome.error || "desconhecido"})`
+              : "(status desconhecido)";
+        triggerMessage = `${reply || "(sem resposta)"} ${errorNote}`;
+        useDirectInject = true;
+      }
+    } else {
+      // System mode (default): wrap in background task format for main agent to summarize
+      triggerMessage = [
+        `A background task "${taskLabel}" just ${statusLabel}.`,
+        "",
+        "Findings:",
+        reply || "(no output)",
+        "",
+        statsLine,
+        "",
+        "Summarize this naturally for the user. Keep it brief (1-2 sentences). Flow it into the conversation naturally.",
+        "Do not mention technical details like tokens, stats, or that this was a background task.",
+        "You can respond with NO_REPLY if no announcement is needed (e.g., internal task with no user-facing result).",
+      ].join("\n");
+    }
 
     const queued = await maybeQueueSubagentAnnounce({
       requesterSessionKey: params.requesterSessionKey,
@@ -462,30 +499,49 @@ export async function runSubagentAnnounceFlow(params: {
       return true;
     }
 
-    // Send to main agent - it will respond in its own voice
+    // Resolve delivery context
     let directOrigin = requesterOrigin;
     if (!directOrigin) {
       const { entry } = loadRequesterSessionEntry(params.requesterSessionKey);
       directOrigin = deliveryContextFromSession(entry);
     }
-    await callGateway({
-      method: "agent",
-      params: {
-        sessionKey: params.requesterSessionKey,
-        message: triggerMessage,
-        deliver: true,
-        channel: directOrigin?.channel,
-        accountId: directOrigin?.accountId,
-        to: directOrigin?.to,
-        threadId:
-          directOrigin?.threadId != null && directOrigin.threadId !== ""
-            ? String(directOrigin.threadId)
-            : undefined,
-        idempotencyKey: crypto.randomUUID(),
-      },
-      expectFinal: true,
-      timeoutMs: 60_000,
-    });
+
+    if (useDirectInject) {
+      // Direct mode: inject message directly to chat with agent identity
+      await callGateway({
+        method: "chat.inject",
+        params: {
+          sessionKey: params.requesterSessionKey,
+          message: triggerMessage,
+          // Pass sender identity for webchat display
+          senderAgentId: childAgentId,
+          senderName,
+          senderEmoji,
+          senderAvatar,
+        },
+        timeoutMs: 30_000,
+      });
+    } else {
+      // System mode: send to main agent for summarization
+      await callGateway({
+        method: "agent",
+        params: {
+          sessionKey: params.requesterSessionKey,
+          message: triggerMessage,
+          deliver: true,
+          channel: directOrigin?.channel,
+          accountId: directOrigin?.accountId,
+          to: directOrigin?.to,
+          threadId:
+            directOrigin?.threadId != null && directOrigin.threadId !== ""
+              ? String(directOrigin.threadId)
+              : undefined,
+          idempotencyKey: crypto.randomUUID(),
+        },
+        expectFinal: true,
+        timeoutMs: 60_000,
+      });
+    }
 
     didAnnounce = true;
   } catch (err) {

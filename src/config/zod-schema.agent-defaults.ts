@@ -165,6 +165,8 @@ export const AgentDefaultsSchema = z
           ])
           .optional(),
         thinking: z.string().optional(),
+        /** Announce mode: "system" (default) wraps in background task format; "direct" injects agent response with identity */
+        announceMode: z.union([z.literal("system"), z.literal("direct")]).optional(),
       })
       .strict()
       .optional(),

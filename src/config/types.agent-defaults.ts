@@ -215,6 +215,12 @@ export type AgentDefaultsConfig = {
     model?: string | { primary?: string; fallbacks?: string[] };
     /** Default thinking level for spawned sub-agents (e.g. "off", "low", "medium", "high"). */
     thinking?: string;
+    /**
+     * Announce mode for sub-agent results:
+     * - "system" (default): wraps result in background task format for main agent to summarize
+     * - "direct": injects agent response directly with identity (emoji + name), like Slack threading
+     */
+    announceMode?: "system" | "direct";
   };
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: {

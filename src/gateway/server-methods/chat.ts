@@ -625,6 +625,11 @@ export const chatHandlers: GatewayRequestHandlers = {
       sessionKey: string;
       message: string;
       label?: string;
+      /** Agent identity for direct announce mode (Slack-like display) */
+      senderAgentId?: string;
+      senderName?: string;
+      senderEmoji?: string;
+      senderAvatar?: string;
     };
 
     // Load session to find transcript file
@@ -660,6 +665,15 @@ export const chatHandlers: GatewayRequestHandlers = {
       stopReason: "injected",
       usage: { input: 0, output: 0, totalTokens: 0 },
     };
+    // Add sender identity if provided (for direct announce mode)
+    if (p.senderAgentId || p.senderName || p.senderEmoji || p.senderAvatar) {
+      messageBody.senderIdentity = {
+        agentId: p.senderAgentId,
+        name: p.senderName,
+        emoji: p.senderEmoji,
+        avatar: p.senderAvatar,
+      };
+    }
     const transcriptEntry = {
       type: "message",
       id: messageId,
