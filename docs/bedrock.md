@@ -3,6 +3,7 @@ summary: "Use Amazon Bedrock (Converse API) models with OpenClaw"
 read_when:
   - You want to use Amazon Bedrock models with OpenClaw
   - You need AWS credential/region setup for model calls
+title: "Amazon Bedrock"
 ---
 
 # Amazon Bedrock
@@ -77,8 +78,8 @@ export AWS_BEARER_TOKEN_BEDROCK="..."
         auth: "aws-sdk",
         models: [
           {
-            id: "anthropic.claude-opus-4-5-20251101-v1:0",
-            name: "Claude Opus 4.5 (Bedrock)",
+            id: "us.anthropic.claude-opus-4-6-v1:0",
+            name: "Claude Opus 4.6 (Bedrock)",
             reasoning: true,
             input: ["text", "image"],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -91,7 +92,7 @@ export AWS_BEARER_TOKEN_BEDROCK="..."
   },
   agents: {
     defaults: {
-      model: { primary: "amazon-bedrock/anthropic.claude-opus-4-5-20251101-v1:0" },
+      model: { primary: "amazon-bedrock/us.anthropic.claude-opus-4-6-v1:0" },
     },
   },
 }

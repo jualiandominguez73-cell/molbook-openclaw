@@ -2,6 +2,7 @@
 summary: "Zalo bot support status, capabilities, and configuration"
 read_when:
   - Working on Zalo features or webhooks
+title: "Zalo"
 ---
 
 # Zalo (Bot API)
@@ -56,7 +57,7 @@ It is a good fit for support or notifications where you want deterministic routi
 
 ### 1) Create a bot token (Zalo Bot Platform)
 
-1. Go to **https://bot.zaloplatforms.com** and sign in.
+1. Go to [https://bot.zaloplatforms.com](https://bot.zaloplatforms.com) and sign in.
 2. Create a new bot and configure its settings.
 3. Copy the bot token (format: `12345689:abc-xyz`).
 
