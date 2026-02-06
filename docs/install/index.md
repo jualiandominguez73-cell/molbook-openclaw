@@ -1,32 +1,20 @@
 ---
-summary: "Install OpenClaw (recommended installer, global install, or from source)"
+summary: "Alternative install methods, deployment options, and maintenance for OpenClaw"
 read_when:
-  - Installing OpenClaw
-  - You want to install from GitHub
-title: "Install Overview"
+  - You need Docker, Nix, from-source, or another non-default install method
+  - You want to deploy to a cloud platform
+  - You need to update, migrate, or uninstall
+title: "Install"
 ---
 
-# Install Overview
+# Install
 
-Use the installer unless you have a reason not to. It sets up the CLI and runs onboarding.
+If you followed [Getting Started](/start/getting-started), you're already installed.
+This section covers alternative install methods, deployment, and maintenance.
 
-## Quick install (recommended)
-
-```bash
-curl -fsSL https://openclaw.ai/install.sh | bash
-```
-
-Windows (PowerShell):
-
-```powershell
-iwr -useb https://openclaw.ai/install.ps1 | iex
-```
-
-Next step (if you skipped onboarding):
-
-```bash
-openclaw onboard --install-daemon
-```
+<Info>
+Looking for first-time setup? Start with [Getting Started](/start/getting-started) instead.
+</Info>
 
 ## System requirements
 
@@ -34,33 +22,21 @@ openclaw onboard --install-daemon
 - macOS, Linux, or Windows via WSL2
 - `pnpm` only if you build from source
 
-## Choose your install path
+## Choose your install method
 
-### 1) Installer script (recommended)
+| Method                                    | When to use                                                                       |
+| ----------------------------------------- | --------------------------------------------------------------------------------- |
+| [Installer](/install/installer) (default) | First-time setup — [Getting Started](/start/getting-started) walks you through it |
+| [npm/pnpm global](#global-install)        | You manage Node yourself and prefer a manual global install                       |
+| [From source](#from-source)               | Contributors and local development                                                |
+| [Docker](/install/docker)                 | Containerized or headless deployments                                             |
+| [Nix](/install/nix)                       | You already use Nix                                                               |
+| [Ansible](/install/ansible)               | Automated fleet provisioning                                                      |
+| [Bun](/install/bun)                       | CLI-only usage via Bun runtime                                                    |
 
-Installs `openclaw` globally via npm and runs onboarding.
+## Global install
 
-```bash
-curl -fsSL https://openclaw.ai/install.sh | bash
-```
-
-Installer flags:
-
-```bash
-curl -fsSL https://openclaw.ai/install.sh | bash -s -- --help
-```
-
-Details: [Installer internals](/install/installer).
-
-Non-interactive (skip onboarding):
-
-```bash
-curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
-```
-
-### 2) Global install (manual)
-
-If you already have Node:
+If you already have Node 22+:
 
 ```bash
 npm install -g openclaw@latest
@@ -83,13 +59,13 @@ pnpm approve-builds -g                # approve openclaw, node-llama-cpp, sharp,
 
 pnpm requires explicit approval for packages with build scripts. After the first install shows the "Ignored build scripts" warning, run `pnpm approve-builds -g` and select the listed packages.
 
-Then:
+Then run onboarding:
 
 ```bash
 openclaw onboard --install-daemon
 ```
 
-### 3) From source (contributors/dev)
+## From source
 
 ```bash
 git clone https://github.com/openclaw/openclaw.git
@@ -100,25 +76,11 @@ pnpm build
 openclaw onboard --install-daemon
 ```
 
-Tip: if you don’t have a global install yet, run repo commands via `pnpm openclaw ...`.
+Tip: if you don't have a global install yet, run repo commands via `pnpm openclaw ...`.
 
 For deeper development workflows, see [Setup](/start/setup).
 
-### 4) Other install options
-
-- Docker: [Docker](/install/docker)
-- Nix: [Nix](/install/nix)
-- Ansible: [Ansible](/install/ansible)
-- Bun (CLI only): [Bun](/install/bun)
-
-## After install
-
-- Run onboarding: `openclaw onboard --install-daemon`
-- Quick check: `openclaw doctor`
-- Check gateway health: `openclaw status` + `openclaw health`
-- Open the dashboard: `openclaw dashboard`
-
-## Install method: npm vs git (installer)
+## Installer details
 
 The installer supports two methods:
 
@@ -156,6 +118,15 @@ Equivalent env vars (useful for automation):
 - `OPENCLAW_NO_ONBOARD=1`
 - `SHARP_IGNORE_GLOBAL_LIBVIPS=0|1` (default: `1`; avoids `sharp` building against system libvips)
 
+Full reference: [Installer internals](/install/installer).
+
+## After install
+
+- Run onboarding: `openclaw onboard --install-daemon`
+- Quick check: `openclaw doctor`
+- Check gateway health: `openclaw status` + `openclaw health`
+- Open the dashboard: `openclaw dashboard`
+
 ## Troubleshooting: `openclaw` not found (PATH)
 
 Quick diagnosis:
@@ -167,7 +138,7 @@ npm prefix -g
 echo "$PATH"
 ```
 
-If `$(npm prefix -g)/bin` (macOS/Linux) or `$(npm prefix -g)` (Windows) is **not** present inside `echo "$PATH"`, your shell can’t find global npm binaries (including `openclaw`).
+If `$(npm prefix -g)/bin` (macOS/Linux) or `$(npm prefix -g)` (Windows) is **not** present inside `echo "$PATH"`, your shell can't find global npm binaries (including `openclaw`).
 
 Fix: add it to your shell startup file (zsh: `~/.zshrc`, bash: `~/.bashrc`):
 
