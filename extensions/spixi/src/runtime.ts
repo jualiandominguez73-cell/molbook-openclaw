@@ -4,10 +4,10 @@ import axios from "axios";
 export interface SpixiRuntime extends ExtensionRuntime {
   channel: {
     spixi: {
-      sendMessage: (to: string, text: string, opts?: { baseUrl?: string }) => Promise<any>;
-      addContact: (address: string, opts?: { baseUrl?: string }) => Promise<any>;
+      sendMessage: (to: string, text: string, opts?: { baseUrl?: string }) => Promise<unknown>;
+      addContact: (address: string, opts?: { baseUrl?: string }) => Promise<unknown>;
       getFriendList: (opts?: { baseUrl?: string }) => Promise<string[]>;
-      acceptContact: (address: string, opts?: { baseUrl?: string }) => Promise<any>;
+      acceptContact: (address: string, opts?: { baseUrl?: string }) => Promise<unknown>;
     };
   };
 }
@@ -53,9 +53,9 @@ export const getSpixiRuntime = () => {
           };
         } catch (e: unknown) {
           if (e instanceof Error) {
-            throw new Error(`Spixi send failed: ${e.message}`);
+            throw new Error(`Spixi send failed: ${e.message}`, { cause: e });
           }
-          throw new Error("Spixi send failed: Unknown error");
+          throw new Error("Spixi send failed: Unknown error", { cause: e });
         }
       },
       addContact: async (address, opts) => {
@@ -71,9 +71,9 @@ export const getSpixiRuntime = () => {
           };
         } catch (e: unknown) {
           if (e instanceof Error) {
-            throw new Error(`Spixi addContact failed: ${e.message}`);
+            throw new Error(`Spixi addContact failed: ${e.message}`, { cause: e });
           }
-          throw new Error("Spixi addContact failed: Unknown error");
+          throw new Error("Spixi addContact failed: Unknown error", { cause: e });
         }
       },
       getFriendList: async (opts) => {
@@ -87,9 +87,9 @@ export const getSpixiRuntime = () => {
             : [];
         } catch (e: unknown) {
           if (e instanceof Error) {
-            throw new Error(`Spixi getFriendList failed: ${e.message}`);
+            throw new Error(`Spixi getFriendList failed: ${e.message}`, { cause: e });
           }
-          throw new Error("Spixi getFriendList failed: Unknown error");
+          throw new Error("Spixi getFriendList failed: Unknown error", { cause: e });
         }
       },
       acceptContact: async (address, opts) => {
@@ -105,9 +105,9 @@ export const getSpixiRuntime = () => {
           };
         } catch (e: unknown) {
           if (e instanceof Error) {
-            throw new Error(`Spixi acceptContact failed: ${e.message}`);
+            throw new Error(`Spixi acceptContact failed: ${e.message}`, { cause: e });
           }
-          throw new Error("Spixi acceptContact failed: Unknown error");
+          throw new Error("Spixi acceptContact failed: Unknown error", { cause: e });
         }
       }
     };

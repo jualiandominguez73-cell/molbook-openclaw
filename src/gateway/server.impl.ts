@@ -405,9 +405,23 @@ export async function startGatewayServer(
       }
 
       const runtime = channelRuntimeEnvs[channelId];
-      if (runtime && (runtime as unknown).channel && (runtime as unknown).channel.spixi) {
+      // Type guard for Spixi channel capability
+      function hasSpixiChannel(obj: unknown): obj is { channel: { spixi: { sendMessage: (to: string, text: string) => Promise<void> } } } {
+        return (
+          typeof obj === "object" &&
+          obj !== null &&
+          "channel" in obj &&
+          typeof (obj as any).channel === "object" &&
+          (obj as any).channel !== null &&
+          "spixi" in (obj as any).channel &&
+          typeof (obj as any).channel.spixi === "object" &&
+          (obj as any).channel.spixi !== null &&
+          typeof (obj as any).channel.spixi.sendMessage === "function"
+        );
+      }
+      if (hasSpixiChannel(runtime)) {
         // Fallback for runtime attached capabilities
-        await (runtime as unknown).channel.spixi.sendMessage(to, text);
+        await runtime.channel.spixi.sendMessage(to, text);
       } else {
         log.warn(`[${channelId}:${accountId}] No outbound.sendText capability found`);
       }

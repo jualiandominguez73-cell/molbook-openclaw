@@ -73,7 +73,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
   },
   outbound: {
     deliveryMode: "gateway",
-    sendText: async ({ to, text, accountId }) => {
+    sendText: async ({ to, text }) => {
       const runtime = getSpixiRuntime();
       const result = await runtime.channel.spixi.sendMessage(to, text);
       return { channel: "spixi", ...result };
@@ -113,22 +113,24 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
         const allowFrom = config.allowFrom || [];
         for (const address of allowFrom) {
           const trimmed = address?.trim();
-          if (!trimmed || trimmed === "*") continue;
+          if (!trimmed || trimmed === "*") { continue; }
 
           if (!existingSet.has(trimmed.toLowerCase())) {
             log?.info(`[${account.accountId}] Auto-adding friend: ${trimmed}`);
             try {
               await runtime.channel.spixi.addContact(trimmed);
               log?.info(`[${account.accountId}] Friend request sent to: ${trimmed}`);
-            } catch (e: any) {
-              log?.warn(`[${account.accountId}] Failed to add friend ${trimmed}: ${e.message}`);
+            } catch (e: unknown) {
+              const err = e as Error;
+              log?.warn(`[${account.accountId}] Failed to add friend ${trimmed}: ${err.message}`);
             }
           }
         }
 
         log?.info(`[${account.accountId}] Friend sync complete. ${existingFriends.length} existing friends.`);
-      } catch (e: any) {
-        log?.warn(`[${account.accountId}] Could not sync friends: ${e.message}`);
+      } catch (e: unknown) {
+        const err = e as Error;
+        log?.warn(`[${account.accountId}] Could not sync friends: ${err.message}`);
       }
 
       const client = mqtt.connect(mqttUrl);
@@ -142,7 +144,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
 
       client.on("message", async (topic, message) => {
         const msgStr = message.toString();
-        let data: any;
+        let data: unknown;
         try {
           data = JSON.parse(msgStr);
         } catch {
@@ -152,8 +154,9 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
 
         if (topic === "Chat") {
           try {
-            const sender = data.sender;
-            const text = data.data?.data || data.message;
+            const d = data as any;
+            const sender = d.sender;
+            const text = d.data?.data || d.message;
 
             if (!text || (config.myWalletAddress && sender === config.myWalletAddress)) {
               return;
@@ -164,21 +167,23 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
             // Inbound relay logic to OpenClaw core
             if (ctx.onMessage) {
               ctx.onMessage({
-                id: data.id || `spixi-${Date.now()}`,
+                id: d.id || `spixi-${Date.now()}`,
                 from: sender,
                 text,
-                timestamp: data.timestamp || Date.now(),
+                timestamp: d.timestamp || Date.now(),
                 raw: data,
               });
             } else {
               log?.warn(`[${account.accountId}] ctx.onMessage not available - message dropped`);
             }
-          } catch (e: any) {
-            log?.error(`[${account.accountId}] Error processing Spixi chat: ${e.message}`);
+          } catch (e: unknown) {
+            const err = e as Error;
+            log?.error(`[${account.accountId}] Error processing Spixi chat: ${err.message}`);
           }
         } else if (topic === "RequestAdd2") {
           // Incoming friend request
-          const sender = data.sender || data.address;
+          const d = data as any;
+          const sender = d.sender || d.address;
           log?.info(`[${account.accountId}] Received Friend Request from: ${sender}`);
 
           // Check if in allowFrom
@@ -189,8 +194,9 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
               const runtime = getSpixiRuntime();
               await runtime.channel.spixi.acceptContact(sender);
               log?.info(`[${account.accountId}] Accepted friend request from ${sender}`);
-            } catch (e: any) {
-              log?.error(`[${account.accountId}] Failed to accept friend: ${e.message}`);
+            } catch (e: unknown) {
+              const err = e as Error;
+              log?.error(`[${account.accountId}] Failed to accept friend: ${err.message}`);
             }
           } else {
             log?.info(`[${account.accountId}] Friend request from ${sender} pending (not in allowFrom)`);
@@ -198,7 +204,8 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
           }
         } else if (topic === "AcceptAdd2") {
           // Friend request accepted by other party
-          const sender = data.sender || data.address;
+          const d = data as any;
+          const sender = d.sender || d.address;
           log?.info(`[${account.accountId}] Friend request ACCEPTED by: ${sender}`);
         }
       });

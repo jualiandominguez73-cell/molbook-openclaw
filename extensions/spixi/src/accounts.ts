@@ -3,8 +3,8 @@ import { type ResolvedSpixiAccount, type SpixiAccountConfig } from "./types.js";
 
 export function listSpixiAccountIds(cfg: unknown): string[] {
   // Type guard for config shape
-  const channels = typeof cfg === "object" && cfg !== null && "channels" in cfg && typeof (cfg as any).channels === "object"
-    ? (cfg as any).channels
+  const channels = typeof cfg === "object" && cfg !== null && "channels" in cfg && typeof (cfg as unknown as { channels?: unknown }).channels === "object"
+    ? (cfg as unknown as { channels?: unknown }).channels
     : undefined;
   const spixi = channels && typeof channels.spixi === "object" ? channels.spixi : undefined;
   const accounts = spixi && typeof spixi.accounts === "object" ? spixi.accounts : undefined;
@@ -25,8 +25,8 @@ export function resolveSpixiAccount(params: {
   accountId?: string | null;
 }): ResolvedSpixiAccount {
   // Type guard for config shape
-  const channels = typeof params.cfg === "object" && params.cfg !== null && "channels" in params.cfg && typeof (params.cfg as any).channels === "object"
-    ? (params.cfg as any).channels
+  const channels = typeof params.cfg === "object" && params.cfg !== null && "channels" in params.cfg && typeof (params.cfg as unknown as { channels?: unknown }).channels === "object"
+    ? (params.cfg as unknown as { channels?: unknown }).channels
     : undefined;
   const spixi = channels && typeof channels.spixi === "object" ? channels.spixi : undefined;
   const accounts = spixi && typeof spixi.accounts === "object" ? spixi.accounts : {};

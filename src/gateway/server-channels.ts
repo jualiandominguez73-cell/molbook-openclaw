@@ -7,6 +7,7 @@ import { type ChannelId, getChannelPlugin, listChannelPlugins } from "../channel
 import { formatErrorMessage } from "../infra/errors.js";
 import { resetDirectoryCache } from "../infra/outbound/target-resolver.js";
 import { DEFAULT_ACCOUNT_ID } from "../routing/session-key.js";
+import { ReplyPayload } from "../auto-reply/types.ts";
 
 export type ChannelRuntimeSnapshot = {
   channels: Partial<Record<ChannelId, ChannelAccountSnapshot>>;
@@ -166,7 +167,7 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
           log,
           getStatus: () => getRuntime(channelId, id),
           setStatus: (next) => setRuntime(channelId, id, next),
-          onMessage: (msg: any) => handleChannelMessage?.(channelId, id, msg),
+          onMessage: (msg: ReplyPayload) => handleChannelMessage?.(channelId, id, msg),
         });
         const tracked = Promise.resolve(task)
           .catch((err) => {
