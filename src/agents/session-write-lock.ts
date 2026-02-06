@@ -209,7 +209,7 @@ export async function acquireSessionWriteLock(params: {
                 return;
               }
               current.count -= 1;
-              if (current.count > 0) { 
+              if (current.count > 0) {
                 return;
               }
               HELD_LOCKS.delete(normalizedSessionFile);
