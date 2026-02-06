@@ -71,7 +71,7 @@ async function fetchAccessToken(opts: TokenManagerOptions): Promise<string> {
     const errorText = await resp.text().catch(() => "");
     logger?.error?.(
       { status: resp.status, error: errorText.slice(0, 200) },
-      "Failed to get access token"
+      "Failed to get access token",
     );
     throw new Error(`Failed to get access token: HTTP ${resp.status} - ${errorText.slice(0, 200)}`);
   }
@@ -93,10 +93,7 @@ async function fetchAccessToken(opts: TokenManagerOptions): Promise<string> {
     expireAt: Date.now() + expireIn * 1000,
   });
 
-  logger?.debug?.(
-    { clientId, expireIn },
-    "Access token obtained and cached"
-  );
+  logger?.debug?.({ clientId, expireIn }, "Access token obtained and cached");
 
   return data.accessToken;
 }
@@ -150,7 +147,7 @@ export function createTokenManager(opts: TokenManagerOptions): TokenManager {
  */
 export function createTokenManagerFromAccount(
   account: ResolvedDingTalkAccount,
-  logger?: StreamLogger
+  logger?: StreamLogger,
 ): TokenManager {
   return createTokenManager({
     clientId: account.clientId,

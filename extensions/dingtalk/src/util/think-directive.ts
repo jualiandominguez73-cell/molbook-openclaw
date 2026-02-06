@@ -14,7 +14,7 @@ function escapeRegExp(value: string): string {
 
 function matchLevelDirective(
   body: string,
-  names: string[]
+  names: string[],
 ): { start: number; end: number; rawLevel?: string } | null {
   const namePattern = names.map(escapeRegExp).join("|");
   const match = body.match(new RegExp(`(?:^|\\s)\\/(?:${namePattern})(?=$|\\s|:)`, "i"));
@@ -50,7 +50,7 @@ function matchLevelDirective(
 function extractLevelDirective(
   body: string,
   names: string[],
-  normalize: (rawLevel?: string) => ThinkLevel | undefined
+  normalize: (rawLevel?: string) => ThinkLevel | undefined,
 ): { cleaned: string; hasDirective: boolean; level?: ThinkLevel; rawLevel?: string } {
   const match = matchLevelDirective(body, names);
   if (!match) {
@@ -99,7 +99,9 @@ export function normalizeThinkLevel(raw?: string): ThinkLevel | undefined {
   if (["mid", "med", "medium", "thinkharder", "think-harder", "harder"].includes(key)) {
     return "medium";
   }
-  if (["high", "ultra", "ultrathink", "think-hard", "thinkhardest", "highest", "max"].includes(key)) {
+  if (
+    ["high", "ultra", "ultrathink", "think-hard", "thinkhardest", "highest", "max"].includes(key)
+  ) {
     return "high";
   }
   if (["xhigh", "x-high", "x_high"].includes(key)) {
@@ -112,9 +114,12 @@ export function normalizeThinkLevel(raw?: string): ThinkLevel | undefined {
   return undefined;
 }
 
-export function extractThinkDirective(
-  body: string
-): { cleaned: string; hasDirective: boolean; thinkLevel?: ThinkLevel; rawLevel?: string } {
+export function extractThinkDirective(body: string): {
+  cleaned: string;
+  hasDirective: boolean;
+  thinkLevel?: ThinkLevel;
+  rawLevel?: string;
+} {
   if (!body) {
     return { cleaned: "", hasDirective: false };
   }
@@ -128,9 +133,12 @@ export function extractThinkDirective(
   };
 }
 
-export function extractThinkOnceDirective(
-  body: string
-): { cleaned: string; hasDirective: boolean; thinkLevel?: ThinkLevel; rawLevel?: string } {
+export function extractThinkOnceDirective(body: string): {
+  cleaned: string;
+  hasDirective: boolean;
+  thinkLevel?: ThinkLevel;
+  rawLevel?: string;
+} {
   if (!body) {
     return { cleaned: "", hasDirective: false };
   }

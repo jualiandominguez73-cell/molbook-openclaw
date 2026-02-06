@@ -10,10 +10,7 @@ import {
   TOPIC_ROBOT,
   TOPIC_AI_GRAPH_API,
 } from "dingtalk-stream";
-import type {
-  StreamClientHandle,
-  StreamClientOptions,
-} from "./types.js";
+import type { StreamClientHandle, StreamClientOptions } from "./types.js";
 import { extractChatbotMessage } from "./message-parser.js";
 
 /**
@@ -21,11 +18,14 @@ import { extractChatbotMessage } from "./message-parser.js";
  * Maintains persistent WebSocket connection with auto-reconnect.
  */
 export async function startDingTalkStreamClient(
-  options: StreamClientOptions
+  options: StreamClientOptions,
 ): Promise<StreamClientHandle> {
   const { clientId, clientSecret, logger, onChatMessage } = options;
 
-  logger?.info?.({ clientId: clientId?.slice(0, 8) + "..." }, "Initializing DingTalk Stream SDK client");
+  logger?.info?.(
+    { clientId: clientId?.slice(0, 8) + "..." },
+    "Initializing DingTalk Stream SDK client",
+  );
 
   // Create DWClient instance from SDK
   const client = new DWClient({
@@ -39,7 +39,7 @@ export async function startDingTalkStreamClient(
   client.registerCallbackListener(TOPIC_ROBOT, async (res: DWClientDownStream) => {
     logger?.debug?.(
       { topic: res.headers.topic, messageId: res.headers.messageId },
-      "Received robot message callback"
+      "Received robot message callback",
     );
 
     // Explicitly acknowledge receipt to prevent DingTalk 60s timeout retry
@@ -70,7 +70,7 @@ export async function startDingTalkStreamClient(
     if (!chat) {
       logger?.debug?.(
         { eventType: res.headers.eventType, topic: res.headers.topic },
-        "Stream event ignored (not chatbot message)"
+        "Stream event ignored (not chatbot message)",
       );
       return;
     }
@@ -86,7 +86,7 @@ export async function startDingTalkStreamClient(
   client.registerCallbackListener(TOPIC_AI_GRAPH_API, async (res: DWClientDownStream) => {
     logger?.info?.(
       { topic: res.headers.topic, messageId: res.headers.messageId },
-      "Received AI Graph API callback (not yet implemented)"
+      "Received AI Graph API callback (not yet implemented)",
     );
 
     // Acknowledge receipt - actual handling can be added later
@@ -102,7 +102,10 @@ export async function startDingTalkStreamClient(
         },
       });
     } catch (err) {
-      logger?.error?.({ err: { message: (err as Error)?.message } }, "Failed to send AI Graph API response");
+      logger?.error?.(
+        { err: { message: (err as Error)?.message } },
+        "Failed to send AI Graph API response",
+      );
     }
   });
 
@@ -110,7 +113,7 @@ export async function startDingTalkStreamClient(
   client.registerAllEventListener((message: DWClientDownStream) => {
     logger?.debug?.(
       { type: message.type, topic: message.headers?.topic, eventType: message.headers?.eventType },
-      "Received stream event"
+      "Received stream event",
     );
     return { status: EventAck.SUCCESS };
   });
@@ -120,7 +123,10 @@ export async function startDingTalkStreamClient(
     await client.connect();
     logger?.info?.("DingTalk Stream SDK connected successfully");
   } catch (err) {
-    logger?.error?.({ err: { message: (err as Error)?.message } }, "DingTalk Stream SDK connection failed");
+    logger?.error?.(
+      { err: { message: (err as Error)?.message } },
+      "DingTalk Stream SDK connection failed",
+    );
     throw err;
   }
 

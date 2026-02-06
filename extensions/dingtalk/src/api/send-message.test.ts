@@ -2,9 +2,16 @@
  * Tests for proactive message sending API.
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { parseTarget, sendProactiveMessage, sendBatchDirectMessage, sendImageMessage, sendActionCardMessage, sendFileMessage } from "./send-message.js";
-import { clearAllTokens } from "./token-manager.js";
 import { BASIC_ACCOUNT, MARKDOWN_ACCOUNT } from "../../test/fixtures/configs.js";
+import {
+  parseTarget,
+  sendProactiveMessage,
+  sendBatchDirectMessage,
+  sendImageMessage,
+  sendActionCardMessage,
+  sendFileMessage,
+} from "./send-message.js";
+import { clearAllTokens } from "./token-manager.js";
 
 describe("parseTarget", () => {
   it("parses user: prefix", () => {
@@ -47,7 +54,8 @@ describe("sendProactiveMessage", () => {
   });
 
   it("sends direct message to user", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       // Token request
       .mockResolvedValueOnce({
         ok: true,
@@ -79,7 +87,8 @@ describe("sendProactiveMessage", () => {
   });
 
   it("sends group message", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -104,7 +113,8 @@ describe("sendProactiveMessage", () => {
   });
 
   it("sends markdown message", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -123,14 +133,15 @@ describe("sendProactiveMessage", () => {
     });
 
     expect(result.ok).toBe(true);
-	    const messageCall = mockFetch.mock.calls[1];
-	    const body = JSON.parse(messageCall[1].body);
-	    expect(body.msgKey).toBe("sampleMarkdown");
-	    expect(JSON.parse(body.msgParam).title).toBe("OpenClaw");
-	  });
+    const messageCall = mockFetch.mock.calls[1];
+    const body = JSON.parse(messageCall[1].body);
+    expect(body.msgKey).toBe("sampleMarkdown");
+    expect(JSON.parse(body.msgParam).title).toBe("OpenClaw");
+  });
 
   it("chunks long messages", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -171,7 +182,8 @@ describe("sendProactiveMessage", () => {
   });
 
   it("returns error when message send fails", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -204,18 +216,20 @@ describe("sendBatchDirectMessage", () => {
   });
 
   it("sends to multiple users", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          processQueryKey: "batch-query",
-          invalidStaffIdList: ["invalid1"],
-          flowControlledStaffIdList: ["flow1"],
-        }),
+        json: () =>
+          Promise.resolve({
+            processQueryKey: "batch-query",
+            invalidStaffIdList: ["invalid1"],
+            flowControlledStaffIdList: ["flow1"],
+          }),
       });
     vi.stubGlobal("fetch", mockFetch);
 
@@ -252,7 +266,8 @@ describe("sendImageMessage", () => {
   });
 
   it("sends image to user", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -280,7 +295,8 @@ describe("sendImageMessage", () => {
   });
 
   it("sends image to group", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -303,7 +319,8 @@ describe("sendImageMessage", () => {
   });
 
   it("sends accompanying text after image", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -341,7 +358,8 @@ describe("sendActionCardMessage", () => {
   });
 
   it("sends single-button ActionCard", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -373,7 +391,8 @@ describe("sendActionCardMessage", () => {
   });
 
   it("sends multi-button ActionCard", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -409,7 +428,8 @@ describe("sendActionCardMessage", () => {
   });
 
   it("limits buttons to 5", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -457,7 +477,8 @@ describe("sendFileMessage", () => {
   });
 
   it("sends file to user", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -489,7 +510,8 @@ describe("sendFileMessage", () => {
   });
 
   it("sends file to group", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),

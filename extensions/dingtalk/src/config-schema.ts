@@ -121,7 +121,7 @@ export const DingTalkConfigSchema = z.object({
         showToolStatus: z.boolean().optional(),
         showToolResult: z.boolean().optional(),
         thinking: z.enum(["off", "minimal", "low", "medium", "high"]).optional(),
-      })
+      }),
     )
     .optional(),
 });

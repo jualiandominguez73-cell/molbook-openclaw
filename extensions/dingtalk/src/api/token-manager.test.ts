@@ -2,11 +2,7 @@
  * Tests for token manager.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  createTokenManager,
-  clearAllTokens,
-  invalidateToken,
-} from "./token-manager.js";
+import { createTokenManager, clearAllTokens, invalidateToken } from "./token-manager.js";
 
 describe("TokenManager", () => {
   const mockOpts = {
@@ -46,7 +42,7 @@ describe("TokenManager", () => {
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-        })
+        }),
       );
     });
 
@@ -135,7 +131,8 @@ describe("TokenManager", () => {
 
   describe("invalidate", () => {
     it("forces refresh on next getToken call", async () => {
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ accessToken: "token-1", expireIn: 7200 }),
@@ -161,7 +158,8 @@ describe("TokenManager", () => {
 
   describe("clearAllTokens", () => {
     it("clears all cached tokens", async () => {
-      const mockFetch = vi.fn()
+      const mockFetch = vi
+        .fn()
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ accessToken: "token-1", expireIn: 7200 }),
@@ -185,11 +183,10 @@ describe("TokenManager", () => {
 
   describe("invalidateToken", () => {
     it("invalidates token for specific clientId", async () => {
-      const mockFetch = vi.fn()
-        .mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({ accessToken: "new-token", expireIn: 7200 }),
-        });
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ accessToken: "new-token", expireIn: 7200 }),
+      });
       vi.stubGlobal("fetch", mockFetch);
 
       const manager = createTokenManager(mockOpts);

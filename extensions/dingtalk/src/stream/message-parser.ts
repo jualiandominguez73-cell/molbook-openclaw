@@ -86,7 +86,9 @@ function parseAtUsers(data: unknown): AtUser[] {
   return raw
     .filter((item): item is Record<string, unknown> => item && typeof item === "object")
     .map((item) => ({
-      dingtalkId: asString(item.dingtalkId ?? item.dingtalk_id ?? item.userId ?? item.user_id ?? ""),
+      dingtalkId: asString(
+        item.dingtalkId ?? item.dingtalk_id ?? item.userId ?? item.user_id ?? "",
+      ),
       staffId: asString(item.staffId ?? item.staff_id ?? "") || undefined,
     }))
     .filter((user) => user.dingtalkId);
@@ -120,7 +122,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "header.eventType",
       "header.event_type",
       "headers.type",
-    ])
+    ]),
   );
 
   const messageId = asString(
@@ -133,7 +135,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "message_id",
       "id",
       "uuid",
-    ])
+    ]),
   );
 
   const sessionWebhook = asString(
@@ -144,7 +146,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "conversation.sessionWebhook",
       "context.sessionWebhook",
       "webhook",
-    ])
+    ]),
   );
 
   // Try multiple paths for text content
@@ -158,7 +160,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "msg.text",
       "data.text",
       "data.text.content",
-    ])
+    ]),
   );
 
   const conversationId = asString(
@@ -171,7 +173,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "chat_id",
       "openConversationId",
       "open_conversation_id",
-    ])
+    ]),
   );
 
   const chatType = asString(
@@ -181,7 +183,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "conversation.conversationType",
       "chatType",
       "chat_type",
-    ])
+    ]),
   );
 
   const senderId = asString(
@@ -194,7 +196,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "userId",
       "user_id",
       "staffId",
-    ])
+    ]),
   );
 
   const senderName = asString(
@@ -205,7 +207,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
       "senderName",
       "userName",
       "user_name",
-    ])
+    ]),
   );
 
   // DingTalk may wrap actual content in a JSON string
@@ -229,40 +231,34 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
     /chatbot|bot/i.test(asString(first(headers, ["topic", "eventType", "type"])));
 
   // Parse 文件消息字段
-  const msgType = asString(
-    first(data, ["msgType", "msg_type", "messageType", "message_type"])
-  );
+  const msgType = asString(first(data, ["msgType", "msg_type", "messageType", "message_type"]));
 
-  const downloadCode = asString(
-    first(data, [
-      "content.downloadCode",
-      "downloadCode",
-      "download_code",
-      "fileDownloadCode",
-      "file_download_code",
-    ])
-  ) || undefined;
+  const downloadCode =
+    asString(
+      first(data, [
+        "content.downloadCode",
+        "downloadCode",
+        "download_code",
+        "fileDownloadCode",
+        "file_download_code",
+      ]),
+    ) || undefined;
 
-  const fileName = asString(
-    first(data, [
-      "content.fileName",
-      "fileName",
-      "file_name",
-      "content.name",
-      "name",
-    ])
-  ) || undefined;
+  const fileName =
+    asString(first(data, ["content.fileName", "fileName", "file_name", "content.name", "name"])) ||
+    undefined;
 
-  const fileType = asString(
-    first(data, [
-      "content.fileType",
-      "fileType",
-      "file_type",
-      "content.type",
-      "msgType",
-      "msg_type",
-    ])
-  ) || undefined;
+  const fileType =
+    asString(
+      first(data, [
+        "content.fileType",
+        "fileType",
+        "file_type",
+        "content.type",
+        "msgType",
+        "msg_type",
+      ]),
+    ) || undefined;
 
   // Parse 图片消息字段
   // 注意: 只有在不是文件消息时才从 content.downloadCode 提取 picUrl
@@ -293,14 +289,7 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
   // Parse @提及信息
   const atUsers = parseAtUsers(data);
   const isInAtList = asBool(
-    first(data, [
-      "isInAtList",
-      "is_in_at_list",
-      "isAtBot",
-      "is_at_bot",
-      "atSelf",
-      "at_self",
-    ])
+    first(data, ["isInAtList", "is_in_at_list", "isAtBot", "is_at_bot", "atSelf", "at_self"]),
   );
 
   return {
@@ -322,8 +311,6 @@ export function extractChatbotMessage(raw: RawStreamMessage): ChatbotMessage | n
   };
 }
 
-
-
 /**
  * Build session key from chat message.
  * By default, groups share a conversation key, DMs use sender ID.
@@ -338,7 +325,7 @@ export type BuildSessionKeyOptions = {
 export function buildSessionKey(
   chat: ChatbotMessage,
   agentId: string = "main",
-  opts: BuildSessionKeyOptions = {}
+  opts: BuildSessionKeyOptions = {},
 ): string {
   const conv = chat.conversationId || "unknownConv";
   const sender = chat.senderId || "unknownSender";

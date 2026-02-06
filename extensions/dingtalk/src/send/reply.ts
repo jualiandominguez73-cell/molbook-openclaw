@@ -2,9 +2,9 @@
  * DingTalk reply implementation via sessionWebhook.
  */
 
+import type { DingTalkActionCard } from "../types/channel-data.js";
 import { chunkText, chunkMarkdownText, normalizeForTextMessage } from "./chunker.js";
 import { convertMarkdownForDingTalk } from "./markdown.js";
-import type { DingTalkActionCard } from "../types/channel-data.js";
 
 export interface ReplyOptions {
   replyMode?: "text" | "markdown";
@@ -49,7 +49,7 @@ function maskWebhook(url: string): string {
 export async function sendReplyViaSessionWebhook(
   sessionWebhook: string,
   text: string,
-  options: ReplyOptions = {}
+  options: ReplyOptions = {},
 ): Promise<ReplyResult> {
   const { replyMode = "text", maxChars = 1800, tableMode = "code", logger } = options;
 
@@ -65,27 +65,25 @@ export async function sendReplyViaSessionWebhook(
 
   const cleaned = normalizeForTextMessage(processedText);
   const chunks =
-    replyMode === "markdown"
-      ? chunkMarkdownText(cleaned, maxChars)
-      : chunkText(cleaned, maxChars);
+    replyMode === "markdown" ? chunkMarkdownText(cleaned, maxChars) : chunkText(cleaned, maxChars);
 
   for (let i = 0; i < chunks.length; i++) {
     const part = chunks[i];
     const payload =
-	      replyMode === "markdown"
-	        ? {
-	          msgtype: "markdown",
-	          markdown: {
-	            title: "OpenClaw",
-	            text: part,
-	          },
-	        }
-	        : {
-          msgtype: "text",
-          text: {
-            content: part,
-          },
-        };
+      replyMode === "markdown"
+        ? {
+            msgtype: "markdown",
+            markdown: {
+              title: "OpenClaw",
+              text: part,
+            },
+          }
+        : {
+            msgtype: "text",
+            text: {
+              content: part,
+            },
+          };
 
     try {
       const resp = await fetch(sessionWebhook, {
@@ -98,18 +96,24 @@ export async function sendReplyViaSessionWebhook(
       if (!resp.ok) {
         const data = await resp.text();
         logger?.error?.(
-          { err: { message: `HTTP ${resp.status}`, status: resp.status, data }, webhook: maskWebhook(sessionWebhook) },
-          "Failed to reply DingTalk"
+          {
+            err: { message: `HTTP ${resp.status}`, status: resp.status, data },
+            webhook: maskWebhook(sessionWebhook),
+          },
+          "Failed to reply DingTalk",
         );
         return { ok: false, reason: "http_error", status: resp.status, data };
       }
 
-      logger?.debug?.({ webhook: maskWebhook(sessionWebhook), idx: i + 1, total: chunks.length }, "Replied to DingTalk");
+      logger?.debug?.(
+        { webhook: maskWebhook(sessionWebhook), idx: i + 1, total: chunks.length },
+        "Replied to DingTalk",
+      );
     } catch (err) {
       const error = err as Error;
       logger?.error?.(
         { err: { message: error?.message }, webhook: maskWebhook(sessionWebhook) },
-        "Failed to reply DingTalk"
+        "Failed to reply DingTalk",
       );
       return { ok: false, reason: "fetch_error" };
     }
@@ -124,7 +128,7 @@ export async function sendReplyViaSessionWebhook(
 export async function sendImageViaSessionWebhook(
   sessionWebhook: string,
   picUrl: string,
-  options: { text?: string; logger?: ReplyLogger } = {}
+  options: { text?: string; logger?: ReplyLogger } = {},
 ): Promise<ReplyResult> {
   const { text, logger } = options;
 
@@ -152,8 +156,11 @@ export async function sendImageViaSessionWebhook(
     if (!resp.ok) {
       const data = await resp.text();
       logger?.error?.(
-        { err: { message: `HTTP ${resp.status}`, status: resp.status, data }, webhook: maskWebhook(sessionWebhook) },
-        "Failed to send image to DingTalk"
+        {
+          err: { message: `HTTP ${resp.status}`, status: resp.status, data },
+          webhook: maskWebhook(sessionWebhook),
+        },
+        "Failed to send image to DingTalk",
       );
       return { ok: false, reason: "http_error", status: resp.status, data };
     }
@@ -170,7 +177,7 @@ export async function sendImageViaSessionWebhook(
     const error = err as Error;
     logger?.error?.(
       { err: { message: error?.message }, webhook: maskWebhook(sessionWebhook) },
-      "Failed to send image to DingTalk"
+      "Failed to send image to DingTalk",
     );
     return { ok: false, reason: "fetch_error" };
   }
@@ -183,7 +190,7 @@ export async function sendImageViaSessionWebhook(
 export async function sendImageWithMediaIdViaSessionWebhook(
   sessionWebhook: string,
   mediaId: string,
-  options: { text?: string; logger?: ReplyLogger } = {}
+  options: { text?: string; logger?: ReplyLogger } = {},
 ): Promise<ReplyResult> {
   const { text, logger } = options;
 
@@ -219,8 +226,15 @@ export async function sendImageWithMediaIdViaSessionWebhook(
 
     if (!resp.ok) {
       logger?.error?.(
-        { err: { message: `HTTP ${resp.status}`, status: resp.status, data: respText.slice(0, 500) }, webhook: maskWebhook(sessionWebhook) },
-        "Failed to send image (mediaId) to DingTalk"
+        {
+          err: {
+            message: `HTTP ${resp.status}`,
+            status: resp.status,
+            data: respText.slice(0, 500),
+          },
+          webhook: maskWebhook(sessionWebhook),
+        },
+        "Failed to send image (mediaId) to DingTalk",
       );
       return { ok: false, reason: "http_error", status: resp.status, data: respText };
     }
@@ -228,13 +242,21 @@ export async function sendImageWithMediaIdViaSessionWebhook(
     // Check DingTalk API-level error (HTTP 200 but errcode != 0)
     if (respData.errcode !== undefined && respData.errcode !== 0) {
       logger?.error?.(
-        { errcode: respData.errcode, errmsg: respData.errmsg, webhook: maskWebhook(sessionWebhook), mediaId },
-        "DingTalk API returned error for image send"
+        {
+          errcode: respData.errcode,
+          errmsg: respData.errmsg,
+          webhook: maskWebhook(sessionWebhook),
+          mediaId,
+        },
+        "DingTalk API returned error for image send",
       );
       return { ok: false, reason: "api_error", status: resp.status, data: respData };
     }
 
-    logger?.debug?.({ webhook: maskWebhook(sessionWebhook), mediaId, response: respText.slice(0, 200) }, "Sent image (mediaId) to DingTalk");
+    logger?.debug?.(
+      { webhook: maskWebhook(sessionWebhook), mediaId, response: respText.slice(0, 200) },
+      "Sent image (mediaId) to DingTalk",
+    );
 
     // If there's accompanying text, send it after the image
     if (text?.trim()) {
@@ -246,7 +268,7 @@ export async function sendImageWithMediaIdViaSessionWebhook(
     const error = err as Error;
     logger?.error?.(
       { err: { message: error?.message }, webhook: maskWebhook(sessionWebhook) },
-      "Failed to send image (mediaId) to DingTalk"
+      "Failed to send image (mediaId) to DingTalk",
     );
     return { ok: false, reason: "fetch_error" };
   }
@@ -258,7 +280,7 @@ export async function sendImageWithMediaIdViaSessionWebhook(
 export async function sendActionCardViaSessionWebhook(
   sessionWebhook: string,
   actionCard: DingTalkActionCard,
-  options: { logger?: ReplyLogger } = {}
+  options: { logger?: ReplyLogger } = {},
 ): Promise<ReplyResult> {
   const { logger } = options;
 
@@ -309,20 +331,26 @@ export async function sendActionCardViaSessionWebhook(
     if (!resp.ok) {
       const data = await resp.text();
       logger?.error?.(
-        { err: { message: `HTTP ${resp.status}`, status: resp.status, data }, webhook: maskWebhook(sessionWebhook) },
-        "Failed to send ActionCard to DingTalk"
+        {
+          err: { message: `HTTP ${resp.status}`, status: resp.status, data },
+          webhook: maskWebhook(sessionWebhook),
+        },
+        "Failed to send ActionCard to DingTalk",
       );
       return { ok: false, reason: "http_error", status: resp.status, data };
     }
 
-    logger?.debug?.({ webhook: maskWebhook(sessionWebhook), title: actionCard.title }, "Sent ActionCard to DingTalk");
+    logger?.debug?.(
+      { webhook: maskWebhook(sessionWebhook), title: actionCard.title },
+      "Sent ActionCard to DingTalk",
+    );
 
     return { ok: true };
   } catch (err) {
     const error = err as Error;
     logger?.error?.(
       { err: { message: error?.message }, webhook: maskWebhook(sessionWebhook) },
-      "Failed to send ActionCard to DingTalk"
+      "Failed to send ActionCard to DingTalk",
     );
     return { ok: false, reason: "fetch_error" };
   }
@@ -338,7 +366,7 @@ const TEMPLATE_VAR_PATTERN = /\{([a-zA-Z][a-zA-Z0-9.]*)\}/g;
  */
 export function resolveResponsePrefix(
   template: string | undefined,
-  context: { model?: string; provider?: string; identity?: string }
+  context: { model?: string; provider?: string; identity?: string },
 ): string | undefined {
   if (template === undefined || template === null) {
     return undefined;

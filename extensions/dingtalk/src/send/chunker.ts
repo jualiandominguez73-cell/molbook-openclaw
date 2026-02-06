@@ -35,7 +35,10 @@ function parseFenceSpans(text: string): Array<{ start: number; end: number }> {
 /**
  * Check if a position is safe to break (not inside a fence).
  */
-function isSafeBreakpoint(position: number, fenceSpans: Array<{ start: number; end: number }>): boolean {
+function isSafeBreakpoint(
+  position: number,
+  fenceSpans: Array<{ start: number; end: number }>,
+): boolean {
   for (const span of fenceSpans) {
     if (position > span.start && position < span.end) {
       return false;

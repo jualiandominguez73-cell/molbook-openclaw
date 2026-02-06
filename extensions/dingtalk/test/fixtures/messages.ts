@@ -156,9 +156,7 @@ export const AT_MENTION_MESSAGE: RawStreamMessage = {
     conversationType: "2",
     senderStaffId: "user-at-001",
     senderNick: "At User",
-    atUsers: [
-      { dingtalkId: "bot-dingtalk-id", staffId: "bot-staff-id" },
-    ],
+    atUsers: [{ dingtalkId: "bot-dingtalk-id", staffId: "bot-staff-id" }],
     isInAtList: true,
   },
 };

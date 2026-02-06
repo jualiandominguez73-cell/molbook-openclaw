@@ -8,7 +8,6 @@ import * as path from "node:path";
 import type { ResolvedDingTalkAccount } from "../accounts.js";
 import type { StreamLogger } from "../stream/types.js";
 import type { DingTalkActionCard } from "../types/channel-data.js";
-import { createTokenManagerFromAccount, type TokenManager } from "./token-manager.js";
 import { chunkText, chunkMarkdownText, normalizeForTextMessage } from "../send/chunker.js";
 import { convertMarkdownForDingTalk } from "../send/markdown.js";
 import {
@@ -19,6 +18,7 @@ import {
   detectMediaType,
 } from "./media-upload.js";
 import { uploadMedia } from "./media.js";
+import { createTokenManagerFromAccount, type TokenManager } from "./token-manager.js";
 
 /**
  * Target type for message sending.
@@ -97,7 +97,7 @@ export function parseTarget(to: string): MessageTarget {
 function buildMsgPayload(
   text: string,
   msgType: "text" | "markdown" | "image" | "actionCard",
-  options?: { picUrl?: string; actionCard?: DingTalkActionCard }
+  options?: { picUrl?: string; actionCard?: DingTalkActionCard },
 ): { msgKey: string; msgParam: string } {
   if (msgType === "image" && options?.picUrl) {
     return {
@@ -161,7 +161,7 @@ async function sendDirectMessage(
   text: string,
   msgType: "text" | "markdown",
   accessToken: string,
-  logger?: StreamLogger
+  logger?: StreamLogger,
 ): Promise<SendMessageResult> {
   if (userIds.length === 0) {
     return { ok: false, error: new Error("No user IDs provided") };
@@ -193,7 +193,7 @@ async function sendDirectMessage(
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), userIds },
-        "Direct message failed"
+        "Direct message failed",
       );
       return {
         ok: false,
@@ -207,10 +207,7 @@ async function sendDirectMessage(
       flowControlledStaffIdList?: string[];
     };
 
-    logger?.debug?.(
-      { processQueryKey: data.processQueryKey, userIds },
-      "Direct message sent"
-    );
+    logger?.debug?.({ processQueryKey: data.processQueryKey, userIds }, "Direct message sent");
 
     return {
       ok: true,
@@ -219,10 +216,7 @@ async function sendDirectMessage(
       flowControlledUserIds: data.flowControlledStaffIdList,
     };
   } catch (err) {
-    logger?.error?.(
-      { err: { message: (err as Error)?.message }, userIds },
-      "Direct message error"
-    );
+    logger?.error?.({ err: { message: (err as Error)?.message }, userIds }, "Direct message error");
     return { ok: false, error: err as Error };
   }
 }
@@ -237,7 +231,7 @@ async function sendGroupMessage(
   text: string,
   msgType: "text" | "markdown",
   accessToken: string,
-  logger?: StreamLogger
+  logger?: StreamLogger,
 ): Promise<SendMessageResult> {
   const url = `${account.apiBase}/v1.0/robot/groupMessages/send`;
   const { msgKey, msgParam } = buildMsgPayload(text, msgType);
@@ -262,7 +256,7 @@ async function sendGroupMessage(
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), openConversationId },
-        "Group message failed"
+        "Group message failed",
       );
       return {
         ok: false,
@@ -274,7 +268,7 @@ async function sendGroupMessage(
 
     logger?.debug?.(
       { processQueryKey: data.processQueryKey, openConversationId },
-      "Group message sent"
+      "Group message sent",
     );
 
     return {
@@ -284,7 +278,7 @@ async function sendGroupMessage(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message }, openConversationId },
-      "Group message error"
+      "Group message error",
     );
     return { ok: false, error: err as Error };
   }
@@ -294,9 +288,7 @@ async function sendGroupMessage(
  * Send a proactive message (auto-detects direct vs group).
  * Handles message chunking for long messages.
  */
-export async function sendProactiveMessage(
-  opts: SendMessageOptions
-): Promise<SendMessageResult> {
+export async function sendProactiveMessage(opts: SendMessageOptions): Promise<SendMessageResult> {
   const {
     account,
     to,
@@ -318,7 +310,7 @@ export async function sendProactiveMessage(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for proactive message"
+      "Failed to get access token for proactive message",
     );
     return { ok: false, error: err as Error };
   }
@@ -352,7 +344,7 @@ export async function sendProactiveMessage(
         chunk,
         replyMode,
         accessToken,
-        logger
+        logger,
       );
     } else {
       lastResult = await sendDirectMessage(
@@ -361,7 +353,7 @@ export async function sendProactiveMessage(
         chunk,
         replyMode,
         accessToken,
-        logger
+        logger,
       );
     }
 
@@ -408,7 +400,7 @@ export async function sendBatchDirectMessage(opts: {
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for batch message"
+      "Failed to get access token for batch message",
     );
     return { ok: false, error: err as Error };
   }
@@ -424,14 +416,7 @@ export async function sendBatchDirectMessage(opts: {
 
   // For batch messages, we don't chunk - just send as-is
   // DingTalk will truncate if too long
-  return sendDirectMessage(
-    account,
-    userIds,
-    processedText,
-    replyMode,
-    accessToken,
-    logger
-  );
+  return sendDirectMessage(account, userIds, processedText, replyMode, accessToken, logger);
 }
 
 /**
@@ -450,17 +435,8 @@ export interface SendImageOptions {
  * Send an image message to a user or group.
  * DingTalk uses msgKey: sampleImageMsg with photoURL parameter.
  */
-export async function sendImageMessage(
-  opts: SendImageOptions
-): Promise<SendMessageResult> {
-  const {
-    account,
-    to,
-    picUrl,
-    text,
-    logger,
-    tokenManager: providedTokenManager,
-  } = opts;
+export async function sendImageMessage(opts: SendImageOptions): Promise<SendMessageResult> {
+  const { account, to, picUrl, text, logger, tokenManager: providedTokenManager } = opts;
 
   const target = parseTarget(to);
   const tokenManager = providedTokenManager ?? createTokenManagerFromAccount(account, logger);
@@ -471,7 +447,7 @@ export async function sendImageMessage(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for image message"
+      "Failed to get access token for image message",
     );
     return { ok: false, error: err as Error };
   }
@@ -479,24 +455,26 @@ export async function sendImageMessage(
   const { msgKey, msgParam } = buildMsgPayload("", "image", { picUrl });
 
   // Send image message
-  const url = target.type === "group"
-    ? `${account.apiBase}/v1.0/robot/groupMessages/send`
-    : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
+  const url =
+    target.type === "group"
+      ? `${account.apiBase}/v1.0/robot/groupMessages/send`
+      : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
 
   try {
-    const body = target.type === "group"
-      ? {
-          robotCode: account.clientId,
-          openConversationId: target.id,
-          msgKey,
-          msgParam,
-        }
-      : {
-          robotCode: account.clientId,
-          userIds: [target.id],
-          msgKey,
-          msgParam,
-        };
+    const body =
+      target.type === "group"
+        ? {
+            robotCode: account.clientId,
+            openConversationId: target.id,
+            msgKey,
+            msgParam,
+          }
+        : {
+            robotCode: account.clientId,
+            userIds: [target.id],
+            msgKey,
+            msgParam,
+          };
 
     const resp = await fetch(url, {
       method: "POST",
@@ -512,7 +490,7 @@ export async function sendImageMessage(
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), picUrl },
-        "Image message failed"
+        "Image message failed",
       );
       return {
         ok: false,
@@ -522,10 +500,7 @@ export async function sendImageMessage(
 
     const data = (await resp.json()) as { processQueryKey?: string };
 
-    logger?.debug?.(
-      { processQueryKey: data.processQueryKey, picUrl },
-      "Image message sent"
-    );
+    logger?.debug?.({ processQueryKey: data.processQueryKey, picUrl }, "Image message sent");
 
     // If there's accompanying text, send it separately
     if (text?.trim()) {
@@ -544,10 +519,7 @@ export async function sendImageMessage(
       processQueryKey: data.processQueryKey,
     };
   } catch (err) {
-    logger?.error?.(
-      { err: { message: (err as Error)?.message }, picUrl },
-      "Image message error"
-    );
+    logger?.error?.({ err: { message: (err as Error)?.message }, picUrl }, "Image message error");
     return { ok: false, error: err as Error };
   }
 }
@@ -567,15 +539,9 @@ export interface SendActionCardOptions {
  * Send an ActionCard message to a user or group.
  */
 export async function sendActionCardMessage(
-  opts: SendActionCardOptions
+  opts: SendActionCardOptions,
 ): Promise<SendMessageResult> {
-  const {
-    account,
-    to,
-    actionCard,
-    logger,
-    tokenManager: providedTokenManager,
-  } = opts;
+  const { account, to, actionCard, logger, tokenManager: providedTokenManager } = opts;
 
   const target = parseTarget(to);
   const tokenManager = providedTokenManager ?? createTokenManagerFromAccount(account, logger);
@@ -586,31 +552,33 @@ export async function sendActionCardMessage(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for ActionCard message"
+      "Failed to get access token for ActionCard message",
     );
     return { ok: false, error: err as Error };
   }
 
   const { msgKey, msgParam } = buildMsgPayload("", "actionCard", { actionCard });
 
-  const url = target.type === "group"
-    ? `${account.apiBase}/v1.0/robot/groupMessages/send`
-    : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
+  const url =
+    target.type === "group"
+      ? `${account.apiBase}/v1.0/robot/groupMessages/send`
+      : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
 
   try {
-    const body = target.type === "group"
-      ? {
-          robotCode: account.clientId,
-          openConversationId: target.id,
-          msgKey,
-          msgParam,
-        }
-      : {
-          robotCode: account.clientId,
-          userIds: [target.id],
-          msgKey,
-          msgParam,
-        };
+    const body =
+      target.type === "group"
+        ? {
+            robotCode: account.clientId,
+            openConversationId: target.id,
+            msgKey,
+            msgParam,
+          }
+        : {
+            robotCode: account.clientId,
+            userIds: [target.id],
+            msgKey,
+            msgParam,
+          };
 
     const resp = await fetch(url, {
       method: "POST",
@@ -626,7 +594,7 @@ export async function sendActionCardMessage(
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), title: actionCard.title },
-        "ActionCard message failed"
+        "ActionCard message failed",
       );
       return {
         ok: false,
@@ -638,7 +606,7 @@ export async function sendActionCardMessage(
 
     logger?.debug?.(
       { processQueryKey: data.processQueryKey, title: actionCard.title },
-      "ActionCard message sent"
+      "ActionCard message sent",
     );
 
     return {
@@ -648,7 +616,7 @@ export async function sendActionCardMessage(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message }, title: actionCard.title },
-      "ActionCard message error"
+      "ActionCard message error",
     );
     return { ok: false, error: err as Error };
   }
@@ -672,9 +640,7 @@ export interface SendFileOptions {
  * Requires uploading the file first to get a mediaId.
  * Uses msgKey: sampleFile
  */
-export async function sendFileMessage(
-  opts: SendFileOptions
-): Promise<SendMessageResult> {
+export async function sendFileMessage(opts: SendFileOptions): Promise<SendMessageResult> {
   const {
     account,
     to,
@@ -694,7 +660,7 @@ export async function sendFileMessage(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for file message"
+      "Failed to get access token for file message",
     );
     return { ok: false, error: err as Error };
   }
@@ -707,24 +673,26 @@ export async function sendFileMessage(
     fileType: fileType ?? "file",
   });
 
-  const url = target.type === "group"
-    ? `${account.apiBase}/v1.0/robot/groupMessages/send`
-    : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
+  const url =
+    target.type === "group"
+      ? `${account.apiBase}/v1.0/robot/groupMessages/send`
+      : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
 
   try {
-    const body = target.type === "group"
-      ? {
-          robotCode: account.clientId,
-          openConversationId: target.id,
-          msgKey,
-          msgParam,
-        }
-      : {
-          robotCode: account.clientId,
-          userIds: [target.id],
-          msgKey,
-          msgParam,
-        };
+    const body =
+      target.type === "group"
+        ? {
+            robotCode: account.clientId,
+            openConversationId: target.id,
+            msgKey,
+            msgParam,
+          }
+        : {
+            robotCode: account.clientId,
+            userIds: [target.id],
+            msgKey,
+            msgParam,
+          };
 
     const resp = await fetch(url, {
       method: "POST",
@@ -740,7 +708,7 @@ export async function sendFileMessage(
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), fileName },
-        "File message failed"
+        "File message failed",
       );
       return {
         ok: false,
@@ -750,20 +718,14 @@ export async function sendFileMessage(
 
     const data = (await resp.json()) as { processQueryKey?: string };
 
-    logger?.debug?.(
-      { processQueryKey: data.processQueryKey, fileName },
-      "File message sent"
-    );
+    logger?.debug?.({ processQueryKey: data.processQueryKey, fileName }, "File message sent");
 
     return {
       ok: true,
       processQueryKey: data.processQueryKey,
     };
   } catch (err) {
-    logger?.error?.(
-      { err: { message: (err as Error)?.message }, fileName },
-      "File message error"
-    );
+    logger?.error?.({ err: { message: (err as Error)?.message }, fileName }, "File message error");
     return { ok: false, error: err as Error };
   }
 }
@@ -785,16 +747,9 @@ export interface SendMediaByPathOptions {
  * Used when you have already uploaded a file and have the mediaId.
  */
 export async function sendImageMessageWithMediaId(
-  opts: Omit<SendImageOptions, "picUrl"> & { mediaId: string }
+  opts: Omit<SendImageOptions, "picUrl"> & { mediaId: string },
 ): Promise<SendMessageResult> {
-  const {
-    account,
-    to,
-    mediaId,
-    text,
-    logger,
-    tokenManager: providedTokenManager,
-  } = opts;
+  const { account, to, mediaId, text, logger, tokenManager: providedTokenManager } = opts;
 
   const target = parseTarget(to);
   const tokenManager = providedTokenManager ?? createTokenManagerFromAccount(account, logger);
@@ -805,7 +760,7 @@ export async function sendImageMessageWithMediaId(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for image message (mediaId)"
+      "Failed to get access token for image message (mediaId)",
     );
     return { ok: false, error: err as Error };
   }
@@ -815,24 +770,26 @@ export async function sendImageMessageWithMediaId(
   const msgKey = "sampleImageMsg";
   const msgParam = JSON.stringify({ photoURL: mediaId });
 
-  const url = target.type === "group"
-    ? `${account.apiBase}/v1.0/robot/groupMessages/send`
-    : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
+  const url =
+    target.type === "group"
+      ? `${account.apiBase}/v1.0/robot/groupMessages/send`
+      : `${account.apiBase}/v1.0/robot/oToMessages/batchSend`;
 
   try {
-    const body = target.type === "group"
-      ? {
-          robotCode: account.clientId,
-          openConversationId: target.id,
-          msgKey,
-          msgParam,
-        }
-      : {
-          robotCode: account.clientId,
-          userIds: [target.id],
-          msgKey,
-          msgParam,
-        };
+    const body =
+      target.type === "group"
+        ? {
+            robotCode: account.clientId,
+            openConversationId: target.id,
+            msgKey,
+            msgParam,
+          }
+        : {
+            robotCode: account.clientId,
+            userIds: [target.id],
+            msgKey,
+            msgParam,
+          };
 
     const resp = await fetch(url, {
       method: "POST",
@@ -848,7 +805,7 @@ export async function sendImageMessageWithMediaId(
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), mediaId },
-        "Image message (mediaId) failed"
+        "Image message (mediaId) failed",
       );
       return {
         ok: false,
@@ -860,7 +817,7 @@ export async function sendImageMessageWithMediaId(
 
     logger?.debug?.(
       { processQueryKey: data.processQueryKey, mediaId },
-      "Image message (mediaId) sent"
+      "Image message (mediaId) sent",
     );
 
     // If there's accompanying text, send it separately
@@ -882,7 +839,7 @@ export async function sendImageMessageWithMediaId(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message }, mediaId },
-      "Image message (mediaId) error"
+      "Image message (mediaId) error",
     );
     return { ok: false, error: err as Error };
   }
@@ -900,9 +857,7 @@ export async function sendImageMessageWithMediaId(
  * - Images: Sends directly using picUrl
  * - Files: Downloads, uploads to DingTalk, then sends
  */
-export async function sendMediaByPath(
-  opts: SendMediaByPathOptions
-): Promise<SendMessageResult> {
+export async function sendMediaByPath(opts: SendMediaByPathOptions): Promise<SendMessageResult> {
   const { account, to, mediaUrl, text, tokenManager: providedTokenManager, logger } = opts;
   const tokenManager = providedTokenManager ?? createTokenManagerFromAccount(account, logger);
 
@@ -912,10 +867,7 @@ export async function sendMediaByPath(
     const fileName = path.basename(localPath);
     const mediaType = detectMediaType(fileName);
 
-    logger?.debug?.(
-      { localPath, mediaType },
-      "Sending local media"
-    );
+    logger?.debug?.({ localPath, mediaType }, "Sending local media");
 
     // Check if file exists
     if (!fs.existsSync(localPath)) {
@@ -971,10 +923,7 @@ export async function sendMediaByPath(
 
   if (isImage) {
     // For remote images, try sending directly with URL
-    logger?.debug?.(
-      { mediaUrl },
-      "Sending remote image via URL"
-    );
+    logger?.debug?.({ mediaUrl }, "Sending remote image via URL");
     return sendImageMessage({
       account,
       to,
@@ -986,10 +935,7 @@ export async function sendMediaByPath(
   }
 
   // For non-image remote files, download first, then upload and send
-  logger?.debug?.(
-    { mediaUrl },
-    "Downloading remote file for upload"
-  );
+  logger?.debug?.({ mediaUrl }, "Downloading remote file for upload");
 
   try {
     const response = await fetch(mediaUrl, {
@@ -1047,7 +993,7 @@ export async function sendMediaByPath(
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message }, mediaUrl },
-      "Failed to download and send remote file"
+      "Failed to download and send remote file",
     );
     return { ok: false, error: err as Error };
   }

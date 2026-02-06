@@ -22,13 +22,13 @@ Edit `~/.openclaw/openclaw.json`:
 
 ```json5
 {
-  "channels": {
-    "dingtalk": {
-      "enabled": true,
-      "clientId": "ding***",
-      "clientSecret": "***"
-    }
-  }
+  channels: {
+    dingtalk: {
+      enabled: true,
+      clientId: "ding***",
+      clientSecret: "***",
+    },
+  },
 }
 ```
 

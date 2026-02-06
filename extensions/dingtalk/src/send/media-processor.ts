@@ -71,10 +71,7 @@ export async function processLocalImagesInMarkdown(opts: {
     return { text, processedCount: 0, errors: [] };
   }
 
-  logger?.debug?.(
-    { matchCount: matches.length },
-    "Found local images in Markdown"
-  );
+  logger?.debug?.({ matchCount: matches.length }, "Found local images in Markdown");
 
   for (const match of matches) {
     const [fullMatch, alt, rawPath] = match;
@@ -88,10 +85,7 @@ export async function processLocalImagesInMarkdown(opts: {
 
     // Check if file exists
     if (!fs.existsSync(localPath)) {
-      logger?.warn?.(
-        { path: localPath },
-        "Local image file not found, skipping"
-      );
+      logger?.warn?.({ path: localPath }, "Local image file not found, skipping");
       errors.push({ path: localPath, error: "File not found" });
       continue;
     }
@@ -117,7 +111,7 @@ export async function processLocalImagesInMarkdown(opts: {
         if (!uploadResult.ok || !uploadResult.mediaId) {
           logger?.error?.(
             { path: localPath, error: uploadResult.error?.message },
-            "Failed to upload local image"
+            "Failed to upload local image",
           );
           errors.push({
             path: localPath,
@@ -129,15 +123,12 @@ export async function processLocalImagesInMarkdown(opts: {
         mediaId = uploadResult.mediaId;
         cache.set(localPath, mediaId);
 
-        logger?.debug?.(
-          { path: localPath, mediaId },
-          "Uploaded local image"
-        );
+        logger?.debug?.({ path: localPath, mediaId }, "Uploaded local image");
       } catch (err) {
         const error = err as Error;
         logger?.error?.(
           { path: localPath, err: { message: error?.message } },
-          "Error uploading local image"
+          "Error uploading local image",
         );
         errors.push({ path: localPath, error: error?.message ?? "Upload error" });
         continue;
@@ -177,13 +168,16 @@ export function extractLocalImagePaths(text: string): string[] {
  * Useful when images are sent separately.
  */
 export function stripLocalImages(text: string): string {
-  return text.replace(LOCAL_IMAGE_REGEX, (match, _alt, rawPath) => {
-    if (isLocalPath(rawPath)) {
-      // Remove the entire image markdown
-      return "";
-    }
-    return match;
-  }).replace(/\n{3,}/g, "\n\n").trim();
+  return text
+    .replace(LOCAL_IMAGE_REGEX, (match, _alt, rawPath) => {
+      if (isLocalPath(rawPath)) {
+        // Remove the entire image markdown
+        return "";
+      }
+      return match;
+    })
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -215,10 +209,7 @@ export async function prepareMediaContent(opts: {
     return { text, mediaIds: [], errors: [] };
   }
 
-  logger?.debug?.(
-    { count: localPaths.length },
-    "Preparing media content"
-  );
+  logger?.debug?.({ count: localPaths.length }, "Preparing media content");
 
   // Upload each local image
   for (const localPath of localPaths) {

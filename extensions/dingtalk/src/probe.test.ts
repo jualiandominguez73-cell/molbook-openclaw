@@ -2,8 +2,8 @@
  * Tests for DingTalk probe utilities.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { probeDingTalk } from "./probe.js";
 import { BASIC_ACCOUNT, UNCONFIGURED_ACCOUNT } from "../test/fixtures/configs.js";
+import { probeDingTalk } from "./probe.js";
 
 describe("probeDingTalk", () => {
   afterEach(() => {
@@ -73,11 +73,18 @@ describe("probeDingTalk", () => {
 
   it("respects custom timeout", async () => {
     // Mock a slow response
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: () => Promise.resolve({ accessToken: "token" }),
-      }), 100))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: () => Promise.resolve({ accessToken: "token" }),
+              }),
+            100,
+          ),
+        ),
     );
     vi.stubGlobal("fetch", mockFetch);
 
@@ -100,7 +107,7 @@ describe("probeDingTalk", () => {
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);

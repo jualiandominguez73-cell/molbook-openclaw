@@ -36,13 +36,7 @@ export async function uploadMedia(opts: {
   tokenManager?: TokenManager;
   logger?: StreamLogger;
 }): Promise<UploadMediaResult> {
-  const {
-    account,
-    file,
-    fileName,
-    tokenManager: providedTokenManager,
-    logger,
-  } = opts;
+  const { account, file, fileName, tokenManager: providedTokenManager, logger } = opts;
 
   const tokenManager = providedTokenManager ?? createTokenManagerFromAccount(account, logger);
 
@@ -52,7 +46,7 @@ export async function uploadMedia(opts: {
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for media upload"
+      "Failed to get access token for media upload",
     );
     return { ok: false, error: err as Error };
   }
@@ -78,7 +72,7 @@ export async function uploadMedia(opts: {
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), fileName },
-        "Media upload failed"
+        "Media upload failed",
       );
       return {
         ok: false,
@@ -88,20 +82,14 @@ export async function uploadMedia(opts: {
 
     const data = (await resp.json()) as { mediaId?: string };
 
-    logger?.debug?.(
-      { mediaId: data.mediaId, fileName },
-      "Media uploaded"
-    );
+    logger?.debug?.({ mediaId: data.mediaId, fileName }, "Media uploaded");
 
     return {
       ok: true,
       mediaId: data.mediaId,
     };
   } catch (err) {
-    logger?.error?.(
-      { err: { message: (err as Error)?.message }, fileName },
-      "Media upload error"
-    );
+    logger?.error?.({ err: { message: (err as Error)?.message }, fileName }, "Media upload error");
     return { ok: false, error: err as Error };
   }
 }
@@ -117,12 +105,7 @@ export async function downloadMedia(opts: {
   tokenManager?: TokenManager;
   logger?: StreamLogger;
 }): Promise<DownloadMediaResult> {
-  const {
-    account,
-    downloadCode,
-    tokenManager: providedTokenManager,
-    logger,
-  } = opts;
+  const { account, downloadCode, tokenManager: providedTokenManager, logger } = opts;
 
   const tokenManager = providedTokenManager ?? createTokenManagerFromAccount(account, logger);
 
@@ -132,7 +115,7 @@ export async function downloadMedia(opts: {
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for media download"
+      "Failed to get access token for media download",
     );
     return { ok: false, error: err as Error };
   }
@@ -156,8 +139,12 @@ export async function downloadMedia(opts: {
     if (!resp.ok) {
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
-        { status: resp.status, error: errorText.slice(0, 200), downloadCode: downloadCode.slice(0, 20) },
-        "Media download failed"
+        {
+          status: resp.status,
+          error: errorText.slice(0, 200),
+          downloadCode: downloadCode.slice(0, 20),
+        },
+        "Media download failed",
       );
       return {
         ok: false,
@@ -169,7 +156,7 @@ export async function downloadMedia(opts: {
 
     logger?.debug?.(
       { hasUrl: !!data.downloadUrl, downloadCode: downloadCode.slice(0, 20) },
-      "Media download URL obtained"
+      "Media download URL obtained",
     );
 
     return {
@@ -179,7 +166,7 @@ export async function downloadMedia(opts: {
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message }, downloadCode: downloadCode.slice(0, 20) },
-      "Media download error"
+      "Media download error",
     );
     return { ok: false, error: err as Error };
   }

@@ -16,7 +16,7 @@ export interface ProbeResult {
  */
 export async function probeDingTalk(
   account: ResolvedDingTalkAccount,
-  timeoutMs = 5000
+  timeoutMs = 5000,
 ): Promise<ProbeResult> {
   const start = Date.now();
 
@@ -40,7 +40,7 @@ export async function probeDingTalk(
     const elapsedMs = Date.now() - start;
 
     if (resp.ok) {
-      const data = await resp.json() as { accessToken?: string; expireIn?: number };
+      const data = (await resp.json()) as { accessToken?: string; expireIn?: number };
       if (data.accessToken) {
         return { ok: true, elapsedMs };
       }

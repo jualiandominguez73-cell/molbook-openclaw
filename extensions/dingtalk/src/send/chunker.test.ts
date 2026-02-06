@@ -2,12 +2,7 @@
  * Tests for chunker utilities.
  */
 import { describe, it, expect } from "vitest";
-import {
-  chunkText,
-  chunkMarkdownText,
-  toCleanString,
-  normalizeForTextMessage,
-} from "./chunker.js";
+import { chunkText, chunkMarkdownText, toCleanString, normalizeForTextMessage } from "./chunker.js";
 
 describe("chunkText", () => {
   it("returns single chunk for text under limit", () => {
@@ -81,7 +76,8 @@ describe("chunkMarkdownText", () => {
   });
 
   it("does not break inside code fences", () => {
-    const text = "Before code\n\n```javascript\nconst x = 1;\nconst y = 2;\nconst z = 3;\n```\n\nAfter code";
+    const text =
+      "Before code\n\n```javascript\nconst x = 1;\nconst y = 2;\nconst z = 3;\n```\n\nAfter code";
     const result = chunkMarkdownText(text, 30);
     // Code block should not be split
     const codeChunk = result.find((c) => c.includes("```javascript"));
@@ -129,7 +125,7 @@ describe("toCleanString", () => {
   });
 
   it("converts object to string", () => {
-    expect(toCleanString({ a: 1 })).toBe("{\"a\":1}");
+    expect(toCleanString({ a: 1 })).toBe('{"a":1}');
   });
 });
 

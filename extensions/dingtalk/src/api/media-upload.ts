@@ -180,7 +180,7 @@ export async function uploadMediaToOAPI(opts: {
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message } },
-      "Failed to get access token for OAPI media upload"
+      "Failed to get access token for OAPI media upload",
     );
     return { ok: false, error: err as Error };
   }
@@ -193,10 +193,7 @@ export async function uploadMediaToOAPI(opts: {
     const blob = new Blob([media], { type: "application/octet-stream" });
     formData.append("media", blob, fileName);
 
-    logger?.debug?.(
-      { fileName, mediaType, size: media.length },
-      "Uploading media to OAPI"
-    );
+    logger?.debug?.({ fileName, mediaType, size: media.length }, "Uploading media to OAPI");
 
     const resp = await fetch(url, {
       method: "POST",
@@ -208,7 +205,7 @@ export async function uploadMediaToOAPI(opts: {
       const errorText = await resp.text().catch(() => "");
       logger?.error?.(
         { status: resp.status, error: errorText.slice(0, 200), fileName },
-        "OAPI media upload failed (HTTP error)"
+        "OAPI media upload failed (HTTP error)",
       );
       return {
         ok: false,
@@ -227,7 +224,7 @@ export async function uploadMediaToOAPI(opts: {
     if (data.errcode && data.errcode !== 0) {
       logger?.error?.(
         { errcode: data.errcode, errmsg: data.errmsg, fileName },
-        "OAPI media upload failed (API error)"
+        "OAPI media upload failed (API error)",
       );
       return {
         ok: false,
@@ -245,7 +242,7 @@ export async function uploadMediaToOAPI(opts: {
 
     logger?.debug?.(
       { mediaId: data.media_id, type: data.type, fileName },
-      "OAPI media uploaded successfully"
+      "OAPI media uploaded successfully",
     );
 
     return {
@@ -256,7 +253,7 @@ export async function uploadMediaToOAPI(opts: {
   } catch (err) {
     logger?.error?.(
       { err: { message: (err as Error)?.message }, fileName },
-      "OAPI media upload error"
+      "OAPI media upload error",
     );
     return { ok: false, error: err as Error };
   }

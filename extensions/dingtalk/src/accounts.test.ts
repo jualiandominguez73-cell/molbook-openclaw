@@ -3,16 +3,16 @@
  */
 import { describe, it, expect, afterEach } from "vitest";
 import {
+  createMockClawdbotConfig,
+  createEnvBasedConfig,
+  createMultiAccountConfig,
+} from "../test/fixtures/configs.js";
+import {
   resolveDingTalkAccount,
   listDingTalkAccountIds,
   resolveDefaultDingTalkAccountId,
   isDingTalkAccountConfigured,
 } from "./accounts.js";
-import {
-  createMockClawdbotConfig,
-  createEnvBasedConfig,
-  createMultiAccountConfig,
-} from "../test/fixtures/configs.js";
 
 describe("resolveDingTalkAccount", () => {
   const originalEnv = { ...process.env };

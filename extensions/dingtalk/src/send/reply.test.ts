@@ -2,7 +2,12 @@
  * Tests for reply via sessionWebhook.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { sendReplyViaSessionWebhook, sendImageViaSessionWebhook, sendActionCardViaSessionWebhook, resolveResponsePrefix } from "./reply.js";
+import {
+  sendReplyViaSessionWebhook,
+  sendImageViaSessionWebhook,
+  sendActionCardViaSessionWebhook,
+  resolveResponsePrefix,
+} from "./reply.js";
 
 describe("sendReplyViaSessionWebhook", () => {
   afterEach(() => {
@@ -18,7 +23,7 @@ describe("sendReplyViaSessionWebhook", () => {
 
     const result = await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      "Hello, world!"
+      "Hello, world!",
     );
 
     expect(result.ok).toBe(true);
@@ -42,15 +47,15 @@ describe("sendReplyViaSessionWebhook", () => {
     const result = await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
       "# Title\n\nContent",
-      { replyMode: "markdown" }
+      { replyMode: "markdown" },
     );
 
-	    expect(result.ok).toBe(true);
-	    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-	    expect(body.msgtype).toBe("markdown");
-	    expect(body.markdown.title).toBe("OpenClaw");
-	    expect(body.markdown.text).toContain("# Title");
-	  });
+    expect(result.ok).toBe(true);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.msgtype).toBe("markdown");
+    expect(body.markdown.title).toBe("OpenClaw");
+    expect(body.markdown.text).toContain("# Title");
+  });
 
   it("chunks long messages", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
@@ -63,7 +68,7 @@ describe("sendReplyViaSessionWebhook", () => {
     const result = await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
       longText,
-      { maxChars: 1800 }
+      { maxChars: 1800 },
     );
 
     expect(result.ok).toBe(true);
@@ -88,7 +93,7 @@ describe("sendReplyViaSessionWebhook", () => {
 
     const result = await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      "Hello"
+      "Hello",
     );
 
     expect(result.ok).toBe(false);
@@ -102,7 +107,7 @@ describe("sendReplyViaSessionWebhook", () => {
 
     const result = await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      "Hello"
+      "Hello",
     );
 
     expect(result.ok).toBe(false);
@@ -127,7 +132,7 @@ Text after`;
     await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
       tableText,
-      { replyMode: "markdown", tableMode: "code" }
+      { replyMode: "markdown", tableMode: "code" },
     );
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
@@ -148,7 +153,7 @@ Text after`;
     await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
       tableText,
-      { replyMode: "markdown", tableMode: "off" }
+      { replyMode: "markdown", tableMode: "off" },
     );
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
@@ -171,7 +176,7 @@ Text after`;
     await sendReplyViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
       "Hello",
-      { logger }
+      { logger },
     );
 
     expect(logger.debug).toHaveBeenCalled();
@@ -192,7 +197,7 @@ describe("sendImageViaSessionWebhook", () => {
 
     const result = await sendImageViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      "https://example.com/image.png"
+      "https://example.com/image.png",
     );
 
     expect(result.ok).toBe(true);
@@ -215,7 +220,7 @@ describe("sendImageViaSessionWebhook", () => {
     const result = await sendImageViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
       "https://example.com/image.png",
-      { text: "Check this image" }
+      { text: "Check this image" },
     );
 
     expect(result.ok).toBe(true);
@@ -240,7 +245,7 @@ describe("sendImageViaSessionWebhook", () => {
 
     const result = await sendImageViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      "https://example.com/image.png"
+      "https://example.com/image.png",
     );
 
     expect(result.ok).toBe(false);
@@ -267,7 +272,7 @@ describe("sendActionCardViaSessionWebhook", () => {
         text: "Card body content",
         singleTitle: "View More",
         singleURL: "https://example.com",
-      }
+      },
     );
 
     expect(result.ok).toBe(true);
@@ -297,7 +302,7 @@ describe("sendActionCardViaSessionWebhook", () => {
           { title: "Option 1", actionURL: "https://example.com/1" },
           { title: "Option 2", actionURL: "https://example.com/2" },
         ],
-      }
+      },
     );
 
     expect(result.ok).toBe(true);
@@ -329,7 +334,7 @@ describe("sendActionCardViaSessionWebhook", () => {
 
     const result = await sendActionCardViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      { title: "Test", text: "Test" }
+      { title: "Test", text: "Test" },
     );
 
     expect(result.ok).toBe(false);
@@ -343,7 +348,7 @@ describe("sendActionCardViaSessionWebhook", () => {
 
     const result = await sendActionCardViaSessionWebhook(
       "https://oapi.dingtalk.com/robot/sendBySession?session=xxx",
-      { title: "Test", text: "Test" }
+      { title: "Test", text: "Test" },
     );
 
     expect(result.ok).toBe(false);
@@ -377,10 +382,10 @@ describe("resolveResponsePrefix", () => {
   });
 
   it("replaces multiple variables", () => {
-    const result = resolveResponsePrefix(
-      "[{provider}/{model}]",
-      { model: "gpt-4", provider: "openai" }
-    );
+    const result = resolveResponsePrefix("[{provider}/{model}]", {
+      model: "gpt-4",
+      provider: "openai",
+    });
     expect(result).toBe("[openai/gpt-4]");
   });
 

@@ -119,14 +119,14 @@ The tag is removed from the visible text. The file is uploaded and sent separate
 
 ## Capabilities
 
-| Feature         | Status            |
-| --------------- | ----------------- |
-| Direct messages | ✅ Supported       |
-| Group chats     | ✅ Supported       |
-| Threads         | ❌ Not supported   |
-| Reactions       | ❌ Not supported   |
-| Media           | ✅ Supported       |
-| Native commands | ❌ Not supported   |
+| Feature         | Status           |
+| --------------- | ---------------- |
+| Direct messages | ✅ Supported     |
+| Group chats     | ✅ Supported     |
+| Threads         | ❌ Not supported |
+| Reactions       | ❌ Not supported |
+| Media           | ✅ Supported     |
+| Native commands | ❌ Not supported |
 
 ## Configuration reference
 

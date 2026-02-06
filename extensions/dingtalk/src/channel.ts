@@ -2,11 +2,9 @@
  * DingTalk Channel Plugin for Clawdbot.
  */
 
-import type {
-  ChannelPlugin,
-  ChannelCapabilities,
-  ChannelMeta,
-} from "openclaw/plugin-sdk";
+import type { ChannelPlugin, ChannelCapabilities, ChannelMeta } from "openclaw/plugin-sdk";
+import type { StreamLogger } from "./stream/types.js";
+import type { DingTalkChannelData } from "./types/channel-data.js";
 import {
   type ResolvedDingTalkAccount,
   listDingTalkAccountIds,
@@ -14,26 +12,38 @@ import {
   resolveDefaultDingTalkAccountId,
   isDingTalkAccountConfigured,
 } from "./accounts.js";
+import { isLocalPath, isImageUrl } from "./api/media-upload.js";
+import {
+  sendProactiveMessage,
+  sendImageMessage,
+  sendActionCardMessage,
+  sendMediaByPath,
+} from "./api/send-message.js";
 import {
   DEFAULT_ACCOUNT_ID,
   DINGTALK_CHANNEL_ID,
   DINGTALK_LEGACY_CHANNEL_ID,
   DINGTALK_NPM_PACKAGE,
 } from "./config-schema.js";
-import { chunkMarkdownText } from "./send/chunker.js";
 import { monitorDingTalkProvider } from "./monitor.js";
 import { probeDingTalk } from "./probe.js";
-import { sendProactiveMessage, sendImageMessage, sendActionCardMessage, sendMediaByPath } from "./api/send-message.js";
-import { isLocalPath, isImageUrl } from "./api/media-upload.js";
 import { getOrCreateTokenManager } from "./runtime.js";
-import type { StreamLogger } from "./stream/types.js";
-import type { DingTalkChannelData } from "./types/channel-data.js";
+import { chunkMarkdownText } from "./send/chunker.js";
 
 /**
  * Adapt clawdbot SubsystemLogger to StreamLogger interface.
  * Clawdbot uses (message, meta) order, our StreamLogger uses (obj, msg) order.
  */
-function adaptLogger(log: { info?: (msg: string, meta?: unknown) => void; debug?: (msg: string, meta?: unknown) => void; warn?: (msg: string, meta?: unknown) => void; error?: (msg: string, meta?: unknown) => void } | undefined): StreamLogger | undefined {
+function adaptLogger(
+  log:
+    | {
+        info?: (msg: string, meta?: unknown) => void;
+        debug?: (msg: string, meta?: unknown) => void;
+        warn?: (msg: string, meta?: unknown) => void;
+        error?: (msg: string, meta?: unknown) => void;
+      }
+    | undefined,
+): StreamLogger | undefined {
   if (!log) {
     return undefined;
   }
@@ -91,7 +101,9 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
   id: DINGTALK_CHANNEL_ID,
   meta,
   capabilities,
-  reload: { configPrefixes: [`channels.${DINGTALK_CHANNEL_ID}`] },
+  reload: {
+    configPrefixes: [`channels.${DINGTALK_CHANNEL_ID}`, `channels.${DINGTALK_LEGACY_CHANNEL_ID}`],
+  },
 
   // Config schema for Control UI
   configSchema: {
@@ -119,33 +131,80 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
     },
     uiHints: {
       enabled: { label: "启用", help: "是否启用钉钉渠道" },
-      clientId: { label: "Client ID", help: "钉钉机器人的 Client ID（AppKey）", placeholder: "dingo..." },
-      clientSecret: { label: "Client Secret", help: "钉钉机器人的 Client Secret（AppSecret）", sensitive: true },
-      clientSecretFile: { label: "Client Secret 文件", help: "包含 Client Secret 的文件路径（替代直接配置）", advanced: true },
+      clientId: {
+        label: "Client ID",
+        help: "钉钉机器人的 Client ID（AppKey）",
+        placeholder: "dingo...",
+      },
+      clientSecret: {
+        label: "Client Secret",
+        help: "钉钉机器人的 Client Secret（AppSecret）",
+        sensitive: true,
+      },
+      clientSecretFile: {
+        label: "Client Secret 文件",
+        help: "包含 Client Secret 的文件路径（替代直接配置）",
+        advanced: true,
+      },
       replyMode: { label: "回复模式", help: "消息格式：text（纯文本）或 markdown" },
       maxChars: { label: "最大字符数", help: "单条消息最大字符数（超出将分段发送）" },
-      tableMode: { label: "表格模式", help: "Markdown 表格处理方式：off（保留）、code（转为代码块）", advanced: true },
-      responsePrefix: { label: "回复前缀", help: "添加到回复开头的文本（支持 {model}/{provider}/{identity} 变量）", advanced: true },
+      tableMode: {
+        label: "表格模式",
+        help: "Markdown 表格处理方式：off（保留）、code（转为代码块）",
+        advanced: true,
+      },
+      responsePrefix: {
+        label: "回复前缀",
+        help: "添加到回复开头的文本（支持 {model}/{provider}/{identity} 变量）",
+        advanced: true,
+      },
       requirePrefix: { label: "触发前缀", help: "群聊中需要以此前缀开头才会响应", advanced: true },
-      requireMention: { label: "需要@提及", help: "群聊中需要@机器人才会响应（默认启用）", advanced: true },
+      requireMention: {
+        label: "需要@提及",
+        help: "群聊中需要@机器人才会响应（默认启用）",
+        advanced: true,
+      },
       isolateContextPerUserInGroup: {
         label: "群聊上下文隔离",
         help: "开启后，同一个群聊中不同用户与机器人对话将使用不同上下文（互不影响）",
         advanced: true,
       },
-      mentionBypassUsers: { label: "@提及豁免用户", help: "无需@机器人即可触发的用户 ID 列表", advanced: true },
-      allowFrom: { label: "允许发送者", help: "允许发送消息的用户 ID 列表（空表示允许所有）", advanced: true },
-      selfUserId: { label: "机器人用户 ID", help: "机器人自身的用户 ID，用于过滤自己的消息", advanced: true },
-      apiBase: { label: "API 基础 URL", help: "钉钉 API 基础地址（默认：https://api.dingtalk.com）", advanced: true },
-      openPath: { label: "Open Path", help: "Stream 连接路径（默认：/v1.0/gateway/connections/open）", advanced: true },
-      subscriptionsJson: { label: "订阅配置 JSON", help: "自定义订阅配置 JSON（高级用法）", advanced: true },
+      mentionBypassUsers: {
+        label: "@提及豁免用户",
+        help: "无需@机器人即可触发的用户 ID 列表",
+        advanced: true,
+      },
+      allowFrom: {
+        label: "允许发送者",
+        help: "允许发送消息的用户 ID 列表（空表示允许所有）",
+        advanced: true,
+      },
+      selfUserId: {
+        label: "机器人用户 ID",
+        help: "机器人自身的用户 ID，用于过滤自己的消息",
+        advanced: true,
+      },
+      apiBase: {
+        label: "API 基础 URL",
+        help: "钉钉 API 基础地址（默认：https://api.dingtalk.com）",
+        advanced: true,
+      },
+      openPath: {
+        label: "Open Path",
+        help: "Stream 连接路径（默认：/v1.0/gateway/connections/open）",
+        advanced: true,
+      },
+      subscriptionsJson: {
+        label: "订阅配置 JSON",
+        help: "自定义订阅配置 JSON（高级用法）",
+        advanced: true,
+      },
     },
   },
 
   config: {
     listAccountIds: (cfg) => listDingTalkAccountIds(cfg),
-    resolveAccount: (cfg, accountId) =>
-      resolveDingTalkAccount({ cfg, accountId }),
+    resolveAccount: (cfg, accountId) => resolveDingTalkAccount({ cfg, accountId }),
     defaultAccountId: (cfg) => resolveDefaultDingTalkAccountId(cfg),
 
     setAccountEnabled: ({ cfg, accountId, enabled }) => {
@@ -261,7 +320,7 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
           ok: false,
           error: new Error(
             `DingTalk credentials not configured for account "${account.accountId}". ` +
-            `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`
+              `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`,
           ),
           messageId: "",
         };
@@ -284,7 +343,9 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
         ok: result.ok,
         messageId: result.processQueryKey || "",
         ...(result.error ? { error: result.error } : {}),
-        ...(result.invalidUserIds?.length ? { meta: { invalidUserIds: result.invalidUserIds } } : {}),
+        ...(result.invalidUserIds?.length
+          ? { meta: { invalidUserIds: result.invalidUserIds } }
+          : {}),
       };
     },
 
@@ -297,7 +358,7 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
           ok: false,
           error: new Error(
             `DingTalk credentials not configured for account "${account.accountId}". ` +
-            `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`
+              `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`,
           ),
           messageId: "",
         };
@@ -371,7 +432,7 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
           ok: false,
           error: new Error(
             `DingTalk credentials not configured for account "${account.accountId}". ` +
-            `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`
+              `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`,
           ),
           messageId: "",
         };
@@ -520,7 +581,7 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingTalkAccount> = {
       if (!isDingTalkAccountConfigured(account)) {
         throw new Error(
           `DingTalk credentials not configured for account "${account.accountId}". ` +
-          `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`
+            `Set channels.dingtalk.clientId and channels.dingtalk.clientSecret.`,
         );
       }
 

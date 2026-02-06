@@ -1,8 +1,6 @@
 {
   "id": "dingtalk",
-  "channels": [
-    "dingtalk"
-  ],
+  "channels": ["dingtalk"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

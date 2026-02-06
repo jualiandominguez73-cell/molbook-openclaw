@@ -2,9 +2,9 @@
  * Tests for media upload and download API.
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { BASIC_ACCOUNT } from "../../test/fixtures/configs.js";
 import { uploadMedia, downloadMedia } from "./media.js";
 import { clearAllTokens } from "./token-manager.js";
-import { BASIC_ACCOUNT } from "../../test/fixtures/configs.js";
 
 describe("uploadMedia", () => {
   beforeEach(() => {
@@ -16,7 +16,8 @@ describe("uploadMedia", () => {
   });
 
   it("uploads file and returns mediaId", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -59,7 +60,8 @@ describe("uploadMedia", () => {
   });
 
   it("returns error when upload fails", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -82,7 +84,8 @@ describe("uploadMedia", () => {
   });
 
   it("handles fetch exception", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -111,7 +114,8 @@ describe("downloadMedia", () => {
   });
 
   it("downloads file and returns URL", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -155,7 +159,8 @@ describe("downloadMedia", () => {
   });
 
   it("returns error when download fails", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),
@@ -177,7 +182,8 @@ describe("downloadMedia", () => {
   });
 
   it("handles fetch exception", async () => {
-    const mockFetch = vi.fn()
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ accessToken: "test-token", expireIn: 7200 }),

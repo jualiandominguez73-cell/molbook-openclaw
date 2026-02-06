@@ -13,7 +13,7 @@
  * @returns The system prompt string
  */
 export function buildDingTalkSystemPrompt(): string {
-    return `## DingTalk channel notes (钉钉)
+  return `## DingTalk channel notes (钉钉)
 
 When the user asks you to **send** an image or file (as an attachment), include a media tag in your reply:
 
@@ -34,10 +34,10 @@ export const DEFAULT_DINGTALK_SYSTEM_PROMPT = buildDingTalkSystemPrompt();
 /**
  * Generates the sender context prompt string.
  * This provides the AI with the DingTalk sender's staff ID for identification.
- * 
+ *
  * @param senderId The sender's ID (e.g. staffId)
  * @returns The formatted context string
  */
 export function buildSenderContext(senderId: string): string {
-    return `[钉钉消息 | senderStaffId: ${senderId}]`;
+  return `[钉钉消息 | senderStaffId: ${senderId}]`;
 }

@@ -9,13 +9,5 @@ export { convertMarkdownForDingTalk } from "./markdown.js";
 export type { MarkdownOptions } from "./markdown.js";
 
 // Re-export proactive messaging API for convenience
-export {
-  sendProactiveMessage,
-  sendBatchDirectMessage,
-  parseTarget,
-} from "../api/send-message.js";
-export type {
-  MessageTarget,
-  SendMessageOptions,
-  SendMessageResult,
-} from "../api/send-message.js";
+export { sendProactiveMessage, sendBatchDirectMessage, parseTarget } from "../api/send-message.js";
+export type { MessageTarget, SendMessageOptions, SendMessageResult } from "../api/send-message.js";

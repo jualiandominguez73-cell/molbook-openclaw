@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
+import { readFileSync } from "node:fs";
 import {
   type CoalesceConfig,
   type DingTalkConfig,
@@ -185,9 +185,7 @@ export function resolveDingTalkAccount(params: {
   const requirePrefix = accountConfig?.requirePrefix ?? section?.requirePrefix;
   const requireMention = accountConfig?.requireMention ?? section?.requireMention ?? true;
   const isolateContextPerUserInGroup =
-    accountConfig?.isolateContextPerUserInGroup ??
-    section?.isolateContextPerUserInGroup ??
-    false;
+    accountConfig?.isolateContextPerUserInGroup ?? section?.isolateContextPerUserInGroup ?? false;
   const mentionBypassUsers = accountConfig?.mentionBypassUsers ?? section?.mentionBypassUsers ?? [];
   const responsePrefix = accountConfig?.responsePrefix ?? section?.responsePrefix;
   const showToolStatus = accountConfig?.showToolStatus ?? section?.showToolStatus ?? false;
