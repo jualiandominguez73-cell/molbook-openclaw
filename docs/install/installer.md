@@ -11,17 +11,11 @@ title: "Installer Internals"
 
 OpenClaw ships three installer scripts, served from `openclaw.ai`.
 
-<CardGroup cols={3}>
-  <Card title="install.sh" icon="rocket" href="#install-sh">
-    macOS/Linux/WSL installer. Handles Node setup, npm install (default), or git install.
-  </Card>
-  <Card title="install-cli.sh" icon="terminal" href="#install-cli-sh">
-    Prefix-based installer for non-root environments. Installs local Node + CLI under one directory.
-  </Card>
-  <Card title="install.ps1" icon="monitor" href="#install-ps1">
-    Windows PowerShell installer. npm install (default) or git install.
-  </Card>
-</CardGroup>
+| Script                              | Platform             | What it does                                                                                 |
+| ----------------------------------- | -------------------- | -------------------------------------------------------------------------------------------- |
+| [`install.sh`](#install-sh)         | macOS / Linux / WSL  | Installs Node if needed, installs OpenClaw via npm (default) or git, and can run onboarding. |
+| [`install-cli.sh`](#install-cli-sh) | macOS / Linux / WSL  | Installs Node + OpenClaw into a local prefix (`~/.openclaw`). No root required.              |
+| [`install.ps1`](#install-ps1)       | Windows (PowerShell) | Installs Node if needed, installs OpenClaw via npm (default) or git, and can run onboarding. |
 
 ## Quick commands
 
