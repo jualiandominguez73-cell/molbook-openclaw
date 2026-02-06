@@ -163,6 +163,7 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
 
   // If status reactions are enabled, keep exactly one “latest state” reaction.
   // This is deterministic and does not involve the LLM.
+  let outboxState: "idle" | "working" | "done" | "error" = "idle";
   if (statusEnabled && shouldAckReaction()) {
     await setDiscordStatusReaction({
       channelId: message.channelId,
@@ -176,6 +177,7 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
       channelId: message.channelId,
       replyToId: message.id,
     });
+    outboxState = "working";
   }
 
   const ackReactionPromise =
@@ -489,9 +491,15 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
         rest: client.rest,
       });
       outbox?.markTerminal({ messageId: message.id, state: "error" });
+      outboxState = "error";
     }
     throw err;
   } finally {
+    // Best-effort invariant: if we ever upserted a working outbox row for this message,
+    // we should never leave it in "working" after processing completes.
+    if (outboxState === "working") {
+      outbox?.markTerminal({ messageId: message.id, state: "done" });
+    }
     markDispatchIdle();
     outbox?.close();
   }
@@ -508,6 +516,7 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
       // we must still close out the outbox entry so the watchdog doesn't
       // misclassify it as an interrupted run.
       outbox?.markTerminal({ messageId: message.id, state: "done" });
+      outboxState = "done";
     }
     if (isGuildMessage) {
       clearHistoryEntriesIfEnabled({
@@ -531,6 +540,7 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
     // This is still best-effort (a hard restart can interrupt mid-run),
     // and the outbox reconciliation on startup handles those cases.
     outbox?.markTerminal({ messageId: message.id, state: "done" });
+    outboxState = "done";
   }
 
   if (shouldLogVerbose()) {
