@@ -1,11 +1,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi, afterAll } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assertWebChannel,
   CONFIG_DIR,
-  disconnectUtilsService,
   ensureDir,
   jidToE164,
   normalizeE164,
@@ -44,10 +43,6 @@ describe("ensureDir", () => {
     const target = path.join(tmp, "nested", "dir");
     await ensureDir(target);
     expect(fs.existsSync(target)).toBe(true);
-  });
-
-  afterAll(() => {
-    disconnectUtilsService();
   });
 });
 

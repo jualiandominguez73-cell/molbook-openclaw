@@ -1,107 +1,14 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawn, ChildProcess } from "node:child_process";
-import * as grpc from "@grpc/grpc-js";
-import * as protoLoader from "@grpc/proto-loader";
-import { fileURLToPath } from "node:url";
 import { resolveOAuthDir } from "./config/paths.js";
 import { logVerbose, shouldLogVerbose } from "./globals.js";
 
-// --- gRPC Microservice Client Setup ---
-// Resolve proto path relative to this file
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROTO_PATH = path.resolve(__dirname, "../protos/utils.proto");
-const SERVER_BIN = path.resolve(__dirname, "../dist/services/utils_server");
-
-const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-  keepCase: true,
-  longs: String,
-  enums: String,
-  defaults: true,
-  oneofs: true,
-});
-// oxlint-disable-next-line typescript/no-explicit-any
-const utilsProto = grpc.loadPackageDefinition(packageDefinition).utils as any;
-
-// oxlint-disable-next-line typescript/no-explicit-any
-let client: any = null;
-let serverProcess: ChildProcess | null = null;
-
-function ensureClient() {
-  if (client) return client;
-
-  // Attempt to spawn the C++ microservice if it exists
-  if (fs.existsSync(SERVER_BIN) && !serverProcess) {
-    try {
-      // Spawn detached process
-      serverProcess = spawn(SERVER_BIN, [], {
-        detached: true,
-        stdio: "ignore",
-      });
-      serverProcess.unref();
-      // Give it a moment to bind port 50051 (very naive, assumes port availability)
-    } catch (e) {
-      // Fallback or log?
-      if (shouldLogVerbose()) {
-         logVerbose(`Failed to spawn C++ microservice: ${e}`);
-      }
-    }
-  }
-
-  // Create client (Assumes localhost:50051)
-  client = new utilsProto.UtilsService(
-    "localhost:50051",
-    grpc.credentials.createInsecure()
-  );
-  return client;
+export async function ensureDir(dir: string) {
+  await fs.promises.mkdir(dir, { recursive: true });
 }
-
-export function disconnectUtilsService() {
-  if (client) {
-    client.close();
-    client = null;
-  }
-}
-
-// --- Microservice Wrappers ---
-
-export async function ensureDir(dir: string): Promise<void> {
-  const c = ensureClient();
-  return new Promise<void>((resolve, reject) => {
-    // Wait for ready state (up to 2 seconds)
-    const deadline = new Date();
-    deadline.setSeconds(deadline.getSeconds() + 2);
-
-    c.waitForReady(deadline, (err: Error) => {
-        if (err) {
-            // Fallback to local node:fs if service is unreachable
-            if (shouldLogVerbose()) logVerbose("UtilsService unreachable, falling back to local fs.mkdir");
-            fs.promises.mkdir(dir, { recursive: true }).then(resolve).catch(reject);
-            return;
-        }
-        // Call microservice
-        // oxlint-disable-next-line typescript/no-explicit-any
-        c.EnsureDir({ path: dir }, (rpcErr: any, response: any) => {
-            if (rpcErr) {
-                 // On RPC error, try fallback? Or reject?
-                 // Rejecting is safer to know something went wrong.
-                 reject(rpcErr);
-            } else if (response.success) {
-                resolve();
-            } else {
-                reject(new Error(response.error));
-            }
-        });
-    });
-  });
-}
-
-// --- Original Functions (Migrated via interface or kept for compatibility) ---
 
 export function clampNumber(value: number, min: number, max: number): number {
-  // NOTE: This could be migrated to C++ microservice `ClampNumber` if made async.
-  // For now, kept synchronous for compatibility.
   return Math.max(min, Math.min(max, value));
 }
 

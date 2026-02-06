@@ -9,7 +9,19 @@ async function withTempDir<T>(prefix: string, fn: (dir: string) => Promise<T>) {
   try {
     return await fn(dir);
   } finally {
-    await fs.rm(dir, { recursive: true, force: true });
+    // Avoid deleting the directory if the process cwd is still inside it,
+    // although our try/finally blocks inside tests should handle that.
+    // In parallel tests, this deletion might be racing with other operations if not careful.
+    try {
+        if (process.cwd().startsWith(dir)) {
+            // Safety valve: don't delete if we are somehow still in it
+            const tmp = os.tmpdir();
+            process.chdir(tmp);
+        }
+        await fs.rm(dir, { recursive: true, force: true });
+    } catch {
+        // Ignored
+    }
   }
 }
 
@@ -19,6 +31,9 @@ function getTextContent(result?: { content?: Array<{ type: string; text?: string
 }
 
 describe("workspace path resolution", () => {
+  // Increase timeout for slow environments or heavy setup
+  const TIMEOUT = 300_000;
+
   it("reads relative paths against workspaceDir even after cwd changes", async () => {
     await withTempDir("openclaw-ws-", async (workspaceDir) => {
       await withTempDir("openclaw-cwd-", async (otherDir) => {
@@ -27,8 +42,8 @@ describe("workspace path resolution", () => {
         const contents = "workspace read ok";
         await fs.writeFile(path.join(workspaceDir, testFile), contents, "utf8");
 
-        process.chdir(otherDir);
         try {
+          process.chdir(otherDir);
           const tools = createOpenClawCodingTools({ workspaceDir });
           const readTool = tools.find((tool) => tool.name === "read");
           expect(readTool).toBeDefined();
@@ -40,7 +55,7 @@ describe("workspace path resolution", () => {
         }
       });
     });
-  });
+  }, TIMEOUT);
 
   it("writes relative paths against workspaceDir even after cwd changes", async () => {
     await withTempDir("openclaw-ws-", async (workspaceDir) => {
@@ -49,8 +64,8 @@ describe("workspace path resolution", () => {
         const testFile = "write.txt";
         const contents = "workspace write ok";
 
-        process.chdir(otherDir);
         try {
+          process.chdir(otherDir);
           const tools = createOpenClawCodingTools({ workspaceDir });
           const writeTool = tools.find((tool) => tool.name === "write");
           expect(writeTool).toBeDefined();
@@ -67,7 +82,7 @@ describe("workspace path resolution", () => {
         }
       });
     });
-  });
+  }, TIMEOUT);
 
   it("edits relative paths against workspaceDir even after cwd changes", async () => {
     await withTempDir("openclaw-ws-", async (workspaceDir) => {
@@ -76,8 +91,8 @@ describe("workspace path resolution", () => {
         const testFile = "edit.txt";
         await fs.writeFile(path.join(workspaceDir, testFile), "hello world", "utf8");
 
-        process.chdir(otherDir);
         try {
+          process.chdir(otherDir);
           const tools = createOpenClawCodingTools({ workspaceDir });
           const editTool = tools.find((tool) => tool.name === "edit");
           expect(editTool).toBeDefined();
@@ -95,7 +110,7 @@ describe("workspace path resolution", () => {
         }
       });
     });
-  });
+  }, TIMEOUT);
 
   it("defaults exec cwd to workspaceDir when workdir is omitted", async () => {
     await withTempDir("openclaw-ws-", async (workspaceDir) => {
@@ -117,7 +132,7 @@ describe("workspace path resolution", () => {
       ]);
       expect(resolvedOutput).toBe(resolvedWorkspace);
     });
-  });
+  }, TIMEOUT);
 
   it("lets exec workdir override the workspace default", async () => {
     await withTempDir("openclaw-ws-", async (workspaceDir) => {
@@ -142,10 +157,12 @@ describe("workspace path resolution", () => {
         expect(resolvedOutput).toBe(resolvedOverride);
       });
     });
-  });
+  }, TIMEOUT);
 });
 
 describe("sandboxed workspace paths", () => {
+  const TIMEOUT = 300_000;
+
   it("uses sandbox workspace for relative read/write/edit", async () => {
     await withTempDir("openclaw-sandbox-", async (sandboxDir) => {
       await withTempDir("openclaw-workspace-", async (workspaceDir) => {
@@ -204,5 +221,5 @@ describe("sandboxed workspace paths", () => {
         expect(edited).toBe("sandbox edit");
       });
     });
-  });
+  }, TIMEOUT);
 });

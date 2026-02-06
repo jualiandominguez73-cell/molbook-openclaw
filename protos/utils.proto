@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package utils;
+
+service UtilsService {
+  rpc EnsureDir (EnsureDirRequest) returns (EnsureDirResponse);
+  rpc ClampNumber (ClampNumberRequest) returns (ClampNumberResponse);
+  rpc JidToE164 (JidToE164Request) returns (JidToE164Response);
+}
+
+message EnsureDirRequest {
+  string path = 1;
+}
+
+message EnsureDirResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ClampNumberRequest {
+  double value = 1;
+  double min = 2;
+  double max = 3;
+}
+
+message ClampNumberResponse {
+  double result = 1;
+}
+
+message JidToE164Request {
+  string jid = 1;
+}
+
+message JidToE164Response {
+  string e164 = 1;
+}
