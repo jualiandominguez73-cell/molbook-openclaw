@@ -43,7 +43,9 @@ function normalizeChatItemIdToken(value: number | string): string {
 
 function quoteCliArg(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed || /[\0\r\n]/.test(trimmed)) {
+  const hasControlNewline =
+    trimmed.includes("\n") || trimmed.includes("\r") || trimmed.includes("\u0000");
+  if (!trimmed || hasControlNewline) {
     throw new Error("invalid SimpleX CLI argument");
   }
   return `'${trimmed.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
