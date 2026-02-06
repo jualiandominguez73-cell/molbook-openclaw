@@ -3,7 +3,16 @@ services:
     name: openclaw
     runtime: docker
     plan: starter
-    healthCheckPath: /health
+    healthCheckPath: /__openclaw__/canvas/
+    dockerCommand:
+      - node
+      - dist/index.js
+      - gateway
+      - --allow-unconfigured
+      - --bind
+      - lan
+      - --port
+      - "8080"
     envVars:
       - key: PORT
         value: "8080"
