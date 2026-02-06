@@ -2,8 +2,8 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listAgents, getAgentStatus, type GatewayAgent, type AgentStatusEntry } from "@/lib/api";
 import { useGateway } from "@/providers";
-import { useUIStore } from "@/stores/useUIStore";
 import { useAgentStore } from "@/stores/useAgentStore";
+import { useGatewayEnabled, useGatewayModeKey } from "../useGatewayEnabled";
 
 // Re-export types from store for consistency
 export type { Agent, AgentStatus } from "../../stores/useAgentStore";
@@ -145,8 +145,8 @@ async function fetchAgentsByStatus(status: Agent["status"], liveMode: boolean): 
 // Query hooks
 export function useAgents() {
   const { isConnected } = useGateway();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = useLiveGateway || isConnected;
+  const gatewayEnabled = useGatewayEnabled();
+  const liveMode = gatewayEnabled || isConnected;
   const modeKey = liveMode ? "live" : "mock";
   const upsertAgents = useAgentStore((s) => s.upsertAgents);
   const storeAgents = useAgentStore((s) => s.agents);
@@ -188,8 +188,8 @@ export function useAgents() {
 
 export function useAgent(id: string) {
   const { isConnected } = useGateway();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = useLiveGateway || isConnected;
+  const gatewayEnabled = useGatewayEnabled();
+  const liveMode = gatewayEnabled || isConnected;
   const modeKey = liveMode ? "live" : "mock";
   return useQuery({
     queryKey: agentKeys.detail(id, modeKey),
@@ -200,8 +200,8 @@ export function useAgent(id: string) {
 
 export function useAgentsByStatus(status: Agent["status"]) {
   const { isConnected } = useGateway();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = useLiveGateway || isConnected;
+  const gatewayEnabled = useGatewayEnabled();
+  const liveMode = gatewayEnabled || isConnected;
   const modeKey = liveMode ? "live" : "mock";
   return useQuery({
     queryKey: agentKeys.list({ status, mode: modeKey }),

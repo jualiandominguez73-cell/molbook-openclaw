@@ -6,7 +6,7 @@ import {
   type GatewaySessionRow,
   type ChatMessage,
 } from "@/lib/api";
-import { useUIStore } from "@/stores/useUIStore";
+import { useGatewayEnabled, useGatewayModeKey } from "../useGatewayEnabled";
 
 // Re-export types from store for consistency
 export type { Conversation, Message } from "../../stores/useConversationStore";
@@ -199,9 +199,8 @@ async function fetchMessages(
 // ── Query hooks ────────────────────────────────────────────────────
 
 export function useConversations() {
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const modeKey = liveMode ? "live" : "mock";
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
 
   return useQuery({
     queryKey: conversationKeys.list({ mode: modeKey }),
@@ -211,9 +210,8 @@ export function useConversations() {
 }
 
 export function useConversation(id: string) {
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const modeKey = liveMode ? "live" : "mock";
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
 
   return useQuery({
     queryKey: [...conversationKeys.detail(id), modeKey],
@@ -223,9 +221,8 @@ export function useConversation(id: string) {
 }
 
 export function useConversationsByAgent(agentId: string) {
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const modeKey = liveMode ? "live" : "mock";
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
 
   return useQuery({
     queryKey: conversationKeys.list({ agentId, mode: modeKey }),
@@ -235,9 +232,8 @@ export function useConversationsByAgent(agentId: string) {
 }
 
 export function useMessages(conversationId: string) {
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const modeKey = liveMode ? "live" : "mock";
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
 
   return useQuery({
     queryKey: [...conversationKeys.messages(conversationId), modeKey],

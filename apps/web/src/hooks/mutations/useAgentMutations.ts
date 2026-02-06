@@ -8,10 +8,10 @@ import {
   getAgentsList,
   mapAgentEntryToAgent,
 } from "@/lib/agents";
-import { useUIStore } from "@/stores/useUIStore";
 import type { Agent, AgentStatus } from "../queries/useAgents";
 import { agentKeys } from "../queries/useAgents";
 import { configKeys } from "../queries/useConfig";
+import { useGatewayEnabled, useGatewayModeKey } from "../useGatewayEnabled";
 
 type MutationSource = "gateway" | "mock";
 type AgentResult = { agent: Agent; source: MutationSource };
@@ -120,9 +120,9 @@ async function deleteAgentConfig(
 // Mutation hooks
 export function useCreateAgent() {
   const queryClient = useQueryClient();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const listKey = agentKeys.list({ mode: liveMode ? "live" : "mock" });
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
+  const listKey = agentKeys.list({ mode: modeKey });
 
   return useMutation({
     mutationFn: async (data: Omit<Agent, "id" | "lastActive">): Promise<AgentResult> => {
@@ -158,9 +158,9 @@ export function useCreateAgent() {
 
 export function useUpdateAgent() {
   const queryClient = useQueryClient();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const listKey = agentKeys.list({ mode: liveMode ? "live" : "mock" });
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
+  const listKey = agentKeys.list({ mode: modeKey });
 
   return useMutation({
     mutationFn: async (
@@ -179,17 +179,17 @@ export function useUpdateAgent() {
     onMutate: async (updatedAgent) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({
-        queryKey: agentKeys.detail(updatedAgent.id, liveMode ? "live" : "mock"),
+        queryKey: agentKeys.detail(updatedAgent.id, modeKey),
       });
 
       // Snapshot previous value
       const previousAgent = queryClient.getQueryData<Agent>(
-        agentKeys.detail(updatedAgent.id, liveMode ? "live" : "mock")
+        agentKeys.detail(updatedAgent.id, modeKey)
       );
 
       // Optimistically update
       queryClient.setQueryData<Agent>(
-        agentKeys.detail(updatedAgent.id, liveMode ? "live" : "mock"),
+        agentKeys.detail(updatedAgent.id, modeKey),
         (old) => (old ? { ...old, ...updatedAgent } : undefined)
       );
 
@@ -197,7 +197,7 @@ export function useUpdateAgent() {
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({
-        queryKey: agentKeys.detail(variables.id, liveMode ? "live" : "mock"),
+        queryKey: agentKeys.detail(variables.id, modeKey),
       });
       queryClient.invalidateQueries({ queryKey: listKey });
       if (result.source === "gateway") {
@@ -209,7 +209,7 @@ export function useUpdateAgent() {
       // Rollback on error
       if (context?.previousAgent) {
         queryClient.setQueryData(
-          agentKeys.detail(variables.id, liveMode ? "live" : "mock"),
+          agentKeys.detail(variables.id, modeKey),
           context.previousAgent
         );
       }
@@ -222,9 +222,9 @@ export function useUpdateAgent() {
 
 export function useDeleteAgent() {
   const queryClient = useQueryClient();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const listKey = agentKeys.list({ mode: liveMode ? "live" : "mock" });
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
+  const listKey = agentKeys.list({ mode: modeKey });
 
   return useMutation({
     mutationFn: async (id: string): Promise<DeleteResult> => {
@@ -272,24 +272,24 @@ export function useDeleteAgent() {
 
 export function useUpdateAgentStatus() {
   const queryClient = useQueryClient();
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
-  const listKey = agentKeys.list({ mode: liveMode ? "live" : "mock" });
+  const liveMode = useGatewayEnabled();
+  const modeKey = useGatewayModeKey();
+  const listKey = agentKeys.list({ mode: modeKey });
 
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: AgentStatus }) =>
       updateAgentStatusMock(id, status),
     onMutate: async ({ id, status }) => {
       await queryClient.cancelQueries({
-        queryKey: agentKeys.detail(id, liveMode ? "live" : "mock"),
+        queryKey: agentKeys.detail(id, modeKey),
       });
 
       const previousAgent = queryClient.getQueryData<Agent>(
-        agentKeys.detail(id, liveMode ? "live" : "mock")
+        agentKeys.detail(id, modeKey)
       );
 
       queryClient.setQueryData<Agent>(
-        agentKeys.detail(id, liveMode ? "live" : "mock"),
+        agentKeys.detail(id, modeKey),
         (old) => (old ? { ...old, status } : undefined)
       );
 
@@ -306,14 +306,14 @@ export function useUpdateAgentStatus() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: agentKeys.detail(variables.id, liveMode ? "live" : "mock"),
+        queryKey: agentKeys.detail(variables.id, modeKey),
       });
       toast.success(`Agent status updated to ${variables.status}`);
     },
     onError: (_error, variables, context) => {
       if (context?.previousAgent) {
         queryClient.setQueryData(
-          agentKeys.detail(variables.id, liveMode ? "live" : "mock"),
+          agentKeys.detail(variables.id, modeKey),
           context.previousAgent
         );
       }

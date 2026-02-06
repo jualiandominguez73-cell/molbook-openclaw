@@ -14,8 +14,8 @@ import {
   type AgentHealthStatus,
 } from "@/lib/api/agent-status";
 import { useOptionalGateway } from "@/providers/GatewayProvider";
-import { useUIStore } from "@/stores/useUIStore";
 import type { GatewayEvent } from "@/lib/api";
+import { useGatewayEnabled } from "../useGatewayEnabled";
 
 // Re-export types for consumers
 export type { AgentStatusEntry, AgentHealthStatus, AgentStatusSnapshot } from "@/lib/api/agent-status";
@@ -39,8 +39,7 @@ export interface UseAgentStatusDashboardOptions {
 export function useAgentStatusDashboard(options: UseAgentStatusDashboardOptions = {}) {
   const { pollInterval = 10_000, enableStreaming = true } = options;
 
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
+  const liveMode = useGatewayEnabled();
 
   const queryClient = useQueryClient();
   const gatewayCtx = useOptionalGateway();

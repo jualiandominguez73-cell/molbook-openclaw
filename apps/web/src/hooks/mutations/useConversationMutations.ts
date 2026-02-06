@@ -6,9 +6,9 @@ import {
   deleteSession,
   patchSession,
 } from "@/lib/api";
-import { useUIStore } from "@/stores/useUIStore";
 import type { Conversation, Message } from "../queries/useConversations";
 import { conversationKeys } from "../queries/useConversations";
+import { useGatewayEnabled } from "../useGatewayEnabled";
 
 // ── Mock API functions (fallback when not connected) ───────────────
 
@@ -106,8 +106,7 @@ async function sendMessageLive(
 // ── Helper to check live mode ──────────────────────────────────────
 
 function useLiveMode(): boolean {
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  return (import.meta.env?.DEV ?? false) && useLiveGateway;
+  return useGatewayEnabled();
 }
 
 // ── Mutation hooks ─────────────────────────────────────────────────

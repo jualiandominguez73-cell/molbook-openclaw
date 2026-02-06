@@ -12,8 +12,8 @@ import { routeTree } from "./routeTree.gen";
 // Import security provider for app lock & 2FA
 import { SecurityProvider } from "./features/security";
 import { GatewayProvider } from "./providers/GatewayProvider";
-import { useUIStore } from "./stores/useUIStore";
 import { persistGatewayConnectionFromUrl } from "./lib/api";
+import { useGatewayEnabled } from "./hooks/useGatewayEnabled";
 
 // Create a QueryClient instance
 const queryClient = new QueryClient({
@@ -44,10 +44,9 @@ const persistedGatewayConnection = persistGatewayConnectionFromUrl();
 
 // Gateway provider wrapper - defined before render for fast refresh compatibility
 function AppGatewayProviders({ children }: { children: React.ReactNode }) {
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const liveMode = (import.meta.env?.DEV ?? false) && useLiveGateway;
+  const gatewayEnabled = useGatewayEnabled();
   const { gatewayUrl, token, password } = persistedGatewayConnection;
-  const autoConnect = liveMode || Boolean(token || password);
+  const autoConnect = gatewayEnabled || Boolean(token || password);
   return (
     <GatewayProvider url={gatewayUrl} autoConnect={autoConnect} token={token} password={password}>
       {children}

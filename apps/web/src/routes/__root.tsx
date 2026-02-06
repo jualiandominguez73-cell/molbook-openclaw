@@ -7,7 +7,7 @@ import { OnboardingGuard } from "@/components/OnboardingGuard";
 import { UnlockGuard } from "@/features/security/components/unlock/UnlockGuard";
 import { GatewayAuthGuard } from "@/components/composed/GatewayAuthGuard";
 import { useGatewayEventSync, useGatewayStreamHandler } from "@/hooks";
-import { useUIStore } from "@/stores/useUIStore";
+import { useGatewayEnabled } from "@/hooks/useGatewayEnabled";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -32,9 +32,7 @@ function RootLayout() {
   // In dev mode, only enable when useLiveGateway is true
   // In production, always enable
   // Public pages (e.g. /landing) never connect to gateway
-  const useLiveGateway = useUIStore((state) => state.useLiveGateway);
-  const isDev = import.meta.env?.DEV ?? false;
-  const gatewayEnabled = !isPublic && (!isDev || useLiveGateway);
+  const gatewayEnabled = !isPublic && useGatewayEnabled();
 
   // Enable gateway stream handler to process streaming events
   // Disable for public paths that don't need gateway

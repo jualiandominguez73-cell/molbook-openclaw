@@ -8,7 +8,7 @@ import {
   type ExecApprovalsSnapshot,
 } from "@/lib/api/nodes";
 import { useGateway } from "@/providers";
-import { useUIStore } from "@/stores/useUIStore";
+import { useGatewayEnabled } from "../useGatewayEnabled";
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -156,8 +156,8 @@ async function fetchExecApprovals(
 
 export function useNodes() {
   const { isConnected } = useGateway();
-  const useLiveGateway = useUIStore((s) => s.useLiveGateway);
-  const live = useLiveGateway || isConnected;
+  const gatewayEnabled = useGatewayEnabled();
+  const live = gatewayEnabled || isConnected;
   return useQuery({
     queryKey: nodeKeys.list(),
     queryFn: () => fetchNodes(live),
@@ -167,8 +167,8 @@ export function useNodes() {
 
 export function useDevices() {
   const { isConnected } = useGateway();
-  const useLiveGateway = useUIStore((s) => s.useLiveGateway);
-  const live = useLiveGateway || isConnected;
+  const gatewayEnabled = useGatewayEnabled();
+  const live = gatewayEnabled || isConnected;
   return useQuery({
     queryKey: nodeKeys.devices(),
     queryFn: () => fetchDevices(live),
@@ -181,8 +181,8 @@ export function useExecApprovals(
   nodeId?: string,
 ) {
   const { isConnected } = useGateway();
-  const useLiveGateway = useUIStore((s) => s.useLiveGateway);
-  const live = useLiveGateway || isConnected;
+  const gatewayEnabled = useGatewayEnabled();
+  const live = gatewayEnabled || isConnected;
   return useQuery({
     queryKey: nodeKeys.execApprovals(target, nodeId),
     queryFn: () => fetchExecApprovals(live, target, nodeId),
