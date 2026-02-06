@@ -37,27 +37,6 @@ Oracle 的免费层非常适合 OpenClaw（特别是如果你已经有 OCI 账�
 
 ---
 
-## 一键部署（Terraform）
-
-你可以使用 **[openclaw-oci-free](https://github.com/statickidz/openclaw-oci-free)** 仓库在 Always Free OCI 上创建实例，并可选地在首次启动时自动安装 OpenClaw。该仓库提供 Terraform 与 OCI Resource Manager 栈，支持一键部署。
-
-1. 点击下方按钮（或使用仓库中的链接）：
-
-   <a href="https://cloud.oracle.com/resourcemanager/stacks/create?zipUrl=https://github.com/statickidz/openclaw-oci-free/archive/refs/heads/main.zip">
-     <img src="https://oci-resourcemanager-plugin.plugins.oci.oraclecloud.com/latest/deploy-to-oracle-cloud.svg" alt="Deploy OpenClaw to Oracle Cloud (OCI Always Free)" width="200"/>
-   </a>
-2. 登录 Oracle Cloud，选择 compartment，如提示则将 **Terraform working directory** 设为 `terraform`，并填写 **SSH 公钥**。
-3. 创建栈并执行 **Apply**（或在创建时保留“Run apply”）。
-4. Apply 完成后，用栈输出中的命令 SSH 到实例（例如 `ssh ubuntu@<公网IP>` 或 `ssh root@<公网IP>`）。若 cloud-init 已安装 OpenClaw，在实例上执行：
-
-   ```bash
-   openclaw onboard
-   ```
-
-更多说明、机型（E2.1.Micro 或 A1.Flex）及本地 Terraform 用法见 [openclaw-oci-free README](https://github.com/statickidz/openclaw-oci-free)。本页其余部分为**手动** OCI 部署（在控制台创建实例，再自行安装 Tailscale 与 OpenClaw）。
-
----
-
 ## 先决条件
 
 - Oracle Cloud 账户（[注册](https://www.oracle.com/cloud/free/)）——如果遇到问题请参阅[社区注册指南](https://gist.github.com/rssnyder/51e3cfedd730e7dd5f4a816143b25dbd)
@@ -328,4 +307,4 @@ tar -czvf openclaw-backup.tar.gz ~/.openclaw ~/.openclaw/workspace
 - [Tailscale 集成](/gateway/tailscale) — 完整的 Tailscale 文档
 - [Gateway 网关配置](/gateway/configuration) — 所有配置选项
 - [DigitalOcean 指南](/platforms/digitalocean) — 如果你想要付费 + 更容易注册
-- [Hetzner 指南](/platforms/hetzner) — 基于 Docker 的替代方案
+- [Hetzner 指南](/install/hetzner) — 基于 Docker 的替代方案
