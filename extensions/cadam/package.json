@@ -1,0 +1,17 @@
+{
+  "name": "@openclaw/cadam",
+  "version": "1.0.0",
+  "description": "Text-to-CAD plugin for OpenClaw using OpenSCAD",
+  "type": "module",
+  "main": "index.ts",
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  },
+  "keywords": ["openclaw", "cad", "openscad", "3d-modeling", "text-to-cad"],
+  "author": "OpenClaw Contributors",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}

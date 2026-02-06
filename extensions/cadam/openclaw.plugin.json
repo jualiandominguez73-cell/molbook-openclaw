@@ -1,0 +1,82 @@
+{
+  "id": "cadam",
+  "uiHints": {
+    "outputDir": {
+      "label": "Output Directory",
+      "help": "Directory where generated CAD models are saved",
+      "placeholder": "~/.openclaw/cadam-models"
+    },
+    "renderer": {
+      "label": "Renderer",
+      "help": "OpenSCAD rendering backend (cli requires openscad binary)"
+    },
+    "openscadPath": {
+      "label": "OpenSCAD Binary Path",
+      "placeholder": "/usr/bin/openscad",
+      "advanced": true
+    },
+    "includeLibraries": {
+      "label": "Include Libraries",
+      "help": "OpenSCAD libraries to make available (BOSL2, MCAD)",
+      "advanced": true
+    },
+    "defaultExportFormat": {
+      "label": "Default Export Format",
+      "help": "Default format for CAD exports"
+    },
+    "model": {
+      "label": "AI Model",
+      "help": "Model to use for CAD generation (falls back to agent default)"
+    },
+    "maxCodeTokens": {
+      "label": "Max Code Tokens",
+      "advanced": true
+    },
+    "cacheModels": {
+      "label": "Cache Generated Models",
+      "help": "Cache generated models to avoid regeneration",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "outputDir": {
+        "type": "string"
+      },
+      "renderer": {
+        "type": "string",
+        "enum": ["cli", "none"]
+      },
+      "openscadPath": {
+        "type": "string"
+      },
+      "includeLibraries": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["BOSL2", "MCAD"]
+        }
+      },
+      "defaultExportFormat": {
+        "type": "string",
+        "enum": ["stl", "scad", "3mf"]
+      },
+      "model": {
+        "type": "string"
+      },
+      "maxCodeTokens": {
+        "type": "integer",
+        "minimum": 1000,
+        "maximum": 32000
+      },
+      "cacheModels": {
+        "type": "boolean"
+      }
+    }
+  }
+}
