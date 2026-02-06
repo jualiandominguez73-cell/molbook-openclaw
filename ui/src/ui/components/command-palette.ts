@@ -344,7 +344,7 @@ export function createDefaultCommands(
     {
       id: "nav-chat",
       label: "Go to Chat",
-      icon: "message-square",
+      icon: "messageSquare",
       shortcut: `${mod}1`,
       category: "Navigation",
       action: () => setTab("chat"),
@@ -352,7 +352,7 @@ export function createDefaultCommands(
     {
       id: "nav-overview",
       label: "Go to Overview",
-      icon: "layout-dashboard",
+      icon: "layoutDashboard",
       shortcut: `${mod}2`,
       category: "Navigation",
       action: () => setTab("overview"),
@@ -368,7 +368,7 @@ export function createDefaultCommands(
     {
       id: "nav-sessions",
       label: "Go to Sessions",
-      icon: "file-text",
+      icon: "fileText",
       shortcut: `${mod}4`,
       category: "Navigation",
       action: () => setTab("sessions"),
@@ -426,7 +426,7 @@ export function createDefaultCommands(
     {
       id: "nav-logs",
       label: "Go to Logs",
-      icon: "scroll-text",
+      icon: "scrollText",
       category: "Navigation",
       action: () => setTab("logs"),
     },
@@ -434,7 +434,7 @@ export function createDefaultCommands(
     {
       id: "action-refresh",
       label: "Refresh Current View",
-      icon: "refresh-cw",
+      icon: "refreshCw",
       shortcut: `${mod}R`,
       category: "Actions",
       action: refresh,
@@ -471,7 +471,7 @@ export function createDefaultCommands(
     cmds.push({
       id: "sys-open-docs",
       label: "Open Documentation",
-      icon: "book-open",
+      icon: "bookOpen",
       category: "System",
       action: extras.openDocumentation,
     });
@@ -537,7 +537,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-clear-chat",
           label: "Clear Chat History",
-          icon: "trash-2",
+          icon: "trash2",
           category: cat,
           action: actions.clearChat,
         });
@@ -555,7 +555,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-sessions",
           label: "Refresh Sessions",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshSessions,
         });
@@ -565,7 +565,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-channels",
           label: "Refresh Channels",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshChannels,
         });
@@ -583,7 +583,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-cron",
           label: "Refresh Cron Jobs",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshCron,
         });
@@ -601,7 +601,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-automations",
           label: "Refresh Automations",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshAutomations,
         });
@@ -619,7 +619,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-overseer",
           label: "Refresh Overseer",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshOverseer,
         });
@@ -639,7 +639,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-nodes",
           label: "Refresh Nodes",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshNodes,
         });
@@ -649,7 +649,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-clear-logs",
           label: "Clear Log View",
-          icon: "trash-2",
+          icon: "trash2",
           category: cat,
           action: actions.clearLogs,
         });
@@ -657,7 +657,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-logs",
           label: "Refresh Logs",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshLogs,
         });
@@ -673,7 +673,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-toggle-follow",
           label: "Toggle Auto-Follow",
-          icon: "arrow-down-to-line",
+          icon: "arrowDownToLine",
           category: cat,
           action: actions.toggleAutoFollow,
         });
@@ -681,7 +681,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-jump-bottom",
           label: "Jump to Bottom",
-          icon: "chevrons-down",
+          icon: "chevronsDown",
           category: cat,
           action: actions.jumpToLogsBottom,
         });
@@ -691,7 +691,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-skills",
           label: "Refresh Skills",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshSkills,
         });
@@ -701,7 +701,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-debug",
           label: "Refresh Debug",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshDebug,
         });
@@ -711,7 +711,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-instances",
           label: "Refresh Instances",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshInstances,
         });
@@ -721,7 +721,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-overview",
           label: "Refresh Overview",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshOverview,
         });
@@ -731,7 +731,7 @@ export function createContextCommands(tab: Tab, actions: ContextActions): Comman
         cmds.push({
           id: "ctx-refresh-agents",
           label: "Refresh Agents",
-          icon: "refresh-cw",
+          icon: "refreshCw",
           category: cat,
           action: actions.refreshAgents,
         });

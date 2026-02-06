@@ -13,6 +13,11 @@ import {
 } from "./contracts.js";
 import { embedEpisodes } from "./embed.js";
 import { enrichEpisodes } from "./enrich.js";
+import {
+  extractEntitiesFromEpisodes,
+  writeEntitiesToGraph,
+  type EntityExtractorConfig,
+} from "./entity-extract.js";
 import { extractEpisodesFromContent } from "./extract.js";
 import { writeEpisodesToGraph } from "./graph.js";
 import { indexEpisodes } from "./index.js";
@@ -44,6 +49,7 @@ export type MemoryIngestDependencies = {
   vectorAdapter?: VectorAdapter;
   graphiti?: GraphitiClient;
   enrichHooks?: EnrichHooks;
+  entityExtractor?: EntityExtractorConfig;
   emitMetric?: (event: MemoryMetricEvent) => void;
   emitAudit?: (event: MemoryAuditEvent) => void;
   logger?: ReturnType<typeof createMemoryTraceLogger>;
@@ -83,6 +89,7 @@ function emitAudit(deps: MemoryIngestDependencies, payload: Omit<MemoryAuditEven
 function stageToAuditAction(stage: MemoryIngestionStage): MemoryAuditEvent["action"] {
   switch (stage) {
     case "graph":
+    case "entity_extract":
       return "graph_write";
     case "index":
       return "vector_write";
@@ -105,6 +112,7 @@ export async function runMemoryIngestionPipeline(
     "normalize",
     "extract",
     "enrich",
+    "entity_extract",
     "embed",
     "graph",
     "index",
@@ -219,6 +227,24 @@ export async function runMemoryIngestionPipeline(
     warnings.push(...enrichResult.warnings);
     episodes = enrichResult.episodes;
 
+    // Entity extraction — extract entities and relations from enriched episodes
+    const entityResult = await runStage("entity_extract", async () => {
+      const extraction = extractEntitiesFromEpisodes(episodes, deps.entityExtractor);
+      warnings.push(...extraction.warnings);
+
+      // Write entities to graph if Graphiti is configured
+      if (extraction.entities.length > 0 && deps.graphiti) {
+        const writeResult = await writeEntitiesToGraph({
+          entities: extraction.entities,
+          relations: extraction.relations,
+          client: deps.graphiti,
+        });
+        warnings.push(...writeResult.warnings);
+      }
+
+      return extraction;
+    });
+
     const embedResult = await runStage("embed", async () =>
       embedEpisodes({ episodes, embedder: deps.embedder }),
     );
@@ -240,6 +266,8 @@ export async function runMemoryIngestionPipeline(
         runId,
         batchId,
         episodes: episodes.length,
+        entities: entityResult?.entities?.length ?? 0,
+        relations: entityResult?.relations?.length ?? 0,
         warnings: warnings.length,
       });
       return undefined;

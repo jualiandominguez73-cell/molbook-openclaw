@@ -334,7 +334,13 @@ describe("buildMcpPiTool", () => {
       tool: baseTool,
       connection: mockConnection,
     });
-    expect(tool.parameters).toEqual(baseTool.inputSchema);
+    expect(tool.parameters).toEqual({
+      ...baseTool.inputSchema,
+      properties: {
+        title: expect.objectContaining({ description: expect.any(String) }),
+        body: expect.objectContaining({ description: expect.any(String) }),
+      },
+    });
   });
 
   it("provides default schema when inputSchema is missing", () => {
@@ -1648,7 +1654,13 @@ describe("buildEnhancedDescription", () => {
       url: "http://github.com",
       headers: { Authorization: "token" },
     };
-    const result = __testing.buildEnhancedDescription("Create an issue", config, "GitHub API");
+    const result = __testing.buildEnhancedDescription(
+      "create_issue",
+      "Create an issue",
+      "github",
+      "GitHub API",
+      config,
+    );
     expect(result).toContain("[HTTP]");
     expect(result).toContain("Requires Auth");
     expect(result).toContain("Create an issue");
@@ -1657,20 +1669,32 @@ describe("buildEnhancedDescription", () => {
 
   it("preserves original description when already present", () => {
     const config = { transport: "sse" as const, url: "http://example.com" };
-    const result = __testing.buildEnhancedDescription("Fetch data", config, "Server");
+    const result = __testing.buildEnhancedDescription(
+      "fetch_data",
+      "Fetch data",
+      "server",
+      "Server",
+      config,
+    );
     expect(result).toContain("Fetch data");
   });
 
   it("handles missing description gracefully", () => {
     const config = { transport: "stdio" as const, command: "python3" };
-    const result = __testing.buildEnhancedDescription("", config, "PyServer");
+    const result = __testing.buildEnhancedDescription("python_tool", "", "py", "PyServer", config);
     expect(result).toContain("[Local]");
     expect(result).toContain("PyServer");
   });
 
   it("omits auth hint when no auth required", () => {
     const config = { transport: "http" as const, url: "http://example.com" };
-    const result = __testing.buildEnhancedDescription("Open API", config, "OpenWeather");
+    const result = __testing.buildEnhancedDescription(
+      "open_api",
+      "Open API",
+      "openweather",
+      "OpenWeather",
+      config,
+    );
     expect(result).not.toContain("Requires Auth");
     expect(result).toContain("[HTTP]");
   });
@@ -1686,14 +1710,14 @@ describe("enhanceParameterDescription", () => {
       type: "string",
       description: "The issue title",
     };
-    const result = __testing.enhanceParameterDescription(schema);
-    expect(result).toEqual("The issue title");
+    const result = __testing.enhanceParameterDescription(schema, "title");
+    expect(result).toEqual(schema);
   });
 
   it("adds type when description missing", () => {
     const schema = { type: "string" };
-    const result = __testing.enhanceParameterDescription(schema);
-    expect(result).toContain("string");
+    const result = __testing.enhanceParameterDescription(schema, "title");
+    expect(result.description).toContain("string");
   });
 
   it("includes enum values in description", () => {
@@ -1701,9 +1725,9 @@ describe("enhanceParameterDescription", () => {
       type: "string",
       enum: ["open", "closed", "draft"],
     };
-    const result = __testing.enhanceParameterDescription(schema);
-    expect(result).toContain("string");
-    expect(result).toMatch(/open.*closed.*draft/);
+    const result = __testing.enhanceParameterDescription(schema, "state");
+    expect(result.description).toContain("string");
+    expect(result.description).toMatch(/open.*closed.*draft/);
   });
 });
 
@@ -2005,7 +2029,7 @@ describe("STDIO transport configuration", () => {
     const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
     expect(StdioClientTransport).toHaveBeenCalledWith(
       expect.objectContaining({
-        stderr: "inherit",
+        stderr: "pipe",
       }),
     );
   });
@@ -2056,7 +2080,7 @@ describe("Enhanced tool descriptions (Phase #1)", () => {
       serverConfig: server,
     });
 
-    expect(tool.description).toContain("create issue");
+    expect(tool.description).toContain("Create Issue");
     expect(tool.description).toContain("GitHub API");
   });
 
