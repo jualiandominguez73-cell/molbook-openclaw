@@ -15,6 +15,19 @@ function makeTempDir() {
   return dir;
 }
 
+function isNpmAvailable() {
+  const npmCli = resolveNpmCliJs();
+  if (npmCli) {
+    return true;
+  }
+  try {
+    const result = spawnSync("npm", ["--version"], { encoding: "utf-8" });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
 function resolveNpmCliJs() {
   const fromEnv = process.env.npm_execpath;
   if (fromEnv?.includes(`${path.sep}npm${path.sep}`) && fromEnv?.endsWith("npm-cli.js")) {
@@ -92,7 +105,10 @@ afterEach(() => {
 });
 
 describe("installPluginFromArchive", () => {
-  it("installs into ~/.openclaw/extensions and uses unscoped id", async () => {
+  it("installs into ~/.openclaw/extensions and uses unscoped id", async ({ skip }) => {
+    if (!isNpmAvailable()) {
+      skip("npm not available");
+    }
     const stateDir = makeTempDir();
     const workDir = makeTempDir();
     const pkgDir = path.join(workDir, "package");
@@ -130,7 +146,10 @@ describe("installPluginFromArchive", () => {
     expect(fs.existsSync(path.join(result.targetDir, "dist", "index.js"))).toBe(true);
   });
 
-  it("rejects installing when plugin already exists", async () => {
+  it("rejects installing when plugin already exists", async ({ skip }) => {
+    if (!isNpmAvailable()) {
+      skip("npm not available");
+    }
     const stateDir = makeTempDir();
     const workDir = makeTempDir();
     const pkgDir = path.join(workDir, "package");
@@ -206,7 +225,10 @@ describe("installPluginFromArchive", () => {
     expect(fs.existsSync(path.join(result.targetDir, "dist", "index.js"))).toBe(true);
   });
 
-  it("allows updates when mode is update", async () => {
+  it("allows updates when mode is update", async ({ skip }) => {
+    if (!isNpmAvailable()) {
+      skip("npm not available");
+    }
     const stateDir = makeTempDir();
     const workDir = makeTempDir();
     const pkgDir = path.join(workDir, "package");
@@ -268,7 +290,10 @@ describe("installPluginFromArchive", () => {
     expect(manifest.version).toBe("0.0.2");
   });
 
-  it("rejects traversal-like plugin names", async () => {
+  it("rejects traversal-like plugin names", async ({ skip }) => {
+    if (!isNpmAvailable()) {
+      skip("npm not available");
+    }
     const stateDir = makeTempDir();
     const workDir = makeTempDir();
     const pkgDir = path.join(workDir, "package");
@@ -304,7 +329,10 @@ describe("installPluginFromArchive", () => {
     expect(result.error).toContain("reserved path segment");
   });
 
-  it("rejects reserved plugin ids", async () => {
+  it("rejects reserved plugin ids", async ({ skip }) => {
+    if (!isNpmAvailable()) {
+      skip("npm not available");
+    }
     const stateDir = makeTempDir();
     const workDir = makeTempDir();
     const pkgDir = path.join(workDir, "package");
@@ -340,7 +368,10 @@ describe("installPluginFromArchive", () => {
     expect(result.error).toContain("reserved path segment");
   });
 
-  it("rejects packages without openclaw.extensions", async () => {
+  it("rejects packages without openclaw.extensions", async ({ skip }) => {
+    if (!isNpmAvailable()) {
+      skip("npm not available");
+    }
     const stateDir = makeTempDir();
     const workDir = makeTempDir();
     const pkgDir = path.join(workDir, "package");
