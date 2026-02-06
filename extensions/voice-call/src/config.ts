@@ -524,7 +524,7 @@ export function validateProviderConfig(config: VoiceCallConfig): {
     if (!a?.password)
       errors.push("plugins.entries.voice-call.config.asteriskAri.password is required");
     if (!a?.app) errors.push("plugins.entries.voice-call.config.asteriskAri.app is required");
-    if (!a?.trunk) errors.push("plugins.entries.voice-call.config.asteriskAri.trunk is required");
+    // trunk is optional: if set, outbound calls dial via PJSIP/<trunk>/<to>; otherwise PJSIP/<to>
     if (!a?.rtpHost)
       errors.push("plugins.entries.voice-call.config.asteriskAri.rtpHost is required");
   }

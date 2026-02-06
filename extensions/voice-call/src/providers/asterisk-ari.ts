@@ -492,11 +492,8 @@ export class AsteriskAriProvider implements VoiceCallProvider {
       }),
     );
 
-    // Speak greeting for inbound
-    if (!params.isOutbound) {
-      const greeting = "Czesc. Tu Eryk.";
-      await this.playTts({ callId: st.callId, providerCallId, text: greeting } as any);
-    }
+    // For inbound calls, do not auto-speak here.
+    // Let the higher-level CallManager / response generator decide what (if anything) to say.
   }
 
   async initiateCall(input: InitiateCallInput): Promise<InitiateCallResult> {
