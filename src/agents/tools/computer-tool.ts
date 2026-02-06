@@ -20,6 +20,7 @@ const COMPUTER_TOOL_ACTIONS = [
   "find",
   "click_text",
   "focus_text",
+  "set_value_text",
   "move",
   "click",
   "dblclick",
@@ -81,6 +82,7 @@ const ComputerToolSchema = Type.Object({
   maxResults: Type.Optional(Type.Number()),
   resultIndex: Type.Optional(Type.Number()),
   focusMode: Type.Optional(stringEnum(["mouse", "uia", "auto"] as const)),
+  value: Type.Optional(Type.String()),
 
   // Common action params
   x: Type.Optional(Type.Number()),
@@ -780,6 +782,144 @@ try {
   };
 }
 
+async function trySetValueUiElement(params: {
+  text: string;
+  value: string;
+  match: "contains" | "exact" | "prefix";
+  caseSensitive: boolean;
+  controlType?: string;
+  maxResults: number;
+  resultIndex: number;
+}): Promise<{ success: boolean; target?: UiTextMatch; reason?: string }> {
+  const payload = Buffer.from(JSON.stringify(params), "utf-8").toString("base64");
+  const script = `
+$ErrorActionPreference = 'Stop'
+
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+Add-Type -AssemblyName WindowsBase
+
+function Get-Args() {
+  $raw = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${payload}'))
+  return ($raw | ConvertFrom-Json)
+}
+
+$args = Get-Args
+$text = [string]$args.text
+if (-not $text) { throw 'text required' }
+$value = [string]$args.value
+
+$mode = [string]$args.match
+$caseSensitive = [bool]$args.caseSensitive
+$controlType = $args.controlType
+$maxResults = [int]$args.maxResults
+$index = [int]$args.resultIndex
+
+$needle = $text
+if (-not $caseSensitive) { $needle = $needle.ToLowerInvariant() }
+
+function Matches([string]$value) {
+  if (-not $value) { return $false }
+  $v = $value
+  if (-not $caseSensitive) { $v = $v.ToLowerInvariant() }
+  switch ($mode) {
+    'exact' { return $v -eq $needle }
+    'prefix' { return $v.StartsWith($needle) }
+    default { return $v.Contains($needle) }
+  }
+}
+
+function Match-ControlType([string]$ct) {
+  if (-not $controlType) { return $true }
+  if (-not $ct) { return $false }
+  $wanted = $controlType.ToLowerInvariant()
+  if ($wanted.StartsWith('controltype.')) { $wanted = $wanted.Substring(12) }
+  $ctLower = $ct.ToLowerInvariant()
+  return $ctLower.EndsWith($wanted)
+}
+
+$root = [System.Windows.Automation.AutomationElement]::RootElement
+$all = $root.FindAll([System.Windows.Automation.TreeScope]::Subtree, [System.Windows.Automation.Condition]::TrueCondition)
+$results = @()
+
+foreach ($el in $all) {
+  $current = $el.Current
+  $ct = $null
+  try { $ct = $current.ControlType.ProgrammaticName } catch { $ct = $null }
+  if (-not (Match-ControlType $ct)) { continue }
+
+  $name = $current.Name
+  $automationId = $current.AutomationId
+  $helpText = $current.HelpText
+  if (-not (Matches $name) -and -not (Matches $automationId) -and -not (Matches $helpText)) { continue }
+
+  $results += $el
+  if ($results.Count -ge $maxResults) { break }
+}
+
+if ($results.Count -eq 0) {
+  @{ ok = $false; reason = 'not-found' } | ConvertTo-Json -Compress | Write-Output
+  exit
+}
+
+if ($index -ge $results.Count) {
+  @{ ok = $false; reason = 'index' } | ConvertTo-Json -Compress | Write-Output
+  exit
+}
+
+$target = $results[$index]
+$rect = $target.Current.BoundingRectangle
+$width = [double]$rect.Width
+$height = [double]$rect.Height
+$x = $null
+$y = $null
+if ($width -gt 1 -and $height -gt 1) {
+  $x = [int][Math]::Round($rect.X + ($width / 2.0))
+  $y = [int][Math]::Round($rect.Y + ($height / 2.0))
+}
+
+try {
+  $pattern = $target.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+} catch {
+  @{ ok = $false; reason = 'value-pattern' } | ConvertTo-Json -Compress | Write-Output
+  exit
+}
+
+try {
+  $pattern.SetValue($value)
+} catch {
+  @{ ok = $false; reason = 'set-value' } | ConvertTo-Json -Compress | Write-Output
+  exit
+}
+
+@{
+  ok = $true
+  name = $target.Current.Name
+  automationId = $target.Current.AutomationId
+  helpText = $target.Current.HelpText
+  controlType = $target.Current.ControlType.ProgrammaticName
+  x = $x
+  y = $y
+} | ConvertTo-Json -Compress | Write-Output
+`;
+
+  const res = await runPowerShellJson<Record<string, unknown>>({ script, timeoutMs: 10_000 });
+  if (!res || typeof res !== "object" || res.ok !== true) {
+    return { success: false, reason: typeof res?.reason === "string" ? res.reason : undefined };
+  }
+  return {
+    success: true,
+    target: {
+      name: typeof res.name === "string" ? res.name : undefined,
+      automationId: typeof res.automationId === "string" ? res.automationId : undefined,
+      helpText: typeof res.helpText === "string" ? res.helpText : undefined,
+      controlType: typeof res.controlType === "string" ? res.controlType : undefined,
+      x: typeof res.x === "number" && Number.isFinite(res.x) ? res.x : undefined,
+      y: typeof res.y === "number" && Number.isFinite(res.y) ? res.y : undefined,
+    },
+  };
+}
+
 function isDangerousAction(action: ComputerToolAction, params: Record<string, unknown>): boolean {
   if (
     action === "hotkey" ||
@@ -828,7 +968,8 @@ function shouldApproveAction(params: {
     action === "release" ||
     action === "reset_focus" ||
     action === "find" ||
-    action === "focus_text"
+    action === "focus_text" ||
+    action === "set_value_text"
   ) {
     return false;
   }
@@ -862,6 +1003,7 @@ function formatApprovalCommand(action: string, params: Record<string, unknown>):
     "maxResults",
     "resultIndex",
     "focusMode",
+    "value",
     "escCount",
     "key",
     "ctrl",
@@ -2017,7 +2159,7 @@ export function createComputerTool(options?: {
         | null = null;
       let focusTarget: UiTextMatch | null = null;
 
-      if (action === "find" || action === "click_text" || action === "focus_text") {
+      if (action === "find" || action === "click_text" || action === "focus_text" || action === "set_value_text") {
         const text = readStringParam(params, "text", { required: true });
         const matchRaw = readStringParam(params, "match", { required: false });
         const match = matchRaw === "exact" || matchRaw === "prefix" ? matchRaw : "contains";
@@ -2084,6 +2226,25 @@ export function createComputerTool(options?: {
             args: { x: target.x, y: target.y, durationMs: 80, steps, stepDelayMs, jitterPx },
           });
           return jsonResult({ ok: true, mode: "mouse", target });
+        }
+
+        if (action === "set_value_text") {
+          const value = readStringParam(params, "value", { required: true, allowEmpty: true });
+          const resultIndex = readNonNegativeInt(params, "resultIndex", 0);
+          const result = await trySetValueUiElement({
+            text,
+            value,
+            match,
+            caseSensitive,
+            controlType: controlType || undefined,
+            maxResults,
+            resultIndex,
+          });
+          if (!result.success) {
+            const reason = result.reason ? ` (${result.reason})` : "";
+            throw new Error(`set_value_text failed${reason}`);
+          }
+          return jsonResult({ ok: true, target: result.target });
         }
 
         const matches = await resolveUiTextMatches({
