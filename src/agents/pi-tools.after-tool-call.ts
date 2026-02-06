@@ -1,4 +1,4 @@
-import type { AnyAgentTool } from "./tools/common.js";
+import type { AnyAgentTool } from "./pi-tools.types.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { normalizeToolName } from "./tool-policy.js";
