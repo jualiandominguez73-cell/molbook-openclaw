@@ -12,6 +12,10 @@ import { ensureLoaded, persist } from "./store.js";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
+// Maximum time a job can be "running" before we consider it stuck and reset.
+// This prevents permanent scheduler lockup if a job hangs.
+const MAX_RUNNING_MS = 10 * 60 * 1000; // 10 minutes
+
 export function armTimer(state: CronServiceState) {
   if (state.timer) {
     clearTimeout(state.timer);
@@ -22,23 +26,62 @@ export function armTimer(state: CronServiceState) {
   }
   const nextAt = nextWakeAtMs(state);
   if (!nextAt) {
+    state.deps.log.debug({}, "cron: armTimer skipped (no jobs due)");
     return;
   }
-  const delay = Math.max(nextAt - state.deps.nowMs(), 0);
+  const now = state.deps.nowMs();
+  const delay = Math.max(nextAt - now, 0);
   // Avoid TimeoutOverflowWarning when a job is far in the future.
   const clampedDelay = Math.min(delay, MAX_TIMEOUT_MS);
+  
+  state.deps.log.debug(
+    { nextWakeAtMs: nextAt, delayMs: clampedDelay, clamped: delay > MAX_TIMEOUT_MS },
+    "cron: timer armed"
+  );
+  
   state.timer = setTimeout(() => {
     void onTimer(state).catch((err) => {
       state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
+      // Defensive re-arm: if onTimer throws before finally block, re-arm anyway
+      // to prevent scheduler death.
+      try {
+        state.running = false;
+        armTimer(state);
+      } catch (rearmErr) {
+        state.deps.log.error({ err: String(rearmErr) }, "cron: defensive re-arm failed");
+      }
     });
   }, clampedDelay);
 }
 
 export async function onTimer(state: CronServiceState) {
+  const now = state.deps.nowMs();
+  state.deps.log.debug({ now, running: state.running }, "cron: timer fired");
+  
   if (state.running) {
-    return;
+    // Check if running state is stale (job hung)
+    const runningFor = state.runningStartedAtMs ? now - state.runningStartedAtMs : 0;
+    if (runningFor > MAX_RUNNING_MS) {
+      state.deps.log.warn(
+        { runningForMs: runningFor, maxMs: MAX_RUNNING_MS },
+        "cron: clearing stale running state (scheduler was stuck)"
+      );
+      state.running = false;
+      state.runningStartedAtMs = undefined;
+    } else {
+      state.deps.log.debug(
+        { runningForMs: runningFor },
+        "cron: timer fired but scheduler busy, re-arming"
+      );
+      // Re-arm to try again later instead of silently dropping
+      armTimer(state);
+      return;
+    }
   }
+  
   state.running = true;
+  state.runningStartedAtMs = now;
+  
   try {
     await locked(state, async () => {
       // Reload persisted due-times without recomputing so runDueJobs sees
@@ -51,6 +94,7 @@ export async function onTimer(state: CronServiceState) {
     });
   } finally {
     state.running = false;
+    state.runningStartedAtMs = undefined;
     // Always re-arm so transient errors (e.g. ENOSPC) don't kill the scheduler.
     armTimer(state);
   }
@@ -71,6 +115,9 @@ export async function runDueJobs(state: CronServiceState) {
     const next = j.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
   });
+  
+  state.deps.log.debug({ dueCount: due.length }, "cron: runDueJobs");
+  
   for (const job of due) {
     await executeJob(state, job, now, { forced: false });
   }

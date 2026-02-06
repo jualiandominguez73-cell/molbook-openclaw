@@ -46,6 +46,8 @@ export type CronServiceState = {
   store: CronStoreFile | null;
   timer: NodeJS.Timeout | null;
   running: boolean;
+  /** Timestamp when running was set to true, used to detect stuck state */
+  runningStartedAtMs: number | undefined;
   op: Promise<unknown>;
   warnedDisabled: boolean;
   storeLoadedAtMs: number | null;
@@ -58,6 +60,7 @@ export function createCronServiceState(deps: CronServiceDeps): CronServiceState 
     store: null,
     timer: null,
     running: false,
+    runningStartedAtMs: undefined,
     op: Promise.resolve(),
     warnedDisabled: false,
     storeLoadedAtMs: null,
