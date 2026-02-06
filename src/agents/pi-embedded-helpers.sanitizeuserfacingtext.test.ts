@@ -37,4 +37,34 @@ describe("sanitizeUserFacingText", () => {
     const text = "Hello there!\n\nDifferent line.";
     expect(sanitizeUserFacingText(text)).toBe(text);
   });
+
+  it("does not treat normal text mentioning 'context overflow' as an error", () => {
+    // Issue #8847: Normal assistant responses containing "context overflow"
+    // should not be replaced with error messages
+    const normalResponses = [
+      "Context overflow is a common issue in LLM applications.",
+      "You asked about context overflow, here's what I know...",
+      "The phrase 'context overflow' refers to when the prompt is too large.",
+      "Let me explain what context overflow means in AI systems.",
+    ];
+    for (const text of normalResponses) {
+      const result = sanitizeUserFacingText(text);
+      expect(result).toBe(text);
+      expect(result).not.toContain("Try again with less input");
+    }
+  });
+
+  it("still sanitizes actual context overflow errors", () => {
+    // Real error messages should still be sanitized
+    const errorMessages = [
+      "Error: context length exceeded",
+      "API Error: request_too_large",
+      '{"type":"error","error":{"message":"context length exceeded","type":"request_too_large"}}',
+    ];
+    for (const text of errorMessages) {
+      const result = sanitizeUserFacingText(text);
+      expect(result).toContain("Context overflow");
+      expect(result).toContain("Try again with less input");
+    }
+  });
 });
