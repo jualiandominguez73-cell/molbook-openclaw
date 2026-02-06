@@ -4,6 +4,7 @@ import {
   listDevices,
   getExecApprovals,
   type NodeEntry,
+  type NodeListResult,
   type DevicePairingList,
   type ExecApprovalsSnapshot,
 } from "@/lib/api/nodes";

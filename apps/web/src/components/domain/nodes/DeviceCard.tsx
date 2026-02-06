@@ -3,8 +3,16 @@
  * and token status with actions behind a menu.
  */
 
+import * as React from "react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,7 +96,6 @@ export function DeviceCard({
             <TokenRow
               key={token.role + i}
               token={token}
-              deviceId={device.deviceId}
               onRotate={() =>
                 onRotateToken(device.deviceId, token.role, token.scopes)
               }
@@ -111,7 +118,6 @@ function TokenRow({
   onRevoke,
 }: {
   token: DeviceTokenSummary;
-  deviceId: string;
   onRotate: () => void;
   onRevoke: () => void;
 }) {

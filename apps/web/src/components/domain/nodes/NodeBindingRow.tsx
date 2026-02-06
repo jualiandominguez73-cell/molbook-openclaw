@@ -77,7 +77,7 @@ export function NodeBindingRow({
       </div>
       <Select
         value={binding ?? "__default__"}
-        onValueChange={(v) => onChange(v === "__default__" ? null : v)}
+        onValueChange={(v) => onChange(v === "__default__" || v === "__any__" ? null : v)}
       >
         <SelectTrigger className="w-[180px] h-8 text-sm">
           <SelectValue />
