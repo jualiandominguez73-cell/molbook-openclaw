@@ -146,6 +146,10 @@ async function ensureRelayConnection() {
 
     // Resync already-attached tabs after reconnect.
     await resyncAttachedToRelay().catch(() => {})
+
+    // Also try restoring sticky (storage-backed) attachments immediately.
+    // This reduces the window where the Gateway sees no attached tabs after an MV3 service worker restart.
+    void restoreStickyAttachments().catch(() => {})
   })()
 
   try {
