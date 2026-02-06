@@ -361,7 +361,7 @@ export const nodeHandlers: GatewayRequestHandlers = {
       );
     });
   },
-  "node.invoke": async ({ params, respond, context }) => {
+  "node.invoke": async ({ params, respond, context, client }) => {
     if (!validateNodeInvokeParams(params)) {
       respondInvalidParams({
         respond,
@@ -417,10 +417,27 @@ export const nodeHandlers: GatewayRequestHandlers = {
         );
         return;
       }
+      // Strip caller-supplied approval fields for system.run when the caller
+      // lacks operator.approvals scope.  Legitimate approval flows (CLI, agent)
+      // always hold operator.approvals; callers with only operator.write must
+      // not be able to forge approval state.  See CWE-862.
+      let invokeParams = p.params;
+      if (command === "system.run" && invokeParams && typeof invokeParams === "object") {
+        const callerScopes: string[] = client?.connect?.scopes ?? [];
+        const hasApprovalScope =
+          callerScopes.includes("operator.approvals") || callerScopes.includes("operator.admin");
+        if (!hasApprovalScope) {
+          const sanitized = { ...(invokeParams as Record<string, unknown>) };
+          delete sanitized.approved;
+          delete sanitized.approvalDecision;
+          invokeParams = sanitized;
+        }
+      }
+
       const res = await context.nodeRegistry.invoke({
         nodeId,
         command,
-        params: p.params,
+        params: invokeParams,
         timeoutMs: p.timeoutMs,
         idempotencyKey: p.idempotencyKey,
       });
