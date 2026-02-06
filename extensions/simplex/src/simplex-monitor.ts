@@ -620,6 +620,7 @@ async function handleSimplexEvent(params: {
         runtime.error?.(
           `[${account.accountId}] SimpleX file ${fileId} exceeds limit (${fileSize} > ${maxBytes})`,
         );
+        continue;
       } else {
         const accepted = await requestFileDownload({ fileId, account, client, runtime });
         if (accepted) {
