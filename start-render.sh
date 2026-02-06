@@ -1,12 +1,9 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env sh
+set -eu
 
-# Render provides $PORT (you set it to 8080)
-: "${PORT:=8080}"
+PORT="${PORT:-8080}"
 
-# Bind to all interfaces so Render can detect it
-# Use your token env var for non-loopback binds
-exec openclaw gateway \
+exec node dist/index.js gateway \
+  --allow-unconfigured \
   --bind lan \
-  --port "$PORT" \
-  --token "${OPENCLAW_GATEWAY_TOKEN:-}"
+  --port "$PORT"
