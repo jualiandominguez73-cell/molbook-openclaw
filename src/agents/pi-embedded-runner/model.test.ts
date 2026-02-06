@@ -172,6 +172,36 @@ describe("resolveModel", () => {
     });
   });
 
+  it("normalizes gpt-5.3-codex casing in the codex fallback", () => {
+    const templateModel = {
+      id: "gpt-5.2-codex",
+      name: "GPT-5.2 Codex",
+      provider: "openai-codex",
+      api: "openai-codex-responses",
+      baseUrl: "https://chatgpt.com/backend-api",
+      reasoning: true,
+      input: ["text", "image"] as const,
+      cost: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
+      contextWindow: 272000,
+      maxTokens: 128000,
+    };
+
+    vi.mocked(discoverModels).mockReturnValue({
+      find: vi.fn((provider: string, modelId: string) => {
+        if (provider === "openai-codex" && modelId === "gpt-5.2-codex") {
+          return templateModel;
+        }
+        return null;
+      }),
+    } as unknown as ReturnType<typeof discoverModels>);
+
+    const result = resolveModel("openai-codex", "GPT-5.3-CODEX", "/tmp/agent");
+
+    expect(result.error).toBeUndefined();
+    expect(result.model?.id).toBe("gpt-5.3-codex");
+    expect(result.model?.provider).toBe("openai-codex");
+  });
+
   it("falls back to gpt-5.1-codex when gpt-5.2-codex is missing", () => {
     const templateModel = {
       id: "gpt-5.1-codex",

@@ -36,6 +36,9 @@ function resolveOpenAICodexGpt53FallbackModel(
   if (trimmedModelId.toLowerCase() !== OPENAI_CODEX_GPT_53_MODEL_ID) {
     return undefined;
   }
+  // Keep the canonical ID even if the caller used a different case.
+  // Some providers treat model IDs as case-sensitive.
+  const canonicalModelId = OPENAI_CODEX_GPT_53_MODEL_ID;
 
   for (const templateId of OPENAI_CODEX_TEMPLATE_MODEL_IDS) {
     const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
@@ -44,14 +47,14 @@ function resolveOpenAICodexGpt53FallbackModel(
     }
     return normalizeModelCompat({
       ...template,
-      id: trimmedModelId,
-      name: trimmedModelId,
+      id: canonicalModelId,
+      name: canonicalModelId,
     } as Model<Api>);
   }
 
   return normalizeModelCompat({
-    id: trimmedModelId,
-    name: trimmedModelId,
+    id: canonicalModelId,
+    name: canonicalModelId,
     api: "openai-codex-responses",
     provider: normalizedProvider,
     baseUrl: "https://chatgpt.com/backend-api",
