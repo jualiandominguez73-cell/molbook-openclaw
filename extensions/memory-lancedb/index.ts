@@ -662,8 +662,16 @@ const memoryPlugin = {
             "Re-embed all memories with current provider (use after switching providers)",
           )
           .action(async () => {
+            // Re-read config so reindex always uses the current provider/model,
+            // even if register() ran with a previous configuration.
+            const currentCfg = memoryConfigSchema.parse(api.pluginConfig);
+            const currentDim = vectorDimsForModel(
+              currentCfg.embedding.model ?? "text-embedding-3-small",
+            );
+            const currentEmbeddings = createEmbeddingProvider(currentCfg);
+
             // Open the old table without dimension validation
-            const oldDb = new MemoryDB(resolvedDbPath, vectorDim);
+            const oldDb = new MemoryDB(resolvedDbPath, currentDim);
             await oldDb.initializeUnchecked();
 
             const entries = await oldDb.listAll();
@@ -675,7 +683,7 @@ const memoryPlugin = {
             console.log(`Reindexing ${entries.length} memories with current provider...`);
 
             // Recreate table with new dimensions
-            const newDb = new MemoryDB(resolvedDbPath, vectorDim);
+            const newDb = new MemoryDB(resolvedDbPath, currentDim);
             await newDb.initializeUnchecked();
             await newDb.recreateTable();
 
@@ -683,7 +691,7 @@ const memoryPlugin = {
             let failed = 0;
             for (const entry of entries) {
               try {
-                const vector = await embeddings.embed(entry.text);
+                const vector = await currentEmbeddings.embed(entry.text);
                 await newDb.store({
                   text: entry.text,
                   vector,
