@@ -202,7 +202,7 @@ export async function compactEmbeddedPiSessionDirect(
       skillsSnapshot: sandbox?.enabled ? undefined : params.skillsSnapshot,
       entries: shouldLoadSkillEntries ? skillEntries : undefined,
       config: params.config,
-      // See run/attempt.ts: keep skill <location> within host sandbox workspace root.
+      // See run/attempt.ts: keep skill <location> on the host sandbox workspace path.
       workspaceDir: effectiveWorkspace,
     });
 
