@@ -122,8 +122,11 @@ If the user selected "VPS Hardened" or accesses the host remotely over the inter
 1. Install Tailscale:
 
    ```bash
-   # Debian/Ubuntu
-   curl -fsSL https://tailscale.com/install.sh | sh
+   # Debian/Ubuntu — add official repo (safer than curl|sh)
+   curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/$(lsb_release -cs).noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+   curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/$(lsb_release -cs).tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
+   sudo apt update
+   sudo apt install tailscale -y
    
    # Authenticate (opens browser or provides link)
    sudo tailscale up
@@ -139,6 +142,13 @@ If the user selected "VPS Hardened" or accesses the host remotely over the inter
 3. Lock SSH to Tailscale only (UFW):
 
    ```bash
+   # First, check what's currently allowed
+   sudo ufw status
+   
+   # IMPORTANT: If you have other services (web, etc.), preserve them:
+   # sudo ufw allow 80/tcp
+   # sudo ufw allow 443/tcp
+   
    # Allow SSH only from Tailscale network (100.64.0.0/10)
    sudo ufw allow from 100.64.0.0/10 to any port 22 proto tcp
    
@@ -146,7 +156,7 @@ If the user selected "VPS Hardened" or accesses the host remotely over the inter
    sudo ufw delete allow 22/tcp
    sudo ufw delete allow ssh
    
-   # Enable firewall
+   # Enable firewall (WARNING: takes effect immediately)
    sudo ufw enable
    ```
 
