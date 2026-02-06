@@ -474,6 +474,8 @@ const ERROR_PATTERNS = {
     /\b403\b/,
     "no credentials found",
     "no api key found",
+    "no auth available",
+    "auth_unavailable",
   ],
   format: [
     "string should match pattern",
