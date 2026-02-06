@@ -54,7 +54,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -423,8 +422,6 @@ fun SettingsSheet(viewModel: MainViewModel) {
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions =
               KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrect = false,
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
               ),
