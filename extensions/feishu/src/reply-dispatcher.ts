@@ -6,10 +6,15 @@ import {
   type RuntimeEnv,
   type ReplyPayload,
 } from "openclaw/plugin-sdk";
-import type { MentionTarget } from "./mention.js";
+import { buildMentionedCardContent, type MentionTarget } from "./mention.js";
 import { resolveFeishuAccount } from "./accounts.js";
 import { getFeishuRuntime } from "./runtime.js";
-import { sendMessageFeishu, sendMarkdownCardFeishu } from "./send.js";
+import {
+  sendMessageFeishu,
+  sendMarkdownCardFeishu,
+  updateCardFeishu,
+  buildMarkdownCard,
+} from "./send.js";
 import { addTypingIndicator, removeTypingIndicator, type TypingIndicatorState } from "./typing.js";
 
 /**
@@ -101,6 +106,10 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     channel: "feishu",
   });
 
+  // When block streaming is used, we send one card and patch it with accumulated content
+  // instead of sending a new card each time (which would overwrite or duplicate).
+  let streamingCardMessageId: string | null = null;
+
   const { dispatcher, replyOptions, markDispatchIdle } =
     core.channel.reply.createReplyDispatcherWithTyping({
       responsePrefix: prefixContext.responsePrefix,
@@ -128,21 +137,45 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         let isFirstChunk = true;
 
         if (useCard) {
-          // Card mode: send as interactive card with markdown rendering
-          const chunks = core.channel.text.chunkTextWithMode(text, textChunkLimit, chunkMode);
-          params.runtime.log?.(
-            `feishu[${account.accountId}] deliver: sending ${chunks.length} card chunks to ${chatId}`,
-          );
-          for (const chunk of chunks) {
-            await sendMarkdownCardFeishu({
+          if (streamingCardMessageId) {
+            // Block streaming: patch the existing card with full accumulated content
+            // so the card grows in place instead of sending new cards that overwrite.
+            const cardText =
+              mentionTargets && mentionTargets.length > 0
+                ? buildMentionedCardContent(mentionTargets, text)
+                : text;
+            const card = buildMarkdownCard(cardText);
+            await updateCardFeishu({
               cfg,
-              to: chatId,
-              text: chunk,
-              replyToMessageId,
-              mentions: isFirstChunk ? mentionTargets : undefined,
+              messageId: streamingCardMessageId,
+              card,
               accountId,
             });
-            isFirstChunk = false;
+            params.runtime.log?.(
+              `feishu[${account.accountId}] deliver: patched card ${streamingCardMessageId}`,
+            );
+          } else {
+            // First deliver: send new card(s), remember last message id for later patches
+            const chunks = core.channel.text.chunkTextWithMode(text, textChunkLimit, chunkMode);
+            params.runtime.log?.(
+              `feishu[${account.accountId}] deliver: sending ${chunks.length} card chunks to ${chatId}`,
+            );
+            let lastResult: { messageId: string } | null = null;
+            for (const chunk of chunks) {
+              const result = await sendMarkdownCardFeishu({
+                cfg,
+                to: chatId,
+                text: chunk,
+                replyToMessageId,
+                mentions: isFirstChunk ? mentionTargets : undefined,
+                accountId,
+              });
+              lastResult = result;
+              isFirstChunk = false;
+            }
+            if (lastResult) {
+              streamingCardMessageId = lastResult.messageId;
+            }
           }
         } else {
           // Raw mode: send as plain text with table conversion
@@ -170,7 +203,10 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         );
         typingCallbacks.onIdle?.();
       },
-      onIdle: typingCallbacks.onIdle,
+      onIdle: () => {
+        streamingCardMessageId = null;
+        typingCallbacks.onIdle?.();
+      },
     });
 
   return {
