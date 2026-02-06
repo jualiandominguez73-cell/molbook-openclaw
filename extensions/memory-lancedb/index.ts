@@ -146,7 +146,9 @@ class MemoryDB {
     // Query all entries and find one starting with the prefix
     const results = await this.table!.query().toArray();
     const match = results.find((row) => (row.id as string).startsWith(prefix));
-    if (!match) return null;
+    if (!match) {
+      return null;
+    }
     return {
       id: match.id as string,
       text: match.text as string,
