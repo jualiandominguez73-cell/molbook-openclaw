@@ -20,7 +20,7 @@ describe("printCronList", () => {
       enabled: true,
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
-      schedule: { kind: "at", atMs: Date.now() + 3600000 },
+      schedule: { kind: "at", at: new Date(Date.now() + 3600000).toISOString() },
       // sessionTarget is intentionally omitted to simulate the bug
       wakeMode: "next-heartbeat",
       payload: { kind: "systemEvent", text: "test" },
@@ -50,7 +50,7 @@ describe("printCronList", () => {
       enabled: true,
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
-      schedule: { kind: "at", atMs: Date.now() + 3600000 },
+      schedule: { kind: "at", at: new Date(Date.now() + 3600000).toISOString() },
       sessionTarget: "isolated",
       wakeMode: "next-heartbeat",
       payload: { kind: "systemEvent", text: "test" },
