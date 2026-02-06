@@ -146,6 +146,7 @@ export function handleMessageUpdate(
     ctx.state.lastStreamedAssistantCleaned = cleanedText;
 
     if (shouldEmit) {
+      ctx.state.didEmitAssistantStream = true;
       emitAgentEvent({
         runId: ctx.params.runId,
         stream: "assistant",
@@ -219,6 +220,33 @@ export function handleMessageEnd(
   const addedDuringMessage = ctx.state.assistantTexts.length > ctx.state.assistantTextBaseline;
   const chunkerHasBuffered = ctx.blockChunker?.hasBuffered() ?? false;
   ctx.finalizeAssistantTexts({ text, addedDuringMessage, chunkerHasBuffered });
+
+  // Some providers don't emit `assistantMessageEvent` updates (or use different event shapes),
+  // which means we might never emit an `assistant` agent event even though we have a final
+  // assistant message. The gateway chat UI relies on these agent events to show replies.
+  if (!ctx.state.didEmitAssistantStream) {
+    const parsed = parseReplyDirectives(stripTrailingDirective(text.trim()));
+    const cleanedText = parsed.text;
+    const hasMedia = Boolean(parsed.mediaUrls && parsed.mediaUrls.length > 0);
+    if (cleanedText || hasMedia) {
+      ctx.state.didEmitAssistantStream = true;
+      emitAgentEvent({
+        runId: ctx.params.runId,
+        stream: "assistant",
+        data: {
+          text: cleanedText,
+          mediaUrls: hasMedia ? parsed.mediaUrls : undefined,
+        },
+      });
+      void ctx.params.onAgentEvent?.({
+        stream: "assistant",
+        data: {
+          text: cleanedText,
+          mediaUrls: hasMedia ? parsed.mediaUrls : undefined,
+        },
+      });
+    }
+  }
 
   const onBlockReply = ctx.params.onBlockReply;
   const shouldEmitReasoning = Boolean(
