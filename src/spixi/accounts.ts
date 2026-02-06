@@ -16,7 +16,7 @@ export function listSpixiAccountIds(cfg: OpenClawConfig): string[] {
   }
   const ids = new Set<string>();
   for (const key of Object.keys(accounts)) {
-    if (!key) continue;
+    if (!key) { continue; }
     ids.add(normalizeAccountId(key));
   }
   return [...ids].toSorted((a, b) => a.localeCompare(b));

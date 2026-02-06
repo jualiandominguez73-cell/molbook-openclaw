@@ -411,12 +411,35 @@ export async function startGatewayServer(
           typeof obj === "object" &&
           obj !== null &&
           "channel" in obj &&
-          typeof (obj as any).channel === "object" &&
-          (obj as any).channel !== null &&
-          "spixi" in (obj as any).channel &&
-          typeof (obj as any).channel.spixi === "object" &&
-          (obj as any).channel.spixi !== null &&
-          typeof (obj as any).channel.spixi.sendMessage === "function"
+          typeof (obj as unknown as { channel?: unknown }).channel === "object" &&
+          (obj as unknown as { channel?: unknown }).channel !== null &&
+          (() => {
+            const channel = (obj as unknown as { channel?: unknown }).channel;
+            if (typeof channel === "object" && channel !== null) {
+              return "spixi" in channel;
+            }
+            return false;
+          })() &&
+          (() => {
+            const channel = (obj as unknown as { channel?: unknown }).channel;
+            if (typeof channel === "object" && channel !== null && "spixi" in channel) {
+              const spixi = (channel as { spixi?: unknown }).spixi;
+              return typeof spixi === "object" && spixi !== null;
+            }
+            return false;
+          })() &&
+          (() => {
+            const channel = (obj as unknown as { channel?: unknown }).channel;
+            if (typeof channel === "object" && channel !== null && "spixi" in channel) {
+              const spixi = (channel as { spixi?: unknown }).spixi;
+              return (
+                typeof spixi === "object" &&
+                spixi !== null &&
+                typeof (spixi as { sendMessage?: unknown }).sendMessage === "function"
+              );
+            }
+            return false;
+          })()
         );
       }
       if (hasSpixiChannel(runtime)) {

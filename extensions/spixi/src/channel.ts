@@ -23,9 +23,9 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
   onboarding: spixiOnboardingAdapter,
   configSchema: buildChannelConfigSchema(SpixiConfigSchema),
   config: {
-    listAccountIds: (cfg) => listSpixiAccountIds(cfg),
-    resolveAccount: (cfg, accountId) => resolveSpixiAccount({ cfg, accountId }),
-    isConfigured: (account) => account.configured,
+    listAccountIds: (cfg: unknown) => listSpixiAccountIds(cfg),
+    resolveAccount: (cfg: unknown, accountId: string | null | undefined) => resolveSpixiAccount({ cfg, accountId }),
+    isConfigured: (account: ResolvedSpixiAccount) => account.configured,
   },
   agentTools: () => [
     {
@@ -41,7 +41,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
         },
         required: ["address"],
       },
-      run: async ({ address }) => {
+      run: async ({ address }: { address: string }) => {
         const runtime = getSpixiRuntime();
         return await runtime.channel.spixi.addContact(address);
       },
@@ -59,7 +59,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
         },
         required: ["address"],
       },
-      run: async ({ address }) => {
+      run: async ({ address }: { address: string }) => {
         const runtime = getSpixiRuntime();
         return await runtime.channel.spixi.acceptContact(address);
       },
@@ -73,10 +73,10 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
   },
   outbound: {
     deliveryMode: "gateway",
-    sendText: async ({ to, text }) => {
+    sendText: async ({ to, text }: { to: string; text: string }) => {
       const runtime = getSpixiRuntime();
       const result = await runtime.channel.spixi.sendMessage(to, text);
-      return { channel: "spixi", ...result };
+      return { channel: "spixi", ...(typeof result === 'object' && result !== null ? result : {}) };
     },
   },
   gateway: {
@@ -142,7 +142,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
         client.subscribe("AcceptAdd2");
       });
 
-      client.on("message", async (topic, message) => {
+      client.on("message", async (topic: string, message: mqtt.Packet) => {
         const msgStr = message.toString();
         let data: unknown;
         try {
@@ -154,27 +154,42 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
 
         if (topic === "Chat") {
           try {
-            const d = data as any;
-            const sender = d.sender;
-            const text = d.data?.data || d.message;
+            const d = data as unknown;
+            if (
+              typeof d === "object" &&
+              d !== null &&
+              "sender" in d &&
+              ("data" in d || "message" in d)
+            ) {
+              const sender = (d as { sender: string }).sender;
+              // Prefer d.data?.data, fallback to d.message
+              let text: string | undefined;
+              if ("data" in d && typeof (d as any).data === "object" && (d as any).data !== null && "data" in (d as any).data) {
+                text = (d as any).data.data;
+              } else if ("message" in d) {
+                text = (d as any).message;
+              }
 
-            if (!text || (config.myWalletAddress && sender === config.myWalletAddress)) {
-              return;
-            }
+              if (!text || (config.myWalletAddress && sender === config.myWalletAddress)) {
+                return;
+              }
 
-            log?.info(`[${account.accountId}] Received Spixi message from ${sender}: ${text}`);
+              log?.info(`[${account.accountId}] Received Spixi message from ${sender}: ${text}`);
 
-            // Inbound relay logic to OpenClaw core
-            if (ctx.onMessage) {
-              ctx.onMessage({
-                id: d.id || `spixi-${Date.now()}`,
-                from: sender,
-                text,
-                timestamp: d.timestamp || Date.now(),
-                raw: data,
-              });
+              // Inbound relay logic to OpenClaw core
+              if (ctx.onMessage) {
+                ctx.onMessage({
+                  id: (d as any).id || `spixi-${Date.now()}`,
+                  from: sender,
+                  text,
+                  timestamp: (d as any).timestamp || Date.now(),
+                  raw: data,
+                });
+              } else {
+                log?.warn(`[${account.accountId}] ctx.onMessage not available - message dropped`);
+              }
             } else {
-              log?.warn(`[${account.accountId}] ctx.onMessage not available - message dropped`);
+              log?.warn(`[${account.accountId}] Unexpected Spixi chat message shape`);
             }
           } catch (e: unknown) {
             const err = e as Error;
@@ -182,12 +197,19 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
           }
         } else if (topic === "RequestAdd2") {
           // Incoming friend request
-          const d = data as any;
-          const sender = d.sender || d.address;
+          const d = data as unknown;
+          let sender: string | undefined;
+          if (
+            typeof d === "object" &&
+            d !== null &&
+            ("sender" in d || "address" in d)
+          ) {
+            sender = (d as any).sender || (d as any).address;
+          }
           log?.info(`[${account.accountId}] Received Friend Request from: ${sender}`);
 
           // Check if in allowFrom
-          const allowFrom = (config.allowFrom || []).map(a => a.toLowerCase().trim());
+          const allowFrom = (config.allowFrom || []).map((a: string) => a.toLowerCase().trim());
           if (sender && allowFrom.includes(sender.toLowerCase())) {
             log?.info(`[${account.accountId}] Auto-accepting friend request from allowed sender: ${sender}`);
             try {
@@ -204,8 +226,15 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
           }
         } else if (topic === "AcceptAdd2") {
           // Friend request accepted by other party
-          const d = data as any;
-          const sender = d.sender || d.address;
+          const d = data as unknown;
+          let sender: string | undefined;
+          if (
+            typeof d === "object" &&
+            d !== null &&
+            ("sender" in d || "address" in d)
+          ) {
+            sender = (d as any).sender || (d as any).address;
+          }
           log?.info(`[${account.accountId}] Friend request ACCEPTED by: ${sender}`);
         }
       });
