@@ -316,7 +316,16 @@ export async function dispatchReplyFromConfig(params: {
                 };
                 return run();
               }
-            : undefined,
+            : (payload: ReplyPayload) => {
+                const run = async () => {
+                  if (shouldRouteToOriginating) {
+                    await sendPayloadAsync(payload, undefined, false);
+                  } else {
+                    dispatcher.sendBlockReply(payload);
+                  }
+                };
+                return run();
+              },
         onBlockReply: (payload: ReplyPayload, context) => {
           const run = async () => {
             // Accumulate block text for TTS generation after streaming
