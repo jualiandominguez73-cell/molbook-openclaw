@@ -234,7 +234,7 @@ Actions:
           const updated = await store.updateItem(itemId, {
             status: "failed",
             statusReason,
-            error,
+            message: error,
             completedAt: now,
           });
           return jsonResult({ item: updated });
