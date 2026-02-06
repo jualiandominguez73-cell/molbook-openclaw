@@ -1,11 +1,15 @@
 # Zhipu Web Search Plugin
 
-A web search provider plugin for OpenClaw using [Zhipu AI (BigModel) Web Search API](https://docs.bigmodel.cn/api-reference/%E5%B7%A5%E5%85%B7-api/%E7%BD%91%E7%BB%9C%E6%90%9C%E7%B4%A2).
+A web search provider plugin for OpenClaw using [Zhipu AI](https://open.bigmodel.cn). Supports two backend modes:
+
+- **API mode** (default): Direct HTTP API calls, pay-per-use. Full control over engine, content size, freshness, domain filtering, and intent recognition.
+- **MCP mode**: Uses the [Coding Plan](https://docs.bigmodel.cn/cn/coding-plan/mcp/search-mcp-server) MCP Server (`webSearchPrime`). Included in Coding Plan subscriptions — no extra cost.
 
 ## Prerequisites
 
 - A Zhipu AI API key ([get one here](https://open.bigmodel.cn))
 - OpenClaw with the [extensible web search provider](https://github.com/openclaw/openclaw/pull/10435) feature
+- For MCP mode: a Coding Plan (Pro) subscription
 
 ## Setup
 
@@ -13,55 +17,56 @@ A web search provider plugin for OpenClaw using [Zhipu AI (BigModel) Web Search 
 2. Provide your API key via one of:
    - Config: `plugins.entries.zhipu-web-search.apiKey: "your-key"`
    - Environment: `ZHIPU_API_KEY=your-key`
+3. Optionally set `mode: "mcp"` to use Coding Plan subscription
 
 ## Configuration
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `apiKey` | string | — | Zhipu API key (fallback: `ZHIPU_API_KEY` env) |
-| `engine` | string | `search_std` | Search engine: `search_std`, `search_pro`, `search_pro_sogou`, `search_pro_quark` |
-| `contentSize` | string | `medium` | Result content size: `medium` (summaries) or `high` (full content) |
+| `mode` | string | `api` | Backend: `api` (HTTP API, pay-per-use) or `mcp` (Coding Plan, subscription) |
+| `engine` | string | `search_std` | Search engine (API mode only): `search_std`, `search_pro`, `search_pro_sogou`, `search_pro_quark` |
+| `contentSize` | string | `medium` | Result detail level (API mode only): `medium` or `high` |
 
-## Search Engines
+## Modes
 
-| Engine | Description |
-|--------|-------------|
-| `search_std` | Standard search (default) |
-| `search_pro` | Enhanced search with better relevance |
-| `search_pro_sogou` | Sogou-backed search |
-| `search_pro_quark` | Quark-backed search |
+### API Mode (`mode: "api"`)
 
-## Tool Parameters
-
-The plugin registers a `web_search` tool with the same core parameters as OpenClaw's built-in search, plus Zhipu-specific extras:
+Calls the [Zhipu Web Search HTTP API](https://docs.bigmodel.cn/api-reference/%E5%B7%A5%E5%85%B7-api/%E7%BD%91%E7%BB%9C%E6%90%9C%E7%B4%A2) directly. Supports all parameters:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `query` | string | Search query (max 70 chars recommended) |
 | `count` | integer | Number of results (1-50, default 10) |
-| `freshness` | string | Recency filter: `pd` (day), `pw` (week), `pm` (month), `py` (year) |
-| `search_intent` | boolean | Enable search intent recognition (default: false) |
-| `search_domain_filter` | string | Restrict results to a specific domain |
-| `country` | string | Accepted for compatibility, not used by Zhipu |
-| `search_lang` | string | Accepted for compatibility, not used by Zhipu |
-| `ui_lang` | string | Accepted for compatibility, not used by Zhipu |
+| `freshness` | string | Recency filter: `pd` / `pw` / `pm` / `py` |
+| `search_intent` | boolean | Enable search intent recognition |
+| `search_domain_filter` | string | Restrict to a specific domain |
+| `country` | string | Accepted for compatibility, not used |
+| `search_lang` | string | Accepted for compatibility, not used |
+| `ui_lang` | string | Accepted for compatibility, not used |
 
-## Example Config
+### MCP Mode (`mode: "mcp"`)
+
+Connects to the [Zhipu Coding Plan MCP Server](https://docs.bigmodel.cn/cn/coding-plan/mcp/search-mcp-server) via Streamable HTTP. Uses the `webSearchPrime` tool.
+
+- **Pro**: Included in Coding Plan subscription (no extra cost)
+- **Con**: Fewer tuning options (no engine/freshness/domain filter selection)
+- Session management is automatic (initialize → cache → re-init on expiry)
+
+Only the `query` parameter is forwarded to the MCP server.
+
+## Example Configs
+
+### API Mode (pay-per-use, full features)
 
 ```json5
 {
-  tools: {
-    web: {
-      search: {
-        provider: "zhipu",
-        enabled: true,
-      },
-    },
-  },
+  tools: { web: { search: { provider: "zhipu" } } },
   plugins: {
     entries: {
       "zhipu-web-search": {
         apiKey: "your-zhipu-api-key",
+        mode: "api",
         engine: "search_pro",
         contentSize: "medium",
       },
@@ -70,13 +75,33 @@ The plugin registers a `web_search` tool with the same core parameters as OpenCl
 }
 ```
 
+### MCP Mode (Coding Plan subscription)
+
+```json5
+{
+  tools: { web: { search: { provider: "zhipu" } } },
+  plugins: {
+    entries: {
+      "zhipu-web-search": {
+        apiKey: "your-zhipu-api-key",
+        mode: "mcp",
+      },
+    },
+  },
+}
+```
+
 ## How It Works
 
-When `tools.web.search.provider` is set to `"zhipu"` (or any non-built-in value), OpenClaw's core `web_search` tool steps aside, allowing this plugin to register its own `web_search` tool that delegates to Zhipu's API.
+When `tools.web.search.provider` is set to `"zhipu"`, OpenClaw's core `web_search` tool steps aside, allowing this plugin to register its own `web_search` tool. The backend is selected by the `mode` config:
 
-The tool supports the same core parameters as the built-in `web_search` (query, count, freshness) for a seamless agent experience, plus Zhipu-specific parameters like `search_intent` and `search_domain_filter`.
+- `api` → Direct HTTP POST to `https://open.bigmodel.cn/api/paas/v4/web_search`
+- `mcp` → MCP Streamable HTTP to `https://open.bigmodel.cn/api/mcp/web_search_prime/mcp`
+
+Both modes present the same `web_search` tool interface to the agent.
 
 ## API Reference
 
 - [Zhipu Web Search API](https://docs.bigmodel.cn/api-reference/%E5%B7%A5%E5%85%B7-api/%E7%BD%91%E7%BB%9C%E6%90%9C%E7%B4%A2)
 - [Zhipu API Introduction](https://docs.bigmodel.cn/cn/api/introduction)
+- [Zhipu Coding Plan Search MCP](https://docs.bigmodel.cn/cn/coding-plan/mcp/search-mcp-server)

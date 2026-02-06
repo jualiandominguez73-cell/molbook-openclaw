@@ -1,5 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import type { AnyAgentTool } from "../../../src/agents/tools/common.js";
+import type { ZhipuEngine, ZhipuContentSize, PluginLogger } from "./types.js";
+import { wrapExternal, jsonResult } from "./types.js";
+import { mcpSearch, formatMcpResults } from "./zhipu-mcp.js";
 
 // Zhipu Web Search API endpoint
 const ZHIPU_SEARCH_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/web_search";
@@ -19,9 +22,6 @@ const FRESHNESS_MAP: Record<string, string> = {
   py: "oneYear",
 };
 
-type ZhipuEngine = "search_std" | "search_pro" | "search_pro_sogou" | "search_pro_quark";
-type ZhipuContentSize = "medium" | "high";
-
 /**
  * Zhipu Web Search API response shape.
  */
@@ -38,14 +38,6 @@ interface ZhipuSearchResult {
 interface ZhipuSearchResponse {
   search_result?: ZhipuSearchResult[];
   request_id?: string;
-}
-
-/**
- * Wrap external content to prevent prompt injection.
- * Matches the pattern used by core web_search.
- */
-function wrapExternal(text: string, source = "Zhipu Search"): string {
-  return `<<<EXTERNAL_UNTRUSTED_CONTENT>>>\nSource: ${source}\n---\n${text}\n<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>`;
 }
 
 /**
@@ -102,15 +94,12 @@ export interface ZhipuSearchToolOptions {
   apiKey?: string;
   engine?: ZhipuEngine;
   contentSize?: ZhipuContentSize;
-  logger?: {
-    info: (msg: string) => void;
-    warn: (msg: string) => void;
-    error: (msg: string) => void;
-  };
+  mode?: "api" | "mcp";
+  logger?: PluginLogger;
 }
 
 export function createZhipuWebSearchTool(options: ZhipuSearchToolOptions): AnyAgentTool | null {
-  const { apiKey, engine = "search_std", contentSize = "medium", logger } = options;
+  const { apiKey, engine = "search_std", contentSize = "medium", mode = "api", logger } = options;
 
   if (!apiKey) {
     logger?.warn(
@@ -120,11 +109,15 @@ export function createZhipuWebSearchTool(options: ZhipuSearchToolOptions): AnyAg
     return null;
   }
 
+  const description =
+    mode === "mcp"
+      ? "Search the web using Zhipu AI Web Search (MCP, Coding Plan). Returns titles, URLs, and content snippets."
+      : "Search the web using Zhipu AI Web Search API. Returns titles, URLs, content snippets, and publish dates.";
+
   return {
     label: "Web Search",
     name: "web_search",
-    description:
-      "Search the web using Zhipu AI Web Search API. Returns titles, URLs, content snippets, and publish dates.",
+    description,
     parameters: WebSearchSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -133,111 +126,136 @@ export function createZhipuWebSearchTool(options: ZhipuSearchToolOptions): AnyAg
         return jsonResult({ error: "missing_query", message: "query parameter is required." });
       }
 
-      const count = Math.min(
-        Math.max(typeof params.count === "number" ? Math.trunc(params.count) : DEFAULT_COUNT, 1),
-        MAX_COUNT,
-      );
-
-      // Log unsupported parameters (accepted for compatibility, not sent to Zhipu)
-      const unsupported: string[] = [];
-      if (params.country) unsupported.push("country");
-      if (params.search_lang) unsupported.push("search_lang");
-      if (params.ui_lang) unsupported.push("ui_lang");
-      if (unsupported.length > 0) {
-        logger?.info(
-          `Zhipu web search: ignoring unsupported parameters: ${unsupported.join(", ")}`,
-        );
-      }
-
-      // Map freshness to Zhipu recency filter
-      const rawFreshness =
-        typeof params.freshness === "string" ? params.freshness.trim().toLowerCase() : undefined;
-      const recencyFilter = rawFreshness ? FRESHNESS_MAP[rawFreshness] : undefined;
-      if (rawFreshness && !recencyFilter) {
-        return jsonResult({
-          error: "invalid_freshness",
-          message:
-            'freshness must be one of: "pd" (past day), "pw" (past week), "pm" (past month), "py" (past year).',
-        });
-      }
-
-      const body: Record<string, unknown> = {
-        search_query: query,
-        search_engine: engine,
-        count,
-        content_size: contentSize,
-      };
-      if (recencyFilter) {
-        body.search_recency_filter = recencyFilter;
-      }
-      if (typeof params.search_intent === "boolean") {
-        body.search_intent = params.search_intent;
-      }
-      if (typeof params.search_domain_filter === "string" && params.search_domain_filter.trim()) {
-        body.search_domain_filter = params.search_domain_filter.trim();
-      }
-
-      const start = Date.now();
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_SECONDS * 1000);
-
-      try {
-        const res = await fetch(ZHIPU_SEARCH_ENDPOINT, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          // Sanitize error detail to avoid leaking auth headers
-          const detail = await res.text().catch(() => "");
-          return jsonResult({
-            error: "zhipu_api_error",
-            status: res.status,
-            message: detail || res.statusText,
-          });
+      // MCP mode — delegate to MCP backend (simpler params, uses subscription quota)
+      if (mode === "mcp") {
+        try {
+          const result = await mcpSearch({ apiKey, query, logger });
+          if ("error" in result) {
+            return jsonResult(result);
+          }
+          return jsonResult(formatMcpResults(query, result));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return jsonResult({ error: "mcp_error", message });
         }
-
-        const data = (await res.json()) as ZhipuSearchResponse;
-        const results = Array.isArray(data.search_result) ? data.search_result : [];
-
-        const mapped = results.map((entry) => ({
-          title: entry.title ? wrapExternal(entry.title) : "",
-          url: entry.link || "",
-          description: entry.content ? wrapExternal(entry.content) : "",
-          published: entry.publish_date ? wrapExternal(entry.publish_date) : undefined,
-          media: entry.media || undefined,
-          source: entry.refer ? wrapExternal(entry.refer) : undefined,
-        }));
-
-        return jsonResult({
-          query,
-          provider: "zhipu",
-          engine,
-          count: mapped.length,
-          tookMs: Date.now() - start,
-          results: mapped,
-        });
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return jsonResult({ error: "timeout", message: "Zhipu search request timed out." });
-        }
-        const message = err instanceof Error ? err.message : String(err);
-        return jsonResult({ error: "fetch_error", message });
-      } finally {
-        clearTimeout(timer);
       }
+
+      // API mode — full HTTP API with all parameters
+      return executeApiSearch({ params, query, apiKey, engine, contentSize, logger });
     },
   };
 }
 
-function jsonResult(details: Record<string, unknown>) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(details, null, 2) }],
-    details,
+/**
+ * Execute search via Zhipu HTTP API (api mode).
+ */
+async function executeApiSearch(ctx: {
+  params: Record<string, unknown>;
+  query: string;
+  apiKey: string;
+  engine: ZhipuEngine;
+  contentSize: ZhipuContentSize;
+  logger?: PluginLogger;
+}) {
+  const { params, query, apiKey, engine, contentSize, logger } = ctx;
+
+  const count = Math.min(
+    Math.max(typeof params.count === "number" ? Math.trunc(params.count) : DEFAULT_COUNT, 1),
+    MAX_COUNT,
+  );
+
+  // Log unsupported parameters (accepted for compatibility, not sent to Zhipu)
+  const unsupported: string[] = [];
+  if (params.country) unsupported.push("country");
+  if (params.search_lang) unsupported.push("search_lang");
+  if (params.ui_lang) unsupported.push("ui_lang");
+  if (unsupported.length > 0) {
+    logger?.info(
+      `Zhipu web search: ignoring unsupported parameters: ${unsupported.join(", ")}`,
+    );
+  }
+
+  // Map freshness to Zhipu recency filter
+  const rawFreshness =
+    typeof params.freshness === "string" ? params.freshness.trim().toLowerCase() : undefined;
+  const recencyFilter = rawFreshness ? FRESHNESS_MAP[rawFreshness] : undefined;
+  if (rawFreshness && !recencyFilter) {
+    return jsonResult({
+      error: "invalid_freshness",
+      message:
+        'freshness must be one of: "pd" (past day), "pw" (past week), "pm" (past month), "py" (past year).',
+    });
+  }
+
+  const body: Record<string, unknown> = {
+    search_query: query,
+    search_engine: engine,
+    count,
+    content_size: contentSize,
   };
+  if (recencyFilter) {
+    body.search_recency_filter = recencyFilter;
+  }
+  if (typeof params.search_intent === "boolean") {
+    body.search_intent = params.search_intent;
+  }
+  if (typeof params.search_domain_filter === "string" && params.search_domain_filter.trim()) {
+    body.search_domain_filter = params.search_domain_filter.trim();
+  }
+
+  const start = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_SECONDS * 1000);
+
+  try {
+    const res = await fetch(ZHIPU_SEARCH_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      // Sanitize error detail to avoid leaking auth headers
+      const detail = await res.text().catch(() => "");
+      return jsonResult({
+        error: "zhipu_api_error",
+        status: res.status,
+        message: detail || res.statusText,
+      });
+    }
+
+    const data = (await res.json()) as ZhipuSearchResponse;
+    const results = Array.isArray(data.search_result) ? data.search_result : [];
+
+    const mapped = results.map((entry) => ({
+      title: entry.title ? wrapExternal(entry.title) : "",
+      url: entry.link || "",
+      description: entry.content ? wrapExternal(entry.content) : "",
+      published: entry.publish_date ? wrapExternal(entry.publish_date) : undefined,
+      media: entry.media || undefined,
+      source: entry.refer ? wrapExternal(entry.refer) : undefined,
+    }));
+
+    return jsonResult({
+      query,
+      provider: "zhipu",
+      mode: "api",
+      engine,
+      count: mapped.length,
+      tookMs: Date.now() - start,
+      results: mapped,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return jsonResult({ error: "timeout", message: "Zhipu search request timed out." });
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    return jsonResult({ error: "fetch_error", message });
+  } finally {
+    clearTimeout(timer);
+  }
 }

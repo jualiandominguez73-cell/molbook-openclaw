@@ -1,7 +1,7 @@
 {
   "id": "zhipu-web-search",
   "name": "Zhipu Web Search",
-  "description": "Web search provider using Zhipu AI (BigModel) Web Search API",
+  "description": "Web search provider using Zhipu AI — supports both HTTP API (pay-per-use) and MCP (Coding Plan subscription)",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -10,15 +10,20 @@
         "type": "string",
         "description": "Zhipu API key (fallback: ZHIPU_API_KEY env var)"
       },
+      "mode": {
+        "type": "string",
+        "enum": ["api", "mcp"],
+        "description": "Backend mode: 'api' = HTTP API (pay-per-use), 'mcp' = MCP Server (Coding Plan subscription). Default: api"
+      },
       "engine": {
         "type": "string",
         "enum": ["search_std", "search_pro", "search_pro_sogou", "search_pro_quark"],
-        "description": "Search engine to use (default: search_std)"
+        "description": "Search engine to use (API mode only, default: search_std)"
       },
       "contentSize": {
         "type": "string",
         "enum": ["medium", "high"],
-        "description": "Content size in results: medium (summaries) or high (full content). Default: medium"
+        "description": "Content size in results: medium (summaries) or high (full content). Default: medium. API mode only."
       }
     }
   },
@@ -28,12 +33,16 @@
       "placeholder": "xxxxxxxx.yyyyyyyy",
       "sensitive": true
     },
+    "mode": {
+      "label": "Backend Mode",
+      "placeholder": "api"
+    },
     "engine": {
-      "label": "Search Engine",
+      "label": "Search Engine (API mode)",
       "placeholder": "search_std"
     },
     "contentSize": {
-      "label": "Content Size",
+      "label": "Content Size (API mode)",
       "placeholder": "medium"
     }
   }
