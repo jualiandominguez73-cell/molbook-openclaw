@@ -1,11 +1,13 @@
 "use client";
 
+import * as React from "react";
 import { motion } from "framer-motion";
 import { Server, Check, Wifi, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { getConfig, patchConfig, type ConfigSnapshot, type ClawdbrainConfig } from "@/lib/api";
 
 export type GatewayMode = "auto" | "local" | "remote";
 
@@ -43,10 +45,136 @@ const gatewayOptions = [
   },
 ];
 
+function resolveGatewayMode(config: ClawdbrainConfig | undefined): GatewayMode {
+  const mode = config?.gateway?.mode;
+  if (mode === "remote") return "remote";
+  if (mode === "local") return "local";
+  return "auto";
+}
+
+function resolveGatewayEndpoint(config: ClawdbrainConfig | undefined): string | undefined {
+  const gateway = config?.gateway as { remote?: { url?: string } } | undefined;
+  return gateway?.remote?.url;
+}
+
 export function GatewaySetupStep({
   config,
   onConfigChange,
 }: GatewaySetupStepProps) {
+  const [configSnapshot, setConfigSnapshot] = React.useState<ConfigSnapshot | null>(null);
+  const [gatewayError, setGatewayError] = React.useState<string | null>(null);
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
+  const lastSavedRef = React.useRef<GatewayConfig | null>(null);
+  const hasPrefilledRef = React.useRef(false);
+  const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const configRef = React.useRef(config);
+
+  React.useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    async function preloadConfig() {
+      try {
+        const snapshot = await getConfig();
+        if (!active) return;
+        setConfigSnapshot(snapshot);
+        setGatewayError(null);
+
+        if (!hasPrefilledRef.current) {
+          const resolvedMode = resolveGatewayMode(snapshot.config);
+          const resolvedEndpoint = resolveGatewayEndpoint(snapshot.config);
+          const currentConfig = configRef.current;
+          if (
+            resolvedMode !== currentConfig.mode ||
+            (resolvedMode === "remote" && resolvedEndpoint && resolvedEndpoint !== currentConfig.endpoint)
+          ) {
+            hasPrefilledRef.current = true;
+            lastSavedRef.current = { ...currentConfig, mode: resolvedMode, endpoint: resolvedEndpoint };
+            onConfigChange({ ...currentConfig, mode: resolvedMode, endpoint: resolvedEndpoint });
+          }
+        }
+      } catch (error) {
+        if (!active) return;
+        setGatewayError(error instanceof Error ? error.message : "Failed to load gateway config");
+      }
+    }
+
+    void preloadConfig();
+
+    return () => {
+      active = false;
+    };
+  }, [onConfigChange]);
+
+  React.useEffect(() => {
+    if (!configSnapshot) return;
+
+    const lastSaved = lastSavedRef.current;
+    if (
+      lastSaved &&
+      lastSaved.mode === config.mode &&
+      lastSaved.endpoint === config.endpoint
+    ) {
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void (async () => {
+        if (config.mode === "remote" && !config.endpoint) {
+          return;
+        }
+
+        setSaveState("saving");
+
+        try {
+          const latestSnapshot = await getConfig();
+          if (!latestSnapshot.hash) {
+            throw new Error("Config hash missing");
+          }
+
+          const gatewayPatch = {
+            ...latestSnapshot.config?.gateway,
+            mode: config.mode === "remote" ? "remote" : "local",
+          } as Record<string, unknown>;
+
+          if (config.mode === "remote") {
+            gatewayPatch.remote = {
+              ...(gatewayPatch.remote as Record<string, unknown> | undefined),
+              url: config.endpoint,
+            };
+          }
+
+          await patchConfig({
+            baseHash: latestSnapshot.hash,
+            raw: JSON.stringify({ gateway: gatewayPatch }),
+            note: "Onboarding: configure gateway",
+          });
+
+          setConfigSnapshot(latestSnapshot);
+          setSaveState("saved");
+          setGatewayError(null);
+          lastSavedRef.current = { ...config };
+        } catch (error) {
+          setSaveState("error");
+          setGatewayError(error instanceof Error ? error.message : "Failed to save gateway settings");
+        }
+      })();
+    }, 600);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [config, configSnapshot]);
+
   return (
     <div className="flex flex-col items-center px-4">
       {/* Icon */}
@@ -155,6 +283,20 @@ export function GatewaySetupStep({
             <p className="text-xs text-muted-foreground">
               Enter the URL of your remote gateway server.
             </p>
+            {saveState !== "idle" && (
+              <p
+                className={cn(
+                  "text-xs",
+                  saveState === "saving" && "text-muted-foreground",
+                  saveState === "saved" && "text-emerald-600",
+                  saveState === "error" && "text-destructive"
+                )}
+              >
+                {saveState === "saving" && "Saving to gateway..."}
+                {saveState === "saved" && "Saved to gateway."}
+                {saveState === "error" && (gatewayError ?? "Failed to save to gateway.")}
+              </p>
+            )}
           </div>
         </motion.div>
       )}
@@ -174,6 +316,20 @@ export function GatewaySetupStep({
               </p>
             </CardContent>
           </Card>
+          {saveState !== "idle" && (
+            <p
+              className={cn(
+                "text-xs text-muted-foreground mt-3",
+                saveState === "saving" && "text-muted-foreground",
+                saveState === "saved" && "text-emerald-600",
+                saveState === "error" && "text-destructive"
+              )}
+            >
+              {saveState === "saving" && "Saving to gateway..."}
+              {saveState === "saved" && "Saved to gateway."}
+              {saveState === "error" && (gatewayError ?? "Failed to save to gateway.")}
+            </p>
+          )}
         </motion.div>
       )}
     </div>

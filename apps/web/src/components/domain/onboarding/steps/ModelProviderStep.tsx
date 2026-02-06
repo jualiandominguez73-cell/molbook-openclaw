@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { getConfig, patchConfig, type ConfigSnapshot } from "@/lib/api";
 
 export type ModelProvider = "openai" | "anthropic" | "google" | "openrouter" | "local";
 
@@ -74,12 +75,49 @@ const providers = [
   },
 ];
 
+const providerAuthKeyMap: Record<ModelProvider, string | null> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  google: "google",
+  openrouter: "openrouter",
+  local: null,
+};
+
+function resolveProviderFromConfig(snapshot: ConfigSnapshot | null): {
+  provider: ModelProvider;
+  apiKey: string;
+} | null {
+  const auth = snapshot?.config?.auth;
+  if (!auth) {
+    return null;
+  }
+
+  const providerOrder: ModelProvider[] = ["openai", "anthropic", "google", "openrouter"];
+  for (const provider of providerOrder) {
+    const authKey = providerAuthKeyMap[provider];
+    if (!authKey) continue;
+    const apiKey = auth[authKey]?.apiKey;
+    if (apiKey) {
+      return { provider, apiKey };
+    }
+  }
+
+  return null;
+}
+
 export function ModelProviderStep({
   config,
   onConfigChange,
 }: ModelProviderStepProps) {
   const selectedProvider = providers.find((p) => p.id === config.provider);
   const [isGuidanceOpen, setIsGuidanceOpen] = React.useState(false);
+  const [configSnapshot, setConfigSnapshot] = React.useState<ConfigSnapshot | null>(null);
+  const [gatewayError, setGatewayError] = React.useState<string | null>(null);
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
+  const lastSavedRef = React.useRef<ModelProviderConfig | null>(null);
+  const hasPrefilledRef = React.useRef(false);
+  const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const configRef = React.useRef(config);
 
   // Set default Ollama URL when local is selected
   React.useEffect(() => {
@@ -87,6 +125,109 @@ export function ModelProviderStep({
       onConfigChange({ ...config, baseUrl: "http://localhost:11434" });
     }
   }, [config.provider]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  React.useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    async function preloadConfig() {
+      try {
+        const snapshot = await getConfig();
+        if (!active) return;
+        setConfigSnapshot(snapshot);
+        setGatewayError(null);
+
+        if (!hasPrefilledRef.current) {
+          const resolved = resolveProviderFromConfig(snapshot);
+          const currentConfig = configRef.current;
+          if (resolved && (!currentConfig.apiKey || currentConfig.provider !== resolved.provider)) {
+            hasPrefilledRef.current = true;
+            lastSavedRef.current = { ...currentConfig, ...resolved };
+            onConfigChange({ ...currentConfig, ...resolved });
+          }
+        }
+      } catch (error) {
+        if (!active) return;
+        setGatewayError(error instanceof Error ? error.message : "Failed to load gateway config");
+      }
+    }
+
+    void preloadConfig();
+
+    return () => {
+      active = false;
+    };
+  }, [onConfigChange]);
+
+  React.useEffect(() => {
+    if (!configSnapshot) return;
+
+    const lastSaved = lastSavedRef.current;
+    if (
+      lastSaved &&
+      lastSaved.provider === config.provider &&
+      lastSaved.apiKey === config.apiKey &&
+      lastSaved.baseUrl === config.baseUrl
+    ) {
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void (async () => {
+        if (config.provider !== "local" && !config.apiKey) {
+          return;
+        }
+
+        setSaveState("saving");
+
+        try {
+          const latestSnapshot = await getConfig();
+          if (!latestSnapshot.hash) {
+            throw new Error("Config hash missing");
+          }
+
+          const authKey = providerAuthKeyMap[config.provider];
+          if (!authKey) {
+            setSaveState("saved");
+            lastSavedRef.current = { ...config };
+            return;
+          }
+
+          await patchConfig({
+            baseHash: latestSnapshot.hash,
+            raw: JSON.stringify({
+              auth: {
+                ...latestSnapshot.config?.auth,
+                [authKey]: { apiKey: config.apiKey },
+              },
+            }),
+            note: "Onboarding: configure model provider",
+          });
+
+          setConfigSnapshot(latestSnapshot);
+          setSaveState("saved");
+          setGatewayError(null);
+          lastSavedRef.current = { ...config };
+        } catch (error) {
+          setSaveState("error");
+          setGatewayError(error instanceof Error ? error.message : "Failed to save provider settings");
+        }
+      })();
+    }, 600);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [config, configSnapshot]);
 
   return (
     <div className="flex flex-col items-center">
@@ -203,6 +344,20 @@ export function ModelProviderStep({
             <p className="text-xs lg:text-sm text-muted-foreground">
               Your API key is stored securely and never shared.
             </p>
+            {saveState !== "idle" && (
+              <p
+                className={cn(
+                  "text-xs lg:text-sm",
+                  saveState === "saving" && "text-muted-foreground",
+                  saveState === "saved" && "text-emerald-600",
+                  saveState === "error" && "text-destructive"
+                )}
+              >
+                {saveState === "saving" && "Saving to gateway..."}
+                {saveState === "saved" && "Saved to gateway."}
+                {saveState === "error" && (gatewayError ?? "Failed to save to gateway.")}
+              </p>
+            )}
 
             {/* Expandable API Key Guidance - below disclaimer */}
             {selectedProvider && (
@@ -311,6 +466,20 @@ export function ModelProviderStep({
               Some Ollama setups require authentication. Leave blank if not needed.
             </p>
           </div>
+          {saveState !== "idle" && (
+            <p
+              className={cn(
+                "text-xs lg:text-sm",
+                saveState === "saving" && "text-muted-foreground",
+                saveState === "saved" && "text-emerald-600",
+                saveState === "error" && "text-destructive"
+              )}
+            >
+              {saveState === "saving" && "Saving to gateway..."}
+              {saveState === "saved" && "Saved to gateway."}
+              {saveState === "error" && (gatewayError ?? "Failed to save to gateway.")}
+            </p>
+          )}
         </motion.div>
       )}
     </div>
