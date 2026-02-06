@@ -57,9 +57,6 @@ export function isDiscordInlineButtonsEnabled(params: {
     return resolveDiscordInlineButtonsScope(params) !== "off";
   }
   const accountIds = listDiscordAccountIds(params.cfg);
-  if (accountIds.length === 0) {
-    return resolveDiscordInlineButtonsScope(params) !== "off";
-  }
   return accountIds.some(
     (accountId) => resolveDiscordInlineButtonsScope({ cfg: params.cfg, accountId }) !== "off",
   );

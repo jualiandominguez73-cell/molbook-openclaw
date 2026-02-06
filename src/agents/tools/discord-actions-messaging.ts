@@ -256,7 +256,7 @@ export async function handleDiscordMessagingAction(
 
         if (inlineButtonsScope === "off") {
           throw new Error(
-            'Discord inline buttons are disabled. Set channels.discord.capabilities.inlineButtons to "dm", "group", "all", or "allowlist".',
+            'Discord inline buttons are disabled. Set channels.discord.capabilities.inlineButtons (or channels.discord.accounts.<id>.capabilities.inlineButtons) to "dm", "group", "all", or "allowlist".',
           );
         }
 

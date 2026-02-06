@@ -155,7 +155,7 @@ export async function sendPollDiscord(
 
 /**
  * Send a Discord message with inline buttons (MessageComponents).
- * Requires discord.capabilities.inlineButtons to be enabled.
+ * Requires channels.discord[.accounts.<id>].capabilities.inlineButtons to be enabled.
  */
 export async function sendMessageWithButtonsDiscord(
   to: string,
