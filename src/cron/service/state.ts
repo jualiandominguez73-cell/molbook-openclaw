@@ -45,6 +45,8 @@ export type CronServiceState = {
   deps: CronServiceDepsInternal;
   store: CronStoreFile | null;
   timer: NodeJS.Timeout | null;
+  /** Periodic watchdog that catches missed timers. */
+  watchdog: NodeJS.Timeout | null;
   running: boolean;
   op: Promise<unknown>;
   warnedDisabled: boolean;
@@ -57,6 +59,7 @@ export function createCronServiceState(deps: CronServiceDeps): CronServiceState 
     deps: { ...deps, nowMs: deps.nowMs ?? (() => Date.now()) },
     store: null,
     timer: null,
+    watchdog: null,
     running: false,
     op: Promise.resolve(),
     warnedDisabled: false,

@@ -11,6 +11,8 @@ import { locked } from "./locked.js";
 import { ensureLoaded, persist } from "./store.js";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+/** How often the watchdog checks for missed timers. */
+const WATCHDOG_INTERVAL_MS = 30_000;
 
 export function armTimer(state: CronServiceState) {
   if (state.timer) {
@@ -32,6 +34,42 @@ export function armTimer(state: CronServiceState) {
       state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
     });
   }, clampedDelay);
+
+  armWatchdog(state);
+}
+
+/**
+ * Periodic watchdog that catches cases where setTimeout silently fails to
+ * fire (#10702, #10653).  Checks every 30 s whether any job is overdue and
+ * triggers onTimer if the primary timer missed its window.
+ */
+export function armWatchdog(state: CronServiceState) {
+  // Only create one watchdog per lifetime.
+  if (state.watchdog) {
+    return;
+  }
+  state.watchdog = setInterval(() => {
+    if (state.running) {
+      return;
+    }
+    const next = nextWakeAtMs(state);
+    if (typeof next !== "number") {
+      return;
+    }
+    if (state.deps.nowMs() < next) {
+      return;
+    }
+    // A job is overdue and the primary timer did not fire.
+    state.deps.log.warn(
+      { overdueMs: state.deps.nowMs() - next },
+      "cron: watchdog detected missed timer, firing",
+    );
+    void onTimer(state).catch((err) => {
+      state.deps.log.error({ err: String(err) }, "cron: watchdog tick failed");
+    });
+  }, WATCHDOG_INTERVAL_MS);
+  // Don't let the watchdog keep the process alive on shutdown.
+  state.watchdog.unref?.();
 }
 
 export async function onTimer(state: CronServiceState) {
@@ -246,6 +284,10 @@ export function stopTimer(state: CronServiceState) {
     clearTimeout(state.timer);
   }
   state.timer = null;
+  if (state.watchdog) {
+    clearInterval(state.watchdog);
+  }
+  state.watchdog = null;
 }
 
 export function emit(state: CronServiceState, evt: CronEvent) {
