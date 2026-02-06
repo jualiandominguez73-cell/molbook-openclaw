@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-
+import type { DiscordChannelConfigResolved, DiscordGuildEntryResolved } from "./allow-list.js";
 import {
   DiscordGuildSchema,
   DiscordGuildChannelSchema,
 } from "../../config/zod-schema.providers-core.js";
 import { resolveDiscordChimeIn } from "./allow-list.js";
-import type { DiscordChannelConfigResolved, DiscordGuildEntryResolved } from "./allow-list.js";
 
 describe("ChimeIn Zod schema validation", () => {
   describe("DiscordGuildSchema", () => {
