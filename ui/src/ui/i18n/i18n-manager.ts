@@ -68,11 +68,12 @@ export class I18nManager {
     try {
       // Split the key by dots to navigate the nested object
       const keys = key.split(".");
-      let value: any = locales[locale];
+      let value: unknown = locales[locale];
 
       for (const k of keys) {
         if (value && typeof value === "object" && k in value) {
-          value = value[k as keyof typeof value];
+          const obj = value as Record<string, unknown>;
+          value = obj[k];
         } else {
           // If key not found in current locale, fallback to default
           if (locale !== defaultLocale) {
