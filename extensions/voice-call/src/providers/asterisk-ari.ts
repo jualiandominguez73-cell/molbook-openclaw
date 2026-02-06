@@ -108,7 +108,6 @@ export class AsteriskAriProvider implements VoiceCallProvider {
   private manager: CallManager;
 
   private ws: WebSocket | null = null;
-  private udp: dgram.Socket;
 
   // providerCallId -> state
   private callMap = new Map<
@@ -118,11 +117,15 @@ export class AsteriskAriProvider implements VoiceCallProvider {
       sipChannelId: string;
       extChannelId: string;
       bridgeId: string;
+      rtpPort?: number;
       rtpPeer?: { address: string; port: number };
+      udp?: dgram.Socket;
       stt?: ReturnType<OpenAIRealtimeSTTProvider["createSession"]>;
       speaking: boolean;
     }
   >();
+
+  private nextRtpPort: number;
 
   // Outbound calls: we need to wait for StasisStart before issuing bridge/externalMedia actions.
   private pendingStasisStart = new Map<
@@ -138,9 +141,9 @@ export class AsteriskAriProvider implements VoiceCallProvider {
     this.cfg = a;
     this.manager = params.manager;
 
-    this.udp = dgram.createSocket("udp4");
-    this.udp.on("message", (msg, rinfo) => this.onRtp(msg, rinfo));
-    this.udp.bind(this.cfg.rtpPort, "0.0.0.0");
+    // Allocate per-call RTP ports/sockets to avoid cross-call audio leakage.
+    // Start at configured base port and increment per call.
+    this.nextRtpPort = this.cfg.rtpPort;
 
     this.connectWs();
   }
@@ -371,33 +374,32 @@ export class AsteriskAriProvider implements VoiceCallProvider {
     }
   }
 
-  private onRtp(msg: Buffer, rinfo: dgram.RemoteInfo) {
-    // Find matching call by rinfo; externalMedia should send RTP from Asterisk to our port.
-    // We keep the last seen peer per active call.
+  private handleRtp(providerCallId: string, msg: Buffer, rinfo: dgram.RemoteInfo) {
+    const st = this.callMap.get(providerCallId);
+    if (!st) {
+      return;
+    }
+
     // RTP header is 12 bytes.
     if (msg.length <= 12) {
       return;
     }
+
+    // Learn peer from first packet (per-call socket, so this is scoped correctly).
+    if (!st.rtpPeer) {
+      st.rtpPeer = { address: rinfo.address, port: rinfo.port };
+    }
+
+    // Only accept from learned peer.
+    if (st.rtpPeer.address !== rinfo.address || st.rtpPeer.port !== rinfo.port) {
+      return;
+    }
+
     const payload = msg.subarray(12);
 
-    for (const [_providerCallId, st] of this.callMap.entries()) {
-      if (!st.extChannelId) {
-        continue;
-      }
-      // Learn peer first packet.
-      if (!st.rtpPeer) {
-        st.rtpPeer = { address: rinfo.address, port: rinfo.port };
-      }
-      // Only accept from learned peer.
-      if (st.rtpPeer.address !== rinfo.address || st.rtpPeer.port !== rinfo.port) {
-        continue;
-      }
-
-      // Always feed inbound RTP into STT, even while we're speaking.
-      // Otherwise onSpeechStart never fires and barge-in can't interrupt TTS.
-      if (st.stt) {
-        st.stt.sendAudio(payload);
-      }
+    // Always feed RTP into STT, even while we're speaking.
+    if (st.stt) {
+      st.stt.sendAudio(payload);
     }
   }
 
@@ -436,6 +438,22 @@ export class AsteriskAriProvider implements VoiceCallProvider {
     });
     const bridgeId = bridge.id as string;
 
+    // Allocate a per-call UDP socket/port for RTP (prevents cross-call leakage when maxConcurrentCalls > 1).
+    const udp = dgram.createSocket("udp4");
+    const rtpPort = this.nextRtpPort++;
+    await new Promise<void>((resolve, reject) => {
+      udp.once("error", reject);
+      udp.bind(rtpPort, "0.0.0.0", () => {
+        udp.off("error", reject);
+        resolve();
+      });
+    });
+
+    udp.on("message", (msg, rinfo) => this.handleRtp(providerCallId, msg, rinfo));
+
+    st.udp = udp;
+    st.rtpPort = rtpPort;
+
     // Create ExternalMedia channel
     const ext = await ariFetchJson({
       baseUrl: this.cfg.baseUrl,
@@ -445,7 +463,7 @@ export class AsteriskAriProvider implements VoiceCallProvider {
       method: "POST",
       query: {
         app: this.cfg.app,
-        external_host: this.cfg.rtpHost + ":" + this.cfg.rtpPort,
+        external_host: this.cfg.rtpHost + ":" + rtpPort,
         format: this.cfg.format,
       },
     });
@@ -712,7 +730,11 @@ export class AsteriskAriProvider implements VoiceCallProvider {
 
       const packet = Buffer.concat([header, frame]);
       await new Promise<void>((resolve, reject) => {
-        this.udp.send(packet, peer2.port, peer2.address, (err) => {
+        if (!st.udp) {
+          throw new Error("RTP socket not initialized");
+        }
+
+        st.udp.send(packet, peer2.port, peer2.address, (err) => {
           if (err) {
             reject(err);
             return;
@@ -743,6 +765,12 @@ export class AsteriskAriProvider implements VoiceCallProvider {
 
     try {
       st.stt?.close();
+    } catch {
+      // ignore
+    }
+
+    try {
+      st.udp?.close();
     } catch {
       // ignore
     }
