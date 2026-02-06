@@ -152,7 +152,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
 
       client.on("message", async (topic: string, message: mqtt.Packet) => {
         // Treat message as Buffer, then parse JSON
-        const msgStr = Buffer.isBuffer(message) ? message.toString() : String(message);
+        const msgStr = message.toString();
         let data: unknown;
         try {
           data = JSON.parse(msgStr);
@@ -170,12 +170,7 @@ export const spixiPlugin: ChannelPlugin<ResolvedSpixiAccount> = {
               id?: string;
               timestamp?: number;
             };
-            if (
-              typeof d === "object" &&
-              d !== null &&
-              d.sender &&
-              (d.data?.data || d.message)
-            ) {
+            if (typeof d === "object" && d !== null && d.sender && (d.data?.data || d.message)) {
               const sender = d.sender;
               // Prefer d.data?.data, fallback to d.message
               let text: string | undefined;
