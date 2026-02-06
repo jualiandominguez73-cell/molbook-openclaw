@@ -378,5 +378,14 @@ export { loadWebMedia, type WebMediaResult } from "../web/media.js";
 export { registerPluginHooksFromDir } from "../hooks/plugin-hooks.js";
 export { completeText, completeTextWithModelRef, probeModelRefAuth } from "./llm.js";
 
+// Memory: Graphiti client + entity extraction
+export { GraphitiClient } from "../memory/graphiti/client.js";
+export type { GraphitiClientOptions } from "../memory/graphiti/client.js";
+export {
+  extractEntitiesFromEpisodes,
+  writeEntitiesToGraph,
+} from "../memory/pipeline/entity-extract.js";
+export type { MemoryContentObject } from "../memory/types.js";
+
 // Types
 export type { AnyAgentTool } from "../agents/tools/common.js";

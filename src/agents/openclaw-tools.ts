@@ -208,7 +208,7 @@ export function createOpenClawTools(options?: {
       agentSessionKey: options?.agentSessionKey,
       config: options?.config,
     }),
-    createMemoryIngestTool(),
+    createMemoryIngestTool({ config: options?.config }),
     createMemoryQueryTool(),
     createMemoryContextPackTool(),
     ...(webSearchTool ? [webSearchTool] : []),

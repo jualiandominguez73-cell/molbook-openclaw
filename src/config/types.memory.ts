@@ -16,12 +16,23 @@ export type MemoryGraphitiConfig = {
   timeoutMs?: number; // default: 10000
 };
 
+export type MemoryEntityExtractionConfig = {
+  /** Enable/disable entity extraction in the ingestion pipeline. Default: true. */
+  enabled?: boolean;
+  /** Minimum text length to attempt extraction. Default: 20. */
+  minTextLength?: number;
+  /** Maximum entities per episode. Default: 50. */
+  maxEntitiesPerEpisode?: number;
+};
+
 export type MemoryConfig = {
   backend?: MemoryBackend;
   citations?: MemoryCitationsMode;
   qmd?: MemoryQmdConfig;
   progressive?: MemoryProgressiveConfig;
   graphiti?: MemoryGraphitiConfig;
+  /** Entity extraction pipeline configuration. */
+  entityExtraction?: MemoryEntityExtractionConfig;
 };
 
 export type MemoryQmdConfig = {

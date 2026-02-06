@@ -1,6 +1,11 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import crypto from "node:crypto";
 import path from "node:path";
+import {
+  GraphitiClient,
+  extractEntitiesFromEpisodes,
+  writeEntitiesToGraph,
+} from "openclaw/plugin-sdk";
 import type { MeridiaExperienceRecord, MeridiaTraceEvent } from "../../src/meridia/types.js";
 import { resolveMeridiaPluginConfig } from "../../src/meridia/config.js";
 import { createBackend } from "../../src/meridia/db/index.js";
@@ -314,8 +319,6 @@ async function pushToGraphiti(
   }
 
   try {
-    const { GraphitiClient } = await import("../../../../src/memory/graphiti/client.js");
-
     const client = new GraphitiClient({
       serverHost: cfg.memory.graphiti.serverHost,
       servicePort: cfg.memory.graphiti.servicePort,
@@ -326,6 +329,7 @@ async function pushToGraphiti(
     // Convert synthesized episodes to Graphiti content format
     const contentObjects = episodes.map((ep) => ({
       id: ep.id,
+      kind: "episode" as const,
       text: `${ep.topic}\n\n${ep.summary}`,
       tags: ep.tags,
       provenance: {
@@ -379,7 +383,7 @@ async function runCompaction(
   const lookbackHours = compactionCfg.scheduleIntervalHours;
   const now = new Date();
   const cutoff = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000);
-  const oldRecords = backend.getRecordsByDateRange(
+  const oldRecords = await backend.getRecordsByDateRange(
     new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days back
     cutoff.toISOString(),
     { minScore: 0.5, limit: 500 },
@@ -426,6 +430,53 @@ async function runCompaction(
     if (!graphitiResult.success) {
       // eslint-disable-next-line no-console
       console.warn(`[compaction] Graphiti push failed: ${graphitiResult.error}`);
+    }
+
+    // Entity extraction on compacted episodes — extract entities from summaries
+    // and write to Graphiti graph for knowledge graph enrichment
+    if (graphitiPushed && cfg?.memory?.entityExtraction?.enabled !== false) {
+      try {
+        const contentObjects = episodes.map((ep) => ({
+          id: ep.id,
+          kind: "episode" as const,
+          text: `${ep.topic}\n\n${ep.summary}`,
+        }));
+
+        const entityCfg = cfg?.memory?.entityExtraction;
+        const extraction = extractEntitiesFromEpisodes(contentObjects, {
+          enabled: entityCfg?.enabled,
+          minTextLength: entityCfg?.minTextLength,
+          maxEntitiesPerEpisode: entityCfg?.maxEntitiesPerEpisode,
+        });
+
+        if (extraction.entities.length > 0) {
+          const client = new GraphitiClient({
+            serverHost: cfg?.memory?.graphiti?.serverHost,
+            servicePort: cfg?.memory?.graphiti?.servicePort,
+            apiKey: cfg?.memory?.graphiti?.apiKey,
+            timeoutMs: cfg?.memory?.graphiti?.timeoutMs ?? 30_000,
+          });
+
+          const writeResult = await writeEntitiesToGraph({
+            entities: extraction.entities,
+            relations: extraction.relations,
+            client,
+          });
+
+          if (writeResult.warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[compaction] Entity extraction warnings: ${writeResult.warnings.map((w: { message: string }) => w.message).join("; ")}`,
+            );
+          }
+        }
+      } catch (err) {
+        // Entity extraction errors should not block compaction
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[compaction] Entity extraction failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
   }
 

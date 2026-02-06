@@ -670,6 +670,14 @@ const FIELD_HELP: Record<string, string> = {
   "memory.graphiti.apiKey": "API key for Graphiti authentication.",
   "memory.graphiti.timeoutMs":
     "Request timeout in milliseconds for Graphiti calls (default: 10000).",
+  "memory.entityExtraction":
+    "Entity extraction pipeline configuration for automatic knowledge graph enrichment.",
+  "memory.entityExtraction.enabled":
+    "Enable automatic entity extraction in the ingestion pipeline (default: true).",
+  "memory.entityExtraction.minTextLength":
+    "Minimum text length to attempt entity extraction (default: 20).",
+  "memory.entityExtraction.maxEntitiesPerEpisode":
+    "Maximum entities extracted per episode (default: 50).",
   "agents.defaults.memorySearch.cache.maxEntries":
     "Optional cap on cached embeddings (best-effort).",
   "agents.defaults.memorySearch.sync.onSearch":
