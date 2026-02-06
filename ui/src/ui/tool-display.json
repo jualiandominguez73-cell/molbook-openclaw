@@ -126,7 +126,7 @@
         "click_text": { "label": "click text", "detailKeys": ["text", "match", "controlType", "resultIndex", "steps", "stepDelayMs", "jitterPx"] },
         "click_text_uia": { "label": "click text (uia)", "detailKeys": ["text", "match", "controlType", "resultIndex", "invokeFallback"] },
         "focus_text": { "label": "focus text", "detailKeys": ["text", "match", "controlType", "resultIndex", "focusMode", "steps", "stepDelayMs", "jitterPx"] },
-        "set_value_text": { "label": "set value", "detailKeys": ["text", "value", "match", "controlType", "resultIndex"] },
+        "set_value_text": { "label": "set value", "detailKeys": ["text", "value", "match", "controlType", "resultIndex", "focusMode", "valueFallback"] },
         "move": { "label": "move", "detailKeys": ["x", "y", "steps", "stepDelayMs", "jitterPx"] },
         "click": { "label": "click", "detailKeys": ["x", "y", "button", "clicks", "steps", "stepDelayMs", "jitterPx"] },
         "dblclick": { "label": "dblclick", "detailKeys": ["x", "y"] },
