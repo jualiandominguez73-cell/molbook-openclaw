@@ -712,7 +712,7 @@ export const usageHandlers: GatewayRequestHandlers = {
 
     // For discovered sessions (not in store), try using key as sessionId directly
     const sessionId = entry?.sessionId ?? key;
-    const sessionFile = entry?.sessionFile ?? resolveSessionFilePath(key);
+    const sessionFile = entry?.sessionFile ?? resolveSessionFilePath(sessionId, entry);
 
     const timeseries = await loadSessionUsageTimeSeries({
       sessionId,
@@ -750,7 +750,7 @@ export const usageHandlers: GatewayRequestHandlers = {
 
     // For discovered sessions (not in store), try using key as sessionId directly
     const sessionId = entry?.sessionId ?? key;
-    const sessionFile = entry?.sessionFile ?? resolveSessionFilePath(key);
+    const sessionFile = entry?.sessionFile ?? resolveSessionFilePath(sessionId, entry);
 
     const { loadSessionLogs } = await import("../../infra/session-cost-usage.js");
     const logs = await loadSessionLogs({
