@@ -758,7 +758,8 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
         jid: account.jid,
         password: account.password,
         server: account.server,
-        resource: account.resource,
+        // Don't pass resource - let probe use its default "openclaw-probe"
+        // to avoid conflicting with the running client's resource
         timeoutMs,
       });
     },
