@@ -47,7 +47,10 @@ export async function initiateCall(
 
   const callId = crypto.randomUUID();
   const from =
-    ctx.config.fromNumber || (ctx.provider?.name === "mock" ? "+15550000000" : undefined);
+    ctx.config.fromNumber ||
+    (ctx.provider?.name === "mock" || ctx.provider?.name === "asterisk-ari"
+      ? "+15550000000"
+      : undefined);
   if (!from) {
     return { callId: "", success: false, error: "fromNumber not configured" };
   }

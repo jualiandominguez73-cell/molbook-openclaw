@@ -211,36 +211,15 @@ export const VoiceCallTunnelConfigSchema = z
      * will be allowed only for loopback requests (ngrok local agent).
      */
     allowNgrokFreeTierLoopbackBypass: z.boolean().default(false),
+    /**
+     * Legacy ngrok free tier compatibility mode (deprecated).
+     * Use allowNgrokFreeTierLoopbackBypass instead.
+     */
+    allowNgrokFreeTier: z.boolean().optional(),
   })
   .strict()
   .default({ provider: "none", allowNgrokFreeTierLoopbackBypass: false });
 export type VoiceCallTunnelConfig = z.infer<typeof VoiceCallTunnelConfigSchema>;
-
-// -----------------------------------------------------------------------------
-// Webhook Security Configuration
-// -----------------------------------------------------------------------------
-
-export const VoiceCallWebhookSecurityConfigSchema = z
-  .object({
-    /**
-     * Allowed hostnames for webhook URL reconstruction.
-     * Only these hosts are accepted from forwarding headers.
-     */
-    allowedHosts: z.array(z.string().min(1)).default([]),
-    /**
-     * Trust X-Forwarded-* headers without a hostname allowlist.
-     * WARNING: Only enable if you trust your proxy configuration.
-     */
-    trustForwardingHeaders: z.boolean().default(false),
-    /**
-     * Trusted proxy IP addresses. Forwarded headers are only trusted when
-     * the remote IP matches one of these addresses.
-     */
-    trustedProxyIPs: z.array(z.string().min(1)).default([]),
-  })
-  .strict()
-  .default({ allowedHosts: [], trustForwardingHeaders: false, trustedProxyIPs: [] });
-export type WebhookSecurityConfig = z.infer<typeof VoiceCallWebhookSecurityConfigSchema>;
 
 // -----------------------------------------------------------------------------
 // Outbound Call Configuration
@@ -301,13 +280,33 @@ export type VoiceCallStreamingConfig = z.infer<typeof VoiceCallStreamingConfigSc
 // Main Voice Call Configuration
 // -----------------------------------------------------------------------------
 
+export const AsteriskAriConfigSchema = z
+  .object({
+    /** ARI base URL, e.g. http://10.8.0.1:8088 */
+    baseUrl: z.string().min(1),
+    username: z.string().min(1),
+    password: z.string().min(1),
+    /** Stasis app name */
+    app: z.string().min(1),
+    /** Trunk name for GSM, e.g. gsmtrunk */
+    trunk: z.string().min(1),
+    /** Where Asterisk should send RTP for ExternalMedia */
+    rtpHost: z.string().min(1),
+    /** Local UDP port to receive RTP from Asterisk */
+    rtpPort: z.number().int().min(1024).max(65535).default(12000),
+    /** RTP payload format; use ulaw for PCMU */
+    format: z.enum(["ulaw", "alaw"]).default("ulaw"),
+  })
+  .strict();
+export type AsteriskAriConfig = z.infer<typeof AsteriskAriConfigSchema>;
+
 export const VoiceCallConfigSchema = z
   .object({
     /** Enable voice call functionality */
     enabled: z.boolean().default(false),
 
-    /** Active provider (telnyx, twilio, plivo, or mock) */
-    provider: z.enum(["telnyx", "twilio", "plivo", "mock"]).optional(),
+    /** Active provider (telnyx, twilio, plivo, mock, or asterisk-ari) */
+    provider: z.enum(["telnyx", "twilio", "plivo", "mock", "asterisk-ari"]).optional(),
 
     /** Telnyx-specific configuration */
     telnyx: TelnyxConfigSchema.optional(),
@@ -317,6 +316,9 @@ export const VoiceCallConfigSchema = z
 
     /** Plivo-specific configuration */
     plivo: PlivoConfigSchema.optional(),
+
+    /** Asterisk ARI (SIP/GSM via Asterisk) */
+    asteriskAri: AsteriskAriConfigSchema.optional(),
 
     /** Phone number to call from (E.164) */
     fromNumber: E164Schema.optional(),
@@ -359,9 +361,6 @@ export const VoiceCallConfigSchema = z
 
     /** Tunnel configuration (unified ngrok/tailscale) */
     tunnel: VoiceCallTunnelConfigSchema,
-
-    /** Webhook signature reconstruction and proxy trust configuration */
-    webhookSecurity: VoiceCallWebhookSecurityConfigSchema,
 
     /** Real-time audio streaming configuration */
     streaming: VoiceCallStreamingConfigSchema,
@@ -427,26 +426,29 @@ export function resolveVoiceCallConfig(config: VoiceCallConfig): VoiceCallConfig
     resolved.plivo.authToken = resolved.plivo.authToken ?? process.env.PLIVO_AUTH_TOKEN;
   }
 
+  // Asterisk ARI
+  if (resolved.provider === "asterisk-ari") {
+    resolved.asteriskAri = resolved.asteriskAri ?? {
+      baseUrl: process.env.ASTERISK_ARI_BASE_URL || "",
+      username: process.env.ASTERISK_ARI_USERNAME || "",
+      password: process.env.ASTERISK_ARI_PASSWORD || "",
+      app: process.env.ASTERISK_ARI_APP || "",
+      trunk: process.env.ASTERISK_ARI_TRUNK || "",
+      rtpHost: process.env.ASTERISK_ARI_RTP_HOST || "",
+      rtpPort: process.env.ASTERISK_ARI_RTP_PORT ? Number(process.env.ASTERISK_ARI_RTP_PORT) : 12000,
+      format: (process.env.ASTERISK_ARI_FORMAT as "ulaw" | "alaw" | undefined) || "ulaw",
+    };
+  }
+
   // Tunnel Config
   resolved.tunnel = resolved.tunnel ?? {
     provider: "none",
     allowNgrokFreeTierLoopbackBypass: false,
   };
   resolved.tunnel.allowNgrokFreeTierLoopbackBypass =
-    resolved.tunnel.allowNgrokFreeTierLoopbackBypass ?? false;
+    resolved.tunnel.allowNgrokFreeTierLoopbackBypass || resolved.tunnel.allowNgrokFreeTier || false;
   resolved.tunnel.ngrokAuthToken = resolved.tunnel.ngrokAuthToken ?? process.env.NGROK_AUTHTOKEN;
   resolved.tunnel.ngrokDomain = resolved.tunnel.ngrokDomain ?? process.env.NGROK_DOMAIN;
-
-  // Webhook Security Config
-  resolved.webhookSecurity = resolved.webhookSecurity ?? {
-    allowedHosts: [],
-    trustForwardingHeaders: false,
-    trustedProxyIPs: [],
-  };
-  resolved.webhookSecurity.allowedHosts = resolved.webhookSecurity.allowedHosts ?? [];
-  resolved.webhookSecurity.trustForwardingHeaders =
-    resolved.webhookSecurity.trustForwardingHeaders ?? false;
-  resolved.webhookSecurity.trustedProxyIPs = resolved.webhookSecurity.trustedProxyIPs ?? [];
 
   return resolved;
 }
@@ -468,7 +470,7 @@ export function validateProviderConfig(config: VoiceCallConfig): {
     errors.push("plugins.entries.voice-call.config.provider is required");
   }
 
-  if (!config.fromNumber && config.provider !== "mock") {
+  if (!config.fromNumber && config.provider !== "mock" && config.provider !== "asterisk-ari") {
     errors.push("plugins.entries.voice-call.config.fromNumber is required");
   }
 
@@ -481,14 +483,6 @@ export function validateProviderConfig(config: VoiceCallConfig): {
     if (!config.telnyx?.connectionId) {
       errors.push(
         "plugins.entries.voice-call.config.telnyx.connectionId is required (or set TELNYX_CONNECTION_ID env)",
-      );
-    }
-    if (
-      (config.inboundPolicy === "allowlist" || config.inboundPolicy === "pairing") &&
-      !config.telnyx?.publicKey
-    ) {
-      errors.push(
-        "plugins.entries.voice-call.config.telnyx.publicKey is required for inboundPolicy allowlist/pairing",
       );
     }
   }
@@ -517,6 +511,16 @@ export function validateProviderConfig(config: VoiceCallConfig): {
         "plugins.entries.voice-call.config.plivo.authToken is required (or set PLIVO_AUTH_TOKEN env)",
       );
     }
+  }
+
+  if (config.provider === "asterisk-ari") {
+    const a = config.asteriskAri;
+    if (!a?.baseUrl) errors.push("plugins.entries.voice-call.config.asteriskAri.baseUrl is required");
+    if (!a?.username) errors.push("plugins.entries.voice-call.config.asteriskAri.username is required");
+    if (!a?.password) errors.push("plugins.entries.voice-call.config.asteriskAri.password is required");
+    if (!a?.app) errors.push("plugins.entries.voice-call.config.asteriskAri.app is required");
+    if (!a?.trunk) errors.push("plugins.entries.voice-call.config.asteriskAri.trunk is required");
+    if (!a?.rtpHost) errors.push("plugins.entries.voice-call.config.asteriskAri.rtpHost is required");
   }
 
   return { valid: errors.length === 0, errors };

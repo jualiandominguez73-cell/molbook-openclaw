@@ -8,6 +8,7 @@ import { MockProvider } from "./providers/mock.js";
 import { PlivoProvider } from "./providers/plivo.js";
 import { TelnyxProvider } from "./providers/telnyx.js";
 import { TwilioProvider } from "./providers/twilio.js";
+import { AsteriskAriProvider } from "./providers/asterisk-ari.js";
 import { createTelephonyTtsProvider } from "./telephony-tts.js";
 import { startTunnel, type TunnelResult } from "./tunnel.js";
 import {
@@ -40,25 +41,19 @@ function isLoopbackBind(bind: string | undefined): boolean {
   return bind === "127.0.0.1" || bind === "::1" || bind === "localhost";
 }
 
-function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
+function resolveProvider(config: VoiceCallConfig, manager: CallManager): VoiceCallProvider {
   const allowNgrokFreeTierLoopbackBypass =
     config.tunnel?.provider === "ngrok" &&
     isLoopbackBind(config.serve?.bind) &&
-    (config.tunnel?.allowNgrokFreeTierLoopbackBypass ?? false);
+    (config.tunnel?.allowNgrokFreeTierLoopbackBypass || config.tunnel?.allowNgrokFreeTier || false);
 
   switch (config.provider) {
     case "telnyx":
-      return new TelnyxProvider(
-        {
-          apiKey: config.telnyx?.apiKey,
-          connectionId: config.telnyx?.connectionId,
-          publicKey: config.telnyx?.publicKey,
-        },
-        {
-          allowUnsignedWebhooks:
-            config.inboundPolicy === "open" || config.inboundPolicy === "disabled",
-        },
-      );
+      return new TelnyxProvider({
+        apiKey: config.telnyx?.apiKey,
+        connectionId: config.telnyx?.connectionId,
+        publicKey: config.telnyx?.publicKey,
+      });
     case "twilio":
       return new TwilioProvider(
         {
@@ -70,7 +65,6 @@ function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
           publicUrl: config.publicUrl,
           skipVerification: config.skipSignatureVerification,
           streamPath: config.streaming?.enabled ? config.streaming.streamPath : undefined,
-          webhookSecurity: config.webhookSecurity,
         },
       );
     case "plivo":
@@ -83,11 +77,12 @@ function resolveProvider(config: VoiceCallConfig): VoiceCallProvider {
           publicUrl: config.publicUrl,
           skipVerification: config.skipSignatureVerification,
           ringTimeoutSec: Math.max(1, Math.floor(config.ringTimeoutMs / 1000)),
-          webhookSecurity: config.webhookSecurity,
         },
       );
     case "mock":
       return new MockProvider();
+    case "asterisk-ari":
+      return new AsteriskAriProvider({ config, manager });
     default:
       throw new Error(`Unsupported voice-call provider: ${String(config.provider)}`);
   }
@@ -118,8 +113,8 @@ export async function createVoiceCallRuntime(params: {
     throw new Error(`Invalid voice-call config: ${validation.errors.join("; ")}`);
   }
 
-  const provider = resolveProvider(config);
   const manager = new CallManager(config);
+  const provider = resolveProvider(config, manager);
   const webhookServer = new VoiceCallWebhookServer(config, manager, provider, coreConfig);
 
   const localUrl = await webhookServer.start();
