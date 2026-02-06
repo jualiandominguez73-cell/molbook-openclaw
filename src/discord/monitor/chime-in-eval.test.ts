@@ -202,4 +202,16 @@ describe("evaluateChimeIn", () => {
     const result = await callEvaluate();
     expect(result).toBe(false);
   });
+
+  it("falls back to agent default when model ref has no slash", async () => {
+    mockComplete.mockResolvedValue(makeAssistantMessage("YES"));
+    await callEvaluate({ chimeInConfig: { every: 5, model: "openai" } });
+    expect(mockFind).toHaveBeenCalledWith("anthropic", "claude-haiku");
+  });
+
+  it("falls back to agent default when model ref ends with slash", async () => {
+    mockComplete.mockResolvedValue(makeAssistantMessage("YES"));
+    await callEvaluate({ chimeInConfig: { every: 5, model: "openai/" } });
+    expect(mockFind).toHaveBeenCalledWith("anthropic", "claude-haiku");
+  });
 });

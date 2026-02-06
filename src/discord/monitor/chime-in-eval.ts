@@ -26,28 +26,31 @@ export async function evaluateChimeIn(params: {
 
     const historyText = history.map((entry) => `${entry.sender}: ${entry.body}`).join("\n");
 
-    if (!historyText.trim()) return false;
+    if (!historyText.trim()) {
+      return false;
+    }
 
     const prompt = chimeInConfig.prompt ?? DEFAULT_CHIME_IN_PROMPT;
     const fullPrompt = `${prompt}\n\nRecent messages:\n${historyText}`;
 
-    let provider: string;
-    let modelId: string;
-    const modelRef = chimeInConfig.model;
-    if (modelRef) {
-      const parts = modelRef.split("/");
-      provider = normalizeProviderId(parts[0]);
-      modelId = parts.slice(1).join("/");
-    } else {
-      const defaultModel = resolveAgentModelPrimary(cfg, agentId);
-      if (!defaultModel) {
-        logVerbose("discord: chimeIn evaluation skipped (no model configured)");
-        return false;
-      }
-      const parts = defaultModel.split("/");
-      provider = normalizeProviderId(parts[0]);
-      modelId = parts.slice(1).join("/");
+    let resolvedModelRef = chimeInConfig.model;
+
+    if (resolvedModelRef && (!resolvedModelRef.includes("/") || resolvedModelRef.endsWith("/"))) {
+      logVerbose(
+        `discord: chimeIn model ref "${resolvedModelRef}" is not valid provider/model format, falling back to agent default`,
+      );
+      resolvedModelRef = undefined;
     }
+
+    const effectiveRef = resolvedModelRef ?? resolveAgentModelPrimary(cfg, agentId);
+    if (!effectiveRef) {
+      logVerbose("discord: chimeIn evaluation skipped (no model configured)");
+      return false;
+    }
+
+    const parts = effectiveRef.split("/");
+    const provider = normalizeProviderId(parts[0]);
+    const modelId = parts.slice(1).join("/");
 
     const agentDir = resolveAgentDir(cfg, agentId);
     await ensureOpenClawModelsJson(cfg, agentDir);
