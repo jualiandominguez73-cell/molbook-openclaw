@@ -286,7 +286,10 @@ export const dispatchTelegramMessage = async ({
         }
       },
       onError: (err, info) => {
-        runtime.error?.(danger(`telegram ${info.kind} reply failed: ${String(err)}`));
+        const errorMsg = danger(`telegram ${info.kind} reply failed: ${String(err)}`);
+        // Ensure error is logged even if runtime.error is undefined (issue #21)
+        const errorFn = runtime.error || console.error;
+        errorFn(errorMsg);
       },
       onReplyStart: createTypingCallbacks({
         start: sendTyping,

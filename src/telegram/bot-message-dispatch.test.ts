@@ -110,3 +110,113 @@ describe("dispatchTelegramMessage draft streaming", () => {
     );
   });
 });
+
+describe("Issue: Telegram silent error handling (petter-b/clawdbot-dev#21)", () => {
+  beforeEach(() => {
+    createTelegramDraftStream.mockReset();
+    dispatchReplyWithBufferedBlockDispatcher.mockReset();
+    deliverReplies.mockReset();
+  });
+
+  const createContext = () => ({
+    ctxPayload: {},
+    primaryCtx: { message: { chat: { id: 123, type: "private" as const } } },
+    msg: { chat: { id: 123, type: "private" as const }, message_id: 456 },
+    chatId: 123,
+    isGroup: false,
+    threadSpec: { id: undefined, scope: "dm" as const },
+    historyKey: undefined,
+    historyLimit: 0,
+    groupHistories: new Map(),
+    route: { agentId: "default", accountId: "default" },
+    skillFilter: undefined,
+    sendTyping: vi.fn(),
+    sendRecordVoice: vi.fn(),
+    ackReactionPromise: null,
+    reactionApi: null,
+    removeAckAfterReply: false,
+  });
+
+  it("errors logged to runtime.error when available", async () => {
+    const testError = new Error("delivery failed");
+
+    dispatchReplyWithBufferedBlockDispatcher.mockImplementation(async ({ dispatcherOptions }) => {
+      await dispatcherOptions.onError(testError, { kind: "final" });
+      return { queuedFinal: false };
+    });
+
+    deliverReplies.mockResolvedValue({ delivered: false });
+
+    const runtimeWithError = {
+      log: vi.fn(),
+      error: vi.fn(),
+      exit: () => {
+        throw new Error("exit");
+      },
+    };
+
+    const resolveBotTopicsEnabled = vi.fn().mockResolvedValue(false);
+    const bot = { api: {} } as unknown as Bot;
+
+    await dispatchTelegramMessage({
+      context: createContext(),
+      bot,
+      cfg: {},
+      runtime: runtimeWithError,
+      replyToMode: "first",
+      streamMode: "off",
+      textLimit: 4096,
+      telegramCfg: {},
+      opts: { token: "test-token" },
+      resolveBotTopicsEnabled,
+    });
+
+    // Should use runtime.error when available
+    expect(runtimeWithError.error).toHaveBeenCalled();
+    const errorMsg = String(runtimeWithError.error.mock.calls[0]?.[0] || "");
+    expect(errorMsg).toContain("telegram final reply failed");
+  });
+
+  it("errors logged to console.error when runtime.error is undefined", async () => {
+    const testError = new Error("delivery failed");
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    dispatchReplyWithBufferedBlockDispatcher.mockImplementation(async ({ dispatcherOptions }) => {
+      await dispatcherOptions.onError(testError, { kind: "intermediate" });
+      return { queuedFinal: false };
+    });
+
+    deliverReplies.mockResolvedValue({ delivered: false });
+
+    const runtimeWithoutError = {
+      log: vi.fn(),
+      error: undefined as unknown,
+      exit: () => {
+        throw new Error("exit");
+      },
+    };
+
+    const resolveBotTopicsEnabled = vi.fn().mockResolvedValue(false);
+    const bot = { api: {} } as unknown as Bot;
+
+    await dispatchTelegramMessage({
+      context: createContext(),
+      bot,
+      cfg: {},
+      runtime: runtimeWithoutError,
+      replyToMode: "first",
+      streamMode: "off",
+      textLimit: 4096,
+      telegramCfg: {},
+      opts: { token: "test-token" },
+      resolveBotTopicsEnabled,
+    });
+
+    // After fix: console.error should be called as fallback
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    const errorMsg = String(consoleErrorSpy.mock.calls[0]?.[0] || "");
+    expect(errorMsg).toContain("telegram intermediate reply failed");
+
+    consoleErrorSpy.mockRestore();
+  });
+});
