@@ -34,7 +34,9 @@ exit 0
 describe("docker-setup.sh", () => {
   it("handles unset optional env vars under strict mode", async () => {
     // This suite requires bash + common unix utils; skip on native Windows.
-    if (process.platform === "win32") return;
+    if (process.platform === "win32") {
+      return;
+    }
 
     const assocCheck = spawnSync("bash", ["-c", "declare -A _t=()"], {
       encoding: "utf8",
@@ -88,7 +90,9 @@ describe("docker-setup.sh", () => {
 
   it("plumbs OPENCLAW_DOCKER_APT_PACKAGES into .env and docker build args", async () => {
     // This suite requires bash + common unix utils; skip on native Windows.
-    if (process.platform === "win32") return;
+    if (process.platform === "win32") {
+      return;
+    }
 
     const assocCheck = spawnSync("bash", ["-c", "declare -A _t=()"], {
       encoding: "utf8",
