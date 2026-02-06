@@ -444,20 +444,59 @@ export function resolveVoiceCallConfig(config: VoiceCallConfig): VoiceCallConfig
 
   // Asterisk ARI
   if (resolved.provider === "asterisk-ari") {
-    const trunkEnv = (process.env.ASTERISK_ARI_TRUNK || "").trim();
-
     resolved.asteriskAri = resolved.asteriskAri ?? {
-      baseUrl: process.env.ASTERISK_ARI_BASE_URL || "",
-      username: process.env.ASTERISK_ARI_USERNAME || "",
-      password: process.env.ASTERISK_ARI_PASSWORD || "",
-      app: process.env.ASTERISK_ARI_APP || "",
-      ...(trunkEnv ? { trunk: trunkEnv } : {}),
-      rtpHost: process.env.ASTERISK_ARI_RTP_HOST || "",
-      rtpPort: process.env.ASTERISK_ARI_RTP_PORT
-        ? Number(process.env.ASTERISK_ARI_RTP_PORT)
-        : 12000,
-      codec: (process.env.ASTERISK_ARI_CODEC as "ulaw" | "alaw" | undefined) || "ulaw",
+      baseUrl: "",
+      username: "",
+      password: "",
+      app: "",
+      rtpHost: "",
+      rtpPort: 12000,
+      codec: "ulaw",
     };
+
+    // Apply env overrides in a validated/coerced way so bad env values don't break runtime.
+    const trunkEnv = (process.env.ASTERISK_ARI_TRUNK || "").trim();
+    if (trunkEnv) {
+      resolved.asteriskAri.trunk = trunkEnv;
+    }
+
+    const baseUrlEnv = (process.env.ASTERISK_ARI_BASE_URL || "").trim();
+    if (baseUrlEnv) {
+      resolved.asteriskAri.baseUrl = baseUrlEnv;
+    }
+
+    const userEnv = (process.env.ASTERISK_ARI_USERNAME || "").trim();
+    if (userEnv) {
+      resolved.asteriskAri.username = userEnv;
+    }
+
+    const passEnv = (process.env.ASTERISK_ARI_PASSWORD || "").trim();
+    if (passEnv) {
+      resolved.asteriskAri.password = passEnv;
+    }
+
+    const appEnv = (process.env.ASTERISK_ARI_APP || "").trim();
+    if (appEnv) {
+      resolved.asteriskAri.app = appEnv;
+    }
+
+    const rtpHostEnv = (process.env.ASTERISK_ARI_RTP_HOST || "").trim();
+    if (rtpHostEnv) {
+      resolved.asteriskAri.rtpHost = rtpHostEnv;
+    }
+
+    const portEnv = (process.env.ASTERISK_ARI_RTP_PORT || "").trim();
+    if (portEnv) {
+      const portNum = Number(portEnv);
+      if (Number.isInteger(portNum) && portNum >= 1024 && portNum <= 65535) {
+        resolved.asteriskAri.rtpPort = portNum;
+      }
+    }
+
+    const codecEnv = (process.env.ASTERISK_ARI_CODEC || "").trim();
+    if (codecEnv === "ulaw" || codecEnv === "alaw") {
+      resolved.asteriskAri.codec = codecEnv;
+    }
   }
 
   // Tunnel Config
