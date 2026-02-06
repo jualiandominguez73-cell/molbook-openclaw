@@ -44,13 +44,21 @@ function extractToolCallsFromMessage(
 /**
  * Extract tool result ID from both OpenAI (role: "tool") and Anthropic (role: "toolResult") formats.
  * Enhanced from extractToolResultId in session-transcript-repair.ts to handle both message types.
+ *
+ * OpenAI tool messages may use either `tool_call_id` or `id` field depending on the API version.
  */
 function extractToolIdFromMessage(msg: { role?: string; [key: string]: unknown }): string | null {
-  // OpenAI format: role: "tool", tool_call_id field
+  // OpenAI format: role: "tool", tool_call_id or id field
   if (msg.role === "tool") {
+    // Primary: tool_call_id (standard OpenAI format)
     const toolCallId = (msg as { tool_call_id?: unknown }).tool_call_id;
     if (typeof toolCallId === "string" && toolCallId) {
       return toolCallId;
+    }
+    // Fallback: id field (some OpenAI API versions/formats)
+    const id = (msg as { id?: unknown }).id;
+    if (typeof id === "string" && id) {
+      return id;
     }
   }
 
