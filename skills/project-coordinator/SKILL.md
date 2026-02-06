@@ -1,70 +1,64 @@
 ---
 name: project-coordinator
-description: "Initialize and manage project teams with automatic RACI-based delegation. Includes REGISTRY, RESPONSIBILITIES, and agent spawning."
+description: "Initialize and manage multi-agent projects with RACI-based team coordination. Auto-generates REGISTRY, RESPONSIBILITIES, and handles agent spawning."
 metadata: { "openclaw": { "emoji": "📋", "always": false, "skillKey": "project" } }
 user-invocable: true
 ---
 
-# Project Coordinator — Automated Team Delegation & Project Management
+# Project Coordinator — Multi-Agent Team Management
 
-Coordinate multi-agent projects with automatic RACI matrix, agent registration, and task delegation.
+Framework for coordinating projects across multiple specialized agents using RACI matrices and automatic delegation.
 
 ## Features
 
-✅ **Project initialization** from templates  
+✅ **Project initialization** from YAML templates  
 ✅ **RACI matrix** auto-generation  
 ✅ **Agent registry** per project  
-✅ **Automatic spawning** based on responsibilities  
-✅ **Progress tracking** and status reporting  
-✅ **Escalation routing**
+✅ **Automatic spawning** with task delegation  
+✅ **Progress tracking** against success criteria  
+✅ **Escalation routing** based on risk levels  
+✅ **Standup scheduling** (daily/weekly)
 
 ---
 
 ## Usage
 
-### Initialize a Project
+### Initialize a Project from Template
 
 ```bash
-# From template
-openclaw project init bigbot-week1 \
-  --template /path/to/template.yaml \
-  --output /path/to/project/
-
-# With custom agents
 openclaw project init my-project \
-  --agents devops-engineer,backend-architect,qa-lead \
-  --owner tech-lead
+  --template /path/to/template.yaml \
+  --output ./my-project/
 ```
 
-### Create REGISTRY + RESPONSIBILITIES
+This generates:
 
-```bash
-# Auto-generate from project config
-openclaw project generate-raci my-project \
-  --output ./RESPONSIBILITIES.md
-
-# Generate agent registry
-openclaw project registry my-project \
-  --output ./REGISTRY.md
-```
+- `REGISTRY.md` — Agent profiles & team structure
+- `RESPONSIBILITIES.md` — RACI matrix & escalation rules
+- `ACTION_PLAN.md` — Day-by-day task breakdown (if applicable)
 
 ### Spawn All Team Members
 
 ```bash
-# Spawn all agents with briefing
+# Spawn all agents with project briefing
 openclaw project spawn my-project \
   --action briefing \
   --model sonnet
+```
 
-# Run daily standup
+### Run Daily Standup
+
+```bash
+# Generate standup from project config
 openclaw project standup my-project \
+  --date 2026-02-06 \
   --format slack
 ```
 
 ### View Project Status
 
 ```bash
-# Dashboard
+# Overall dashboard
 openclaw project status my-project
 
 # Detailed metrics
@@ -74,338 +68,352 @@ openclaw project metrics my-project \
 
 ---
 
-## Project Template Format
+## Project Template Format (YAML)
 
-Create `projects/templates/my-project.yaml`:
+See `projects/README.md` for complete schema. Example structure:
 
 ```yaml
-# Project: Bigbot Quality Week 1
-name: bigbot-week1
-description: "Increase test maturity 42% → 60%, resolve critical blockers"
-startDate: "2026-02-06"
-endDate: "2026-02-12"
-goal: "Ship production-ready test infrastructure"
+# Identification
+name: my-project # Machine-readable ID
+displayName: "My Project Name" # Human-readable
+description: "What we're building"
 
-# Team structure
+# Timeline
+timeline:
+  startDate: "2026-02-06"
+  endDate: "2026-02-12"
+  duration: "1 week"
+  timezone: "America/Vancouver"
+
+# Goal
+goal: "High-level objective for this project"
+
+# Team
 team:
-  coordinator: qa-lead
+  lead: coordinator-agent-id
   members:
-    - id: devops-engineer
-      role: "Infrastructure Lead"
-      responsibility: "TypeScript/ESLint fixes, CI/CD setup"
-      tasks:
-        - "Resolve TypeScript error (TS2688)"
-        - "Fix ESLint configuration"
-        - "Setup pre-commit hooks"
-        - "Configure GitHub Actions"
+    - id: agent-name
+      role: "Agent Role"
+      responsibility: "What they own"
+      hoursPerWeek: 40
 
-    - id: backend-architect
-      role: "Backend Testing Lead"
-      responsibility: "Unit + integration tests"
-      tasks:
-        - "Implement 20 unit tests (65%→80%)"
-        - "Add 5 integration tests (Trading)"
-        - "Setup performance benchmarks"
-
-    - id: frontend-architect
-      role: "Frontend Testing Lead"
-      responsibility: "Component tests, Jest setup"
-      tasks:
-        - "Implement 80+ component tests"
-        - "Setup Jest + React Testing Library"
-        - "Create snapshot tests"
-        - "Setup visual regression"
-
-    - id: qa-lead
-      role: "QA Lead (Coordinator)"
-      responsibility: "Overall coordination, metrics"
-      tasks:
-        - "Create 30 GitHub issues"
-        - "Validate E2E scenarios"
-        - "Create acceptance test cases"
-        - "Consolidate metrics & KPIs"
-
-# RACI matrix (who does what)
+# RACI Matrix
 raci:
-  - task: "Resolve TypeScript error"
-    responsible: devops-engineer
-    accountable: devops-engineer
-    consulted: [qa-lead]
-    informed: [main]
+  - task: "Something"
+    responsible: agent-name
+    accountable: agent-name
+    consulted: [agent1, agent2]
+    informed: [agent3]
+    priority: HIGH
+    dueDate: "2026-02-12T18:00:00Z"
 
-  - task: "Implement unit tests"
-    responsible: backend-architect
-    accountable: backend-architect
-    consulted: [qa-lead]
-    informed: [devops-engineer]
-
-  - task: "Implement component tests"
-    responsible: frontend-architect
-    accountable: frontend-architect
-    consulted: [qa-lead]
-    informed: [backend-architect]
-
-  - task: "Create GitHub issues"
-    responsible: qa-lead
-    accountable: qa-lead
-    consulted: [all]
-    informed: [all]
-
-# Success criteria
+# Success Metrics
 successCriteria:
-  - "TypeScript: 0 errors"
-  - "ESLint: 0 violations"
-  - "Unit test coverage: 65% → 80%"
-  - "Component tests: 1 → 80+"
-  - "Integration tests: +5 for Trading"
-  - "GitHub Actions: Passing"
-  - "Issues tracked: 30 created"
-  - "Maturities: 42% → 60%"
+  - id: "metric-id"
+    title: "Metric Name"
+    goal: "Target value"
+    current: "Current value"
+    owner: agent-name
 
-# Daily schedule
+# Schedule
 schedule:
-  standup: "09:00 PST"
-  standup_duration: "15 min"
-  standup_format: "slack"
-  review: "friday 17:00 PST"
+  standup:
+    time: "09:00"
+    format: "slack"
+    daysOfWeek: [Monday, Tuesday, Wednesday, Thursday, Friday]
+  review:
+    time: "17:00"
+    daysOfWeek: [Friday]
+
+# Escalation Rules
+escalation:
+  low_risk:
+    definition: "Task impact < 2 hours"
+    process: "Owner decides independently"
+  medium_risk:
+    definition: "Task impact 2-48 hours"
+    process: "Owner proposes, accountable reviews"
+  high_risk:
+    definition: "Task impact > 48 hours or strategic"
+    process: "Owner proposes, accountable + lead approve"
+  blocker:
+    definition: "Blocks other team members"
+    process: "Escalate immediately to lead"
+
+# Deliverables
+deliverables:
+  - name: "Deliverable 1"
+    description: "What it is"
+    owner: agent-name
+    dueDate: "2026-02-12T18:00:00Z"
 ```
 
 ---
 
 ## Generated REGISTRY.md
 
-Automatically generated from template:
+Auto-generated agent registry for your project:
 
 ```markdown
-# Project Registry: Bigbot Week 1
+# Project Registry: My Project
 
 ## Quick Reference
 
-| Agent              | Role                  | Status    | Responsibility           |
-| ------------------ | --------------------- | --------- | ------------------------ |
-| qa-lead            | QA Lead (Coordinator) | 🟢 Online | Overall coordination     |
-| devops-engineer    | Infrastructure Lead   | 🟢 Online | CI/CD, setup             |
-| backend-architect  | Backend Testing Lead  | 🟢 Online | Unit + integration tests |
-| frontend-architect | Frontend Testing Lead | 🟢 Online | Component tests          |
-| main               | Escalation            | 🟢 Online | Arbitration              |
+| Agent      | Role       | Status    | Responsibility |
+| ---------- | ---------- | --------- | -------------- |
+| agent-name | Role Title | 🟢 Online | What they do   |
+| ...        | ...        | ...       | ...            |
 
 ## Detailed Profiles
 
-### qa-lead — QA Lead (Coordinator)
+### agent-name — Role Title
 
-**Status:** 🟢 Online (Bigbot Week 1)  
-**Role:** Project coordinator, metrics  
+**Status:** 🟢 Online  
+**Role:** Agent Role  
+**Responsibility:** What they own  
 **Tasks:**
 
-- [ ] Create 30 GitHub issues
-- [ ] Validate E2E scenarios
-- [ ] Create acceptance test cases
-- [ ] Consolidate metrics & KPIs
-
-**Accountability:** Project success, metrics delivery  
-**Works with:** All team members  
-**Response time:** < 2 hours
-
-### devops-engineer — Infrastructure Lead
-
-**Status:** 🟢 Online (Bigbot Week 1)  
-**Role:** CI/CD, configuration  
-**Tasks:**
-
-- [ ] Resolve TypeScript error (TS2688)
-- [ ] Fix ESLint configuration
-- [ ] Setup pre-commit hooks
-- [ ] Configure GitHub Actions
-
-**Accountability:** Infrastructure readiness  
-**Works with:** qa-lead (consulted)  
-**Response time:** < 1 hour
-
-[... more profiles ...]
+- [ ] Task 1
+- [ ] Task 2
+      **Accountability:** What they're responsible for  
+      **Works With:** [other agents]  
+      **Response Time:** < X hours
 ```
 
 ---
 
 ## Generated RESPONSIBILITIES.md (RACI)
 
-Automatically generated matrix:
+Auto-generated RACI matrix:
 
 ```markdown
-# RESPONSIBILITIES.md — Bigbot Week 1 RACI
+# RESPONSIBILITIES.md — RACI Matrix
 
-## RACI Matrix
+## RACI Legend
 
-| Task                      | Responsible        | Accountable        | Consulted | Informed          |
-| ------------------------- | ------------------ | ------------------ | --------- | ----------------- |
-| Resolve TypeScript error  | devops-engineer    | devops-engineer    | qa-lead   | main              |
-| Implement unit tests      | backend-architect  | backend-architect  | qa-lead   | devops-engineer   |
-| Implement component tests | frontend-architect | frontend-architect | qa-lead   | backend-architect |
-| Create GitHub issues      | qa-lead            | qa-lead            | all       | all               |
+- **R** = Responsible (does work)
+- **A** = Accountable (signs off, single per task)
+- **C** = Consulted (provides input)
+- **I** = Informed (notified after)
+
+## Matrix
+
+| Task   | Responsible | Accountable | Consulted | Informed |
+| ------ | ----------- | ----------- | --------- | -------- |
+| Task 1 | agent1      | agent1      | agent2    | agent3   |
+| Task 2 | agent2      | agent2      | agent1    | agent3   |
 
 ## Escalation Rules
 
-**Low Risk:** Responsible decides, notify same day  
-**Medium Risk:** Accountable reviews (< 2 hours)  
-**High Risk:** Accountable + main approve  
-**Blocker:** Escalate immediately to main
-
-## Success Criteria
-
-- TypeScript: 0 errors ✅
-- ESLint: 0 violations ✅
-- Unit coverage: 65% → 80% 🎯
-- Component tests: 1 → 80+ ✅
-- Maturities: 42% → 60% 🎯
+**Low Risk:** Owner decides autonomously  
+**Medium Risk:** Owner proposes, accountable reviews  
+**High Risk:** Owner proposes, accountable + lead approve  
+**Blocker:** Escalate immediately to lead
 ```
 
 ---
 
-## Automatic Agent Spawning
+## Integration with team-coordinator
 
-When you run `openclaw project spawn`:
+This skill works with `team-coordinator` for agent spawning:
 
-```bash
-# Spawns all team members with briefing
+```typescript
+// After REGISTRY is generated, spawn agents:
+
 sessions_spawn({
-  agentId: "devops-engineer",
-  task: "Bigbot Week 1: Fix TypeScript & ESLint...",
-  label: "Bigbot: Infrastructure Setup",
-  model: "sonnet"
+  agentId: "coordinator-agent",
+  task: "Lead the project...",
+  label: "My Project: Leadership",
 });
 
 sessions_spawn({
-  agentId: "backend-architect",
-  task: "Bigbot Week 1: Implement unit tests...",
-  label: "Bigbot: Backend Tests",
-  model: "sonnet"
+  agentId: "team-member-1",
+  task: "Work on task X...",
+  label: "My Project: Feature A",
 });
 
-sessions_spawn({
-  agentId: "frontend-architect",
-  task: "Bigbot Week 1: Implement component tests...",
-  label: "Bigbot: Frontend Tests",
-  model: "sonnet"
-});
-
-sessions_spawn({
-  agentId: "qa-lead",
-  task: "Bigbot Week 1: Coordinate QA & metrics...",
-  label: "Bigbot: QA Coordination",
-  model: "sonnet"
-});
+// ... more agents as needed
 ```
 
 ---
 
-## Daily Standup Generation
+## RACI Best Practices
 
-Auto-generates daily standups from RACI:
+### Every Task Needs:
 
-```bash
-openclaw project standup bigbot-week1 --date 2026-02-06
+✅ **Exactly 1 Accountable** — Single decision-maker  
+✅ **Responsible identified** — Someone does the work  
+✅ **Consulted specified** — Who provides input  
+✅ **Informed listed** — Who gets notified
 
-# Output:
-# 📋 BIGBOT WEEK 1 - DAILY STANDUP
-# Date: Feb 6, 2026 | Day: 1/5
-#
-# 🎯 Today's Priorities
-# - devops-engineer: Validate TypeScript setup
-# - backend-architect: Analyze Trading module gaps
-# - frontend-architect: Map untested components
-# - qa-lead: Create GitHub issues
-#
-# 📊 Progress
-# - Team readiness: 100%
-# - Blockers: None yet
-#
-# 🚀 Next: Kickoff meeting 09:00 PST
+### Avoid:
+
+❌ Multiple Accountables per task  
+❌ "Everyone" for Consulted/Informed  
+❌ Unclear Responsible role  
+❌ Missing escalation paths
+
+### Examples
+
+**Good RACI:**
+
+```
+Task: "Implement feature X"
+- Responsible: backend-architect (does the coding)
+- Accountable: backend-architect (signs off)
+- Consulted: qa-lead (validates approach)
+- Informed: frontend-architect (needs to integrate)
+```
+
+**Bad RACI:**
+
+```
+Task: "Implement feature X"
+- Responsible: "everyone"  ← UNCLEAR
+- Accountable: "team"  ← MULTIPLE, NOT SINGLE
+- Consulted: "everyone"  ← TOO MANY
+- Informed: [not specified]  ← MISSING
 ```
 
 ---
 
-## Project Status Dashboard
+## Escalation Rules
 
-```bash
-openclaw project status bigbot-week1
+Define how decisions get made based on impact:
 
-# Output:
-# 📊 PROJECT: Bigbot Week 1
-# Status: 🟢 ACTIVE (Day 1/5)
-# Goal: 42% → 60% maturity
-#
-# 👥 TEAM (4 agents)
-# ✅ qa-lead (coordinator)
-# ✅ devops-engineer
-# ✅ backend-architect
-# ✅ frontend-architect
-#
-# 📈 PROGRESS
-# Maturities: [████░░░░░░] 42%
-# Test coverage: [███░░░░░░░] 30%
-# Success criteria: 3/8 met
-#
-# ⏳ TIMELINE
-# Days remaining: 5
-# Standups: 5/5 planned
-# Deliverables: 8 tracked
-#
-# 🔴 BLOCKERS: None
-# 🟡 RISKS: TypeScript setup (high)
-#
-# Next standup: Tomorrow 09:00 PST
+```yaml
+escalation:
+  low_risk:
+    definition: "< 2 hours impact, single owner"
+    process: "Owner decides independently, notify same day"
+    examples:
+      - "Writing test for specific function"
+      - "Fixing linting violation"
+      - "Updating documentation"
+
+  medium_risk:
+    definition: "2-48 hours impact, multiple teams"
+    process: "Owner proposes, accountable reviews (< 2 hour turnaround)"
+    examples:
+      - "New testing approach"
+      - "Configuration changes"
+      - "Module refactoring"
+
+  high_risk:
+    definition: "> 48 hours impact or strategic"
+    process: "Owner proposes, accountable + lead approve (synchronous)"
+    examples:
+      - "Infrastructure changes"
+      - "Architecture redesign"
+      - "Tool/framework change"
+
+  blocker:
+    definition: "Prevents other team members from working"
+    process: "Escalate immediately to lead (15-min resolution target)"
+    examples:
+      - "Build system broken"
+      - "Critical dependency missing"
+      - "Production issue"
 ```
 
 ---
 
-## Integration with OpenClaw
+## Daily Standup Format
 
-This skill integrates with:
+Template for async daily updates:
 
-- **team-coordinator** — For agent spawning
-- **sessions_spawn** — To delegate tasks
-- **message tool** — For status updates to Slack/Telegram
-- **cron** — For scheduled standups
-- **REGISTRY.md** — Central agent discovery
-- **RESPONSIBILITIES.md** — RACI matrix enforcement
-
----
-
-## Best Practices
-
-1. **Template first** — Always use templates for consistency
-2. **RACI clarity** — Define clear ownership before spawning
-3. **Escalation paths** — Know who to contact for blockers
-4. **Daily standups** — Keep team synchronized
-5. **Metrics tracked** — Measure progress against success criteria
-6. **Documentation** — Generate REGISTRY + RESPONSIBILITIES early
-
----
-
-## Examples
-
-### Bigbot Quality Week 1
-
-```bash
-openclaw project init bigbot-week1 \
-  --template projects/templates/bigbot-week1.yaml \
-  --output workspace/bigbot-week1/
-
-# Auto-generates:
-# - workspace/bigbot-week1/REGISTRY.md
-# - workspace/bigbot-week1/RESPONSIBILITIES.md
-# - workspace/bigbot-week1/ACTION_PLAN_WEEK1.md
-
-# Spawn all agents
-openclaw project spawn bigbot-week1 \
-  --action briefing \
-  --model sonnet
 ```
+📅 DATE: [date] | DAY: [n/N]
+
+✅ YESTERDAY
+- [what I completed]
+- [deliverables shipped]
+
+🏗️ TODAY
+- [what I'm working on]
+- [task focus]
+
+🔴 BLOCKERS
+- [any issues]
+- [asks for help]
+
+📊 METRICS
+- [progress vs targets]
+```
+
+Deliver via Slack/Telegram/Discord to keep async transparency.
+
+---
+
+## Success Criteria Template
+
+Every project should have measurable goals:
+
+```yaml
+successCriteria:
+  - id: "metric-1"
+    title: "Unit Test Coverage"
+    goal: "80%"
+    current: "65%"
+    metric: "Percentage"
+    owner: backend-lead
+
+  - id: "metric-2"
+    title: "Component Tests"
+    goal: "100+"
+    current: "10"
+    metric: "Count"
+    owner: frontend-lead
+
+  - id: "metric-3"
+    title: "Issues Resolved"
+    goal: "30"
+    current: "0"
+    metric: "Count"
+    owner: qa-lead
+```
+
+---
+
+## Project Lifecycle
+
+### Phase 1: Planning (Day -1)
+
+1. Create YAML template
+2. Define team & RACI
+3. Set success criteria
+4. Schedule standups
+
+### Phase 2: Execution (Day 1-N)
+
+1. Kick off meeting
+2. Daily standups
+3. Escalate blockers
+4. Track progress
+
+### Phase 3: Closure (Final day)
+
+1. Review meeting
+2. Consolidate metrics
+3. Generate final report
+4. Document lessons learned
+
+---
+
+## Integration Points
+
+- **team-coordinator** skill — Agent hierarchy & delegation
+- **sessions_spawn** — Spawn agents with tasks
+- **message tool** — Send status updates (Slack, Telegram, Discord)
+- **cron** — Schedule standups & reviews
+- **REGISTRY.md** — Agent discovery per project
+- **RESPONSIBILITIES.md** — RACI enforcement
 
 ---
 
 ## See Also
 
+- **projects/README.md** — Framework overview & best practices
 - **team-coordinator** — Hierarchical agent delegation
 - **delegate** — Simple task delegation
 - **session-logs** — Track agent activity
-- **workflow** — Project workflow management

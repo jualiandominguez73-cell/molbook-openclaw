@@ -1,6 +1,6 @@
 # 🎯 OpenClaw Projects — Automated Team Coordination
 
-Multi-agent project management with RACI matrices, agent registries, and automatic delegation.
+Framework for multi-agent project management with RACI matrices, agent registries, and automatic delegation.
 
 ---
 
@@ -9,114 +9,200 @@ Multi-agent project management with RACI matrices, agent registries, and automat
 ```
 projects/
 ├── README.md                          # This file
-├── PROJECT_INIT_GUIDE.md              # How to initialize projects
-├── templates/
-│   ├── bigbot-week1.yaml              # Bigbot Quality Week 1 template
-│   └── [future templates]
-└── active/
-    └── [active projects go here]
+├── templates/                         # Project templates (user-created)
+│   └── [user creates their own]
+└── active/                           # Active projects directory
+    └── [user projects go here]
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Copy Template & Create Project Directory
+### 1. Create Your Project Template
 
-```bash
-mkdir -p ~/my-project
-cd ~/my-project
+Create a YAML template with your project definition:
 
-cp /path/to/openclawdev/projects/templates/bigbot-week1.yaml ./project.yaml
+```yaml
+name: your-project-name
+displayName: "Your Project Display Name"
+description: "What this project is about"
+timeline:
+  startDate: "2026-02-06"
+  endDate: "2026-02-12"
+  duration: "1 week"
+goal: "High-level objective"
+team:
+  lead: coordinator-agent-id
+  members:
+    - id: agent-name
+      role: "Agent Role"
+      responsibility: "What they do"
+raci:
+  - task: "Something"
+    responsible: agent-name
+    accountable: agent-name
+    consulted: [other-agents]
+    informed: [more-agents]
+successCriteria:
+  - id: "metric-id"
+    title: "Metric Name"
+    goal: "Target value"
+schedule:
+  standup:
+    time: "09:00"
+    format: "slack"
 ```
 
-### 2. Generate Project Files
+### 2. Use the project-coordinator Skill
 
-See `PROJECT_INIT_GUIDE.md` for step-by-step instructions to generate:
+The `project-coordinator` skill handles:
 
-- `REGISTRY.md` — Agent profiles & team structure
-- `RESPONSIBILITIES.md` — RACI matrix & escalation rules
-- `ACTION_PLAN_WEEK1.md` — Day-by-day task breakdown
+- Project initialization from templates
+- REGISTRY + RESPONSIBILITIES generation
+- Agent registry per project
+- Automatic team spawning
+- Daily standup scheduling
+- Progress tracking
+- Escalation routing
 
-### 3. Spawn Agents
+See `skills/project-coordinator/SKILL.md` for full documentation.
 
-Use the `team-coordinator` skill to delegate work:
+### 3. Spawn Your Team
 
-```bash
-# In OpenClaw, use sessions_spawn with agentId from your REGISTRY
+Use `team-coordinator` to delegate work:
+
+```typescript
 sessions_spawn({
-  agentId: "qa-lead",
-  task: "Lead project...",
-  label: "My Project: Leadership"
+  agentId: "your-lead-agent",
+  task: "Your project task...",
+  label: "Your Project: Your Feature",
 });
 ```
 
 ---
 
-## 📋 Available Templates
+## 📋 YAML Template Schema
 
-### Bigbot Quality Week 1 (`bigbot-week1.yaml`)
-
-**Purpose:** Implement critical quality improvements  
-**Duration:** 5 business days (Mon-Fri)  
-**Goal:** Increase test maturity from 42% → 60%  
-**Team:** 4 agents (qa-lead, devops-engineer, backend-architect, frontend-architect)
-
-**Key Features:**
-
-- TypeScript/ESLint blocker resolution
-- Unit test coverage increase (65% → 80%)
-- Component test implementation (1 → 80+)
-- GitHub Actions CI/CD setup
-- 30 GitHub issues tracked
-- RACI matrix with escalation rules
-- Daily standups + weekly review
-
-**Status:** 🟢 Ready to use
-
----
-
-## 🎯 What's in a Project Template
-
-Each YAML template includes:
+Every project template should include:
 
 ```yaml
-name: project-name # Unique identifier
-displayName: "Full Name" # Human-readable title
-description: "What we're building" # Executive summary
-timeline: # Dates, duration, timezone
-  startDate: "2026-02-06"
-  endDate: "2026-02-12"
-goal: | # High-level objective
-  What success looks like
-team: # Agent roster
-  lead: qa-lead
+# Identification
+name: string # Machine-readable identifier
+displayName: string # Human-readable name
+description: string # Executive summary
+
+# Timeline
+timeline:
+  startDate: ISO-8601 date
+  endDate: ISO-8601 date
+  duration: string # "1 week", "2 sprints", etc.
+  timezone: string # "America/Vancouver"
+  workingDays: [list of days]
+
+# Goal
+goal: string # Multi-line goal statement
+
+# Team Structure
+team:
+  lead: agent-id # Project lead
   members:
-    - id: agent-name
-      role: "Title"
-      responsibility: "What they do"
-raci: # RACI matrix
-  - task: "Something"
-    responsible: agent-name
-    accountable: agent-name
-    consulted: [agent1, agent2]
-    informed: [agent3]
-successCriteria: # Measurable outcomes
-  - id: "metric-name"
-    title: "Human-readable"
-    goal: "Target value"
-schedule: # Standups, reviews
+    - id: agent-id
+      role: string
+      title: string
+      responsibility: string
+      hoursPerWeek: number
+      availability: string
+      escalation: string
+
+# RACI Matrix
+raci:
+  - task: string
+    responsible: agent-id
+    accountable: agent-id
+    consulted: [agent-ids]
+    informed: [agent-ids]
+    priority: CRITICAL|HIGH|MEDIUM|LOW
+    dueDate: ISO-8601 datetime
+
+# Success Metrics
+successCriteria:
+  - id: string
+    title: string
+    goal: string
+    current: string
+    metric: string
+    owner: agent-id
+
+# Schedule
+schedule:
   standup:
-    time: "09:00"
-    format: "slack"
-escalation: # Risk levels
+    time: string # "09:00"
+    duration: string # "15 minutes"
+    format: string # "slack", "email", etc.
+    channel: string # "#channel-name"
+    daysOfWeek: [list]
+  review:
+    time: string
+    format: string
+    daysOfWeek: [list]
+  kickoff:
+    date: ISO-8601 date
+    time: string
+    duration: string
+    attendees: [agent-ids]
+
+# Escalation Rules
+escalation:
   low_risk:
-    definition: "..."
-    process: "..."
-deliverables: # What we ship
-  - name: "Deliverable 1"
-    owner: agent-name
-    dueDate: "2026-02-12"
+    definition: string
+    process: string
+  medium_risk:
+    definition: string
+    process: string
+  high_risk:
+    definition: string
+    process: string
+  blocker:
+    definition: string
+    process: string
+
+# Deliverables
+deliverables:
+  - name: string
+    description: string
+    owner: agent-id
+    dueDate: ISO-8601 datetime
+
+# Dependencies
+dependencies:
+  - string # Task dependencies
+
+# Risk Register
+risks:
+  - id: string
+    title: string
+    severity: CRITICAL|HIGH|MEDIUM|LOW
+    probability: HIGH|MEDIUM|LOW
+    mitigation: string
+    owner: agent-id
+
+# Tools & Resources
+tools:
+  github:
+    repo: string
+    projectBoard: string
+  slack:
+    channel: string
+  documentation:
+    - string # Doc references
+
+# Metadata
+metadata:
+  version: string
+  lastUpdated: ISO-8601 datetime
+  createdBy: string
+  status: string # "READY", "DRAFT", "ARCHIVED"
 ```
 
 ---
@@ -126,131 +212,93 @@ deliverables: # What we ship
 ### RACI Matrix
 
 **R** = Responsible (does the work)  
-**A** = Accountable (signs off, single owner)  
-**C** = Consulted (provides input)  
-**I** = Informed (notified after)
+**A** = Accountable (signs off, single owner per task)  
+**C** = Consulted (provides input/advice)  
+**I** = Informed (notified after decision)
+
+**Rule:** Each task has exactly ONE accountable person.
+
+### Agent Registry
+
+Central reference for team structure:
 
 ```
-Task: "Implement unit tests"
-- Responsible: backend-architect (does the coding)
-- Accountable: backend-architect (signs off)
-- Consulted: qa-lead (advises on targets)
-- Informed: devops-engineer (needs to know for CI/CD)
+Agent: agent-name
+├── Role: Agent Role Title
+├── Responsibility: What they own
+├── Status: Online|Busy|Offline
+├── Response Time: < X hours
+├── Availability: Hours of operation
+└── Tasks: [assigned work items]
 ```
 
 ### Escalation Rules
 
-**Low Risk** (< 2 hours)
-→ Responsible decides independently  
-Example: Writing a test for a specific function
+Define decision-making at different risk levels:
 
-**Medium Risk** (2-48 hours)
-→ Responsible proposes, accountable reviews  
-Example: New test coverage approach
+- **Low Risk** (< 2 hours impact) → Owner decides autonomously
+- **Medium Risk** (2-48 hours) → Owner proposes, accountable reviews
+- **High Risk** (> 48 hours) → Owner proposes, accountable + lead approve
+- **Blocker** (prevents other work) → Escalate immediately
 
-**High Risk** (> 48 hours)
-→ Responsible proposes, accountable + main approve  
-Example: CI/CD pipeline changes
+### Success Criteria
 
-**Blocker** (blocks other work)
-→ Escalate immediately to main (15-min resolution)  
-Example: TypeScript won't compile
-
-### Agent Registry
-
-Central reference for team members in a project:
+Every project needs measurable goals:
 
 ```
-Agent: devops-engineer
-├── Role: Infrastructure Lead
-├── Responsibility: TypeScript, ESLint, CI/CD
-├── Status: 🟢 Online
-├── Response Time: < 1 hour
-├── Availability: Mon-Fri 09:00-18:00 PST
-└── Tasks: [list of assigned work]
+Metric: "Unit test coverage"
+├── Current: "65%"
+├── Goal: "80%"
+├── Owner: backend-lead
+└── Measurement: "Coverage percentage"
 ```
 
 ---
 
 ## 📊 Project Lifecycle
 
-### Phase 1: Setup (Day 0-1)
+### Phase 1: Planning
 
-- Initialize project from template
-- Generate REGISTRY + RESPONSIBILITIES
-- Create ACTION_PLAN
-- Kickoff meeting
+1. Create YAML template
+2. Define team & RACI
+3. Set success criteria
+4. Schedule standup/review dates
 
-### Phase 2: Execution (Day 2-4)
+### Phase 2: Execution
 
-- Daily standups (09:00 PST)
-- Track progress against RACI
-- Escalate blockers immediately
-- Update metrics
+1. Generate REGISTRY + RESPONSIBILITIES
+2. Kick off meeting
+3. Daily standups
+4. Track progress
+5. Escalate blockers
 
-### Phase 3: Closure (Day 5)
+### Phase 3: Closure
 
-- Friday review (17:00 PST)
-- Consolidate metrics
-- Generate final report
-- Celebrate wins, identify lessons
-
----
-
-## 🛠️ Using project-coordinator Skill
-
-The `project-coordinator` skill handles:
-
-✅ Project initialization from templates  
-✅ REGISTRY + RESPONSIBILITIES auto-generation  
-✅ Agent registry per project  
-✅ Automatic team spawning  
-✅ Daily standup scheduling  
-✅ Progress tracking  
-✅ Escalation routing
-
-See `/openclawdev/skills/project-coordinator/SKILL.md` for full documentation.
+1. Final review meeting
+2. Consolidate metrics
+3. Generate report
+4. Document lessons learned
 
 ---
 
-## 📖 Documentation
+## 🛠️ Integration Points
 
-- **PROJECT_INIT_GUIDE.md** — Step-by-step project creation
+This framework integrates with:
+
+- **project-coordinator skill** → Project management
+- **team-coordinator skill** → Agent hierarchy & delegation
+- **sessions_spawn** → Spawn agents with tasks
+- **message tool** → Send updates to Slack/Telegram/Discord
+- **cron** → Schedule standups & reviews
+- **REGISTRY.md** → Agent discovery per project
+- **RESPONSIBILITIES.md** → RACI enforcement
+
+---
+
+## 📚 Documentation
+
 - **skills/project-coordinator/SKILL.md** — Full skill documentation
-- **templates/bigbot-week1.yaml** — Bigbot Week 1 template (example)
-- **REGISTRY.md** — Agent discovery & capabilities (per project)
-- **RESPONSIBILITIES.md** — RACI matrix & escalation (per project)
-- **ACTION_PLAN_WEEK1.md** — Day-by-day task breakdown (per project)
-
----
-
-## 🚀 Creating a New Project Template
-
-1. Copy an existing template:
-
-   ```bash
-   cp templates/bigbot-week1.yaml templates/my-project.yaml
-   ```
-
-2. Update the YAML with your:
-   - Project name, goal, timeline
-   - Team members & roles
-   - RACI matrix
-   - Success criteria
-   - Schedule & escalation rules
-   - Deliverables
-
-3. Validate the YAML:
-
-   ```bash
-   yamllint templates/my-project.yaml
-   ```
-
-4. Add to git:
-   ```bash
-   git add templates/my-project.yaml
-   git commit -m "feat: Add my-project template"
-   ```
+- **This README.md** — Framework overview & best practices
 
 ---
 
@@ -258,115 +306,138 @@ See `/openclawdev/skills/project-coordinator/SKILL.md` for full documentation.
 
 ### RACI Discipline
 
-✅ **Every task has exactly 1 Accountable**  
-✅ **Responsible role is clear**  
-✅ **Consulted agents are specific (not "everyone")**  
-✅ **Escalation rules are explicit**
+✅ Every task has exactly 1 Accountable  
+✅ Responsible role is clear & specific  
+✅ Consulted agents are named (not "everyone")  
+✅ Escalation paths are explicit
 
-❌ Don't: "Everyone is accountable"  
-❌ Don't: Skip consulting required parties  
-❌ Don't: Leave escalation undefined
+❌ Don't use "everyone" for Consulted/Informed  
+❌ Don't skip defining Responsible  
+❌ Don't leave escalation undefined
 
 ### Team Communication
 
-✅ **Daily standups** (15 min, async-friendly)  
-✅ **Shared REGISTRY + RESPONSIBILITIES** (single source of truth)  
-✅ **Explicit escalation paths** (who to contact)  
-✅ **Weekly reviews** (progress against targets)
+✅ Daily standups (async-friendly format)  
+✅ Shared REGISTRY + RESPONSIBILITIES  
+✅ Explicit escalation paths  
+✅ Weekly reviews against targets
 
-❌ Don't: Scatter documentation across tools  
-❌ Don't: Unclear who owns what  
-❌ Don't: Skip reviews
+❌ Don't scatter docs across tools  
+❌ Don't have unclear ownership  
+❌ Don't skip reviews
 
 ### Metrics & Tracking
 
-✅ **Measurable success criteria**  
-✅ **Daily progress updates**  
-✅ **Blocker visibility** (Slack alerts)  
-✅ **Final metrics report**
+✅ Measurable success criteria (not vague goals)  
+✅ Daily progress visibility  
+✅ Blocker escalation process  
+✅ Final metrics report
 
-❌ Don't: Vague goals ("improve quality")  
-❌ Don't: Go dark for days without updates  
-❌ Don't: Ignore blockers
-
----
-
-## 🔗 Integration Points
-
-- **team-coordinator** skill → Spawns agents
-- **sessions_spawn** → Delegates tasks
-- **message tool** → Sends status updates (Slack, Telegram)
-- **cron** → Schedules standups & reviews
-- **REGISTRY.md** → Central agent discovery
-- **RESPONSIBILITIES.md** → RACI enforcement
+❌ Don't set "improve quality" as goal  
+❌ Don't go dark without updates  
+❌ Don't ignore blockers
 
 ---
 
-## 🆘 Troubleshooting
+## 🚀 Creating a New Project
 
-### "Can't find agent in REGISTRY"
+1. **Create your YAML template:**
 
-Check your `project.yaml`:
+   ```yaml
+   name: my-project
+   displayName: "My Project Name"
+   # ... rest of template
+   ```
 
-```yaml
-team:
-  members:
-    - id: devops-engineer # ← Must match OpenClaw agent ID
+2. **Validate YAML:**
+
+   ```bash
+   yamllint my-project.yaml
+   ```
+
+3. **Generate project files:**
+   - REGISTRY.md (agent profiles)
+   - RESPONSIBILITIES.md (RACI matrix)
+   - ACTION_PLAN.md (day-by-day tasks)
+
+4. **Spawn your agents:**
+
+   ```typescript
+   sessions_spawn({
+     agentId: "lead-agent",
+     task: "Lead my project...",
+     label: "My Project: Leadership",
+   });
+   ```
+
+5. **Run daily standups:**
+   - 09:00 PST every weekday
+   - Format: Slack message
+   - Template: What I did | What I'm doing | Blockers
+
+6. **Weekly reviews:**
+   - Friday EOD
+   - Progress vs targets
+   - Issues & decisions
+   - Plan ahead
+
+---
+
+## 🔗 Template Locations
+
+User-created templates go in:
+
+```
+projects/templates/your-template-name.yaml
 ```
 
-Valid agent IDs: `qa-lead`, `devops-engineer`, `backend-architect`, `frontend-architect`, etc.
+Active projects go in:
 
-### "RACI matrix conflicts"
+```
+projects/active/your-project-name/
+└── project.yaml
+└── REGISTRY.md
+└── RESPONSIBILITIES.md
+└── ACTION_PLAN.md
+```
 
-If R and A disagree:
+---
 
-1. Try consensus (15 min)
-2. Ask senior expert opinion (15 min)
-3. Escalate to `main` (30 min)
-4. Document decision in DECISIONS.md
+## 🆘 Common Questions
 
-### "Blocker not escalating"
+**Q: Can I use OpenClaw agents in my projects?**  
+A: Yes! Use any agent from the team-coordinator hierarchy.
 
-Escalation is **manual** in current version:
+**Q: How do I define custom RACI rules?**  
+A: Define in the `raci:` section of your YAML template.
 
-1. React with 🔴 in Slack
-2. Tag @main in #channel
-3. Message main directly
-4. Target: 15-min response
+**Q: What if RACI needs to change mid-project?**  
+A: Update RESPONSIBILITIES.md and document the change decision.
+
+**Q: How do I escalate a blocker?**  
+A: Follow the process defined in your `escalation:` section.
 
 ---
 
 ## 📅 Version History
 
-| Version | Date       | Changes                                 |
-| ------- | ---------- | --------------------------------------- |
-| 1.0.0   | 2026-02-06 | Initial release, Bigbot Week 1 template |
+| Version | Date       | Changes                   |
+| ------- | ---------- | ------------------------- |
+| 1.0.0   | 2026-02-06 | Initial framework release |
 
 ---
 
 ## 📝 Contributing
 
-To add a new project template:
+To improve the project coordination framework:
 
-1. Create `templates/my-project.yaml`
-2. Include all required fields (see YAML schema above)
-3. Test with `PROJECT_INIT_GUIDE.md` process
+1. Update YAML schema in this README
+2. Enhance project-coordinator skill
+3. Document new best practices
 4. Submit PR with description
-5. Request review from `main` (orchestrator)
 
 ---
 
-## 🎯 Next Steps
-
-1. ✅ Initialize Bigbot Week 1 (Monday 2026-02-06)
-2. 🔄 Run daily standups (Mon-Fri 09:00 PST)
-3. 📊 Track metrics against targets
-4. 📋 Generate final report (Friday 17:00 PST)
-5. 📚 Document lessons learned
-6. 🔄 Iterate on templates based on experience
-
----
-
-**Created:** 2026-02-06  
-**Status:** 🟢 Production Ready  
-**Maintained By:** Julio Cezar (OpenClaw Development)
+**Framework Status:** 🟢 Production Ready  
+**Last Updated:** 2026-02-06  
+**Maintained By:** OpenClaw Development
