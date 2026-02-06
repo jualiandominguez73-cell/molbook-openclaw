@@ -4,6 +4,7 @@ package ai.openclaw.android
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -24,11 +25,6 @@ class SecurePrefs(context: Context) {
 
   private val appContext = context.applicationContext
   private val json = Json { ignoreUnknownKeys = true }
-
-  private val masterKey =
-    MasterKey.Builder(context)
-      .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-      .build()
 
   private val prefs: SharedPreferences by lazy {
     createPrefs(appContext, "openclaw.node.secure")
@@ -193,13 +189,26 @@ class SecurePrefs(context: Context) {
   }
 
   private fun createPrefs(context: Context, name: String): SharedPreferences {
-    return EncryptedSharedPreferences.create(
-      context,
-      name,
-      masterKey,
-      EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-      EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    return try {
+      val masterKey =
+        MasterKey.Builder(context)
+          .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+          .build()
+
+      EncryptedSharedPreferences.create(
+        context,
+        name,
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+      )
+    } catch (err: Throwable) {
+      Log.w(
+        "OpenClawPrefs",
+        "Encrypted prefs unavailable; falling back to plaintext (${err::class.java.simpleName}).",
+      )
+      context.getSharedPreferences(name, Context.MODE_PRIVATE)
+    }
   }
 
   private fun loadOrCreateInstanceId(): String {
