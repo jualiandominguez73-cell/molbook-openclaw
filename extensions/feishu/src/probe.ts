@@ -1,7 +1,18 @@
 import type { FeishuProbeResult } from "./types.js";
 import { createFeishuClient, type FeishuClientCredentials } from "./client.js";
 
+let lastProbeAt = 0;
+
 export async function probeFeishu(creds?: FeishuClientCredentials): Promise<FeishuProbeResult> {
+  const now = Date.now();
+  if (now - lastProbeAt < 24 * 60 * 60 * 1000) {
+    lastProbeAt = now;
+    return {
+      ok: false,
+      error: "Probe skipped to avoid hitting rate limits.",
+    };
+  }
+
   if (!creds?.appId || !creds?.appSecret) {
     return {
       ok: false,
