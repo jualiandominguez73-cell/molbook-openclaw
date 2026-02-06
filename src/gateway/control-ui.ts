@@ -164,10 +164,23 @@ interface ControlUiInjectionOpts {
   basePath: string;
   assistantName?: string;
   assistantAvatar?: string;
+  /** Gateway token to inject into localStorage for reverse proxy auth. */
+  token?: string;
 }
 
 function injectControlUiConfig(html: string, opts: ControlUiInjectionOpts): string {
-  const { basePath, assistantName, assistantAvatar } = opts;
+  const { basePath, assistantName, assistantAvatar, token } = opts;
+  // Build token injection snippet: pre-populate localStorage so the Control UI
+  // picks up the gateway token without requiring ?token= in the URL.
+  // This merges with any existing settings to avoid clobbering user prefs.
+  const tokenSnippet = token
+    ? `(function(){try{` +
+      `var k="openclaw.control.settings.v1",s={};` +
+      `try{s=JSON.parse(localStorage.getItem(k)||"{}")}catch(e){}` +
+      `s.token=${JSON.stringify(token)};` +
+      `localStorage.setItem(k,JSON.stringify(s));` +
+      `}catch(e){}})();`
+    : "";
   const script =
     `<script>` +
     `window.__OPENCLAW_CONTROL_UI_BASE_PATH__=${JSON.stringify(basePath)};` +
@@ -177,6 +190,7 @@ function injectControlUiConfig(html: string, opts: ControlUiInjectionOpts): stri
     `window.__OPENCLAW_ASSISTANT_AVATAR__=${JSON.stringify(
       assistantAvatar ?? DEFAULT_ASSISTANT_IDENTITY.avatar,
     )};` +
+    tokenSnippet +
     `</script>`;
   // Check if already injected
   if (html.includes("__OPENCLAW_ASSISTANT_NAME__")) {
@@ -193,10 +207,12 @@ interface ServeIndexHtmlOpts {
   basePath: string;
   config?: OpenClawConfig;
   agentId?: string;
+  /** Gateway token extracted from reverse proxy header. */
+  token?: string;
 }
 
 function serveIndexHtml(res: ServerResponse, indexPath: string, opts: ServeIndexHtmlOpts) {
-  const { basePath, config, agentId } = opts;
+  const { basePath, config, agentId, token } = opts;
   const identity = config
     ? resolveAssistantIdentity({ cfg: config, agentId })
     : DEFAULT_ASSISTANT_IDENTITY;
@@ -218,6 +234,7 @@ function serveIndexHtml(res: ServerResponse, indexPath: string, opts: ServeIndex
       basePath,
       assistantName: identity.name,
       assistantAvatar: avatarValue,
+      token,
     }),
   );
 }
@@ -250,6 +267,17 @@ export function handleControlUiHttpRequest(
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.end("Method Not Allowed");
     return true;
+  }
+
+  // Extract token from reverse proxy header when configured.
+  const injectionConfig = opts?.config?.gateway?.auth?.injectTokenFromHeader;
+  let injectedToken: string | undefined;
+  if (injectionConfig?.enabled) {
+    const headerName = (injectionConfig.headerName ?? "x-openclaw-token").toLowerCase();
+    const headerValue = req.headers[headerName];
+    if (typeof headerValue === "string" && headerValue.trim()) {
+      injectedToken = headerValue.trim();
+    }
   }
 
   const url = new URL(urlRaw, "http://localhost");
@@ -345,6 +373,7 @@ export function handleControlUiHttpRequest(
         basePath,
         config: opts?.config,
         agentId: opts?.agentId,
+        token: injectedToken,
       });
       return true;
     }
@@ -359,6 +388,7 @@ export function handleControlUiHttpRequest(
       basePath,
       config: opts?.config,
       agentId: opts?.agentId,
+      token: injectedToken,
     });
     return true;
   }
