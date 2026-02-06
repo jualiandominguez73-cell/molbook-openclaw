@@ -14,7 +14,11 @@ Already followed [Getting Started](/start/getting-started)? You're all set — t
 ## System requirements
 
 - **Node 22+** (the installer will install it if missing)
-- macOS, Linux, or <Tooltip tip="We strongly recommend running OpenClaw under WSL2 on Windows.">Windows</Tooltip>
+- macOS, Linux, or Windows
+
+<Note>
+On Windows, we strongly recommend running OpenClaw under [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install).
+</Note>
 - `pnpm` only if you build from source
 
 ## Installer script
