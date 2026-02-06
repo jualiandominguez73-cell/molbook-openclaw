@@ -3,7 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import { type CommandOptions, runCommandWithTimeout } from "../process/exec.js";
 import { trimLogTail } from "./restart-sentinel.js";
-import { DEV_BRANCH, isBetaTag, isStableTag, type UpdateChannel } from "./update-channels.js";
+import {
+  channelToNpmTag,
+  DEFAULT_PACKAGE_CHANNEL,
+  DEV_BRANCH,
+  isBetaTag,
+  isStableTag,
+  type UpdateChannel,
+} from "./update-channels.js";
 import { compareSemverStrings } from "./update-check.js";
 import {
   cleanupGlobalRenameDirs,
@@ -604,19 +611,19 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
             continue;
           }
 
-          const lintStep = await runStep(
-            step(`preflight lint (${shortSha})`, managerScriptArgs(manager, "lint"), worktreeDir),
-          );
-          steps.push(lintStep);
-          if (lintStep.exitCode !== 0) {
-            continue;
-          }
-
           const buildStep = await runStep(
             step(`preflight build (${shortSha})`, managerScriptArgs(manager, "build"), worktreeDir),
           );
           steps.push(buildStep);
           if (buildStep.exitCode !== 0) {
+            continue;
+          }
+
+          const lintStep = await runStep(
+            step(`preflight lint (${shortSha})`, managerScriptArgs(manager, "lint"), worktreeDir),
+          );
+          steps.push(lintStep);
+          if (lintStep.exitCode !== 0) {
             continue;
           }
 
@@ -739,17 +746,6 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
     );
     steps.push(uiBuildStep);
 
-    // Restore dist/control-ui/ to committed state to prevent dirty repo after update
-    // (ui:build regenerates assets with new hashes, which would block future updates)
-    const restoreUiStep = await runStep(
-      step(
-        "restore control-ui",
-        ["git", "-C", gitRoot, "checkout", "--", "dist/control-ui/"],
-        gitRoot,
-      ),
-    );
-    steps.push(restoreUiStep);
-
     const doctorStep = await runStep(
       step(
         "openclaw doctor",
@@ -800,7 +796,9 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
       globalRoot: path.dirname(pkgRoot),
       packageName,
     });
-    const spec = `${packageName}@${normalizeTag(opts.tag)}`;
+    const channel = opts.channel ?? DEFAULT_PACKAGE_CHANNEL;
+    const tag = normalizeTag(opts.tag ?? channelToNpmTag(channel));
+    const spec = `${packageName}@${tag}`;
     const updateStep = await runStep({
       runCommand,
       name: "global update",
