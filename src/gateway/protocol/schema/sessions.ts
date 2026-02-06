@@ -102,6 +102,27 @@ export const SessionsCompactParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const SessionsSpawnParamsSchema = Type.Object(
+  {
+    task: NonEmptyString,
+    label: Type.Optional(Type.String()),
+    agentId: Type.Optional(NonEmptyString),
+    model: Type.Optional(NonEmptyString),
+    thinking: Type.Optional(NonEmptyString),
+    runTimeoutSeconds: Type.Optional(Type.Number({ minimum: 0 })),
+    // Back-compat alias. Prefer runTimeoutSeconds.
+    timeoutSeconds: Type.Optional(Type.Number({ minimum: 0 })),
+    cleanup: Type.Optional(Type.Union([Type.Literal("delete"), Type.Literal("keep")])),
+    // Gateway caller context (used for subagent announcement routing).
+    channel: Type.Optional(Type.String()),
+    accountId: Type.Optional(Type.String()),
+    to: Type.Optional(Type.String()),
+    threadId: Type.Optional(Type.Union([Type.String(), Type.Number()])),
+    requesterSessionKey: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
 export const SessionsUsageParamsSchema = Type.Object(
   {
     /** Specific session key to analyze; if omitted returns all sessions. */
