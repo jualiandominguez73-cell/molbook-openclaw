@@ -28,8 +28,14 @@ export async function loadCronStore(storePath: string): Promise<CronStoreFile> {
       version: 1,
       jobs: jobs.filter(Boolean) as never as CronStoreFile["jobs"],
     };
-  } catch {
-    return { version: 1, jobs: [] };
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return { version: 1, jobs: [] };
+    }
+    // Preserve corrupted file for recovery before caller overwrites it
+    const backupPath = `${storePath}.corrupted.${Date.now()}`;
+    await fs.promises.copyFile(storePath, backupPath).catch(() => {});
+    throw err;
   }
 }
 
