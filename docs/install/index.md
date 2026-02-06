@@ -15,15 +15,17 @@ Already followed [Getting Started](/start/getting-started)? You're all set — t
 
 - **Node 22+** (the installer will install it if missing)
 - macOS, Linux, or Windows
+- `pnpm` only if you build from source
 
 <Note>
 On Windows, we strongly recommend running OpenClaw under [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install).
 </Note>
-- `pnpm` only if you build from source
 
-## Installer script
+## Install methods
 
-The recommended way to install. Downloads the CLI, installs it globally via npm, and launches the onboarding wizard.
+### Installer script (recommended)
+
+Downloads the CLI, installs it globally via npm, and launches the onboarding wizard.
 
 <Tabs>
   <Tab title="macOS">
@@ -62,7 +64,7 @@ To skip onboarding and just install the binary:
 
 For all flags, env vars, and CI/automation options, see [Installer internals](/install/installer).
 
-## npm / pnpm
+### npm / pnpm
 
 If you already have Node 22+ and prefer to manage the install yourself:
 
@@ -98,7 +100,7 @@ If you already have Node 22+ and prefer to manage the install yourself:
   </Tab>
 </Tabs>
 
-## From source
+### From source
 
 For contributors or anyone who wants to run from a local checkout.
 
