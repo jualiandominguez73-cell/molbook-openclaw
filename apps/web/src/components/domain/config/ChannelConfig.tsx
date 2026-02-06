@@ -4,9 +4,11 @@ import * as React from "react";
 import { toast } from "sonner";
 import { ChevronDown } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { startWebLogin, waitWebLogin } from "@/lib/api";
 import {
   ChannelCard,
   TelegramConfigSheet,
@@ -27,6 +29,11 @@ import {
   type PlatformType,
   MAC_RELAY_PROVIDERS,
 } from "./channels";
+import { useChannelsStatus } from "@/hooks/queries/useChannels";
+import { channelKeys } from "@/hooks/queries/useChannels";
+import { useConfig } from "@/hooks/queries/useConfig";
+import { usePatchConfig, useLogoutChannel } from "@/hooks/mutations/useConfigMutations";
+import type { ChannelAccountSnapshot } from "@/lib/api";
 
 interface ChannelConfigProps {
   className?: string;
@@ -443,33 +450,71 @@ const channelFieldConfigs: Record<string, {
 };
 
 export function ChannelConfig({ className, currentPlatform = "macos" }: ChannelConfigProps) {
-  const [channels, setChannels] = React.useState<ChannelConfigType[]>(defaultChannels);
   const [activeSheet, setActiveSheet] = React.useState<ChannelId | null>(null);
   const [gettingStartedOpen, setGettingStartedOpen] = React.useState(true);
+  const [installOverrides, setInstallOverrides] = React.useState<Record<ChannelId, boolean>>({});
+  const [whatsappQrCode, setWhatsappQrCode] = React.useState<string | undefined>();
+  const [isWhatsAppBusy, setIsWhatsAppBusy] = React.useState(false);
 
-  // Channel-specific config state
-  const [telegramConfig, setTelegramConfig] = React.useState<TelegramConfig>();
-  const [discordConfig, setDiscordConfig] = React.useState<DiscordConfig>();
-  const [whatsappConfig, setWhatsappConfig] = React.useState<WhatsAppConfig>();
-  const [slackConfig, setSlackConfig] = React.useState<SlackConfig>();
-  const [signalConfig, setSignalConfig] = React.useState<SignalConfig>();
-  const [imessageConfig, setIMessageConfig] = React.useState<iMessageConfig>();
-  const [, setGenericConfigs] = React.useState<Record<string, Record<string, string>>>({});
+  const queryClient = useQueryClient();
+  const { data: channelsData } = useChannelsStatus({ probe: false });
+  const { data: configSnapshot } = useConfig();
+  const patchConfig = usePatchConfig();
+  const logoutChannel = useLogoutChannel();
 
-  const updateChannelStatus = (
-    channelId: ChannelId,
-    status: ChannelConfigType["status"],
-    statusMessage?: string,
-    lastConnected?: string
-  ) => {
-    setChannels((prev) =>
-      prev.map((ch) =>
-        ch.id === channelId
-          ? { ...ch, status, statusMessage, lastConnected }
-          : ch
-      )
-    );
+  const refreshChannels = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: channelKeys.all });
+  }, [queryClient]);
+
+  /**
+   * Map API channel status to UI channel status
+   */
+  const mapChannelStatus = (snapshot: ChannelAccountSnapshot | undefined): ChannelConfigType["status"] => {
+    if (!snapshot) {return "not_configured";}
+    if (snapshot.error) {return "error";}
+    if (snapshot.connected) {return "connected";}
+    if (snapshot.configured) {return "not_configured";}
+    return "not_configured";
   };
+
+  const channels = React.useMemo(() => {
+    if (!channelsData) {
+      return defaultChannels.map((channel) => ({
+        ...channel,
+        platform: channel.platform
+          ? { ...channel.platform, installed: installOverrides[channel.id] ?? channel.platform.installed }
+          : channel.platform,
+      }));
+    }
+
+    const accounts = channelsData.channelAccounts ?? {};
+    const meta = channelsData.channelMeta ?? {};
+    const labels = channelsData.channelLabels ?? {};
+    const defaultAccountIds = channelsData.channelDefaultAccountId ?? {};
+
+    return defaultChannels.map((channel) => {
+      const channelAccounts = accounts[channel.id] ?? [];
+      const defaultAccountId = defaultAccountIds[channel.id];
+      const defaultAccount = channelAccounts.find((a) => a.accountId === defaultAccountId) ?? channelAccounts[0];
+      const channelMeta = meta[channel.id];
+
+      return {
+        ...channel,
+        name: labels[channel.id] ?? channelMeta?.label ?? channel.name,
+        description: channelMeta?.blurb ?? channel.description,
+        status: mapChannelStatus(defaultAccount),
+        statusMessage: defaultAccount?.statusMessage ?? defaultAccount?.error,
+        lastConnected: defaultAccount?.lastInboundAt
+          ? new Date(defaultAccount.lastInboundAt).toLocaleString()
+          : undefined,
+        isAdvanced: channelMeta?.advanced ?? channel.isAdvanced,
+        localOnly: channelMeta?.localOnly ?? channel.localOnly,
+        platform: channel.platform
+          ? { ...channel.platform, installed: installOverrides[channel.id] ?? channel.platform.installed }
+          : channel.platform,
+      };
+    });
+  }, [channelsData, installOverrides]);
 
   const getChannelStatus = (channelId: ChannelId) => {
     return channels.find((ch) => ch.id === channelId)?.status;
@@ -485,110 +530,272 @@ export function ChannelConfig({ className, currentPlatform = "macos" }: ChannelC
     return channel.platform.supported.includes("any") || channel.platform.supported.includes(currentPlatform);
   };
 
+  const telegramConfig = React.useMemo((): TelegramConfig | undefined => {
+    const cfg = configSnapshot?.config?.channels?.telegram;
+    if (cfg?.botToken) {
+      return {
+        botToken: cfg.botToken as string,
+        mode: cfg.mode as "polling" | "webhook" | undefined,
+        webhookUrl: cfg.webhookUrl as string | undefined,
+        allowFrom: cfg.allowFrom as string[] | undefined,
+        allowUnmentionedGroups: cfg.allowUnmentionedGroups as boolean | undefined,
+      };
+    }
+    return undefined;
+  }, [configSnapshot]);
+
+  const discordConfig = React.useMemo((): DiscordConfig | undefined => {
+    const cfg = configSnapshot?.config?.channels?.discord;
+    if (cfg?.botToken) {
+      return {
+        botToken: cfg.botToken as string,
+        applicationId: cfg.applicationId as string | undefined,
+        allowFrom: cfg.allowFrom as string[] | undefined,
+        dmPolicy: cfg.dmPolicy as "disabled" | "allow" | "mentions" | undefined,
+      };
+    }
+    return undefined;
+  }, [configSnapshot]);
+
+  const slackConfig = React.useMemo((): SlackConfig | undefined => {
+    const cfg = configSnapshot?.config?.channels?.slack;
+    if (cfg?.workspaceId) {
+      return {
+        workspaceId: cfg.workspaceId as string,
+        workspaceName: cfg.workspaceName as string | undefined,
+        mode: cfg.mode as "token" | "oauth" | undefined,
+        defaultChannel: cfg.defaultChannel as string | undefined,
+        allowChannels: cfg.allowChannels as string[] | undefined,
+      };
+    }
+    if (cfg?.botToken) {
+      return {
+        mode: "token" as const,
+        botToken: cfg.botToken as string,
+        appToken: cfg.appToken as string | undefined,
+        signingSecret: cfg.signingSecret as string | undefined,
+        defaultChannel: cfg.defaultChannel as string | undefined,
+        allowChannels: cfg.allowChannels as string[] | undefined,
+      };
+    }
+    return undefined;
+  }, [configSnapshot]);
+
+  const whatsappConfig = React.useMemo((): WhatsAppConfig | undefined => {
+    const accounts = channelsData?.channelAccounts?.whatsapp;
+    const defaultAccount = accounts?.[0];
+    const displayLabel = channelsData?.channelDetailLabels?.whatsapp;
+    if (defaultAccount?.configured || whatsappQrCode) {
+      return {
+        phoneNumber: displayLabel,
+        displayName: displayLabel,
+        qrCode: whatsappQrCode,
+      };
+    }
+    return whatsappQrCode ? { qrCode: whatsappQrCode } : undefined;
+  }, [channelsData, whatsappQrCode]);
+
+  const signalConfig = React.useMemo((): SignalConfig | undefined => {
+    const cfg = configSnapshot?.config?.channels?.signal;
+    if (cfg?.phoneNumber) {
+      return {
+        phoneNumber: cfg.phoneNumber as string,
+        baseUrl: cfg.baseUrl as string | undefined,
+        deviceName: cfg.deviceName as string | undefined,
+      };
+    }
+    return undefined;
+  }, [configSnapshot]);
+
+  const imessageConfig = React.useMemo((): iMessageConfig | undefined => {
+    const cfg = configSnapshot?.config?.channels?.imessage;
+    if (cfg?.cliPath || cfg?.dbPath) {
+      return {
+        cliPath: cfg.cliPath as string | undefined,
+        dbPath: cfg.dbPath as string | undefined,
+      };
+    }
+    return undefined;
+  }, [configSnapshot]);
+
   // Telegram handlers
   const handleTelegramSave = async (config: TelegramConfig) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setTelegramConfig(config);
-    updateChannelStatus("telegram", "connected", undefined, "just now");
-    toast.success("Telegram connected successfully");
+    if (!configSnapshot?.hash) {return;}
+    await patchConfig.mutateAsync({
+      baseHash: configSnapshot.hash,
+      raw: JSON.stringify({
+        channels: {
+          telegram: {
+            botToken: config.botToken,
+            mode: config.mode,
+            webhookUrl: config.webhookUrl,
+            allowFrom: config.allowFrom,
+            allowUnmentionedGroups: config.allowUnmentionedGroups,
+            enabled: true,
+          },
+        },
+      }),
+      note: "Configure Telegram",
+    });
+    refreshChannels();
   };
 
   const handleTelegramDisconnect = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setTelegramConfig(undefined);
-    updateChannelStatus("telegram", "not_configured");
-    toast.success("Telegram disconnected");
+    await logoutChannel.mutateAsync({ channel: "telegram" });
+    refreshChannels();
   };
 
   // Discord handlers
   const handleDiscordSave = async (config: DiscordConfig) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setDiscordConfig(config);
-    updateChannelStatus("discord", "connected", undefined, "just now");
-    toast.success("Discord connected successfully");
+    if (!configSnapshot?.hash) {return;}
+    await patchConfig.mutateAsync({
+      baseHash: configSnapshot.hash,
+      raw: JSON.stringify({
+        channels: {
+          discord: {
+            botToken: config.botToken,
+            applicationId: config.applicationId,
+            allowFrom: config.allowFrom,
+            dmPolicy: config.dmPolicy,
+            enabled: true,
+          },
+        },
+      }),
+      note: "Configure Discord",
+    });
+    refreshChannels();
   };
 
   const handleDiscordDisconnect = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setDiscordConfig(undefined);
-    updateChannelStatus("discord", "not_configured");
-    toast.success("Discord disconnected");
+    await logoutChannel.mutateAsync({ channel: "discord" });
+    refreshChannels();
   };
 
   // WhatsApp handlers
   const handleWhatsAppPairing = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setWhatsappConfig({ qrCode: "data:image/png;base64,placeholder" });
-    updateChannelStatus("whatsapp", "connecting", "Waiting for QR scan...");
+    if (isWhatsAppBusy) {return;}
+    setIsWhatsAppBusy(true);
+    try {
+      const startResponse = await startWebLogin({ force: true, timeoutMs: 30000 });
+      setWhatsappQrCode(startResponse.qrDataUrl);
+
+      const waitResponse = await waitWebLogin({ timeoutMs: 120000 });
+      if (waitResponse.connected) {
+        setWhatsappQrCode(undefined);
+        refreshChannels();
+        toast.success("WhatsApp connected successfully");
+      }
+    } catch (error) {
+      toast.error(
+        `WhatsApp login failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    } finally {
+      setIsWhatsAppBusy(false);
+    }
   };
 
   const handleWhatsAppDisconnect = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setWhatsappConfig(undefined);
-    updateChannelStatus("whatsapp", "not_configured");
-    toast.success("WhatsApp disconnected");
+    await logoutChannel.mutateAsync({ channel: "whatsapp" });
+    setWhatsappQrCode(undefined);
+    refreshChannels();
   };
 
   // Slack handlers
   const handleSlackConnect = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSlackConfig({ workspaceId: "T12345678", workspaceName: "My Workspace" });
-    updateChannelStatus("slack", "connected", undefined, "just now");
-    toast.success("Slack connected successfully");
+    toast.info("Slack OAuth flow not yet implemented in web UI");
   };
 
   const handleSlackTokenSave = async (config: SlackConfig) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSlackConfig(config);
-    updateChannelStatus("slack", "connected", undefined, "just now");
-    toast.success("Slack configured successfully");
+    if (!configSnapshot?.hash) {return;}
+    await patchConfig.mutateAsync({
+      baseHash: configSnapshot.hash,
+      raw: JSON.stringify({
+        channels: {
+          slack: {
+            mode: "token",
+            botToken: config.botToken,
+            appToken: config.appToken,
+            signingSecret: config.signingSecret,
+            defaultChannel: config.defaultChannel,
+            allowChannels: config.allowChannels,
+            enabled: true,
+          },
+        },
+      }),
+      note: "Configure Slack tokens",
+    });
+    refreshChannels();
   };
 
   const handleSlackDisconnect = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setSlackConfig(undefined);
-    updateChannelStatus("slack", "not_configured");
-    toast.success("Slack disconnected");
+    await logoutChannel.mutateAsync({ channel: "slack" });
+    refreshChannels();
   };
 
   // Signal handlers
   const handleSignalSave = async (config: SignalConfig) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSignalConfig(config);
-    updateChannelStatus("signal", "connected", undefined, "just now");
-    toast.success("Signal connected successfully");
+    if (!configSnapshot?.hash) {return;}
+    await patchConfig.mutateAsync({
+      baseHash: configSnapshot.hash,
+      raw: JSON.stringify({
+        channels: {
+          signal: {
+            phoneNumber: config.phoneNumber,
+            baseUrl: config.baseUrl,
+            deviceName: config.deviceName,
+            enabled: true,
+          },
+        },
+      }),
+      note: "Configure Signal",
+    });
+    refreshChannels();
   };
 
   const handleSignalDisconnect = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setSignalConfig(undefined);
-    updateChannelStatus("signal", "not_configured");
-    toast.success("Signal disconnected");
+    await logoutChannel.mutateAsync({ channel: "signal" });
+    refreshChannels();
   };
 
   const handleIMessageSave = async (config: iMessageConfig) => {
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIMessageConfig(config);
-    updateChannelStatus("imessage", "connected", undefined, "just now");
-    toast.success("iMessage configured successfully");
+    if (!configSnapshot?.hash) {return;}
+    await patchConfig.mutateAsync({
+      baseHash: configSnapshot.hash,
+      raw: JSON.stringify({
+        channels: {
+          imessage: {
+            cliPath: config.cliPath,
+            dbPath: config.dbPath,
+            enabled: true,
+          },
+        },
+      }),
+      note: "Configure iMessage",
+    });
+    refreshChannels();
   };
 
   // Generic handler for new channels
   const handleGenericSave = async (channelId: ChannelId, values: Record<string, string>) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setGenericConfigs((prev) => ({ ...prev, [channelId]: values }));
-    updateChannelStatus(channelId, "connected", undefined, "just now");
+    if (!configSnapshot?.hash) {return;}
+    await patchConfig.mutateAsync({
+      baseHash: configSnapshot.hash,
+      raw: JSON.stringify({
+        channels: {
+          [channelId]: {
+            ...values,
+            enabled: true,
+          },
+        },
+      }),
+      note: `Configure ${getChannel(channelId)?.name ?? channelId}`,
+    });
+    refreshChannels();
   };
 
   const handleGenericDisconnect = async (channelId: ChannelId) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setGenericConfigs((prev) => {
-      const updated = { ...prev };
-      delete updated[channelId];
-      return updated;
-    });
-    updateChannelStatus(channelId, "not_configured");
-    toast.success(`${getChannel(channelId)?.name} disconnected`);
+    await logoutChannel.mutateAsync({ channel: channelId });
+    refreshChannels();
   };
 
   const openSheet = (channelId: ChannelId) => {
@@ -656,21 +863,7 @@ export function ChannelConfig({ className, currentPlatform = "macos" }: ChannelC
 
   const handleUninstall = async (channelId: ChannelId) => {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    setChannels((prev) =>
-      prev.map((ch) =>
-        ch.id === channelId
-          ? {
-              ...ch,
-              platform: ch.platform
-                ? {
-                    ...ch.platform,
-                    installed: false,
-                  }
-                : ch.platform,
-            }
-          : ch
-      )
-    );
+    setInstallOverrides((prev) => ({ ...prev, [channelId]: false }));
     toast.success(`${getChannel(channelId)?.name} uninstalled`);
   };
 

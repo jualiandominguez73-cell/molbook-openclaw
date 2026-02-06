@@ -14,6 +14,8 @@ import type {
   ConfigPatchParams,
   ConfigPatchResponse,
   ChannelStatusResponse,
+  WebLoginStartResponse,
+  WebLoginWaitResponse,
   ModelsListResponse,
   AgentsListResponse,
   HealthResponse,
@@ -199,6 +201,32 @@ export async function logoutChannel(
 ): Promise<{ channel: string; accountId: string; cleared: boolean }> {
   const client = getGatewayClient();
   return client.request("channels.logout", { channel, accountId });
+}
+
+/**
+ * Start WhatsApp web login and return QR data.
+ */
+export async function startWebLogin(options?: {
+  force?: boolean;
+  timeoutMs?: number;
+}): Promise<WebLoginStartResponse> {
+  const client = getGatewayClient();
+  return client.request<WebLoginStartResponse>("web.login.start", {
+    force: options?.force ?? false,
+    timeoutMs: options?.timeoutMs ?? 30000,
+  });
+}
+
+/**
+ * Wait for WhatsApp web login to complete.
+ */
+export async function waitWebLogin(options?: {
+  timeoutMs?: number;
+}): Promise<WebLoginWaitResponse> {
+  const client = getGatewayClient();
+  return client.request<WebLoginWaitResponse>("web.login.wait", {
+    timeoutMs: options?.timeoutMs ?? 120000,
+  });
 }
 
 // Models APIs

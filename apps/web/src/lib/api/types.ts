@@ -138,6 +138,16 @@ export interface ChannelAccountSnapshot {
   [key: string]: unknown;
 }
 
+export interface WebLoginStartResponse {
+  message?: string;
+  qrDataUrl?: string;
+}
+
+export interface WebLoginWaitResponse {
+  message?: string;
+  connected?: boolean;
+}
+
 // Models types
 export interface ModelsListResponse {
   models: ModelEntry[];

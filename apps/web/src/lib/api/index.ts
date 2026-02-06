@@ -83,6 +83,8 @@ export type {
   ModelProviderId,
   ProviderVerifyRequest,
   ProviderVerifyResponse,
+  WebLoginStartResponse,
+  WebLoginWaitResponse,
 } from "./types";
 
 // Config API functions
@@ -93,6 +95,8 @@ export {
   applyConfig,
   getChannelsStatus,
   logoutChannel,
+  startWebLogin,
+  waitWebLogin,
   listModels,
   listAgents,
   getHealth,
