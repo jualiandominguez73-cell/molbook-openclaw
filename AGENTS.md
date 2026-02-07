@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 # Repository Guidelines
 
 - Repo: https://github.com/openclaw/openclaw
