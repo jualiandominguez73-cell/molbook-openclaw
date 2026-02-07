@@ -402,6 +402,19 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
       return;
     }
 
+    // Format poll-related messages into readable text
+    let pollText = "";
+    const voterName = envelope.sourceName ?? "Someone";
+    if (dataMessage.pollCreate) {
+      const poll = dataMessage.pollCreate as { question?: string; options?: string[] };
+      const options = (poll.options ?? []).map((o, i) => `${i + 1}. ${o}`).join(", ");
+      pollText = `[Poll created by ${voterName}] "${poll.question ?? "Poll"}" - Options: ${options}`;
+    } else if (dataMessage.pollVote) {
+      const vote = dataMessage.pollVote as { optionIndexes?: number[]; voteCount?: number };
+      const indexes = vote.optionIndexes ?? [];
+      pollText = `[Poll vote] ${voterName} voted for option${indexes.length > 1 ? "s" : ""} ${indexes.map((i) => i + 1).join(", ")} (total votes: ${vote.voteCount ?? "?"})`;
+    }
+
     const senderDisplay = formatSignalSenderDisplay(sender);
     const senderRecipient = resolveSignalRecipient(sender);
     const senderPeerId = resolveSignalPeerId(sender);
@@ -527,7 +540,8 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
       placeholder = "<media:attachment>";
     }
 
-    const bodyText = messageText || placeholder || dataMessage.quote?.text?.trim() || "";
+    const bodyText =
+      messageText || pollText || placeholder || dataMessage.quote?.text?.trim() || "";
     if (!bodyText) {
       return;
     }

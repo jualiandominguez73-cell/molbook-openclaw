@@ -26,6 +26,8 @@ export type SignalDataMessage = {
   } | null;
   quote?: { text?: string | null } | null;
   reaction?: SignalReactionMessage | null;
+  pollCreate?: unknown;
+  pollVote?: unknown;
 };
 
 export type SignalReactionMessage = {
