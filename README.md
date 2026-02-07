@@ -261,6 +261,20 @@ ClawHub is a minimal skill registry. With ClawHub enabled, the agent can search 
 
 [ClawHub](https://clawhub.com)
 
+### External skill packs
+
+You can also consume skill packs maintained outside this repository when they
+fit your use case.
+
+Example: Gaia Minds maintains a contribution-focused assistant skill set:
+
+- Gaia repository: `https://github.com/Gaia-minds/gaia-minds`
+- Skill: `skills/gaia-assistant-builder/SKILL.md`
+- Program guide: `infrastructure/personal-assistant-program.md`
+
+This split keeps OpenClaw generic while allowing domain- or governance-specific
+workflows to live in their own public repos.
+
 ## Chat commands
 
 Send these in WhatsApp/Telegram/Slack/Google Chat/Microsoft Teams/WebChat (group commands are owner-only):
