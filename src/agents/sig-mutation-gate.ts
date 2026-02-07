@@ -20,12 +20,28 @@ export type MutationGateResult = { blocked: false } | { blocked: true; reason: s
 const MUTATION_GATED_TOOLS = new Set(["write", "edit"]);
 
 /**
+ * Regex to extract file paths from apply_patch content.
+ * Matches: *** Add File: <path>, *** Update File: <path>, *** Delete File: <path>
+ */
+const PATCH_FILE_PATH_RE = /^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm;
+
+/** Extract all file paths referenced in an apply_patch input string. */
+export function extractPatchPaths(input: string): string[] {
+  const paths: string[] = [];
+  for (const match of input.matchAll(PATCH_FILE_PATH_RE)) {
+    const p = match[1].trim();
+    if (p) paths.push(p);
+  }
+  return paths;
+}
+
+/**
  * Check whether a tool call targets a sig-protected mutable file.
  * If so, block it and instruct the agent to use update_and_sign.
  *
- * Only applies to `write` and `edit` tools. `apply_patch` is excluded
- * because its file paths are embedded in the patch content (not a simple
- * parameter) and it's already behind the verification gate.
+ * Applies to `write`, `edit`, and `apply_patch`. For write/edit the target
+ * path is read from the tool params. For apply_patch, file paths are parsed
+ * from the patch content markers.
  */
 export function checkMutationGate(
   toolName: string,
@@ -34,9 +50,6 @@ export function checkMutationGate(
   sigConfig: SigConfig | null | undefined,
 ): MutationGateResult {
   const normalized = toolName.trim().toLowerCase();
-  if (!MUTATION_GATED_TOOLS.has(normalized)) {
-    return { blocked: false };
-  }
 
   if (!projectRoot || !sigConfig?.files) {
     return { blocked: false };
@@ -44,6 +57,17 @@ export function checkMutationGate(
 
   const args = toolArgs as Record<string, unknown> | undefined;
   if (!args) {
+    return { blocked: false };
+  }
+
+  // apply_patch: extract paths from patch content and check each
+  if (normalized === "apply_patch") {
+    const input = typeof args.input === "string" ? args.input : "";
+    const paths = extractPatchPaths(input);
+    return checkPathsAgainstPolicies(paths, projectRoot, sigConfig);
+  }
+
+  if (!MUTATION_GATED_TOOLS.has(normalized)) {
     return { blocked: false };
   }
 
@@ -61,7 +85,15 @@ export function checkMutationGate(
     return { blocked: false };
   }
 
-  // Resolve to a path relative to the project root
+  return checkPathAgainstPolicy(targetPath, projectRoot, sigConfig);
+}
+
+/** Check a single path against sig file policies. */
+function checkPathAgainstPolicy(
+  targetPath: string,
+  projectRoot: string,
+  sigConfig: SigConfig,
+): MutationGateResult {
   const absolutePath = resolve(projectRoot, targetPath);
   const relativePath = relative(projectRoot, absolutePath);
 
@@ -85,4 +117,17 @@ export function checkMutationGate(
     blocked: true,
     reason: `${relativePath} is protected by a sig file policy. Use the update_and_sign tool to modify it.${sourceNote}`,
   };
+}
+
+/** Check multiple paths; block if any match a mutable policy. */
+function checkPathsAgainstPolicies(
+  paths: string[],
+  projectRoot: string,
+  sigConfig: SigConfig,
+): MutationGateResult {
+  for (const p of paths) {
+    const result = checkPathAgainstPolicy(p, projectRoot, sigConfig);
+    if (result.blocked) return result;
+  }
+  return { blocked: false };
 }

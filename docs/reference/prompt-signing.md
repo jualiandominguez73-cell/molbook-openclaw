@@ -148,8 +148,9 @@ The gate resolves the tool's target path (from `params.path` or
 `params.file_path`) relative to the project root, then checks it against
 the file policies in `.sig/config.json` using `resolveFilePolicy()`.
 
-`apply_patch` is excluded from the mutation gate because its file paths
-are embedded in the patch content rather than a simple parameter.
+`apply_patch` is also checked by the mutation gate. File paths are parsed
+from the patch content markers (`*** Add File:`, `*** Update File:`,
+`*** Delete File:`) and checked against file policies.
 
 ### The update_and_sign tool
 

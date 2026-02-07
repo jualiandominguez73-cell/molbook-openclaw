@@ -1,6 +1,6 @@
 import type { SigConfig } from "@disreguard/sig";
 import { describe, it, expect } from "vitest";
-import { checkMutationGate } from "./sig-mutation-gate.js";
+import { checkMutationGate, extractPatchPaths } from "./sig-mutation-gate.js";
 
 const PROJECT_ROOT = "/workspace";
 
@@ -61,14 +61,61 @@ describe("sig-mutation-gate", () => {
     }
   });
 
-  it("passes apply_patch through (excluded from mutation gate)", () => {
+  it("blocks apply_patch when patch touches a protected file", () => {
     const config = makeConfig();
-    const result = checkMutationGate(
-      "apply_patch",
-      { input: "*** Update File: soul.md\n..." },
-      PROJECT_ROOT,
-      config,
-    );
+    const patch = [
+      "*** Begin Patch",
+      "*** Update File: soul.md",
+      "@@ -1,3 +1,3 @@",
+      " line1",
+      "-old",
+      "+new",
+      "*** End Patch",
+    ].join("\n");
+    const result = checkMutationGate("apply_patch", { input: patch }, PROJECT_ROOT, config);
+    expect(result.blocked).toBe(true);
+    if (result.blocked) {
+      expect(result.reason).toContain("soul.md");
+      expect(result.reason).toContain("update_and_sign");
+    }
+  });
+
+  it("passes apply_patch when patch only touches non-protected files", () => {
+    const config = makeConfig();
+    const patch = [
+      "*** Begin Patch",
+      "*** Update File: README.md",
+      "@@ -1,1 +1,1 @@",
+      "-old",
+      "+new",
+      "*** End Patch",
+    ].join("\n");
+    const result = checkMutationGate("apply_patch", { input: patch }, PROJECT_ROOT, config);
+    expect(result.blocked).toBe(false);
+  });
+
+  it("blocks apply_patch when any file in a multi-file patch is protected", () => {
+    const config = makeConfig();
+    const patch = [
+      "*** Begin Patch",
+      "*** Update File: README.md",
+      "@@ -1,1 +1,1 @@",
+      "-old",
+      "+new",
+      "*** Add File: agents.md",
+      "new content",
+      "*** End Patch",
+    ].join("\n");
+    const result = checkMutationGate("apply_patch", { input: patch }, PROJECT_ROOT, config);
+    expect(result.blocked).toBe(true);
+    if (result.blocked) {
+      expect(result.reason).toContain("agents.md");
+    }
+  });
+
+  it("passes apply_patch with empty input", () => {
+    const config = makeConfig();
+    const result = checkMutationGate("apply_patch", { input: "" }, PROJECT_ROOT, config);
     expect(result.blocked).toBe(false);
   });
 
@@ -116,5 +163,30 @@ describe("sig-mutation-gate", () => {
       expect(result.reason).toContain("update_and_sign");
       expect(result.reason).not.toContain("signed_message");
     }
+  });
+});
+
+describe("extractPatchPaths", () => {
+  it("extracts Add, Update, and Delete file paths", () => {
+    const patch = [
+      "*** Begin Patch",
+      "*** Add File: src/new.ts",
+      "content",
+      "*** Update File: soul.md",
+      "@@ -1,1 +1,1 @@",
+      "-old",
+      "+new",
+      "*** Delete File: old.txt",
+      "*** End Patch",
+    ].join("\n");
+    expect(extractPatchPaths(patch)).toEqual(["src/new.ts", "soul.md", "old.txt"]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(extractPatchPaths("")).toEqual([]);
+  });
+
+  it("returns empty array when no file markers present", () => {
+    expect(extractPatchPaths("just some text\nno markers here")).toEqual([]);
   });
 });
