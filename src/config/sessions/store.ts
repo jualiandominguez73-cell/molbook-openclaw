@@ -289,7 +289,8 @@ async function withSessionStoreLock<T>(
 ): Promise<T> {
   const timeoutMs = opts.timeoutMs ?? 10_000;
   const pollIntervalMs = opts.pollIntervalMs ?? 25;
-  const staleMs = opts.staleMs ?? 30_000;
+  const staleMs =
+    opts.staleMs ?? Math.min(30_000, Math.max(timeoutMs - pollIntervalMs, pollIntervalMs));
   const lockPath = `${storePath}.lock`;
   const startedAt = Date.now();
 
