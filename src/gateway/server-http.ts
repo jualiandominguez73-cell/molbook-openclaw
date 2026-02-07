@@ -1,5 +1,7 @@
 import type { TlsOptions } from "node:tls";
 import type { WebSocketServer } from "ws";
+import { rateLimit } from "express-rate-limit";
+import helmet from "helmet";
 import {
   createServer as createHttpServer,
   type Server as HttpServer,
@@ -41,11 +43,48 @@ import {
 import { sendUnauthorized } from "./http-common.js";
 import { getBearerToken, getHeader } from "./http-utils.js";
 import { resolveGatewayClientIp } from "./net.js";
+import { initObservability } from "./observability.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
 
+// Initialize observability
+initObservability();
+
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
+
+// Helper to run express middleware on native node http server
+function runMiddleware(req: IncomingMessage, res: ServerResponse, fn: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fn(req, res, (result: any) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve(result);
+    });
+  });
+}
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 2000, // Limit each IP to 2000 requests per windowMs
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  // Use existing IP resolution logic to handle proxies correctly
+  keyGenerator: (req: IncomingMessage): string => {
+    const config = loadConfig();
+    const trustedProxies = config.gateway?.trustedProxies ?? [];
+    return (
+      resolveGatewayClientIp({
+        remoteAddr: req.socket?.remoteAddress ?? "",
+        forwardedFor: getHeader(req, "x-forwarded-for"),
+        realIp: getHeader(req, "x-real-ip"),
+        trustedProxies,
+      }) ?? "unknown"
+    );
+  },
+});
 
 type HookDispatchers = {
   dispatchWakeHook: (value: { text: string; mode: "now" | "next-heartbeat" }) => void;
@@ -311,6 +350,22 @@ export function createGatewayHttpServer(opts: {
   async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     // Don't interfere with WebSocket upgrades; ws handles the 'upgrade' event.
     if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") {
+      return;
+    }
+
+    // Security Hardening: Helmet & Rate Limiter
+    // We wrap this in a try-catch to ensure security failures don't crash the server,
+    // but do stop the request processing if middleware blocks it or fails.
+    try {
+      await runMiddleware(req, res, helmet());
+      await runMiddleware(req, res, limiter);
+    } catch (err) {
+      // If headers already sent (e.g. rate limit hit), just return
+      if (res.headersSent) return;
+
+      console.error("[Security] Middleware error:", err);
+      res.statusCode = 500;
+      res.end("Internal Server Error");
       return;
     }
 
