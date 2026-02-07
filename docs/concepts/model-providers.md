@@ -237,10 +237,11 @@ See [/providers/minimax](/providers/minimax) for setup details, model options, a
 
 ### StepFun
 
-StepFun is configured via `models.providers` (OpenAI-compatible):
+StepFun has first-class onboarding support and can also be configured manually:
 
 - Provider: `stepfun`
-- Auth: Set `apiKey` in provider config
+- Auth: `STEPFUN_API_KEY`
+- CLI: `openclaw onboard --auth-choice stepfun-api-key`
 - Base URL: `https://api.stepfun.ai/v1` (International) or `https://api.stepfun.com/v1` (China)
 - Example model: `stepfun/step-3.5-flash`
 
