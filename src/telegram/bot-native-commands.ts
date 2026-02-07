@@ -369,21 +369,30 @@ export const registerTelegramNativeCommands = ({
 
   // Clear stale commands before registering new ones to prevent
   // leftover commands from deleted skills persisting across restarts (#5717).
+  // Chain delete → set so a late-resolving delete cannot wipe newly registered commands.
+  const registerCommands = () => {
+    if (allCommands.length > 0) {
+      withTelegramApiErrorLogging({
+        operation: "setMyCommands",
+        runtime,
+        fn: () => bot.api.setMyCommands(allCommands),
+      }).catch(() => {});
+    }
+  };
   if (typeof bot.api.deleteMyCommands === "function") {
     withTelegramApiErrorLogging({
       operation: "deleteMyCommands",
       runtime,
       fn: () => bot.api.deleteMyCommands(),
-    }).catch(() => {});
+    })
+      .catch(() => {})
+      .then(registerCommands)
+      .catch(() => {});
+  } else {
+    registerCommands();
   }
 
   if (allCommands.length > 0) {
-    withTelegramApiErrorLogging({
-      operation: "setMyCommands",
-      runtime,
-      fn: () => bot.api.setMyCommands(allCommands),
-    }).catch(() => {});
-
     if (typeof (bot as unknown as { command?: unknown }).command !== "function") {
       logVerbose("telegram: bot.command unavailable; skipping native handlers");
     } else {
