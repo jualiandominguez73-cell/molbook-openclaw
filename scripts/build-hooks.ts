@@ -7,7 +7,7 @@
  */
 
 import { build } from "esbuild";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,6 +45,7 @@ async function buildHooks() {
     if (!existsSync(entry)) continue;
 
     try {
+      mkdirSync(join(HOOKS_DIST, hook), { recursive: true });
       await build({
         entryPoints: [entry],
         bundle: true,
