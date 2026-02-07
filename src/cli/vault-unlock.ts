@@ -13,7 +13,7 @@ function getVaultPath(): string {
 
 export async function tryUnlockVault(): Promise<boolean> {
   const vaultPath = getVaultPath();
-  
+
   // If no vault, nothing to unlock
   if (!isVaultFile(vaultPath)) {
     return true; // proceed as normal (legacy mode or fresh install)
@@ -25,7 +25,7 @@ export async function tryUnlockVault(): Promise<boolean> {
     try {
       const buffer = await fs.promises.readFile(vaultPath);
       const secrets = await decryptVault(buffer, envKey);
-      
+
       // Inject into process.env
       // We do this carefully to avoid overwriting existing
       for (const [key, value] of Object.entries(secrets)) {
@@ -42,14 +42,14 @@ export async function tryUnlockVault(): Promise<boolean> {
   }
 
   // Interactive mode
-  // We need to ensure we can prompt. 
+  // We need to ensure we can prompt.
   // Note: run-main.ts runs this before parsing args, so we might be in --help or --version
-  // access, but technically we need secrets even for help if plug-ins need them? 
+  // access, but technically we need secrets even for help if plug-ins need them?
   // Actually, usually --help shouldn't require secrets.
   // But strictly speaking, if we follow "Zero Trust", the app shouldn't even boot without keys.
-  
+
   prompts.intro("OpenClaw Security Vault Locked");
-  
+
   const password = await prompts.password({
     message: "Enter master password to unlock secrets",
   });
@@ -62,14 +62,14 @@ export async function tryUnlockVault(): Promise<boolean> {
   try {
     const buffer = await fs.promises.readFile(vaultPath);
     const secrets = await decryptVault(buffer, password);
-    
+
     // Inject into process.env
     for (const [key, value] of Object.entries(secrets)) {
       if (!process.env[key]) {
         process.env[key] = value;
       }
     }
-    
+
     prompts.outro("Vault unlocked");
     return true;
   } catch (err: unknown) {

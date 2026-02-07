@@ -1,5 +1,5 @@
-import process from "node:process";
 import { exec } from "node:child_process";
+import process from "node:process";
 import { fetchDiscord } from "../src/discord/api.js";
 import { normalizeDiscordToken } from "../src/discord/token.js";
 
@@ -63,14 +63,9 @@ async function main() {
 
   // Simple search for the first channel matching TARGET in any guild
   for (const guild of guilds) {
-    const channels = await fetchDiscord<DiscordChannel[]>(
-      `/guilds/${guild.id}/channels`,
-      token,
-    );
+    const channels = await fetchDiscord<DiscordChannel[]>(`/guilds/${guild.id}/channels`, token);
     const match = channels.find(
-      (c) =>
-        c.name.toLowerCase() === CHANNEL_NAME_TARGET.toLowerCase() &&
-        c.type === 0, // 0 = GUILD_TEXT
+      (c) => c.name.toLowerCase() === CHANNEL_NAME_TARGET.toLowerCase() && c.type === 0, // 0 = GUILD_TEXT
     );
     if (match) {
       targetChannelId = match.id;
@@ -80,15 +75,11 @@ async function main() {
   }
 
   if (!targetChannelId) {
-    console.error(
-      `Error: Could not find channel '#${CHANNEL_NAME_TARGET}' in any guild.`,
-    );
+    console.error(`Error: Could not find channel '#${CHANNEL_NAME_TARGET}' in any guild.`);
     process.exit(1);
   }
 
-  console.log(
-    `Listening in: ${targetGuildName} -> #${CHANNEL_NAME_TARGET} (${targetChannelId})`,
-  );
+  console.log(`Listening in: ${targetGuildName} -> #${CHANNEL_NAME_TARGET} (${targetChannelId})`);
 
   // 3. Polling Loop
   setInterval(async () => {
@@ -108,9 +99,7 @@ async function pollMessages(token: string, myId: string, channelId: string) {
   );
 
   // Sort by time ascending so we process oldest first if multiple
-  messages.sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-  );
+  messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   for (const msg of messages) {
     // Skip my own messages
@@ -131,9 +120,7 @@ async function pollMessages(token: string, myId: string, channelId: string) {
     const isReplyToMe = msg.referenced_message?.author.id === myId;
 
     if (isMentioned || isReplyToMe) {
-      console.log(
-        `Found relevant message from ${msg.author.username}: "${msg.content}"`,
-      );
+      console.log(`Found relevant message from ${msg.author.username}: "${msg.content}"`);
 
       await triggerOpenClawEvent(msg.author.username, msg.content);
 

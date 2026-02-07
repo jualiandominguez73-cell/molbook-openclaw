@@ -57,7 +57,6 @@ async function deriveKey(
           resolve(derivedKey as Buffer);
         }
       },
-
     );
   });
 }
@@ -132,9 +131,7 @@ export async function decryptVault(
     return JSON.parse(decrypted);
   } catch (_err) {
     // AEAD authentication failed (wrong password or tampering)
-    throw new VaultError(
-      "Access Denied: Incorrect password or corrupted vault",
-    );
+    throw new VaultError("Access Denied: Incorrect password or corrupted vault");
   }
 }
 

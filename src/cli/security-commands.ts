@@ -1,8 +1,8 @@
+import * as p from "@clack/prompts";
+import { type Command } from "commander";
+import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
-import { type Command } from "commander";
-import * as p from "@clack/prompts";
-import dotenv from "dotenv";
 import { resolveStateDir } from "../config/paths.js";
 import { encryptVault, decryptVault, isVaultFile } from "../security/vault.js";
 
@@ -49,7 +49,9 @@ export function registerSecurityCommands(program: Command) {
 
       if (isVaultFile(vaultPath)) {
         p.log.warn(`Vault already exists at ${vaultPath}`);
-        const force = await p.confirm({ message: "Overwrite existing vault? (All data will be lost)" });
+        const force = await p.confirm({
+          message: "Overwrite existing vault? (All data will be lost)",
+        });
         if (!force || p.isCancel(force)) {
           p.cancel("Operation cancelled");
           process.exit(0);
@@ -67,7 +69,7 @@ export function registerSecurityCommands(program: Command) {
       await fs.promises.mkdir(path.dirname(vaultPath), { recursive: true });
       const buffer = await encryptVault({}, password);
       await fs.promises.writeFile(vaultPath, buffer, { mode: 0o600 });
-      
+
       p.outro(`Vault initialized at ${vaultPath}`);
     });
 
@@ -119,17 +121,17 @@ export function registerSecurityCommands(program: Command) {
 
       // Merge .env into vault
       Object.assign(secrets, parsed);
-      
+
       // Save vault
       const buffer = await encryptVault(secrets, password);
       await fs.promises.writeFile(vaultPath, buffer, { mode: 0o600 });
       p.log.success("Secrets migrated to vault");
 
       // Shred .env
-      const confirmDelete = await p.confirm({ 
-        message: "Delete plaintext .env file? (Highly Recommended)" 
+      const confirmDelete = await p.confirm({
+        message: "Delete plaintext .env file? (Highly Recommended)",
       });
-      
+
       if (confirmDelete && !p.isCancel(confirmDelete)) {
         await fs.promises.unlink(envPath);
         p.log.success("Plaintext .env deleted");
@@ -152,7 +154,7 @@ export function registerSecurityCommands(program: Command) {
 
       const oldPassword = await promptForPassword("Enter current password");
       let secrets: Record<string, string>;
-      
+
       try {
         const buffer = await fs.promises.readFile(vaultPath);
         secrets = await decryptVault(buffer, oldPassword);

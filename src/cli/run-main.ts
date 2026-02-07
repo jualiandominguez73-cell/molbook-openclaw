@@ -28,7 +28,7 @@ import { tryUnlockVault } from "./vault-unlock.js";
 
 export async function runCli(argv: string[] = process.argv) {
   const normalizedArgv = stripWindowsNodeExec(argv);
-  
+
   // Attempt to unlock vault (Zero Trust)
   // This might prompt the user, so we do it before any logic that needs secrets.
   const unlocked = await tryUnlockVault();
