@@ -75,18 +75,17 @@ export async function markAuthProfileUsed(params: {
   saveAuthProfileStore(store, agentDir);
 }
 
-export function calculateAuthProfileCooldownMs(errorCount: number): number {
+export function calculateAuthProfileCooldownMs(errorCount: number, maxMs?: number): number {
   const normalized = Math.max(1, errorCount);
-  return Math.min(
-    60 * 60 * 1000, // 1 hour max
-    60 * 1000 * 5 ** Math.min(normalized - 1, 3),
-  );
+  const cap = maxMs ?? 5 * 60 * 1000; // 5 minutes default
+  return Math.min(cap, 60 * 1000 * 5 ** Math.min(normalized - 1, 3));
 }
 
 type ResolvedAuthCooldownConfig = {
   billingBackoffMs: number;
   billingMaxMs: number;
   failureWindowMs: number;
+  maxCooldownMs: number;
 };
 
 function resolveAuthCooldownConfig(params: {
@@ -97,6 +96,7 @@ function resolveAuthCooldownConfig(params: {
     billingBackoffHours: 5,
     billingMaxHours: 24,
     failureWindowHours: 24,
+    maxCooldownMinutes: 5,
   } as const;
 
   const resolveHours = (value: unknown, fallback: number) =>
@@ -126,10 +126,18 @@ function resolveAuthCooldownConfig(params: {
     defaults.failureWindowHours,
   );
 
+  const resolveMinutes = (value: unknown, fallback: number) =>
+    typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
+  const maxCooldownMinutes = resolveMinutes(
+    cooldowns?.maxCooldownMinutes,
+    defaults.maxCooldownMinutes,
+  );
+
   return {
     billingBackoffMs: billingBackoffHours * 60 * 60 * 1000,
     billingMaxMs: billingMaxHours * 60 * 60 * 1000,
     failureWindowMs: failureWindowHours * 60 * 60 * 1000,
+    maxCooldownMs: maxCooldownMinutes * 60 * 1000,
   };
 }
 
@@ -191,7 +199,10 @@ function computeNextProfileUsageStats(params: {
     updatedStats.disabledUntil = params.now + backoffMs;
     updatedStats.disabledReason = "billing";
   } else {
-    const backoffMs = calculateAuthProfileCooldownMs(nextErrorCount);
+    const backoffMs = calculateAuthProfileCooldownMs(
+      nextErrorCount,
+      params.cfgResolved.maxCooldownMs,
+    );
     updatedStats.cooldownUntil = params.now + backoffMs;
   }
 
@@ -264,7 +275,7 @@ export async function markAuthProfileFailure(params: {
 
 /**
  * Mark a profile as failed/rate-limited. Applies exponential backoff cooldown.
- * Cooldown times: 1min, 5min, 25min, max 1 hour.
+ * Cooldown times: 1min, max 5min (configurable via auth.cooldowns.maxCooldownMinutes).
  * Uses store lock to avoid overwriting concurrent usage updates.
  */
 export async function markAuthProfileCooldown(params: {
