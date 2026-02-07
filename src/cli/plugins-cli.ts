@@ -320,10 +320,10 @@ export function registerPluginsCli(program: Command) {
       const cfg = loadConfig();
       const install = cfg.plugins?.installs?.[resolvedId];
 
-      const nextInstalls = { ...(cfg.plugins?.installs ?? {}) };
-      const nextEntries = { ...(cfg.plugins?.entries ?? {}) };
+      const nextInstalls = { ...cfg.plugins?.installs };
+      const nextEntries = { ...cfg.plugins?.entries };
       const nextLoadPaths = [...(cfg.plugins?.load?.paths ?? [])];
-      const nextSlots = { ...(cfg.plugins?.slots ?? {}) } as Record<string, string>;
+      const nextSlots = { ...cfg.plugins?.slots } as Record<string, string>;
 
       let changed = false;
 
