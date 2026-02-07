@@ -29,6 +29,10 @@ export const DEFAULT_SKILLS_WATCH_IGNORED: RegExp[] = [
   /(^|[\\/])\.git([\\/]|$)/,
   /(^|[\\/])node_modules([\\/]|$)/,
   /(^|[\\/])dist([\\/]|$)/,
+  // Ignore common binary/data files to prevent FD exhaustion.
+  // A skills directory with thousands of .wav/.bin files can exhaust
+  // the process file-descriptor limit and break all exec calls.
+  /\.(?:wav|mp3|mp4|avi|mov|flac|ogg|bin|pkl|pt|pth|onnx|h5|hdf5|safetensors|gguf|tar|gz|zip|7z|rar|iso|dmg|exe|dll|so|dylib|o|a|class|jar|joblib|npy|npz|parquet|arrow|feather|tfrecord)$/i,
 ];
 
 function bumpVersion(current: number): number {
