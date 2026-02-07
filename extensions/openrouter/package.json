@@ -1,0 +1,11 @@
+{
+  "name": "@clawdbot/openrouter",
+  "version": "2026.2.7",
+  "type": "module",
+  "description": "Clawdbot OpenRouter provider plugin with free tier models",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
