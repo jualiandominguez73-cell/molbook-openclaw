@@ -41,9 +41,6 @@ Configure StepFun by editing `~/.openclaw/openclaw.json` directly.
       }
     }
   }
-}
-```
-}
 
 ## Notes
 
