@@ -1,5 +1,5 @@
 /**
- * Agent Switch Extension
+ * Sandbox Mode Quick Switcher Extension
  *
  * Quick switching between agents with different sandbox configurations.
  * Main use case: Same model (e.g., qwen3:8b) with/without Docker sandbox.
@@ -10,9 +10,10 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 
 interface AgentConfig {
 	id: string;
@@ -24,7 +25,7 @@ interface AgentConfig {
 
 function loadConfig() {
 	try {
-		const cfg = fs.readFileSync(path.join(os.homedir(), ".openclaw/openclaw.json"), "utf-8");
+		const cfg = readFileSync(join(homedir(), ".openclaw/openclaw.json"), "utf-8");
 		return JSON.parse(cfg);
 	} catch {
 		return null;
@@ -40,6 +41,14 @@ function getAgents(config: any): AgentConfig[] {
 		agents.push(...config.agents.list);
 	}
 	return agents;
+}
+
+/**
+ * Escape a string for use in AppleScript
+ * Doubles backslashes and quotes to prevent injection
+ */
+function escapeAppleScript(str: string): string {
+	return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 export default function (pi: ExtensionAPI) {
@@ -88,12 +97,18 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 
-			// Open new terminal with agent
-			const sessionKey = `agent:${targetId}:main`;
+			// Create unique session key for proper isolation
+			// Format: agent:{agentId}:{sessionType}:{uniqueId}
+			const uniqueId = randomUUID().substring(0, 8);
+			const sessionKey = `agent:${targetId}:main:${uniqueId}`;
 			const workspace = agent.workspace || ctx.cwd;
-			const cmd = `openclaw --session "${sessionKey}" --workspace "${workspace}"`;
 
-			const script = `tell application "Terminal"\n\tactivate\n\tdo script "${cmd}"\nend tell`;
+			// Escape strings to prevent AppleScript injection
+			const escapedSession = escapeAppleScript(sessionKey);
+			const escapedWorkspace = escapeAppleScript(workspace);
+			const cmd = `openclaw --session "${escapedSession}" --workspace "${escapedWorkspace}"`;
+
+			const script = `tell application "Terminal"\n\tactivate\n\tdo script "${escapeAppleScript(cmd)}"\nend tell`;
 
 			try {
 				await pi.exec("osascript", ["-e", script], { timeout: 5000 });
