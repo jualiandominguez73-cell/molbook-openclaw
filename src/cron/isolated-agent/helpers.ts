@@ -2,6 +2,7 @@ import {
   DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   stripHeartbeatToken,
 } from "../../auto-reply/heartbeat.js";
+import { isSilentReplyText, SILENT_REPLY_TOKEN } from "../../auto-reply/tokens.js";
 import { truncateUtf16Safe } from "../../utils.js";
 
 type DeliveryPayload = {
@@ -40,7 +41,7 @@ export function pickLastNonEmptyTextFromPayloads(payloads: Array<{ text?: string
 }
 
 /**
- * Check if all payloads are just heartbeat ack responses (HEARTBEAT_OK).
+ * Check if all payloads are just heartbeat ack responses (HEARTBEAT_OK) or silent replies (NO_REPLY).
  * Returns true if delivery should be skipped because there's no real content.
  */
 export function isHeartbeatOnlyResponse(payloads: DeliveryPayload[], ackMaxChars: number) {
@@ -52,6 +53,10 @@ export function isHeartbeatOnlyResponse(payloads: DeliveryPayload[], ackMaxChars
     const hasMedia = (payload.mediaUrls?.length ?? 0) > 0 || Boolean(payload.mediaUrl);
     if (hasMedia) {
       return false;
+    }
+    // Check for NO_REPLY silent token first.
+    if (isSilentReplyText(payload.text, SILENT_REPLY_TOKEN)) {
+      return true;
     }
     // Use heartbeat mode to check if text is just HEARTBEAT_OK or short ack.
     const result = stripHeartbeatToken(payload.text, {
