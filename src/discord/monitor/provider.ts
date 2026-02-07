@@ -487,6 +487,17 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
     components.push(createExecApprovalButton({ handler: execApprovalsHandler }));
   }
 
+  const reconnectConfig = discordCfg.gatewayReconnect;
+  const reconnectMaxAttempts =
+    typeof reconnectConfig?.maxAttempts === "number"
+      ? reconnectConfig.maxAttempts
+      : Number.POSITIVE_INFINITY;
+  const reconnectBaseDelay =
+    typeof reconnectConfig?.baseDelayMs === "number" ? reconnectConfig.baseDelayMs : 1000;
+  const reconnectMaxDelayRaw =
+    typeof reconnectConfig?.maxDelayMs === "number" ? reconnectConfig.maxDelayMs : 30000;
+  const reconnectMaxDelay = Math.max(reconnectBaseDelay, reconnectMaxDelayRaw);
+
   const client = new Client(
     {
       baseUrl: "http://localhost",
@@ -504,7 +515,9 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
     [
       new GatewayPlugin({
         reconnect: {
-          maxAttempts: Number.POSITIVE_INFINITY,
+          maxAttempts: reconnectMaxAttempts,
+          baseDelay: reconnectBaseDelay,
+          maxDelay: reconnectMaxDelay,
         },
         intents: resolveDiscordGatewayIntents(discordCfg.intents),
         autoInteractions: true,
@@ -601,14 +614,16 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
     runtime,
   });
   const abortSignal = opts.abortSignal;
+  let aborting = false;
   const onAbort = () => {
+    aborting = true;
     if (!gateway) {
       return;
     }
     // Carbon emits an error when maxAttempts is 0; keep a one-shot listener to avoid
     // an unhandled error after we tear down listeners during abort.
     gatewayEmitter?.once("error", () => {});
-    gateway.options.reconnect = { maxAttempts: 0 };
+    gateway.options.reconnect = { ...(gateway.options.reconnect ?? {}), maxAttempts: 0 };
     gateway.disconnect();
   };
   if (abortSignal?.aborted) {
@@ -651,9 +666,15 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
         : undefined,
       abortSignal,
       onGatewayError: (err) => {
+        if (aborting || abortSignal?.aborted) {
+          return;
+        }
         runtime.error?.(danger(`discord gateway error: ${String(err)}`));
       },
       shouldStopOnError: (err) => {
+        if (aborting || abortSignal?.aborted) {
+          return false;
+        }
         const message = String(err);
         return (
           message.includes("Max reconnect attempts") || message.includes("Fatal Gateway error")
