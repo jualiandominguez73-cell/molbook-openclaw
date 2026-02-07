@@ -515,7 +515,7 @@ export async function preflightDiscordMessage(
     return null;
   }
 
-  if (!messageText) {
+  if (!messageText && (message.attachments ?? []).length === 0) {
     logVerbose(`discord: drop message ${message.id} (empty content)`);
     return null;
   }

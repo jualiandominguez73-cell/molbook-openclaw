@@ -88,7 +88,7 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
 
   const mediaList = await resolveMediaList(message, mediaMaxBytes);
   const text = messageText;
-  if (!text) {
+  if (!text && mediaList.length === 0) {
     logVerbose(`discord: drop message ${message.id} (empty content)`);
     return;
   }

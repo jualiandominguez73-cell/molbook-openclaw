@@ -1,6 +1,7 @@
 import type { MediaUnderstandingProvider } from "../types.js";
 import { normalizeProviderId } from "../../agents/model-selection.js";
 import { anthropicProvider } from "./anthropic/index.js";
+import { dashscopeProvider } from "./dashscope/index.js";
 import { deepgramProvider } from "./deepgram/index.js";
 import { googleProvider } from "./google/index.js";
 import { groqProvider } from "./groq/index.js";
@@ -14,6 +15,7 @@ const PROVIDERS: MediaUnderstandingProvider[] = [
   anthropicProvider,
   minimaxProvider,
   deepgramProvider,
+  dashscopeProvider,
 ];
 
 export function normalizeMediaProviderId(id: string): string {

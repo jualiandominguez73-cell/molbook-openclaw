@@ -154,15 +154,30 @@ function isImageAttachment(attachment: APIAttachment): boolean {
   return /\.(avif|bmp|gif|heic|heif|jpe?g|png|tiff?|webp)$/.test(name);
 }
 
+function isAudioAttachment(attachment: APIAttachment): boolean {
+  return (attachment.content_type ?? "").startsWith("audio/");
+}
+
 function buildDiscordAttachmentPlaceholder(attachments?: APIAttachment[]): string {
   if (!attachments || attachments.length === 0) {
     return "";
   }
   const count = attachments.length;
   const allImages = attachments.every(isImageAttachment);
-  const label = allImages ? "image" : "file";
+  const allAudio = attachments.every(isAudioAttachment);
+  let tag: string;
+  let label: string;
+  if (allImages) {
+    tag = "<media:image>";
+    label = "image";
+  } else if (allAudio) {
+    tag = "<media:audio>";
+    label = "audio";
+  } else {
+    tag = "<media:document>";
+    label = "file";
+  }
   const suffix = count === 1 ? label : `${label}s`;
-  const tag = allImages ? "<media:image>" : "<media:document>";
   return `${tag} (${count} ${suffix})`;
 }
 
