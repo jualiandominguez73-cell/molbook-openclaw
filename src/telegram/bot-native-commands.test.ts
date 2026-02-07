@@ -78,4 +78,33 @@ describe("registerTelegramNativeCommands", () => {
 
     expect(listSkillCommandsForAgents).toHaveBeenCalledWith({ cfg });
   });
+
+  it("caps Telegram menu registration at 100 commands with warning", () => {
+    const cfg: OpenClawConfig = {};
+    const runtime = {
+      log: vi.fn(),
+    } as unknown as RuntimeEnv;
+    const customCommands = Array.from({ length: 105 }, (_, index) => ({
+      command: `c${index}`,
+      description: `Command ${index}`,
+    }));
+    const params = {
+      ...buildParams(cfg),
+      runtime,
+      nativeEnabled: false,
+      nativeSkillsEnabled: false,
+      telegramCfg: {
+        customCommands,
+      } as TelegramAccountConfig,
+    };
+
+    registerTelegramNativeCommands(params);
+
+    const callArg = (params.bot.api.setMyCommands as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(Array.isArray(callArg)).toBe(true);
+    expect(callArg).toHaveLength(100);
+    expect(callArg[0]).toMatchObject({ command: "c0", description: "Command 0" });
+    expect(callArg[99]).toMatchObject({ command: "c99", description: "Command 99" });
+    expect(runtime.log).toHaveBeenCalledWith(expect.stringContaining("exceeds Telegram limit"));
+  });
 });

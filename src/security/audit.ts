@@ -1,16 +1,27 @@
 import type { ChannelId } from "../channels/plugins/types.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { ExecFn } from "./windows-acl.js";
+import {
+  listNativeCommandSpecs,
+  listNativeCommandSpecsForConfig,
+} from "../auto-reply/commands-registry.js";
+import { listSkillCommandsForAgents } from "../auto-reply/skill-commands.js";
 import { resolveBrowserConfig, resolveProfile } from "../browser/config.js";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { listChannelPlugins } from "../channels/plugins/index.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { resolveNativeCommandsEnabled, resolveNativeSkillsEnabled } from "../config/commands.js";
 import { resolveConfigPath, resolveStateDir } from "../config/paths.js";
+import {
+  TELEGRAM_COMMAND_NAME_PATTERN,
+  normalizeTelegramCommandName,
+  resolveTelegramCustomCommands,
+} from "../config/telegram-custom-commands.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
 import { buildGatewayConnectionDetails } from "../gateway/call.js";
 import { probeGateway } from "../gateway/probe.js";
 import { readChannelAllowFromStore } from "../pairing/pairing-store.js";
+import { getPluginCommandSpecs } from "../plugins/commands.js";
 import {
   collectAttackSurfaceSummaryFindings,
   collectExposureMatrixFindings,
@@ -41,6 +52,9 @@ export type SecurityAuditFinding = {
   detail: string;
   remediation?: string;
 };
+
+const TELEGRAM_MAX_COMMANDS = 100;
+const TELEGRAM_WARN_COMMANDS = 90;
 
 export type SecurityAuditSummary = {
   critical: number;
@@ -767,6 +781,85 @@ async function collectChannelSecurityFindings(params: {
       const telegramCfg =
         (account as { config?: Record<string, unknown> } | null)?.config ??
         ({} as Record<string, unknown>);
+      const providerCommands =
+        (telegramCfg.commands as { native?: unknown; nativeSkills?: unknown } | undefined) ??
+        undefined;
+      const nativeEnabled = resolveNativeCommandsEnabled({
+        providerId: "telegram",
+        providerSetting: providerCommands?.native as boolean | "auto" | undefined,
+        globalSetting: params.cfg.commands?.native,
+      });
+      const nativeSkillsEnabled = resolveNativeSkillsEnabled({
+        providerId: "telegram",
+        providerSetting: providerCommands?.nativeSkills as boolean | "auto" | undefined,
+        globalSetting: params.cfg.commands?.nativeSkills,
+      });
+      const skillCommands =
+        nativeEnabled && nativeSkillsEnabled ? listSkillCommandsForAgents({ cfg: params.cfg }) : [];
+      const nativeCommands = nativeEnabled
+        ? listNativeCommandSpecsForConfig(params.cfg, {
+            skillCommands,
+            provider: "telegram",
+          })
+        : [];
+      const reservedCommands = new Set(
+        listNativeCommandSpecs().map((command) => command.name.toLowerCase()),
+      );
+      for (const command of skillCommands) {
+        reservedCommands.add(command.name.toLowerCase());
+      }
+      const customResolution = resolveTelegramCustomCommands({
+        commands: Array.isArray(telegramCfg.customCommands)
+          ? telegramCfg.customCommands
+          : undefined,
+        reservedCommands,
+      });
+      const customCommands = customResolution.commands;
+      const existingCommands = new Set(
+        [
+          ...nativeCommands.map((command) => command.name),
+          ...customCommands.map((command) => command.command),
+        ].map((command) => command.toLowerCase()),
+      );
+      const pluginCommandNames = new Set<string>();
+      let pluginCommandsCount = 0;
+      for (const spec of getPluginCommandSpecs()) {
+        const normalized = normalizeTelegramCommandName(spec.name);
+        if (!normalized || !TELEGRAM_COMMAND_NAME_PATTERN.test(normalized)) {
+          continue;
+        }
+        const description = spec.description.trim();
+        if (
+          !description ||
+          existingCommands.has(normalized) ||
+          pluginCommandNames.has(normalized)
+        ) {
+          continue;
+        }
+        pluginCommandNames.add(normalized);
+        existingCommands.add(normalized);
+        pluginCommandsCount += 1;
+      }
+      const totalMenuCommands = nativeCommands.length + customCommands.length + pluginCommandsCount;
+      if (totalMenuCommands > TELEGRAM_MAX_COMMANDS) {
+        findings.push({
+          checkId: "channels.telegram.commands.menu.limit_exceeded",
+          severity: "warn",
+          title: "Telegram menu commands exceed platform limit",
+          detail: `Telegram command menu currently resolves to ${totalMenuCommands} commands; Telegram accepts at most ${TELEGRAM_MAX_COMMANDS}, so setMyCommands will fail and menu updates may be stale.`,
+          remediation:
+            "Reduce menu commands: disable per-skill menu commands with channels.telegram.commands.nativeSkills=false and/or trim channels.telegram.customCommands.",
+        });
+      } else if (totalMenuCommands >= TELEGRAM_WARN_COMMANDS) {
+        findings.push({
+          checkId: "channels.telegram.commands.menu.near_limit",
+          severity: "warn",
+          title: "Telegram menu commands are near platform limit",
+          detail: `Telegram command menu currently resolves to ${totalMenuCommands} commands; Telegram's limit is ${TELEGRAM_MAX_COMMANDS}, so adding more commands can break menu registration.`,
+          remediation:
+            "Keep menu commands below the limit: disable per-skill menu commands with channels.telegram.commands.nativeSkills=false and/or trim channels.telegram.customCommands.",
+        });
+      }
       const defaultGroupPolicy = params.cfg.channels?.defaults?.groupPolicy;
       const groupPolicy =
         (telegramCfg.groupPolicy as string | undefined) ?? defaultGroupPolicy ?? "allowlist";

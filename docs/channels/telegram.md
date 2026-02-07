@@ -149,7 +149,9 @@ You can add custom commands to the menu via config:
 
 ## Setup troubleshooting (commands)
 
-- `setMyCommands failed` in logs usually means outbound HTTPS/DNS is blocked to `api.telegram.org`.
+- `setMyCommands failed` with `BOT_COMMANDS_TOO_MUCH` means your resolved Telegram menu command list exceeded Telegram's 100-command limit. OpenClaw now trims to the first 100 commands in priority order (`native` > plugin commands > `customCommands`) and logs a warning.
+- If you want fewer Telegram menu entries, disable per-skill native menu commands with `channels.telegram.commands.nativeSkills: false` (or globally `commands.nativeSkills: false`) and/or reduce `channels.telegram.customCommands`.
+- `setMyCommands failed` without `BOT_COMMANDS_TOO_MUCH` usually means outbound HTTPS/DNS is blocked to `api.telegram.org`.
 - If you see `sendMessage` or `sendChatAction` failures, check IPv6 routing and DNS.
 
 More help: [Channel troubleshooting](/channels/troubleshooting).
@@ -160,6 +162,7 @@ Notes:
 - Command names are normalized (leading `/` stripped, lowercased) and must match `a-z`, `0-9`, `_` (1–32 chars).
 - Custom commands **cannot override native commands**. Conflicts are ignored and logged.
 - If `commands.native` is disabled, only custom commands are registered (or cleared if none).
+- Telegram only accepts up to 100 menu commands per `setMyCommands` call.
 
 ## Limits
 

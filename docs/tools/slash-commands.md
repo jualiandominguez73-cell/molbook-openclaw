@@ -51,6 +51,7 @@ They run immediately, are stripped before the model sees the message, and the re
 - `commands.nativeSkills` (default `"auto"`) registers **skill** commands natively when supported.
   - Auto: on for Discord/Telegram; off for Slack (Slack requires creating a slash command per skill).
   - Set `channels.discord.commands.nativeSkills`, `channels.telegram.commands.nativeSkills`, or `channels.slack.commands.nativeSkills` to override per provider (bool or `"auto"`).
+  - Telegram command menus are limited to 100 commands by Bot API. If the resolved command list is larger, OpenClaw keeps the first 100 and logs a warning (priority: native > plugin > custom).
 - `commands.bash` (default `false`) enables `! <cmd>` to run host shell commands (`/bash <cmd>` is an alias; requires `tools.elevated` allowlists).
 - `commands.bashForegroundMs` (default `2000`) controls how long bash waits before switching to background mode (`0` backgrounds immediately).
 - `commands.config` (default `false`) enables `/config` (reads/writes `openclaw.json`).

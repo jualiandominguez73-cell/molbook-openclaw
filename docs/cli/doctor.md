@@ -23,6 +23,22 @@ openclaw doctor --repair
 openclaw doctor --deep
 ```
 
+### Example: Telegram command-menu warnings
+
+When Telegram menu commands are close to or over the Bot API limit, `openclaw doctor` reports dedicated check IDs:
+
+```text
+[warn] channels.telegram.commands.menu.near_limit
+Telegram menu commands are near platform limit
+Telegram command menu currently resolves to 92 commands; Telegram's limit is 100, so adding more commands can break menu registration.
+Remediation: Keep menu commands below the limit: disable per-skill menu commands with channels.telegram.commands.nativeSkills=false and/or trim channels.telegram.customCommands.
+
+[warn] channels.telegram.commands.menu.limit_exceeded
+Telegram menu commands exceed platform limit
+Telegram command menu currently resolves to 117 commands; Telegram accepts at most 100, so setMyCommands will fail and menu updates may be stale.
+Remediation: Reduce menu commands: disable per-skill menu commands with channels.telegram.commands.nativeSkills=false and/or trim channels.telegram.customCommands.
+```
+
 Notes:
 
 - Interactive prompts (like keychain/OAuth fixes) only run when stdin is a TTY and `--non-interactive` is **not** set. Headless runs (cron, Telegram, no terminal) will skip prompts.

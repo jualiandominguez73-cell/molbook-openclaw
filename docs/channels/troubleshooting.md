@@ -27,4 +27,6 @@ openclaw channels status --probe
 ## Telegram quick fixes
 
 - Logs show `HttpError: Network request for 'sendMessage' failed` or `sendChatAction` → check IPv6 DNS. If `api.telegram.org` resolves to IPv6 first and the host lacks IPv6 egress, force IPv4 or enable IPv6. See [/channels/telegram#troubleshooting](/channels/telegram#troubleshooting).
-- Logs show `setMyCommands failed` → check outbound HTTPS and DNS reachability to `api.telegram.org` (common on locked-down VPS or proxies).
+- Logs show `setMyCommands failed` with `BOT_COMMANDS_TOO_MUCH` → Telegram command menu exceeded 100 commands. OpenClaw trims to 100 and logs a warning; reduce menu size with `channels.telegram.commands.nativeSkills: false` and/or fewer `channels.telegram.customCommands`.
+- For preflight detection, run `openclaw doctor` and check for `channels.telegram.commands.menu.near_limit` / `channels.telegram.commands.menu.limit_exceeded`.
+- Logs show `setMyCommands failed` (other errors) → check outbound HTTPS and DNS reachability to `api.telegram.org` (common on locked-down VPS or proxies).

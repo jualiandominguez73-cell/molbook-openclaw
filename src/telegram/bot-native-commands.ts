@@ -30,7 +30,7 @@ import {
   normalizeTelegramCommandName,
   TELEGRAM_COMMAND_NAME_PATTERN,
 } from "../config/telegram-custom-commands.js";
-import { danger, logVerbose } from "../globals.js";
+import { danger, logVerbose, warn } from "../globals.js";
 import { getChildLogger } from "../logging.js";
 import { readChannelAllowFromStore } from "../pairing/pairing-store.js";
 import {
@@ -57,6 +57,7 @@ import {
 import { buildInlineKeyboard } from "./send.js";
 
 const EMPTY_RESPONSE_FALLBACK = "No response generated. Please try again.";
+const TELEGRAM_MAX_COMMANDS = 100;
 
 type TelegramNativeCommandContext = Context & { match?: string };
 
@@ -366,12 +367,23 @@ export const registerTelegramNativeCommands = ({
     ...pluginCommands,
     ...customCommands,
   ];
+  const commandsToRegister =
+    allCommands.length > TELEGRAM_MAX_COMMANDS
+      ? allCommands.slice(0, TELEGRAM_MAX_COMMANDS)
+      : allCommands;
 
   if (allCommands.length > 0) {
+    if (allCommands.length > TELEGRAM_MAX_COMMANDS) {
+      runtime.log?.(
+        warn(
+          `telegram: ${allCommands.length} menu commands exceeds Telegram limit (${TELEGRAM_MAX_COMMANDS}); registering first ${TELEGRAM_MAX_COMMANDS} commands (native > plugin > custom).`,
+        ),
+      );
+    }
     withTelegramApiErrorLogging({
       operation: "setMyCommands",
       runtime,
-      fn: () => bot.api.setMyCommands(allCommands),
+      fn: () => bot.api.setMyCommands(commandsToRegister),
     }).catch(() => {});
 
     if (typeof (bot as unknown as { command?: unknown }).command !== "function") {

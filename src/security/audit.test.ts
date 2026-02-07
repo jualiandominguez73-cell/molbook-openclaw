@@ -7,6 +7,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import { discordPlugin } from "../../extensions/discord/src/channel.js";
 import { slackPlugin } from "../../extensions/slack/src/channel.js";
 import { telegramPlugin } from "../../extensions/telegram/src/channel.js";
+import { clearPluginCommands } from "../plugins/commands.js";
 import { runSecurityAudit } from "./audit.js";
 
 const isWindows = process.platform === "win32";
@@ -657,6 +658,86 @@ describe("security audit", () => {
         process.env.OPENCLAW_STATE_DIR = prevStateDir;
       }
     }
+  });
+
+  it("warns when Telegram menu command count exceeds platform limit", async () => {
+    clearPluginCommands();
+    const customCommands = Array.from({ length: 101 }, (_, index) => ({
+      command: `c${index}`,
+      description: `Command ${index}`,
+    }));
+    const cfg: OpenClawConfig = {
+      channels: {
+        telegram: {
+          enabled: true,
+          botToken: "t",
+          commands: { native: false, nativeSkills: false },
+          customCommands,
+        },
+      },
+    };
+
+    const res = await runSecurityAudit({
+      config: cfg,
+      includeFilesystem: false,
+      includeChannelSecurity: true,
+      plugins: [telegramPlugin],
+    });
+
+    expect(res.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: "channels.telegram.commands.menu.limit_exceeded",
+          severity: "warn",
+        }),
+      ]),
+    );
+    expect(
+      res.findings.some(
+        (finding) => finding.checkId === "channels.telegram.commands.menu.near_limit",
+      ),
+    ).toBe(false);
+    clearPluginCommands();
+  });
+
+  it("warns when Telegram menu command count is near platform limit", async () => {
+    clearPluginCommands();
+    const customCommands = Array.from({ length: 90 }, (_, index) => ({
+      command: `c${index}`,
+      description: `Command ${index}`,
+    }));
+    const cfg: OpenClawConfig = {
+      channels: {
+        telegram: {
+          enabled: true,
+          botToken: "t",
+          commands: { native: false, nativeSkills: false },
+          customCommands,
+        },
+      },
+    };
+
+    const res = await runSecurityAudit({
+      config: cfg,
+      includeFilesystem: false,
+      includeChannelSecurity: true,
+      plugins: [telegramPlugin],
+    });
+
+    expect(res.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkId: "channels.telegram.commands.menu.near_limit",
+          severity: "warn",
+        }),
+      ]),
+    );
+    expect(
+      res.findings.some(
+        (finding) => finding.checkId === "channels.telegram.commands.menu.limit_exceeded",
+      ),
+    ).toBe(false);
+    clearPluginCommands();
   });
 
   it("adds a warning when deep probe fails", async () => {
