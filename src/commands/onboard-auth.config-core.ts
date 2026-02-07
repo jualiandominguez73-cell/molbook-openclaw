@@ -799,7 +799,7 @@ export function applyChutesProviderConfigWithModel(
     baseUrl: CHUTES_BASE_URL,
     api: "openai-completions",
     ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
-    models: mergedModels
+    models: mergedModels.length > 0 ? mergedModels : [userModel]
   };
 
   return {

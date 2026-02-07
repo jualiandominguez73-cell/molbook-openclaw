@@ -144,6 +144,8 @@ export function registerOnboardCommand(program: Command) {
             minimaxApiKey: opts.minimaxApiKey as string | undefined,
             syntheticApiKey: opts.syntheticApiKey as string | undefined,
             veniceApiKey: opts.veniceApiKey as string | undefined,
+            chutesApiKey: opts.chutesApiKey as string | undefined,
+            chutesModelId: opts.chutesModelId as string | undefined,
             opencodeZenApiKey: opts.opencodeZenApiKey as string | undefined,
             xaiApiKey: opts.xaiApiKey as string | undefined,
             gatewayPort:
