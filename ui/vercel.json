@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "installCommand": "pnpm install --ignore-scripts",
+  "buildCommand": "vite build --outDir dist",
+  "outputDirectory": "dist"
+}
