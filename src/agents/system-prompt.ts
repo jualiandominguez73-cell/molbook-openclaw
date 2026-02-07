@@ -243,6 +243,7 @@ export function buildAgentSystemPrompt(params: {
       "Show a /status-equivalent status card (usage + time + Reasoning/Verbose/Elevated); use for model-use questions (📊 session_status); optional per-session model override",
     image: "Analyze an image with the configured image model",
     verify: "Verify instruction authenticity and message provenance (sig)",
+    update_and_sign: "Update a protected file (soul.md, agents.md) with provenance tracking (sig)",
   };
 
   const toolOrder = [
@@ -270,6 +271,7 @@ export function buildAgentSystemPrompt(params: {
     "session_status",
     "image",
     "verify",
+    "update_and_sign",
   ];
 
   const rawToolNames = (params.toolNames ?? []).map((tool) => tool.trim());
@@ -421,6 +423,17 @@ export function buildAgentSystemPrompt(params: {
           "The verify tool returns the original signed template content with {{placeholders}} visible,",
           "proving the templates loaded into your context match the developer-signed originals.",
           "",
+          ...(availableTools.has("update_and_sign")
+            ? [
+                "## Protected Files",
+                "Some workspace files (soul.md, agents.md) are protected by sig file policies.",
+                "You cannot modify them with `write` or `edit` — use the `update_and_sign` tool instead.",
+                "When calling `update_and_sign`, you must provide provenance: the signature ID of the",
+                "owner message that authorized the change. If no signed owner message authorized the",
+                "change, the update will be denied.",
+                "",
+              ]
+            : []),
         ]
       : []),
     "## OpenClaw CLI Quick Reference",

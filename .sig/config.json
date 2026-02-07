@@ -5,5 +5,25 @@
   },
   "sign": {
     "identity": "openclaw"
+  },
+  "files": {
+    "llm/prompts/*.txt": {
+      "mutable": false
+    },
+    "soul.md": {
+      "mutable": true,
+      "authorizedIdentities": ["owner:*"],
+      "requireSignedSource": true
+    },
+    "agents.md": {
+      "mutable": true,
+      "authorizedIdentities": ["owner:*"],
+      "requireSignedSource": true
+    },
+    "heartbeat.md": {
+      "mutable": true,
+      "authorizedIdentities": ["owner:*"],
+      "requireSignedSource": true
+    }
   }
 }

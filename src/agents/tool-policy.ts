@@ -58,7 +58,7 @@ export const TOOL_GROUPS: Record<string, string[]> = {
   ],
 };
 
-const OWNER_ONLY_TOOL_NAMES = new Set<string>(["whatsapp_login", "verify"]);
+const OWNER_ONLY_TOOL_NAMES = new Set<string>(["whatsapp_login", "verify", "update_and_sign"]);
 
 const TOOL_PROFILES: Record<ToolProfileId, ToolProfilePolicy> = {
   minimal: {

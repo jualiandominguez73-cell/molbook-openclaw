@@ -1,9 +1,10 @@
 ---
-summary: "Architecture and configuration for prompt signing and the verification gate"
+summary: "Architecture and configuration for prompt signing, the verification gate, and mutation protection"
 read_when:
   - You need to understand the prompt signing implementation
   - You want to configure the verification gate or customize gated tools
   - You are debugging verification failures or signing issues
+  - You need to understand how protected files (soul.md, agents.md) are secured
 title: "Prompt Signing Reference"
 ---
 
@@ -11,7 +12,7 @@ title: "Prompt Signing Reference"
 
 This document covers the architecture of OpenClaw's prompt signing system:
 template signing, the verify tool, message signing, the verification gate,
-and session security state.
+the mutation gate, and session security state.
 
 For the conceptual overview, see [Prompt signing](/concepts/prompt-signing).
 
@@ -119,9 +120,10 @@ runs in the `before_tool_call` hook pipeline.
 **Execution order in `pi-tools.before-tool-call.ts`:**
 
 1. **Verification gate** (runs first, cannot be overridden)
-2. Plugin `before_tool_call` hooks (run second)
+2. **Mutation gate** (runs second, blocks writes to protected files)
+3. Plugin `before_tool_call` hooks (run third)
 
-The gate checks:
+The verification gate checks:
 
 1. Is enforcement enabled? (`agents.defaults.sig.enforceVerification`)
 2. Is this a gated tool?
@@ -134,7 +136,83 @@ first.
 **Default gated tools:**
 
 `exec`, `write`, `edit`, `apply_patch`, `message`, `gateway`,
-`sessions_spawn`, `sessions_send`
+`sessions_spawn`, `sessions_send`, `update_and_sign`
+
+### The mutation gate
+
+`src/agents/sig-mutation-gate.ts` intercepts `write` and `edit` tool calls
+that target files with sig file policies (`mutable: true`). It blocks the
+call and directs the agent to use `update_and_sign` instead.
+
+The gate resolves the tool's target path (from `params.path` or
+`params.file_path`) relative to the project root, then checks it against
+the file policies in `.sig/config.json` using `resolveFilePolicy()`.
+
+`apply_patch` is excluded from the mutation gate because its file paths
+are embedded in the patch content rather than a simple parameter.
+
+### The update_and_sign tool
+
+`src/agents/tools/sig-update-tool.ts` is an owner-only tool for modifying
+protected workspace files. It validates provenance before allowing changes.
+
+**Parameters:**
+
+- `file` — file path relative to workspace root
+- `content` — new file content
+- `reason` — why the update is being made
+- `sourceType` — `"signed_message"` or `"signed_template"`
+- `sourceId` — signature ID of the source that authorized the change
+
+**Provenance validation:**
+
+The tool calls sig's `updateAndSign()` which checks:
+
+1. The file has a policy with `mutable: true`
+2. The caller's identity matches `authorizedIdentities` (e.g., `owner:*`)
+3. If `requireSignedSource: true`, the `sourceId` resolves to a valid
+   signature in the session ContentStore
+
+If any check fails, the update is denied with an actionable error message.
+
+### File policies
+
+File policies are configured in `.sig/config.json` under the `files` key:
+
+```json
+{
+  "files": {
+    "llm/prompts/*.txt": {
+      "mutable": false
+    },
+    "soul.md": {
+      "mutable": true,
+      "authorizedIdentities": ["owner:*"],
+      "requireSignedSource": true
+    }
+  }
+}
+```
+
+| Field                  | Type     | Description                                           |
+| ---------------------- | -------- | ----------------------------------------------------- |
+| `mutable`              | boolean  | Whether the file can be updated via `update_and_sign` |
+| `authorizedIdentities` | string[] | Identity patterns allowed to update (e.g., `owner:*`) |
+| `requireSignedSource`  | boolean  | Require a valid signed source for updates             |
+
+Files with `mutable: false` (like templates) are immutable. Any
+modification is detected by the `verify` tool on the next verification
+check.
+
+### Workspace initialization
+
+`src/agents/sig-workspace-init.ts` signs workspace files that have
+`mutable: true` policies but no existing signatures. This runs on the
+first agent run for a session and establishes the initial chain anchor.
+
+The init uses identity `workspace:init`. This is a bootstrap identity
+-- `authorizedIdentities` constrains who can _update_ (via
+`update_and_sign`), not who originally signed.
 
 ## Configuration
 
@@ -161,13 +239,14 @@ first.
 
 ## Integration with tool policy
 
-The `verify` tool is registered in `OWNER_ONLY_TOOL_NAMES`. Non-owner
-senders do not see the tool and are not subject to the verification gate
-(they already have restricted tool access via `applyOwnerOnlyToolPolicy`).
+The `verify` and `update_and_sign` tools are registered in
+`OWNER_ONLY_TOOL_NAMES`. Non-owner senders do not see either tool and are
+not subject to the verification or mutation gates (they already have
+restricted tool access via `applyOwnerOnlyToolPolicy`).
 
-The tool is added to the tools array in `createOpenClawCodingTools` before
-the owner-only policy is applied, so it is available to owner senders
-regardless of other tool policy filters.
+Both tools are added to the tools array in `createOpenClawCodingTools`
+before the owner-only policy is applied, so they are available to owner
+senders regardless of other tool policy filters.
 
 ## Runner integration
 
@@ -178,25 +257,33 @@ embedded run:
 2. Verification is reset for the session
 3. A `MessageSigningContext` is created or retrieved for the session
 4. If the sender is the owner, the inbound message is signed
-5. `messageSigning` and `turnId` are passed to `createOpenClawCodingTools`,
-   which threads them to the verify tool and the hook context
+5. The sig project root and config are resolved (cached after first call)
+6. Workspace files with `mutable: true` policies are signed if unsigned
+7. A `senderIdentity` string is built for the `update_and_sign` tool
+8. All context (`messageSigning`, `turnId`, `senderIdentity`, `projectRoot`,
+   `sigConfig`) is passed to `createOpenClawCodingTools`, which threads
+   them to the verify/update tools and the hook context
 
 ## File map
 
-| File                                           | Role                                    |
-| ---------------------------------------------- | --------------------------------------- |
-| `llm/prompts/*.txt`                            | Signed system prompt templates          |
-| `.sig/config.json`                             | sig project config                      |
-| `.sig/sigs/llm/prompts/`                       | Template signatures (auto-generated)    |
-| `src/agents/prompt-templates.ts`               | Template loading and interpolation      |
-| `src/agents/tools/sig-verify-tool.ts`          | The verify tool                         |
-| `src/agents/message-signing.ts`                | Owner message signing                   |
-| `src/agents/session-security-state.ts`         | Turn-scoped verification state          |
-| `src/agents/sig-verification-gate.ts`          | The deterministic gate                  |
-| `src/agents/pi-tools.before-tool-call.ts`      | Gate insertion point                    |
-| `src/agents/pi-tools.ts`                       | Tool registration and context threading |
-| `src/agents/tool-policy.ts`                    | Owner-only tool set                     |
-| `src/agents/pi-embedded-runner/run/attempt.ts` | Runner integration                      |
+| File                                           | Role                                        |
+| ---------------------------------------------- | ------------------------------------------- |
+| `llm/prompts/*.txt`                            | Signed system prompt templates              |
+| `.sig/config.json`                             | sig project config (includes file policies) |
+| `.sig/sigs/llm/prompts/`                       | Template signatures (auto-generated)        |
+| `src/agents/prompt-templates.ts`               | Template loading and interpolation          |
+| `src/agents/tools/sig-verify-tool.ts`          | The verify tool                             |
+| `src/agents/tools/sig-update-tool.ts`          | The update_and_sign tool                    |
+| `src/agents/message-signing.ts`                | Owner message signing                       |
+| `src/agents/session-security-state.ts`         | Turn-scoped verification state              |
+| `src/agents/sig-verification-gate.ts`          | The verification gate                       |
+| `src/agents/sig-mutation-gate.ts`              | The mutation gate                           |
+| `src/agents/sig-adapter.ts`                    | Adapter for in-flight sig API               |
+| `src/agents/sig-workspace-init.ts`             | Workspace file initialization               |
+| `src/agents/pi-tools.before-tool-call.ts`      | Gate insertion point                        |
+| `src/agents/pi-tools.ts`                       | Tool registration and context threading     |
+| `src/agents/tool-policy.ts`                    | Owner-only tool set                         |
+| `src/agents/pi-embedded-runner/run/attempt.ts` | Runner integration                          |
 
 ## Security model
 
@@ -212,6 +299,13 @@ verifies at runtime, `.sig/` is read-only to the agent), content hashing
 is sufficient. The agent cannot write to `.sig/` and cannot forge
 verification results.
 
-The verification gate is orchestrator-level and deterministic. It cannot be
-bypassed by prompt injection because it runs in the tool-call pipeline code,
-not in the prompt.
+Both the verification gate and the mutation gate are orchestrator-level and
+deterministic. They cannot be bypassed by prompt injection because they run
+in the tool-call pipeline code, not in the prompt.
+
+Mutable workspace files (`soul.md`, `agents.md`, `heartbeat.md`) are
+protected by sig file policies. Direct writes are intercepted and redirected
+to the `update_and_sign` tool, which validates that the change traces back
+to a signed owner message. This addresses persistence attacks where an agent
+is tricked via indirect prompt injection into modifying its identity or
+configuration files.

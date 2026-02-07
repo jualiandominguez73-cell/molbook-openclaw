@@ -1,5 +1,6 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
+import { findProjectRoot } from "@disreguard/sig";
 import { streamSimple } from "@mariozechner/pi-ai";
 import { createAgentSession, SessionManager, SettingsManager } from "@mariozechner/pi-coding-agent";
 import crypto from "node:crypto";
@@ -52,6 +53,8 @@ import { repairSessionFileIfNeeded } from "../../session-file-repair.js";
 import { resetVerification } from "../../session-security-state.js";
 import { guardSessionManager } from "../../session-tool-result-guard-wrapper.js";
 import { acquireSessionWriteLock } from "../../session-write-lock.js";
+import { loadSigConfig } from "../../sig-adapter.js";
+import { initWorkspaceSignatures } from "../../sig-workspace-init.js";
 import {
   applySkillEnvOverrides,
   applySkillEnvOverridesFromSnapshot,
@@ -225,6 +228,24 @@ export async function runEmbeddedAttempt(
       });
     }
 
+    // sig: resolve project root and config for mutation gate
+    let sigProjectRoot: string | null = null;
+    let sigConfig: import("../../sig-adapter.js").SigConfig | null = null;
+    try {
+      sigProjectRoot = await findProjectRoot(process.cwd());
+      if (sigProjectRoot) {
+        sigConfig = await loadSigConfig(sigProjectRoot);
+        // Sign workspace files that have policies but no signatures (idempotent)
+        await initWorkspaceSignatures(sigProjectRoot, sigConfig);
+      }
+    } catch {
+      // sig not available — continue without mutation gate
+    }
+
+    // sig: build sender identity for update_and_sign tool
+    const senderIdentity =
+      params.senderIsOwner && params.senderId ? buildSenderIdentityString(params) : undefined;
+
     // Check if the model supports native image input
     const modelHasVision = params.model.input?.includes("image") ?? false;
     const toolsRaw = params.disableTools
@@ -250,6 +271,9 @@ export async function runEmbeddedAttempt(
           senderIsOwner: params.senderIsOwner,
           messageSigning,
           turnId,
+          senderIdentity,
+          projectRoot: sigProjectRoot ?? undefined,
+          sigConfig,
           sessionKey: params.sessionKey ?? params.sessionId,
           agentDir,
           workspaceDir: effectiveWorkspace,
@@ -936,4 +960,16 @@ export async function runEmbeddedAttempt(
     restoreSkillEnv?.();
     process.chdir(prevCwd);
   }
+}
+
+/** Build a sender identity string for sig update_and_sign (same format as message signing). */
+function buildSenderIdentityString(params: EmbeddedRunAttemptParams): string {
+  const parts = ["owner"];
+  if (params.senderE164) {
+    parts.push(params.senderE164);
+  } else if (params.senderId) {
+    parts.push(params.senderId);
+  }
+  parts.push(params.messageChannel ?? params.messageProvider ?? "unknown");
+  return parts.join(":");
 }

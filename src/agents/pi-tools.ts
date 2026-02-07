@@ -10,6 +10,7 @@ import type { MessageSigningContext } from "./message-signing.js";
 import type { ModelAuthMode } from "./model-auth.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
 import type { SandboxContext } from "./sandbox.js";
+import type { SigConfig } from "./sig-adapter.js";
 import { logWarn } from "../logger.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
@@ -53,6 +54,7 @@ import {
   resolveToolProfilePolicy,
   stripPluginOnlyAllowlist,
 } from "./tool-policy.js";
+import { createSigUpdateTool } from "./tools/sig-update-tool.js";
 import { createSigVerifyTool } from "./tools/sig-verify-tool.js";
 
 function isOpenAIProvider(provider?: string) {
@@ -170,6 +172,12 @@ export function createOpenClawCodingTools(options?: {
   messageSigning?: MessageSigningContext;
   /** Current turn ID for sig verification gate. */
   turnId?: string;
+  /** Pre-built sender identity for sig update_and_sign tool. */
+  senderIdentity?: string;
+  /** sig project root (resolved at runner startup). */
+  projectRoot?: string;
+  /** Loaded sig config (resolved at runner startup). */
+  sigConfig?: SigConfig | null;
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
@@ -374,6 +382,15 @@ export function createOpenClawCodingTools(options?: {
       turnId: options?.turnId,
     }),
   );
+  // sig: add update_and_sign tool for protected file updates
+  tools.push(
+    createSigUpdateTool({
+      messageSigning: options?.messageSigning,
+      sessionKey: options?.sessionKey,
+      turnId: options?.turnId,
+      senderIdentity: options?.senderIdentity,
+    }),
+  );
   // Security: treat unknown/undefined as unauthorized (opt-in, not opt-out)
   const senderIsOwner = options?.senderIsOwner === true;
   const toolsByAuthorization = applyOwnerOnlyToolPolicy(tools, senderIsOwner);
@@ -456,6 +473,8 @@ export function createOpenClawCodingTools(options?: {
       sessionKey: options?.sessionKey,
       turnId: options?.turnId,
       config: options?.config,
+      projectRoot: options?.projectRoot,
+      sigConfig: options?.sigConfig,
     }),
   );
   const withAbort = options?.abortSignal

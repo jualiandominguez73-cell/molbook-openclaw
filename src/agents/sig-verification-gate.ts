@@ -21,6 +21,7 @@ export const SIG_GATED_TOOLS = new Set<string>([
   "gateway",
   "sessions_spawn",
   "sessions_send",
+  "update_and_sign",
 ]);
 
 export type GateResult = { blocked: false } | { blocked: true; reason: string };

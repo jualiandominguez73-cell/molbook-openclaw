@@ -1,6 +1,8 @@
+import type { SigConfig } from "./sig-adapter.js";
 import type { AnyAgentTool } from "./tools/common.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { checkMutationGate } from "./sig-mutation-gate.js";
 import { checkVerificationGate } from "./sig-verification-gate.js";
 import { normalizeToolName } from "./tool-policy.js";
 
@@ -11,6 +13,10 @@ type HookContext = {
   turnId?: string;
   /** Config reference for sig verification gate. */
   config?: import("../config/config.js").OpenClawConfig;
+  /** sig project root for mutation gate file policy resolution. */
+  projectRoot?: string;
+  /** Loaded sig config for mutation gate file policy resolution. */
+  sigConfig?: SigConfig | null;
 };
 
 type HookOutcome = { blocked: true; reason: string } | { blocked: false; params: unknown };
@@ -37,6 +43,18 @@ export async function runBeforeToolCallHook(args: {
   );
   if (gateResult.blocked) {
     return gateResult;
+  }
+
+  // sig mutation gate: blocks write/edit to protected mutable files.
+  // Runs after the verification gate, before plugin hooks.
+  const mutationResult = checkMutationGate(
+    args.toolName,
+    args.params,
+    args.ctx?.projectRoot,
+    args.ctx?.sigConfig,
+  );
+  if (mutationResult.blocked) {
+    return mutationResult;
   }
 
   const hookRunner = getGlobalHookRunner();
