@@ -83,14 +83,20 @@ const MemoryHybridDailyLogSchema = z
     enabled: z.boolean().optional(),
     template: z.string().optional(),
     createDaysAhead: z.number().int().min(0).max(7).optional(),
-    createAt: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
+    createAt: z
+      .string()
+      .regex(/^\d{1,2}:\d{2}$/)
+      .optional(),
   })
   .strict();
 
 const MemoryHybridDailyReviewSchema = z
   .object({
     enabled: z.boolean().optional(),
-    at: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
+    at: z
+      .string()
+      .regex(/^\d{1,2}:\d{2}$/)
+      .optional(),
     message: z.string().optional(),
     channelId: z.string().optional(),
   })
