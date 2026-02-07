@@ -151,7 +151,7 @@ describe("validateEmail", () => {
 });
 
 describe("validateUrl", () => {
-  it("accepts valid URLs", () => {
+  it("accepts valid http/https URLs", () => {
     expect(validateUrl("https://example.com")).toEqual({
       valid: true,
       value: "https://example.com",
@@ -159,6 +159,21 @@ describe("validateUrl", () => {
     expect(validateUrl("http://localhost:3000")).toEqual({
       valid: true,
       value: "http://localhost:3000",
+    });
+  });
+
+  it("rejects non-http/https protocols", () => {
+    expect(validateUrl("javascript:alert(1)")).toEqual({
+      valid: false,
+      error: "URL must use http or https protocol",
+    });
+    expect(validateUrl("data:text/html,<script>alert(1)</script>")).toEqual({
+      valid: false,
+      error: "URL must use http or https protocol",
+    });
+    expect(validateUrl("file:///etc/passwd")).toEqual({
+      valid: false,
+      error: "URL must use http or https protocol",
     });
   });
 

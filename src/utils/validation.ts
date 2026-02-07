@@ -107,15 +107,18 @@ export function validateEmail(value: unknown, fieldName = "Email"): ValidationRe
 }
 
 /**
- * Validates a URL format (basic pattern).
+ * Validates a URL format (restricted to http/https protocols).
  */
 export function validateUrl(value: unknown, fieldName = "URL"): ValidationResult<string> {
   try {
     if (typeof value !== "string") {
       return { valid: false, error: `${fieldName} must be a string` };
     }
-    // Try to construct a URL object to validate
-    new URL(value);
+    const url = new URL(value);
+    // Only allow http and https protocols for security
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return { valid: false, error: `${fieldName} must use http or https protocol` };
+    }
     return { valid: true, value };
   } catch {
     return { valid: false, error: `${fieldName} must be a valid URL` };
