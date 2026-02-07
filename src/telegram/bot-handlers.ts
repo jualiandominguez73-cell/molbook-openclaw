@@ -109,7 +109,10 @@ export const registerTelegramHandlers = ({
         .map((entry) => entry.msg.text ?? entry.msg.caption ?? "")
         .filter(Boolean)
         .join("\n");
-      if (!combinedText.trim()) {
+      // Collect all media from all entries
+      const allCombinedMedia = entries.flatMap((entry) => entry.allMedia);
+      // Skip only if there's no text AND no media (completely empty message)
+      if (!combinedText.trim() && allCombinedMedia.length === 0) {
         return;
       }
       const first = entries[0];
@@ -127,7 +130,7 @@ export const registerTelegramHandlers = ({
       const messageIdOverride = last.msg.message_id ? String(last.msg.message_id) : undefined;
       await processMessage(
         { message: syntheticMessage, me: baseCtx.me, getFile },
-        [],
+        allCombinedMedia,
         first.storeAllowFrom,
         messageIdOverride ? { messageIdOverride } : undefined,
       );
