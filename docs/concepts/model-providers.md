@@ -235,6 +235,17 @@ MiniMax is configured via `models.providers` because it uses custom endpoints:
 
 See [/providers/minimax](/providers/minimax) for setup details, model options, and config snippets.
 
+### StepFun
+
+StepFun (OpenAI-compatible):
+
+- CLI: `--auth-choice stepfun-api-key`
+- Auth: `STEPFUN_API_KEY`
+- Base URL: `https://api.stepfun.ai/v1` (International) or `https://api.stepfun.com/v1` (China)
+- Example model: `stepfun/step-3.5-flash`
+
+See [/providers/stepfun](/providers/stepfun) for setup details and model options.
+
 ### Ollama
 
 Ollama is a local LLM runtime that provides an OpenAI-compatible API:
