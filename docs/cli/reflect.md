@@ -8,49 +8,45 @@ title: "reflect"
 
 # `openclaw reflect`
 
-Store lightweight reflections (AAR notes) locally on disk.
+Capture quick after-action reflections (AAR notes) and store them locally as JSONL.
 
-Data is stored as JSONL under the OpenClaw state directory:
+Data is stored under the OpenClaw state directory:
 
-- Default: `~/.openclaw/reflections/reflections.jsonl`
-- Override: `$OPENCLAW_STATE_DIR/reflections/reflections.jsonl`
+- Default: `~/.openclaw/reflections.jsonl`
+- Override: `$OPENCLAW_STATE_DIR/reflections.jsonl`
 
 Tip: run `openclaw reflect --help` for the full command surface.
 
-## Add a reflection
+## Add
 
-Pass the body as an argument:
-
-```bash
-openclaw reflect add "Shipped feature X. What went well: … What to improve: …"
-```
-
-Or pipe from stdin:
+Interactive prompt to create a reflection.
 
 ```bash
-echo "AAR\n\n- What went well: ...\n- What didn't: ..." | openclaw reflect add --title "Sprint 12" --tag aar --tag sprint12
+openclaw reflect add
 ```
 
-## List reflections
+Outputs the new reflection id (UUID).
+
+## List
+
+List reflections (newest first).
 
 ```bash
 openclaw reflect list
+openclaw reflect list --limit 20
+openclaw reflect list --tag onboarding
 ```
 
-Limit output:
+Output format:
 
-```bash
-openclaw reflect list --limit 5
-```
+- `createdAt  id  title  [tags]`
 
-## Show a reflection
+## Show
+
+Show a reflection by id.
 
 ```bash
 openclaw reflect show <id>
 ```
 
-JSON output:
-
-```bash
-openclaw reflect show <id> --json
-```
+Prints a human-readable view followed by the raw JSON.

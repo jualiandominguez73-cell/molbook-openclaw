@@ -145,7 +145,7 @@ export const commandRegistry: CommandRegistration[] = [
   },
   {
     id: "reflect",
-    register: ({ program }) => registerReflectCli(program),
+    register: ({ program, ctx }) => registerReflectCli(program, ctx),
   },
   {
     id: "agent",
