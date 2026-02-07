@@ -8,9 +8,11 @@ import { logWarn } from "../logger.js";
 
 type CanvasModule = typeof import("@napi-rs/canvas");
 type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+type MammothModule = typeof import("mammoth");
 
 let canvasModulePromise: Promise<CanvasModule> | null = null;
 let pdfJsModulePromise: Promise<PdfJsModule> | null = null;
+let mammothModulePromise: Promise<MammothModule> | null = null;
 
 // Lazy-load optional PDF/image deps so non-PDF paths don't require native installs.
 async function loadCanvasModule(): Promise<CanvasModule> {
@@ -35,6 +37,18 @@ async function loadPdfJsModule(): Promise<PdfJsModule> {
     });
   }
   return pdfJsModulePromise;
+}
+
+async function loadMammothModule(): Promise<MammothModule> {
+  if (!mammothModulePromise) {
+    mammothModulePromise = import("mammoth").catch((err) => {
+      mammothModulePromise = null;
+      throw new Error(
+        `Optional dependency mammoth is required for Word document extraction: ${String(err)}`,
+      );
+    });
+  }
+  return mammothModulePromise;
 }
 
 export type InputImageContent = {
@@ -102,6 +116,7 @@ export const DEFAULT_INPUT_FILE_MIMES = [
   "text/csv",
   "application/json",
   "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 export const DEFAULT_INPUT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_INPUT_FILE_MAX_BYTES = 5 * 1024 * 1024;
@@ -295,6 +310,16 @@ async function extractPdfContent(params: {
   return { text, images };
 }
 
+async function extractDocxContent(params: {
+  buffer: Buffer;
+  limits: InputFileLimits;
+}): Promise<{ text: string }> {
+  const mammoth = await loadMammothModule();
+  const result = await mammoth.extractRawText({ buffer: params.buffer });
+  const text = clampText(result.value, params.limits.maxChars);
+  return { text };
+}
+
 export async function extractImageContentFromSource(
   source: InputImageSource,
   limits: InputImageLimits,
@@ -391,6 +416,11 @@ export async function extractFileContentFromSource(params: {
       text,
       images: extracted.images.length > 0 ? extracted.images : undefined,
     };
+  }
+
+  if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    const extracted = await extractDocxContent({ buffer, limits });
+    return { filename, text: extracted.text };
   }
 
   const text = clampText(decodeTextContent(buffer, charset), limits.maxChars);
