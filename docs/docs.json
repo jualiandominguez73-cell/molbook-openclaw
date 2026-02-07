@@ -955,6 +955,7 @@
                   "tools/skills-config",
                   "tools/clawhub",
                   "plugin",
+                  "plugins/memory-lancedb",
                   "plugins/voice-call",
                   "plugins/zalouser"
                 ]

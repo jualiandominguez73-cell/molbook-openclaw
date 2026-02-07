@@ -2,7 +2,8 @@
  * OpenClaw Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
- * Uses LanceDB for storage and OpenAI for embeddings.
+ * Uses LanceDB for storage with pluggable embedding providers
+ * (OpenAI API or local models via node-llama-cpp).
  * Provides seamless auto-recall and auto-capture via lifecycle hooks.
  */
 
@@ -15,9 +16,29 @@ import { stringEnum } from "openclaw/plugin-sdk";
 import {
   MEMORY_CATEGORIES,
   type MemoryCategory,
+  type MemoryConfig,
   memoryConfigSchema,
+  resolveEffectiveModel,
   vectorDimsForModel,
 } from "./config.js";
+
+// ============================================================================
+// Errors
+// ============================================================================
+
+class DimensionMismatchError extends Error {
+  constructor(
+    public readonly expected: number,
+    public readonly actual: number,
+    public readonly dbPath: string,
+  ) {
+    super(
+      `Vector dimension mismatch: database has ${actual}-dim vectors but current config expects ${expected}-dim. ` +
+        `Run \`openclaw ltm reindex\` to re-embed all memories with the current provider.`,
+    );
+    this.name = "DimensionMismatchError";
+  }
+}
 
 // ============================================================================
 // Types
@@ -51,6 +72,14 @@ type MemorySearchResult = {
 };
 
 // ============================================================================
+// Embedding Provider Interface
+// ============================================================================
+
+interface EmbeddingProvider {
+  embed(text: string): Promise<number[]>;
+}
+
+// ============================================================================
 // LanceDB Provider
 // ============================================================================
 
@@ -74,7 +103,12 @@ class MemoryDB {
       return this.initPromise;
     }
 
-    this.initPromise = this.doInitialize();
+    this.initPromise = this.doInitialize().catch((err) => {
+      // Clear so subsequent calls re-attempt (or re-throw) rather than
+      // returning a stale rejected promise.
+      this.initPromise = null;
+      throw err;
+    });
     return this.initPromise;
   }
 
@@ -84,7 +118,11 @@ class MemoryDB {
     const tables = await this.db.tableNames();
 
     if (tables.includes(TABLE_NAME)) {
-      this.table = await this.db.openTable(TABLE_NAME);
+      const existing = await this.db.openTable(TABLE_NAME);
+      // Validate dimensions BEFORE setting this.table so a mismatch
+      // doesn't leave the instance in a half-initialized state.
+      await this.validateVectorDimension(existing);
+      this.table = existing;
     } else {
       this.table = await this.db.createTable(TABLE_NAME, [
         {
@@ -98,6 +136,82 @@ class MemoryDB {
       ]);
       await this.table.delete('id = "__schema__"');
     }
+  }
+
+  /** Check that the existing table's vector column matches the configured dimension. */
+  private async validateVectorDimension(table: lancedb.Table): Promise<void> {
+    const schema = await table.schema();
+    // Use loop instead of .find() — Arrow Schema.fields may not be a standard Array
+    let storedDim: number | undefined;
+    for (const field of schema.fields) {
+      if (field.name === "vector") {
+        const t = field.type as Record<string, unknown>;
+        if (typeof t.listSize === "number") {
+          storedDim = t.listSize;
+        } else {
+          // Fallback: parse from string representation e.g. "FixedSizeList[1536]<Float32>"
+          const match = String(field.type).match(/\[(\d+)\]/);
+          if (match) {
+            storedDim = parseInt(match[1], 10);
+          }
+        }
+        break;
+      }
+    }
+    if (storedDim !== undefined && storedDim !== this.vectorDim) {
+      throw new DimensionMismatchError(this.vectorDim, storedDim, this.dbPath);
+    }
+  }
+
+  /** Initialize without dimension validation (used by reindex to access mismatched tables). */
+  async initializeUnchecked(): Promise<void> {
+    this.db = await lancedb.connect(this.dbPath);
+    const tables = await this.db.tableNames();
+    if (tables.includes(TABLE_NAME)) {
+      this.table = await this.db.openTable(TABLE_NAME);
+    }
+  }
+
+  /** List all entries (for reindexing). Returns entries without vector data. */
+  async listAll(): Promise<
+    { id: string; text: string; importance: number; category: string; createdAt: number }[]
+  > {
+    if (!this.table) {
+      return [];
+    }
+    const rows = await this.table
+      .query()
+      .select(["id", "text", "importance", "category", "createdAt"])
+      .toArray();
+    return rows.map((row) => ({
+      id: row.id as string,
+      text: row.text as string,
+      importance: row.importance as number,
+      category: row.category as string,
+      createdAt: row.createdAt as number,
+    }));
+  }
+
+  /** Drop and recreate the table with new vector dimensions. */
+  async recreateTable(): Promise<void> {
+    if (!this.db) {
+      return;
+    }
+    const tables = await this.db.tableNames();
+    if (tables.includes(TABLE_NAME)) {
+      await this.db.dropTable(TABLE_NAME);
+    }
+    this.table = await this.db.createTable(TABLE_NAME, [
+      {
+        id: "__schema__",
+        text: "",
+        vector: Array.from({ length: this.vectorDim }).fill(0),
+        importance: 0,
+        category: "other",
+        createdAt: 0,
+      },
+    ]);
+    await this.table.delete('id = "__schema__"');
   }
 
   async store(entry: Omit<MemoryEntry, "id" | "createdAt">): Promise<MemoryEntry> {
@@ -157,10 +271,10 @@ class MemoryDB {
 }
 
 // ============================================================================
-// OpenAI Embeddings
+// OpenAI Embedding Provider
 // ============================================================================
 
-class Embeddings {
+class OpenAIEmbeddingProvider implements EmbeddingProvider {
   private client: OpenAI;
 
   constructor(
@@ -177,6 +291,79 @@ class Embeddings {
     });
     return response.data[0].embedding;
   }
+}
+
+// ============================================================================
+// Local Embedding Provider (node-llama-cpp)
+// ============================================================================
+
+class LocalEmbeddingProvider implements EmbeddingProvider {
+  private embeddingContext: unknown = null;
+  private initPromise: Promise<void> | null = null;
+
+  constructor(
+    private modelPath: string,
+    private modelCacheDir?: string,
+  ) {}
+
+  private async ensureInitialized(): Promise<void> {
+    if (this.embeddingContext) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    this.initPromise = this.doInitialize();
+    return this.initPromise;
+  }
+
+  private async doInitialize(): Promise<void> {
+    try {
+      const nodeLlamaCpp = await import("node-llama-cpp");
+      const llama = await nodeLlamaCpp.getLlama({ logLevel: nodeLlamaCpp.LlamaLogLevel.error });
+      const resolved = await nodeLlamaCpp.resolveModelFile(this.modelPath, this.modelCacheDir);
+      const model = await llama.loadModel({ modelPath: resolved });
+      this.embeddingContext = await model.createEmbeddingContext();
+    } catch (err) {
+      throw new Error(
+        `Failed to initialize local embedding model: ${String(err)}. ` +
+          `Ensure node-llama-cpp is installed (npm install node-llama-cpp).`,
+        { cause: err },
+      );
+    }
+  }
+
+  async embed(text: string): Promise<number[]> {
+    await this.ensureInitialized();
+    // node-llama-cpp's EmbeddingContext has getEmbeddingFor()
+    const ctx = this.embeddingContext as {
+      getEmbeddingFor(text: string): Promise<{ vector: Float32Array }>;
+    };
+    const result = await ctx.getEmbeddingFor(text);
+    const vector = Array.from(result.vector);
+    return this.normalize(vector);
+  }
+
+  private normalize(vec: number[]): number[] {
+    const sanitized = vec.map((v) => (Number.isFinite(v) ? v : 0));
+    const magnitude = Math.sqrt(sanitized.reduce((sum, v) => sum + v * v, 0));
+    if (magnitude < 1e-10) {
+      return sanitized;
+    }
+    return sanitized.map((v) => v / magnitude);
+  }
+}
+
+// ============================================================================
+// Embedding Provider Factory
+// ============================================================================
+
+function createEmbeddingProvider(cfg: MemoryConfig): EmbeddingProvider {
+  const model = resolveEffectiveModel(cfg);
+  if (cfg.embedding.provider === "local") {
+    return new LocalEmbeddingProvider(model, cfg.local?.modelCacheDir);
+  }
+  return new OpenAIEmbeddingProvider(cfg.embedding.apiKey!, model);
 }
 
 // ============================================================================
@@ -250,9 +437,9 @@ const memoryPlugin = {
   register(api: OpenClawPluginApi) {
     const cfg = memoryConfigSchema.parse(api.pluginConfig);
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
-    const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
+    const vectorDim = vectorDimsForModel(resolveEffectiveModel(cfg));
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = createEmbeddingProvider(cfg);
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);
 
@@ -479,6 +666,61 @@ const memoryPlugin = {
             const count = await db.count();
             console.log(`Total memories: ${count}`);
           });
+
+        memory
+          .command("reindex")
+          .description(
+            "Re-embed all memories with current provider (use after switching providers)",
+          )
+          .action(async () => {
+            // Re-read config so reindex always uses the current provider/model,
+            // even if register() ran with a previous configuration.
+            const currentCfg = memoryConfigSchema.parse(api.pluginConfig);
+            const currentDim = vectorDimsForModel(resolveEffectiveModel(currentCfg));
+            const currentEmbeddings = createEmbeddingProvider(currentCfg);
+
+            // Open the old table without dimension validation
+            const oldDb = new MemoryDB(resolvedDbPath, currentDim);
+            await oldDb.initializeUnchecked();
+
+            const entries = await oldDb.listAll();
+            if (entries.length === 0) {
+              console.log("No memories to reindex.");
+              return;
+            }
+
+            console.log(`Reindexing ${entries.length} memories with current provider...`);
+
+            // Recreate table with new dimensions
+            const newDb = new MemoryDB(resolvedDbPath, currentDim);
+            await newDb.initializeUnchecked();
+            await newDb.recreateTable();
+
+            let success = 0;
+            let failed = 0;
+            for (const entry of entries) {
+              try {
+                const vector = await currentEmbeddings.embed(entry.text);
+                await newDb.store({
+                  text: entry.text,
+                  vector,
+                  importance: entry.importance,
+                  category: entry.category as MemoryCategory,
+                });
+                success++;
+                if (success % 10 === 0) {
+                  console.log(`  ${success}/${entries.length} done`);
+                }
+              } catch (err) {
+                failed++;
+                console.error(
+                  `  Failed to re-embed: ${entry.text.slice(0, 60)}... (${String(err)})`,
+                );
+              }
+            }
+
+            console.log(`Reindex complete: ${success} succeeded, ${failed} failed.`);
+          });
       },
       { commands: ["ltm"] },
     );
@@ -620,3 +862,4 @@ const memoryPlugin = {
 };
 
 export default memoryPlugin;
+export { DimensionMismatchError, MemoryDB };
