@@ -27,13 +27,23 @@ metadata: { "openclaw": { "emoji": "🏠" } }
    - Use high-level, natural fields (ex: `"brightness": "60%"`, `"color": "purple"`, `"volume": "30%"`, `"temperature": 22`).
    - `ha_universal_control` and `ha_call_service` normalize payloads based on capabilities.
 
-5) **Semantic understanding + overrides**
+5) **Human-mode semantics**
    - Use `ha_semantic_resolve` or `ha_inventory_report` to see semantic type + confidence.
+   - `ha_semantic_resolve` returns candidates with risk level + recommended control strategy.
    - Overrides live in `/home/node/.openclaw/homeassistant/semantic_overrides.json`.
    - Use `ha_list_semantic_overrides` and `ha_upsert_semantic_override`.
    - Ambiguous devices should be marked `NEEDS_OVERRIDE` and handled with safe defaults.
+   - `ha_inventory_report` includes `NO_JEBANCI_SCORE` and ambiguous list.
 
-6) **Automations**
+6) **1-time confirm caching**
+   - High-risk actions (lock/alarm/vacuum/climate) require confirmation once.
+   - After confirmation, approvals are cached in `/home/node/.openclaw/homeassistant/risk_approvals.json`.
+
+7) **Reversible probes**
+   - `ha_universal_control` with `safe_probe: true` performs reversible, low-risk probes.
+   - High-risk domains return read-only verification.
+
+8) **Automations**
    - Use `ha_list_automations` to find automations.
    - Use `ha_get_automation_config` before changing.
    - For edits, call `ha_upsert_automation_config` with full config and `reload: true`.
@@ -124,6 +134,31 @@ ha_universal_control {
   "target": { "entity_id": "switch.ventilation" },
   "intent": { "action": "set", "property": "percentage", "value": "60%" }
 }
+```
+
+### Fan implemented as switch (semantic fan)
+
+```bash
+ha_universal_control {
+  \"target\": { \"entity_id\": \"switch.ventilator\" },
+  \"intent\": { \"action\": \"turn_on\" }
+}
+```
+
+### Climate read-only probe
+
+```bash
+ha_universal_control {
+  \"target\": { \"name\": \"klima\" },
+  \"safe_probe\": true
+}
+```
+
+### Lock confirm once + cached approval
+
+```bash
+ha_prepare_risky_action { \"kind\": \"ha_call_service\", \"action\": { \"domain\": \"lock\", \"service\": \"unlock\", \"data\": { \"entity_id\": [\"lock.front_door\"] } } }
+ha_confirm_action { \"token\": \"<token>\" }
 ```
 
 ### Add a semantic override

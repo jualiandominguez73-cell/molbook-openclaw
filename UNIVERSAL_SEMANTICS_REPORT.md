@@ -44,3 +44,8 @@ Overall: PASS
 ## Notes
 - SAFE mode uses idempotent probes; unsafe or unavailable entities are skipped without failing the run.
 - Inventory includes switch.* entities, but inference maps them to other semantic types (generic_switch/outlet/light), leaving no eligible switch-domain entities for the switch semantic type.
+
+## Resiliency v1 (deadline + retry)
+- Previous runs saw `curl: (28)` / `curl: (56)` during `ha_universal_control` safe probes.
+- Added deadline-aware control flow and HA retry/backoff to prevent tool hangs and return controlled timeouts.
+- Evidence: new PROOF bundle `/home/dado/PROOF/luna_universal_semantics_20260207T110435Z/phase2_resilience_20260207T161703Z`.
