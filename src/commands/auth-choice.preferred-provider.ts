@@ -34,6 +34,7 @@ const PREFERRED_PROVIDER_BY_AUTH_CHOICE: Partial<Record<AuthChoice, string>> = {
   "qwen-portal": "qwen-portal",
   "minimax-portal": "minimax-portal",
   "ernie-api-key": "ernie",
+  "qianfan-api-key": "qianfan",
 };
 
 export function resolvePreferredProviderForAuthChoice(choice: AuthChoice): string | undefined {
