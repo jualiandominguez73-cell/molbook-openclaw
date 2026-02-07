@@ -1,10 +1,10 @@
 name: Auto response
 
-on:
-  issues:
-    types: [opened, edited, labeled]
-  pull_request_target:
-    types: [labeled]
+on: {}
+  # issues:
+  #   types: [opened, edited, labeled]
+  # pull_request_target:
+  #   types: [labeled]
 
 permissions: {}
 
