@@ -36,6 +36,11 @@ export function armTimer(state: CronServiceState) {
 
 export async function onTimer(state: CronServiceState) {
   if (state.running) {
+    // A previous tick is still executing.  Re-arm the timer so the
+    // scheduler doesn't stall when this early return skips the finally
+    // block that normally re-arms.  The next tick will pick up any jobs
+    // that became due in the meantime.
+    armTimer(state);
     return;
   }
   state.running = true;
@@ -46,7 +51,15 @@ export async function onTimer(state: CronServiceState) {
       // every/cron slots past the current tick when the timer fires late (#9788).
       await ensureLoaded(state, { forceReload: true, skipRecompute: true });
       await runDueJobs(state);
+      // After running due jobs, recompute *and* run any newly-due jobs.
+      // This covers a subtle race: if ensureLoaded (with skipRecompute)
+      // loaded persisted nextRunAtMs values that were already in the past
+      // but didn't match the timer's expected due time (e.g. after an
+      // external edit to jobs.json or a config.patch), runDueJobs above
+      // would miss them.  Recomputing and running again ensures nothing
+      // slips through.
       recomputeNextRuns(state);
+      await runDueJobs(state);
       await persist(state);
     });
   } finally {
@@ -55,6 +68,9 @@ export async function onTimer(state: CronServiceState) {
     armTimer(state);
   }
 }
+
+// Tolerance for timer firing slightly early due to clock drift or JS timer precision.
+const DUE_TOLERANCE_MS = 2000;
 
 export async function runDueJobs(state: CronServiceState) {
   if (!state.store) {
@@ -69,7 +85,8 @@ export async function runDueJobs(state: CronServiceState) {
       return false;
     }
     const next = j.state.nextRunAtMs;
-    return typeof next === "number" && now >= next;
+    // Add tolerance to handle timer firing slightly early
+    return typeof next === "number" && now >= next - DUE_TOLERANCE_MS;
   });
   for (const job of due) {
     await executeJob(state, job, now, { forced: false });

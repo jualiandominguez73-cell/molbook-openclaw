@@ -91,6 +91,12 @@ export function recomputeNextRuns(state: CronServiceState) {
       );
       job.state.runningAtMs = undefined;
     }
+    // Fix for #10653: Skip recomputing jobs that are already due (with tolerance).
+    // Let runDueJobs handle them first; they'll get recomputed after execution.
+    const oldNext = job.state.nextRunAtMs;
+    if (typeof oldNext === "number" && now >= oldNext - 2000) {
+      continue;
+    }
     job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
   }
 }
