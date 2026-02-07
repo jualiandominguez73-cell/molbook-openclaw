@@ -219,19 +219,26 @@ export type OpenClawPluginChannelRegistration = {
 // Search Provider Plugins
 // =============================================================================
 
-export type SearchProviderResult = {
-  query: string;
-  provider: string;
-  results?: Array<{
-    title: string;
-    url: string;
-    description?: string;
-    published?: string;
-  }>;
-  content?: string; // For AI-synthesized answers (like Perplexity)
-  citations?: string[];
-  tookMs?: number;
-};
+export type SearchProviderResult =
+  | {
+      query: string;
+      provider: string;
+      results?: Array<{
+        title: string;
+        url: string;
+        description?: string;
+        published?: string;
+      }>;
+      content?: string; // For AI-synthesized answers (like Perplexity)
+      citations?: string[];
+      tookMs?: number;
+      cached?: boolean;
+    }
+  | {
+      error: string;
+      message: string;
+      provider: string;
+    };
 
 export type SearchProviderContext = {
   config: OpenClawConfig;

@@ -345,9 +345,11 @@ const braveSearchProvider: SearchProviderPlugin = {
 
     const freshness = params.freshness ? normalizeFreshness(params.freshness) : undefined;
     if (params.freshness && !freshness) {
-      throw new Error(
-        "freshness must be one of pd, pw, pm, py, or a range like YYYY-MM-DDtoYYYY-MM-DD",
-      );
+      return {
+        error: "invalid_freshness",
+        message: "freshness must be one of pd, pw, pm, py, or a range like YYYY-MM-DDtoYYYY-MM-DD",
+        provider: "brave",
+      };
     }
 
     const cacheKey = normalizeCacheKey(
@@ -423,6 +425,15 @@ const perplexitySearchProvider: SearchProviderPlugin = {
   description:
     "Search the web using Perplexity Sonar (direct or via OpenRouter). Returns AI-synthesized answers with citations.",
   async search(params, ctx) {
+    // Perplexity doesn't support freshness filtering
+    if (params.freshness) {
+      return {
+        error: "unsupported_freshness",
+        message: "Perplexity provider does not support freshness filtering",
+        provider: "perplexity",
+      };
+    }
+
     const search = resolveSearchConfig(ctx.config);
     const perplexityConfig = resolvePerplexityConfig(search);
     const perplexityAuth = resolvePerplexityApiKey(perplexityConfig);
@@ -485,9 +496,14 @@ export function createWebSearchTool(options?: {
   }
 
   const providerName = resolveSearchProvider(search);
-  const searchProvider = getSearchProvider(providerName);
+  let searchProvider = getSearchProvider(providerName);
 
-  // If provider not found, return null (tool won't be available)
+  // If provider not found, fall back to brave
+  if (!searchProvider) {
+    searchProvider = getSearchProvider("brave");
+  }
+
+  // If still not found (shouldn't happen with built-in providers), return null
   if (!searchProvider) {
     return null;
   }
