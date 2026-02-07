@@ -39,6 +39,7 @@ import {
   handleNostrProfileSave as handleNostrProfileSaveInternal,
   handleNostrProfileToggleAdvanced as handleNostrProfileToggleAdvancedInternal,
   handleWhatsAppLogout as handleWhatsAppLogoutInternal,
+  handleWhatsAppPairingCodeStart as handleWhatsAppPairingCodeStartInternal,
   handleWhatsAppStart as handleWhatsAppStartInternal,
   handleWhatsAppWait as handleWhatsAppWaitInternal,
 } from "./app-channels.ts";
@@ -190,6 +191,7 @@ export class OpenClawApp extends LitElement {
   @state() whatsappLoginQrDataUrl: string | null = null;
   @state() whatsappLoginConnected: boolean | null = null;
   @state() whatsappBusy = false;
+  @state() whatsappPairingCode: string | null = null;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
 
@@ -451,6 +453,10 @@ export class OpenClawApp extends LitElement {
 
   async handleWhatsAppStart(force: boolean) {
     await handleWhatsAppStartInternal(this, force);
+  }
+
+  async handleWhatsAppPairingCodeStart(phoneNumber: string) {
+    await handleWhatsAppPairingCodeStartInternal(this, phoneNumber);
   }
 
   async handleWhatsAppWait() {
