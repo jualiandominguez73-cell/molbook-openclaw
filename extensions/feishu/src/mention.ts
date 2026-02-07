@@ -101,9 +101,16 @@ export function formatMentionAllForCard(): string {
   return `<at id=all></at>`;
 }
 
-/**
- * Build complete message with @mentions (text format)
- */
+const MENTION_ALL_PATTERN = /@(?:_?all|everyone|所有人)\b/gi;
+
+export function normalizeMentionAllForText(text: string): string {
+  return text.replace(MENTION_ALL_PATTERN, '<at user_id="all">Everyone</at>');
+}
+
+export function normalizeMentionAllForCard(text: string): string {
+  return text.replace(MENTION_ALL_PATTERN, "<at id=all></at>");
+}
+
 export function buildMentionedMessage(targets: MentionTarget[], message: string): string {
   if (targets.length === 0) {
     return message;

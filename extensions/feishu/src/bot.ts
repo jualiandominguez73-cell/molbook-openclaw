@@ -20,6 +20,7 @@ import {
 import { createFeishuReplyDispatcher } from "./reply-dispatcher.js";
 import { getFeishuRuntime } from "./runtime.js";
 import { getMessageFeishu } from "./send.js";
+import { FeishuStreamingSession } from "./streaming-card.js";
 
 // --- Permission error extraction ---
 // Extract permission grant URL from Feishu API error response.
@@ -203,6 +204,33 @@ function checkBotMentioned(event: FeishuMessageEvent, botOpenId?: string): boole
     return mentions.length > 0;
   }
   return mentions.some((m) => m.id.open_id === botOpenId);
+}
+
+function isMentionAll(event: FeishuMessageEvent): boolean {
+  const mentions = event.message.mentions ?? [];
+  for (const m of mentions) {
+    const openId = m.id.open_id?.toLowerCase();
+    if (openId === "all") {
+      return true;
+    }
+  }
+  const text = extractContentText(event.message.content, event.message.message_type);
+  if (text && /@(?:_?all|everyone|所有人)\b/i.test(text)) {
+    return true;
+  }
+  return false;
+}
+
+function extractContentText(content: string, messageType: string): string {
+  try {
+    const parsed = JSON.parse(content);
+    if (messageType === "text") {
+      return parsed.text ?? "";
+    }
+    return "";
+  } catch {
+    return "";
+  }
 }
 
 function stripBotMention(
@@ -476,7 +504,7 @@ export function parseFeishuMessageEvent(
   botOpenId?: string,
 ): FeishuMessageContext {
   const rawContent = parseMessageContent(event.message.content, event.message.message_type);
-  const mentionedBot = checkBotMentioned(event, botOpenId);
+  const mentionedBot = checkBotMentioned(event, botOpenId) || isMentionAll(event);
   const content = stripBotMention(rawContent, event.message.mentions);
 
   const ctx: FeishuMessageContext = {
@@ -506,6 +534,12 @@ export function parseFeishuMessageEvent(
   return ctx;
 }
 
+export type FeishuStreamingCredentials = {
+  appId: string;
+  appSecret: string;
+  domain?: string;
+};
+
 export async function handleFeishuMessage(params: {
   cfg: ClawdbotConfig;
   event: FeishuMessageEvent;
@@ -513,6 +547,7 @@ export async function handleFeishuMessage(params: {
   runtime?: RuntimeEnv;
   chatHistories?: Map<string, HistoryEntry[]>;
   accountId?: string;
+  credentials?: FeishuStreamingCredentials;
 }): Promise<void> {
   const { cfg, event, botOpenId, runtime, chatHistories, accountId } = params;
 
@@ -657,6 +692,23 @@ export async function handleFeishuMessage(params: {
       },
     });
 
+    // Command authorization: gate /status, /new etc. based on allowlist + access groups
+    const commandAllowFrom = isGroup
+      ? (feishuCfg?.groupAllowFrom ?? [])
+      : (feishuCfg?.allowFrom ?? []);
+    const commandAllowHasEntries = commandAllowFrom.length > 0;
+    const commandSenderMatch = resolveFeishuAllowlistMatch({
+      allowFrom: commandAllowFrom,
+      senderId: ctx.senderOpenId,
+      senderName: ctx.senderName,
+    });
+    const useAccessGroups = cfg.commands?.useAccessGroups !== false;
+    const commandAuthorized = core.channel.commands.resolveCommandAuthorizedFromAuthorizers({
+      useAccessGroups,
+      authorizers: [{ configured: commandAllowHasEntries, allowed: commandSenderMatch.allowed }],
+      modeWhenAccessGroupsOff: "configured",
+    });
+
     const preview = ctx.content.replace(/\s+/g, " ").slice(0, 160);
     const inboundLabel = isGroup
       ? `Feishu[${account.accountId}] message in group ${ctx.chatId}`
@@ -751,7 +803,7 @@ export async function handleFeishuMessage(params: {
         MessageSid: `${ctx.messageId}:permission-error`,
         Timestamp: Date.now(),
         WasMentioned: false,
-        CommandAuthorized: true,
+        CommandAuthorized: commandAuthorized,
         OriginatingChannel: "feishu" as const,
         OriginatingTo: feishuTo,
       });
@@ -827,11 +879,21 @@ export async function handleFeishuMessage(params: {
       MessageSid: ctx.messageId,
       Timestamp: Date.now(),
       WasMentioned: ctx.mentionedBot,
-      CommandAuthorized: true,
+      CommandAuthorized: commandAuthorized,
       OriginatingChannel: "feishu" as const,
       OriginatingTo: feishuTo,
       ...mediaPayload,
     });
+
+    const streamingEnabled = Boolean(params.credentials);
+    const client = streamingEnabled ? createFeishuClient(account) : null;
+    const streamingSession =
+      streamingEnabled && params.credentials && client
+        ? new FeishuStreamingSession(client, params.credentials)
+        : null;
+    let streamingStarted = false;
+    const threadId = ctx.rootId ?? ctx.parentId;
+    const replyToId = isGroup ? (threadId ?? ctx.messageId) : undefined;
 
     const { dispatcher, replyOptions, markDispatchIdle } = createFeishuReplyDispatcher({
       cfg,
@@ -843,16 +905,70 @@ export async function handleFeishuMessage(params: {
       accountId: account.accountId,
     });
 
+    const streamingCallbacks = streamingSession
+      ? {
+          onReplyStart: async () => {
+            if (!streamingStarted) {
+              try {
+                await streamingSession.start(ctx.chatId, "chat_id", {
+                  replyToId,
+                  isGroup,
+                  threadId,
+                });
+                streamingStarted = true;
+                log(`feishu[${account.accountId}]: streaming card started`);
+              } catch (err) {
+                log(`feishu[${account.accountId}]: streaming card start failed: ${String(err)}`);
+              }
+            }
+          },
+          onPartialReply: async (payload: { text?: string }) => {
+            if (streamingSession.isActive() && payload.text) {
+              await streamingSession.update(payload.text);
+            }
+          },
+        }
+      : {};
+
     log(`feishu[${account.accountId}]: dispatching to agent (session=${route.sessionKey})`);
 
-    const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
-      ctx: ctxPayload,
-      cfg,
-      dispatcher,
-      replyOptions,
-    });
-
-    markDispatchIdle();
+    try {
+      await core.channel.reply.dispatchReplyFromConfig({
+        ctx: ctxPayload,
+        cfg,
+        dispatcher,
+        replyOptions: {
+          ...replyOptions,
+          ...streamingCallbacks,
+        },
+      });
+    } finally {
+      if (streamingSession?.isActive()) {
+        const streamedText = streamingSession.getCurrentText();
+        await streamingSession.close();
+        core.hooks
+          .runMessageSent(
+            {
+              to: ctx.chatId,
+              content: streamedText,
+              success: true,
+              metadata: {
+                channelId: "feishu",
+                messageId: streamingSession.getMessageId(),
+                threadId,
+                streaming: true,
+              },
+            },
+            {
+              channelId: "feishu",
+              accountId: account.accountId,
+              conversationId: ctx.chatId,
+            },
+          )
+          .catch(() => {});
+      }
+      markDispatchIdle();
+    }
 
     if (isGroup && historyKey && chatHistories) {
       clearHistoryEntriesIfEnabled({
@@ -862,9 +978,7 @@ export async function handleFeishuMessage(params: {
       });
     }
 
-    log(
-      `feishu[${account.accountId}]: dispatch complete (queuedFinal=${queuedFinal}, replies=${counts.final})`,
-    );
+    log(`feishu[${account.accountId}]: dispatch complete`);
   } catch (err) {
     error(`feishu[${account.accountId}]: failed to dispatch message: ${String(err)}`);
   }
