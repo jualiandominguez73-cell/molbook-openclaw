@@ -6,10 +6,15 @@ import { applyCliProfileEnv, parseCliProfileArgs } from "./cli/profile.js";
 import { isTruthyEnvValue, normalizeEnv } from "./infra/env.js";
 import { installProcessWarningFilter } from "./infra/warnings.js";
 import { attachChildProcessBridge } from "./process/child-process-bridge.js";
+import { patchFetchForGitHubCopilot } from "./providers/github-copilot-fetch-patch.js";
 
 process.title = "openclaw";
 installProcessWarningFilter();
 normalizeEnv();
+
+// Patch global fetch to inject GitHub Copilot IDE headers
+// This must happen early, before any API calls are made
+patchFetchForGitHubCopilot();
 
 if (process.argv.includes("--no-color")) {
   process.env.NO_COLOR = "1";

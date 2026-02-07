@@ -70,7 +70,12 @@ export function deriveCopilotApiBaseUrlFromToken(token: string): string | null {
 
   // pi-ai expects converting proxy.* -> api.*
   // (see upstream getGitHubCopilotBaseUrl).
-  const host = proxyEp.replace(/^https?:\/\//, "").replace(/^proxy\./i, "api.");
+  // For Business accounts (proxy.business.githubcopilot.com), we need to use
+  // api.githubcopilot.com, not api.business.githubcopilot.com
+  const host = proxyEp
+    .replace(/^https?:\/\//, "")
+    .replace(/^proxy\.business\.githubcopilot\.com$/i, "api.githubcopilot.com")
+    .replace(/^proxy\./i, "api.");
   if (!host) {
     return null;
   }
