@@ -30,12 +30,19 @@ import { findLegacyConfigIssues } from "./legacy.js";
 import { normalizeConfigPaths } from "./normalize-paths.js";
 import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } from "./paths.js";
 import { applyConfigOverrides } from "./runtime-overrides.js";
+import { detectUnresolvedSecretRefs } from "./secrets/index.js";
+import {
+  resolveConfigSecrets,
+  MissingSecretError,
+  SecretsProviderError,
+} from "./secrets/resolve.js";
 import { validateConfigObjectWithPlugins } from "./validation.js";
 import { compareOpenClawVersions } from "./version.js";
 
 // Re-export for backwards compatibility
 export { CircularIncludeError, ConfigIncludeError } from "./includes.js";
 export { MissingEnvVarError } from "./env-substitution.js";
+export { MissingSecretError, SecretsProviderError } from "./secrets/resolve.js";
 
 const SHELL_ENV_EXPECTED_KEYS = [
   "OPENAI_API_KEY",
@@ -258,6 +265,15 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       // the resolved values, not a potentially mutated live env (TOCTOU fix).
       envSnapshotForRestore = { ...deps.env } as Record<string, string | undefined>;
 
+      // $secret{} resolution is async-only. Detect any unresolved refs and throw a clear error.
+      const unresolvedSecretRefs = detectUnresolvedSecretRefs(substituted);
+      if (unresolvedSecretRefs.length > 0) {
+        throw new Error(
+          `Config contains ${unresolvedSecretRefs[0]} references but secrets can only be resolved in async mode. ` +
+            `Use readConfigFileSnapshot() or ensure the gateway starts with async config loading.`,
+        );
+      }
+
       const resolvedConfig = substituted;
       warnOnConfigMiskeys(resolvedConfig, deps.logger);
       if (typeof resolvedConfig !== "object" || resolvedConfig === null) {
@@ -441,7 +457,30 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         };
       }
 
-      const resolvedConfigRaw = substituted;
+      // Resolve $secret{NAME} references via configured secrets provider
+      let secretsResolved: unknown;
+      try {
+        secretsResolved = await resolveConfigSecrets(substituted, deps.env);
+      } catch (err) {
+        const message =
+          err instanceof MissingSecretError || err instanceof SecretsProviderError
+            ? err.message
+            : `Secret resolution failed: ${String(err)}`;
+        return {
+          path: configPath,
+          exists: true,
+          raw,
+          parsed: parsedRes.parsed,
+          valid: false,
+          config: coerceConfig(substituted),
+          hash,
+          issues: [{ path: "", message }],
+          warnings: [],
+          legacyIssues: [],
+        };
+      }
+
+      const resolvedConfigRaw = secretsResolved;
       const legacyIssues = findLegacyConfigIssues(resolvedConfigRaw);
 
       const validated = validateConfigObjectWithPlugins(resolvedConfigRaw);
