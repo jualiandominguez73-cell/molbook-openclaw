@@ -146,9 +146,9 @@ export class FeishuStreamingSession {
     }
   }
 
-  async close(finalText?: string, summary?: string): Promise<void> {
+  async close(finalText?: string, summary?: string): Promise<boolean> {
     if (!this.state || this.closed) {
-      return;
+      return false;
     }
     this.closed = true;
 
@@ -188,8 +188,9 @@ export class FeishuStreamingSession {
           sequence: this.state.sequence,
         },
       });
+      return true;
     } catch {
-      // Close failures are non-fatal
+      return false;
     }
   }
 

@@ -19,7 +19,7 @@ import {
 } from "./policy.js";
 import { createFeishuReplyDispatcher } from "./reply-dispatcher.js";
 import { getFeishuRuntime } from "./runtime.js";
-import { getMessageFeishu } from "./send.js";
+import { getMessageFeishu, sendMessageFeishu } from "./send.js";
 import { FeishuStreamingSession } from "./streaming-card.js";
 
 // --- Permission error extraction ---
@@ -915,6 +915,7 @@ export async function handleFeishuMessage(params: {
       replyToMessageId: ctx.messageId,
       mentionTargets: ctx.mentionTargets,
       accountId: account.accountId,
+      shouldDeliver: streamingSession ? () => !streamingSession.isActive() : undefined,
     });
 
     const streamingCallbacks = streamingSession
@@ -959,12 +960,33 @@ export async function handleFeishuMessage(params: {
     } finally {
       if (streamingSession?.isActive()) {
         const streamMessageId = streamingSession.getMessageId();
-        await streamingSession.close();
+        const closedOk = await streamingSession.close();
+        const streamedText = streamingSession.getCurrentText();
+
+        if (!closedOk && streamedText) {
+          log(
+            `feishu[${account.accountId}]: streaming card close failed, sending fallback message`,
+          );
+          try {
+            await sendMessageFeishu({
+              cfg,
+              to: ctx.chatId,
+              text: streamedText,
+              replyToMessageId: ctx.messageId,
+              accountId: account.accountId,
+            });
+          } catch (fallbackErr) {
+            error(
+              `feishu[${account.accountId}]: fallback message also failed: ${String(fallbackErr)}`,
+            );
+          }
+        }
+
         core.hooks
           .runMessageSent(
             {
               to: ctx.chatId,
-              content: streamingSession.getCurrentText(),
+              content: streamedText,
               success: true,
               metadata: {
                 channelId: "feishu",
