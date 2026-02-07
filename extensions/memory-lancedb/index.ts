@@ -385,6 +385,18 @@ const memoryPlugin = {
 
             // Support partial ID matching (prefix)
             if (memoryId.length < 36) {
+              // Validate as hex UUID prefix (must be hex chars/dashes, min 4 chars)
+              if (!/^[0-9a-f-]{4,}$/i.test(memoryId)) {
+                return {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Invalid memory ID: "${memoryId}". Use a valid UUID or hex prefix (min 4 chars).`,
+                    },
+                  ],
+                  details: { error: "invalid_id", memoryId },
+                };
+              }
               const match = await db.findByIdPrefix(memoryId);
               if (!match) {
                 return {
