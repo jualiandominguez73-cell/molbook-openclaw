@@ -262,15 +262,14 @@ export class QmdMemoryManager implements MemorySearchManager {
       }
     }
 
-    const outTrim = stdout.trim();
-    if (outTrim.toLowerCase().startsWith("no results found")) {
-      return [];
-    }
-
     let parsed: QmdQueryResult[] = [];
     try {
       parsed = JSON.parse(stdout);
     } catch (err) {
+      // If JSON parse fails, check if the output indicates "no results" (even with prefix/warnings).
+      if (stdout.toLowerCase().includes("no results found")) {
+        return [];
+      }
       const message = err instanceof Error ? err.message : String(err);
       log.warn(`qmd returned invalid JSON: ${message}`);
       throw new Error(`qmd returned invalid JSON: ${message}`, { cause: err });
