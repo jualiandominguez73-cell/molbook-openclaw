@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { OpenClawConfig } from "../../config/config.js";
 import { checkCircuitBreaker } from "./fuse.js";
@@ -31,12 +34,71 @@ describe("fuse circuit breaker", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    global.fetch = vi.fn();
+
+    // Mock fetch to handle file:// URLs
+    global.fetch = vi.fn(async (url: string | URL) => {
+      const urlString = typeof url === "string" ? url : url.toString();
+
+      if (urlString.startsWith("file://")) {
+        // Handle file:// URLs by reading from filesystem
+        const filePath = urlString.replace("file://", "");
+        try {
+          const { readFileSync } = await import("node:fs");
+          const content = readFileSync(filePath, "utf-8");
+          return {
+            ok: true,
+            text: async () => content,
+          } as Response;
+        } catch {
+          return {
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+          } as Response;
+        }
+      }
+
+      // For non-file URLs, return a mock response
+      return {
+        ok: true,
+        text: async () => "",
+      } as Response;
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  /**
+   * Helper to write FUSE.txt content and run a test with it.
+   * Creates an isolated temp directory for each invocation.
+   * Automatically cleans up after the test completes.
+   */
+  async function withFuseFile(
+    content: string,
+    test: (config: OpenClawConfig) => Promise<void>,
+  ): Promise<void> {
+    const testDir = mkdtempSync(join(tmpdir(), "fuse-test-"));
+    const testPath = join(testDir, "FUSE.txt");
+
+    try {
+      writeFileSync(testPath, content, "utf-8");
+      const config: OpenClawConfig = {
+        update: {
+          fuseUrl: `file://${testPath}`,
+        },
+      };
+      await test(config);
+    } finally {
+      // Clean up temp directory
+      try {
+        rmSync(testDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
 
   it("should allow processing when fetch fails", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Network error"));
@@ -49,6 +111,15 @@ describe("fuse circuit breaker", () => {
   });
 
   it("should allow processing when FUSE is empty", async () => {
+    await withFuseFile("", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true);
+      expect(mockGateway.log).not.toHaveBeenCalled();
+    });
+  });
+
+  it("should allow processing when FUSE is empty (original fetch mock test)", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       text: async () => "",
@@ -62,48 +133,34 @@ describe("fuse circuit breaker", () => {
   });
 
   it("should suspend processing on HOLD command", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "HOLD for maintenance",
+    await withFuseFile("HOLD for maintenance", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(false);
+      expect(mockGateway.log).toHaveBeenCalledWith("Processing suspended for maintenance");
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(false);
-    expect(mockGateway.log).toHaveBeenCalledWith("Processing suspended for maintenance");
   });
 
   it("should allow processing on HOLD when missionCritical is true", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "HOLD for maintenance",
+    await withFuseFile("HOLD for maintenance", async (config) => {
+      config.update!.missionCritical = true;
+
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true);
+      expect(mockGateway.log).toHaveBeenCalledWith(
+        "Processing suspended centrally but you have opted out; processing continues.",
+      );
     });
-
-    const config: OpenClawConfig = {
-      update: {
-        missionCritical: true,
-      },
-    };
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true);
-    expect(mockGateway.log).toHaveBeenCalledWith(
-      "Processing suspended centrally but you have opted out; processing continues.",
-    );
   });
 
   it("should handle HOLD with minimal reason", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "HOLD",
+    await withFuseFile("HOLD", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(false);
+      expect(mockGateway.log).toHaveBeenCalledWith("Processing suspended.");
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(false);
-    expect(mockGateway.log).toHaveBeenCalledWith("Processing suspended.");
   });
 
   it("should log UPGRADE message when manualUpgrade is true", async () => {
@@ -260,84 +317,65 @@ describe("fuse circuit breaker", () => {
   });
 
   it("should reject UPGRADE command with no version", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "UPGRADE ",
+    await withFuseFile("UPGRADE ", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true); // Cron continues
+      // After trimming "UPGRADE " becomes "UPGRADE", so we get the format error
+      expect(mockGateway.log).toHaveBeenCalledWith(
+        "Invalid UPGRADE command: expected format 'UPGRADE version'",
+      );
+      expect(runGatewayUpdate).not.toHaveBeenCalled();
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true); // Cron continues
-    // After trimming "UPGRADE " becomes "UPGRADE", so we get the format error
-    expect(mockGateway.log).toHaveBeenCalledWith(
-      "Invalid UPGRADE command: expected format 'UPGRADE version'",
-    );
-    expect(runGatewayUpdate).not.toHaveBeenCalled();
   });
 
   it("should reject UPGRADE command with only whitespace version", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "UPGRADE   ", // Multiple spaces
+    await withFuseFile("UPGRADE   ", async (config) => {
+      // Multiple spaces
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true); // Cron continues
+      // After trimming "UPGRADE   " becomes "UPGRADE"
+      expect(mockGateway.log).toHaveBeenCalledWith(
+        "Invalid UPGRADE command: expected format 'UPGRADE version'",
+      );
+      expect(runGatewayUpdate).not.toHaveBeenCalled();
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true); // Cron continues
-    // After trimming "UPGRADE   " becomes "UPGRADE"
-    expect(mockGateway.log).toHaveBeenCalledWith(
-      "Invalid UPGRADE command: expected format 'UPGRADE version'",
-    );
-    expect(runGatewayUpdate).not.toHaveBeenCalled();
   });
 
   it("should reject UPGRADE command without space", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "UPGRADE",
+    await withFuseFile("UPGRADE", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true); // Cron continues
+      expect(mockGateway.log).toHaveBeenCalledWith(
+        "Invalid UPGRADE command: expected format 'UPGRADE version'",
+      );
+      expect(runGatewayUpdate).not.toHaveBeenCalled();
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true); // Cron continues
-    expect(mockGateway.log).toHaveBeenCalledWith(
-      "Invalid UPGRADE command: expected format 'UPGRADE version'",
-    );
-    expect(runGatewayUpdate).not.toHaveBeenCalled();
   });
 
   it("should reject ANNOUNCE command with no message", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "ANNOUNCE ",
+    await withFuseFile("ANNOUNCE ", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true); // Cron continues
+      // After trimming "ANNOUNCE " becomes "ANNOUNCE", so we get the format error
+      expect(mockGateway.log).toHaveBeenCalledWith(
+        "Invalid ANNOUNCE command: expected format 'ANNOUNCE message'",
+      );
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true); // Cron continues
-    // After trimming "ANNOUNCE " becomes "ANNOUNCE", so we get the format error
-    expect(mockGateway.log).toHaveBeenCalledWith(
-      "Invalid ANNOUNCE command: expected format 'ANNOUNCE message'",
-    );
   });
 
   it("should reject ANNOUNCE command without space", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "ANNOUNCE",
+    await withFuseFile("ANNOUNCE", async (config) => {
+      const result = await checkCircuitBreaker(config, mockGateway);
+
+      expect(result).toBe(true); // Cron continues
+      expect(mockGateway.log).toHaveBeenCalledWith(
+        "Invalid ANNOUNCE command: expected format 'ANNOUNCE message'",
+      );
     });
-
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true); // Cron continues
-    expect(mockGateway.log).toHaveBeenCalledWith(
-      "Invalid ANNOUNCE command: expected format 'ANNOUNCE message'",
-    );
   });
 
   it("should use custom FUSE URL when configured", async () => {
@@ -422,32 +460,30 @@ describe("fuse circuit breaker", () => {
   });
 
   it("should only process the first line of FUSE content", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "HOLD for maintenance\nUPGRADE v2.0.0\nANNOUNCE other stuff",
-    });
+    await withFuseFile(
+      "HOLD for maintenance\nUPGRADE v2.0.0\nANNOUNCE other stuff",
+      async (config) => {
+        const result = await checkCircuitBreaker(config, mockGateway);
 
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    // Should process HOLD from first line only, ignoring UPGRADE and ANNOUNCE on later lines
-    expect(result).toBe(false);
-    expect(mockGateway.log).toHaveBeenCalledWith("Processing suspended for maintenance");
+        // Should process HOLD from first line only, ignoring UPGRADE and ANNOUNCE on later lines
+        expect(result).toBe(false);
+        expect(mockGateway.log).toHaveBeenCalledWith("Processing suspended for maintenance");
+      },
+    );
   });
 
   it("should handle first line with comments on subsequent lines", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      text: async () => "ANNOUNCE System maintenance tonight\n# Comment line\n# Another comment",
-    });
+    await withFuseFile(
+      "ANNOUNCE System maintenance tonight\n# Comment line\n# Another comment",
+      async (config) => {
+        const result = await checkCircuitBreaker(config, mockGateway);
 
-    const config: OpenClawConfig = {};
-    const result = await checkCircuitBreaker(config, mockGateway);
-
-    expect(result).toBe(true);
-    expect(mockGateway.log).toHaveBeenCalledWith("System maintenance tonight");
-    // Should not process comment lines
-    expect(mockGateway.log).toHaveBeenCalledTimes(1);
+        expect(result).toBe(true);
+        expect(mockGateway.log).toHaveBeenCalledWith("System maintenance tonight");
+        // Should not process comment lines
+        expect(mockGateway.log).toHaveBeenCalledTimes(1);
+      },
+    );
   });
 
   it("should handle upgrade failures gracefully", async () => {
