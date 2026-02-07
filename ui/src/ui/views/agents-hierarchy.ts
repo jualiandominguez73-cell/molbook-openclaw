@@ -316,6 +316,12 @@ function filterEdgesForAgents(
    collaboration edges correctly.
    ═══════════════════════════════════════════════════════════════ */
 
+function isPrimaryAgentSessionKey(sessionKey: string): boolean {
+  // Canonical long-lived agent session (preferred anchor for agentId-based edges)
+  // e.g. agent:backend-architect:main
+  return /^agent:[^:]+:main$/.test(sessionKey);
+}
+
 function transformToGraphData(
   roots: AgentHierarchyNode[],
   collaborationEdges?: CollaborationEdge[],
@@ -341,7 +347,18 @@ function transformToGraphData(
     const agentColor = getAgentColor(node.agentId);
 
     if (node.agentId) {
-      agentIdToSessionKey.set(node.agentId, node.sessionKey);
+      const current = agentIdToSessionKey.get(node.agentId);
+      if (!current) {
+        agentIdToSessionKey.set(node.agentId, node.sessionKey);
+      } else {
+        // Keep deterministic, stable mapping:
+        // prefer canonical "agent:{id}:main" over transient subagent sessions.
+        const currentIsPrimary = isPrimaryAgentSessionKey(current);
+        const nextIsPrimary = isPrimaryAgentSessionKey(node.sessionKey);
+        if (!currentIsPrimary && nextIsPrimary) {
+          agentIdToSessionKey.set(node.agentId, node.sessionKey);
+        }
+      }
     }
 
     nodes.push({
