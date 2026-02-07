@@ -559,23 +559,43 @@ export const linePlugin: ChannelPlugin<ResolvedLineAccount> = {
       lastError: null,
     },
     collectStatusIssues: (accounts) => {
+      // NOTE: This callback often receives **account snapshots** (not full resolved accounts).
+      // Snapshots intentionally omit secrets like channelAccessToken/channelSecret.
+      // Only rely on snapshot-safe fields like `configured` / `tokenSource`.
       const issues: ChannelStatusIssue[] = [];
-      for (const account of accounts) {
+      for (const account of accounts as Array<{
+        accountId?: string;
+        enabled?: boolean;
+        configured?: boolean;
+        tokenSource?: string;
+      }>) {
         const accountId = account.accountId ?? DEFAULT_ACCOUNT_ID;
-        if (!account.channelAccessToken?.trim()) {
-          issues.push({
-            channel: "line",
-            accountId,
-            kind: "config",
-            message: "LINE channel access token not configured",
-          });
+
+        // If explicitly marked configured, do not emit missing-credential warnings.
+        if (account.configured === true) {
+          continue;
         }
-        if (!account.channelSecret?.trim()) {
+
+        // If the account is enabled but not configured, report a single combined warning.
+        // (We can't safely infer which secret field is missing from snapshots.)
+        const enabled = account.enabled !== false;
+        if (enabled && account.configured === false) {
           issues.push({
             channel: "line",
             accountId,
             kind: "config",
-            message: "LINE channel secret not configured",
+            message: "LINE channel credentials not configured (access token + secret)",
+          });
+          continue;
+        }
+
+        // Best-effort fallback: if tokenSource is explicitly "none", treat as not configured.
+        if (enabled && (account.tokenSource ?? "none") === "none") {
+          issues.push({
+            channel: "line",
+            accountId,
+            kind: "config",
+            message: "LINE channel credentials not configured (access token + secret)",
           });
         }
       }
@@ -595,7 +615,9 @@ export const linePlugin: ChannelPlugin<ResolvedLineAccount> = {
     probeAccount: async ({ account, timeoutMs }) =>
       getLineRuntime().channel.line.probeLineBot(account.channelAccessToken, timeoutMs),
     buildAccountSnapshot: ({ account, runtime, probe }) => {
-      const configured = Boolean(account.channelAccessToken?.trim());
+      // Treat LINE as configured only when both access token + secret are present.
+      const configured =
+        Boolean(account.channelAccessToken?.trim()) && Boolean(account.channelSecret?.trim());
       return {
         accountId: account.accountId,
         name: account.name,
