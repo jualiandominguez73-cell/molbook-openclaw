@@ -637,6 +637,18 @@ export async function runNodeHost(opts: NodeHostRunOptions): Promise<void> {
     return bins;
   });
 
+  // For extension-driven Chrome control, the local relay (127.0.0.1:18792 by default)
+  // must be reachable before the first browser tool call so the user can click "ON"
+  // in the extension UI. The browser control service starts the relay eagerly, but
+  // only after it has been initialized at least once. Prewarm it when browser proxy
+  // is enabled so the relay is ready immediately after node host starts.
+  if (browserProxyEnabled) {
+    void ensureBrowserControlService().catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error(`node host browser control init failed: ${err?.message ?? String(err)}`);
+    });
+  }
+
   client.start();
   await new Promise(() => {});
 }

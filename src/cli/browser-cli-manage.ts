@@ -30,17 +30,11 @@ export function registerBrowserManageCommands(
     .action(async (_opts, cmd) => {
       const parent = parentOpts(cmd);
       await runBrowserCommand(async () => {
-        const status = await callBrowserRequest<BrowserStatus>(
-          parent,
-          {
-            method: "GET",
-            path: "/",
-            query: parent?.browserProfile ? { profile: parent.browserProfile } : undefined,
-          },
-          {
-            timeoutMs: 1500,
-          },
-        );
+        const status = await callBrowserRequest<BrowserStatus>(parent, {
+          method: "GET",
+          path: "/",
+          query: parent?.browserProfile ? { profile: parent.browserProfile } : undefined,
+        });
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify(status, null, 2));
           return;
@@ -80,15 +74,11 @@ export function registerBrowserManageCommands(
           },
           { timeoutMs: 15000 },
         );
-        const status = await callBrowserRequest<BrowserStatus>(
-          parent,
-          {
-            method: "GET",
-            path: "/",
-            query: profile ? { profile } : undefined,
-          },
-          { timeoutMs: 1500 },
-        );
+        const status = await callBrowserRequest<BrowserStatus>(parent, {
+          method: "GET",
+          path: "/",
+          query: profile ? { profile } : undefined,
+        });
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify(status, null, 2));
           return;
@@ -114,15 +104,11 @@ export function registerBrowserManageCommands(
           },
           { timeoutMs: 15000 },
         );
-        const status = await callBrowserRequest<BrowserStatus>(
-          parent,
-          {
-            method: "GET",
-            path: "/",
-            query: profile ? { profile } : undefined,
-          },
-          { timeoutMs: 1500 },
-        );
+        const status = await callBrowserRequest<BrowserStatus>(parent, {
+          method: "GET",
+          path: "/",
+          query: profile ? { profile } : undefined,
+        });
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify(status, null, 2));
           return;
@@ -168,15 +154,11 @@ export function registerBrowserManageCommands(
       const parent = parentOpts(cmd);
       const profile = parent?.browserProfile;
       await runBrowserCommand(async () => {
-        const result = await callBrowserRequest<{ running: boolean; tabs: BrowserTab[] }>(
-          parent,
-          {
-            method: "GET",
-            path: "/tabs",
-            query: profile ? { profile } : undefined,
-          },
-          { timeoutMs: 3000 },
-        );
+        const result = await callBrowserRequest<{ running: boolean; tabs: BrowserTab[] }>(parent, {
+          method: "GET",
+          path: "/tabs",
+          query: profile ? { profile } : undefined,
+        });
         const tabs = result.tabs ?? [];
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify({ tabs }, null, 2));
@@ -357,16 +339,12 @@ export function registerBrowserManageCommands(
       const parent = parentOpts(cmd);
       const profile = parent?.browserProfile;
       await runBrowserCommand(async () => {
-        await callBrowserRequest(
-          parent,
-          {
-            method: "POST",
-            path: "/tabs/focus",
-            query: profile ? { profile } : undefined,
-            body: { targetId },
-          },
-          { timeoutMs: 5000 },
-        );
+        await callBrowserRequest(parent, {
+          method: "POST",
+          path: "/tabs/focus",
+          query: profile ? { profile } : undefined,
+          body: { targetId },
+        });
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify({ ok: true }, null, 2));
           return;
@@ -384,15 +362,11 @@ export function registerBrowserManageCommands(
       const profile = parent?.browserProfile;
       await runBrowserCommand(async () => {
         if (targetId?.trim()) {
-          await callBrowserRequest(
-            parent,
-            {
-              method: "DELETE",
-              path: `/tabs/${encodeURIComponent(targetId.trim())}`,
-              query: profile ? { profile } : undefined,
-            },
-            { timeoutMs: 5000 },
-          );
+          await callBrowserRequest(parent, {
+            method: "DELETE",
+            path: `/tabs/${encodeURIComponent(targetId.trim())}`,
+            query: profile ? { profile } : undefined,
+          });
         } else {
           await callBrowserRequest(
             parent,
@@ -420,14 +394,10 @@ export function registerBrowserManageCommands(
     .action(async (_opts, cmd) => {
       const parent = parentOpts(cmd);
       await runBrowserCommand(async () => {
-        const result = await callBrowserRequest<{ profiles: ProfileStatus[] }>(
-          parent,
-          {
-            method: "GET",
-            path: "/profiles",
-          },
-          { timeoutMs: 3000 },
-        );
+        const result = await callBrowserRequest<{ profiles: ProfileStatus[] }>(parent, {
+          method: "GET",
+          path: "/profiles",
+        });
         const profiles = result.profiles ?? [];
         if (parent?.json) {
           defaultRuntime.log(JSON.stringify({ profiles }, null, 2));
