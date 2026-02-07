@@ -143,6 +143,7 @@ import { startWebLoginWithQr, waitForWebLogin } from "../../web/login-qr.js";
 import { loginWeb } from "../../web/login.js";
 import { loadWebMedia } from "../../web/media.js";
 import { sendMessageWhatsApp, sendPollWhatsApp } from "../../web/outbound.js";
+import { getGlobalHookRunner } from "../hook-runner-global.js";
 import { formatNativeDependencyHint } from "./native-deps.js";
 
 let cachedVersion: string | null = null;
@@ -334,6 +335,14 @@ export function createPluginRuntime(): PluginRuntime {
         createQuickReplyItems,
         buildTemplateMessageFromPayload,
         monitorLineProvider,
+      },
+    },
+    hooks: {
+      runMessageSent: async (event, ctx) => {
+        const hookRunner = getGlobalHookRunner();
+        if (hookRunner?.hasHooks("message_sent")) {
+          await hookRunner.runMessageSent(event, ctx);
+        }
       },
     },
     logging: {

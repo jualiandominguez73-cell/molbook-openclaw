@@ -53,6 +53,11 @@ type ShouldComputeCommandAuthorized =
   typeof import("../../auto-reply/command-detection.js").shouldComputeCommandAuthorized;
 type ShouldHandleTextCommands =
   typeof import("../../auto-reply/commands-registry.js").shouldHandleTextCommands;
+
+type RunMessageSent = (
+  event: import("../types.js").PluginHookMessageSentEvent,
+  ctx: import("../types.js").PluginHookMessageContext,
+) => Promise<void>;
 type DispatchReplyFromConfig =
   typeof import("../../auto-reply/reply/dispatch-from-config.js").dispatchReplyFromConfig;
 type FinalizeInboundContext =
@@ -347,6 +352,9 @@ export type PluginRuntime = {
       buildTemplateMessageFromPayload: BuildTemplateMessageFromPayload;
       monitorLineProvider: MonitorLineProvider;
     };
+  };
+  hooks: {
+    runMessageSent: RunMessageSent;
   };
   logging: {
     shouldLogVerbose: ShouldLogVerbose;
