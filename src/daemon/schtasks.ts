@@ -40,6 +40,62 @@ function quoteCmdArg(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;
 }
 
+function quotePowerShellArg(value: string): string {
+  // Escape single quotes for PowerShell
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function buildPowerShellWrapper({
+  description,
+  programArguments,
+  workingDirectory,
+  environment,
+}: {
+  description?: string;
+  programArguments: string[];
+  workingDirectory?: string;
+  environment?: Record<string, string | undefined>;
+}): string {
+  const lines: string[] = [];
+
+  if (description?.trim()) {
+    lines.push(`# ${description.trim()}`);
+  }
+
+  // Set working directory if specified
+  if (workingDirectory) {
+    lines.push(`Set-Location ${quotePowerShellArg(workingDirectory)}`);
+  }
+
+  // Set environment variables if specified
+  if (environment) {
+    for (const [key, value] of Object.entries(environment)) {
+      if (!value) {
+        continue;
+      }
+      lines.push(`$env:${key} = ${quotePowerShellArg(value)}`);
+    }
+  }
+
+  // Build the command
+  const executable = quotePowerShellArg(programArguments[0]);
+  const args = programArguments.slice(1);
+
+  // Use Start-Process with -WindowStyle Hidden to prevent console window
+  if (args.length === 0) {
+    lines.push(
+      `$process = Start-Process -FilePath ${executable} -WindowStyle Hidden -PassThru -Wait`,
+    );
+  } else {
+    const argList = args.map(quotePowerShellArg).join(", ");
+    lines.push(
+      `$process = Start-Process -FilePath ${executable} -ArgumentList @(${argList}) -WindowStyle Hidden -PassThru -Wait`,
+    );
+  }
+
+  return lines.join("\r\n") + "\r\n";
+}
+
 function resolveTaskUser(env: Record<string, string | undefined>): string | null {
   const username = env.USERNAME || env.USER || env.LOGNAME;
   if (!username) {
@@ -261,6 +317,18 @@ export async function installScheduledTask({
       profile: env.OPENCLAW_PROFILE,
       version: environment?.OPENCLAW_SERVICE_VERSION ?? env.OPENCLAW_SERVICE_VERSION,
     });
+
+  // Create PowerShell script for hidden execution
+  const ps1ScriptPath = scriptPath.replace(/\.cmd$/i, ".ps1");
+  const ps1Script = buildPowerShellWrapper({
+    description: taskDescription,
+    programArguments,
+    workingDirectory,
+    environment,
+  });
+  await fs.writeFile(ps1ScriptPath, ps1Script, "utf8");
+
+  // Also keep CMD script for backward compatibility
   const script = buildTaskScript({
     description: taskDescription,
     programArguments,
@@ -270,7 +338,8 @@ export async function installScheduledTask({
   await fs.writeFile(scriptPath, script, "utf8");
 
   const taskName = resolveTaskName(env);
-  const quotedScript = quoteCmdArg(scriptPath);
+  // Use PowerShell to execute the ps1 script with hidden window
+  const taskCommand = `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File "${ps1ScriptPath}"`;
   const baseArgs = [
     "/Create",
     "/F",
@@ -281,12 +350,10 @@ export async function installScheduledTask({
     "/TN",
     taskName,
     "/TR",
-    quotedScript,
+    taskCommand,
   ];
   const taskUser = resolveTaskUser(env);
-  let create = await execSchtasks(
-    taskUser ? [...baseArgs, "/RU", taskUser, "/NP", "/IT"] : baseArgs,
-  );
+  let create = await execSchtasks(taskUser ? [...baseArgs, "/RU", taskUser, "/NP"] : baseArgs);
   if (create.code !== 0 && taskUser) {
     create = await execSchtasks(baseArgs);
   }
@@ -302,8 +369,8 @@ export async function installScheduledTask({
   // Ensure we don't end up writing to a clack spinner line (wizards show progress without a newline).
   stdout.write("\n");
   stdout.write(`${formatLine("Installed Scheduled Task", taskName)}\n`);
-  stdout.write(`${formatLine("Task script", scriptPath)}\n`);
-  return { scriptPath };
+  stdout.write(`${formatLine("Task script", ps1ScriptPath)}\n`);
+  return { scriptPath: ps1ScriptPath };
 }
 
 export async function uninstallScheduledTask({
@@ -318,11 +385,21 @@ export async function uninstallScheduledTask({
   await execSchtasks(["/Delete", "/F", "/TN", taskName]);
 
   const scriptPath = resolveTaskScriptPath(env);
+  const ps1ScriptPath = scriptPath.replace(/\.cmd$/i, ".ps1");
+
+  // Remove both CMD and PowerShell scripts
   try {
     await fs.unlink(scriptPath);
     stdout.write(`${formatLine("Removed task script", scriptPath)}\n`);
   } catch {
-    stdout.write(`Task script not found at ${scriptPath}\n`);
+    // CMD script might not exist if using newer PowerShell-only installation
+  }
+
+  try {
+    await fs.unlink(ps1ScriptPath);
+    stdout.write(`${formatLine("Removed task script", ps1ScriptPath)}\n`);
+  } catch {
+    stdout.write(`Task script not found at ${ps1ScriptPath}\n`);
   }
 }
 
