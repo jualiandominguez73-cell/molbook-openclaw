@@ -3,7 +3,7 @@
  * Allows plugins to register custom search providers for the web_search tool.
  */
 
-import type { SearchProviderPlugin, SearchProviderContext } from "../../plugins/types.js";
+import type { SearchProviderPlugin } from "../../plugins/types.js";
 
 const searchProviderRegistry = new Map<string, SearchProviderPlugin>();
 

@@ -2,14 +2,9 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { SearchProviderPlugin } from "../../plugins/types.js";
 import type { AnyAgentTool } from "./common.js";
-import { formatCliCommand } from "../../cli/command-format.js";
 import { wrapWebContent } from "../../security/external-content.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
-import {
-  registerSearchProvider,
-  getSearchProvider,
-  hasSearchProvider,
-} from "./search-providers.js";
+import { registerSearchProvider, getSearchProvider } from "./search-providers.js";
 import {
   CacheEntry,
   DEFAULT_CACHE_TTL_MINUTES,
@@ -131,29 +126,6 @@ function resolveSearchApiKey(search?: WebSearchConfig): string | undefined {
     search && "apiKey" in search && typeof search.apiKey === "string" ? search.apiKey.trim() : "";
   const fromEnv = (process.env.BRAVE_API_KEY ?? "").trim();
   return fromConfig || fromEnv || undefined;
-}
-
-function missingSearchKeyPayload(provider: string) {
-  if (provider === "perplexity") {
-    return {
-      error: "missing_perplexity_api_key",
-      message:
-        "web_search (perplexity) needs an API key. Set PERPLEXITY_API_KEY or OPENROUTER_API_KEY in the Gateway environment, or configure tools.web.search.perplexity.apiKey.",
-      docs: "https://docs.openclaw.ai/tools/web",
-    };
-  }
-  if (provider === "brave") {
-    return {
-      error: "missing_brave_api_key",
-      message: `web_search needs a Brave Search API key. Run \`${formatCliCommand("openclaw configure --section web")}\` to store it, or set BRAVE_API_KEY in the Gateway environment.`,
-      docs: "https://docs.openclaw.ai/tools/web",
-    };
-  }
-  return {
-    error: "missing_api_key",
-    message: `web_search (${provider}) needs an API key. Check the provider's configuration.`,
-    docs: "https://docs.openclaw.ai/tools/web",
-  };
 }
 
 function resolveSearchProvider(search?: WebSearchConfig): string {
