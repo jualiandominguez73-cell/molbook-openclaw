@@ -154,7 +154,7 @@ export function renderChatControls(state: AppViewState) {
             : "Toggle assistant thinking/working output"
         }
       >
-        ${icons.brain}
+        ${showThinking ? icons.brain : icons.circle}
       </button>
       <button
         class="btn btn--sm btn--icon ${focusActive ? "active" : ""}"
