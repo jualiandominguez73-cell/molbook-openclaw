@@ -1,5 +1,31 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 
+const log = (() => {
+  // Lazy import to avoid circular dependencies
+  let logger: ReturnType<typeof import("../logging/subsystem.js").createSubsystemLogger> | null =
+    null;
+  return {
+    warn: (msg: string, meta?: Record<string, unknown>) => {
+      if (!logger) {
+        logger = import("../logging/subsystem.js").then((m) =>
+          m.createSubsystemLogger("session-repair"),
+        );
+      }
+      logger?.then((l) => l.warn(msg, meta));
+      console.warn(`[session-repair] ${msg}`, meta ?? "");
+    },
+    info: (msg: string, meta?: Record<string, unknown>) => {
+      if (!logger) {
+        logger = import("../logging/subsystem.js").then((m) =>
+          m.createSubsystemLogger("session-repair"),
+        );
+      }
+      logger?.then((l) => l.info(msg, meta));
+      console.info(`[session-repair] ${msg}`, meta ?? "");
+    },
+  };
+})();
+
 type ToolCallLike = {
   id: string;
   name?: string;
@@ -178,6 +204,35 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
   let moved = false;
   let changed = false;
 
+  // Pre-scan to detect orphaned toolCalls (for early logging)
+  const preScanToolCallIds = new Set<string>();
+  const preScanToolResultIds = new Set<string>();
+  for (const msg of messages) {
+    const role = (msg as { role?: unknown }).role;
+    if (role === "assistant") {
+      const assistant = msg as Extract<AgentMessage, { role: "assistant" }>;
+      const toolCalls = extractToolCallsFromAssistant(assistant);
+      for (const tc of toolCalls) {
+        preScanToolCallIds.add(tc.id);
+      }
+    } else if (role === "toolResult") {
+      const id = extractToolResultId(msg as Extract<AgentMessage, { role: "toolResult" }>);
+      if (id) preScanToolResultIds.add(id);
+    }
+  }
+  const orphanedToolCalls = Array.from(preScanToolCallIds).filter(
+    (id) => !preScanToolResultIds.has(id),
+  );
+
+  if (orphanedToolCalls.length > 0) {
+    log.warn(
+      `Detected ${orphanedToolCalls.length} orphaned toolCall(s) in session history (missing toolResult). ` +
+        `This is often caused by gateway restart interrupting tool execution. ` +
+        `Repairing by inserting synthetic error results.`,
+      { orphanedToolCallIds: orphanedToolCalls },
+    );
+  }
+
   const pushToolResult = (msg: Extract<AgentMessage, { role: "toolResult" }>) => {
     const id = extractToolResultId(msg);
     if (id && seenToolResultIds.has(id)) {
@@ -308,6 +363,14 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
   }
 
   const changedOrMoved = changed || moved;
+
+  if (changedOrMoved) {
+    log.info(
+      `Session transcript repair complete: added=${added.length}, droppedDuplicates=${droppedDuplicateCount}, droppedOrphans=${droppedOrphanCount}, moved=${moved}`,
+      { addedCount: added.length, droppedDuplicateCount, droppedOrphanCount, moved },
+    );
+  }
+
   return {
     messages: changedOrMoved ? out : messages,
     added,
