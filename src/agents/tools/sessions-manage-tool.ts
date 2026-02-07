@@ -3,8 +3,8 @@ import type { AnyAgentTool } from "./common.js";
 import { loadConfig } from "../../config/config.js";
 import { callGateway } from "../../gateway/call.js";
 import { isSubagentSessionKey, resolveAgentIdFromSessionKey } from "../../routing/session-key.js";
-import { jsonResult, readStringParam } from "./common.js";
 import { stringEnum } from "../schema/typebox.js";
+import { jsonResult, readStringParam } from "./common.js";
 import {
   createAgentToAgentPolicy,
   resolveInternalSessionKey,
