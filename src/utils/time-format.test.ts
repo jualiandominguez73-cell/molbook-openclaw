@@ -74,18 +74,21 @@ describe("formatRelativeTime", () => {
 
   // --- 7+ days: locale date string ---
 
-  it("returns a formatted date for 7 days ago", () => {
+  it("returns the same locale date string as toLocaleDateString for 7 days ago", () => {
     const sevenDaysAgo = now() - 7 * 24 * 60 * 60_000;
-    const result = formatRelativeTime(sevenDaysAgo);
-    // Should be a locale-formatted date, not a relative string
-    expect(result).not.toContain("ago");
-    expect(result).not.toBe("just now");
-    expect(result).not.toBe("Yesterday");
+    const expected = new Date(sevenDaysAgo).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    expect(formatRelativeTime(sevenDaysAgo)).toBe(expected);
   });
 
-  it("returns a formatted date for 30 days ago", () => {
+  it("returns the same locale date string as toLocaleDateString for 30 days ago", () => {
     const thirtyDaysAgo = now() - 30 * 24 * 60 * 60_000;
-    const result = formatRelativeTime(thirtyDaysAgo);
-    expect(result).not.toContain("ago");
+    const expected = new Date(thirtyDaysAgo).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    expect(formatRelativeTime(thirtyDaysAgo)).toBe(expected);
   });
 });
