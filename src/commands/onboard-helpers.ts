@@ -12,6 +12,7 @@ import { resolveSessionTranscriptsDirForAgent } from "../config/sessions.js";
 import { callGateway } from "../gateway/call.js";
 import { normalizeControlUiBasePath } from "../gateway/control-ui-shared.js";
 import { isSafeExecutableValue } from "../infra/exec-safety.js";
+import { pickOverlayIPv4 } from "../infra/overlay-net.js";
 import { pickPrimaryTailnetIPv4 } from "../infra/tailnet.js";
 import { isWSL } from "../infra/wsl.js";
 import { runCommandWithTimeout } from "../process/exec.js";
@@ -435,7 +436,7 @@ export const DEFAULT_WORKSPACE = DEFAULT_AGENT_WORKSPACE_DIR;
 
 export function resolveControlUiLinks(params: {
   port: number;
-  bind?: "auto" | "lan" | "loopback" | "custom" | "tailnet";
+  bind?: "auto" | "lan" | "loopback" | "custom" | "tailnet" | "overlay" | "zerotier" | "wireguard";
   customBindHost?: string;
   basePath?: string;
 }): { httpUrl: string; wsUrl: string } {
@@ -449,6 +450,12 @@ export function resolveControlUiLinks(params: {
     }
     if (bind === "tailnet" && tailnetIPv4) {
       return tailnetIPv4 ?? "127.0.0.1";
+    }
+    if (bind === "zerotier" || bind === "wireguard" || bind === "overlay") {
+      const overlayIP = pickOverlayIPv4(
+        bind === "zerotier" ? "zt" : bind === "wireguard" ? "wg" : undefined,
+      );
+      return overlayIP ?? "127.0.0.1";
     }
     return "127.0.0.1";
   })();
