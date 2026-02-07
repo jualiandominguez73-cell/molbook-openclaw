@@ -145,16 +145,14 @@ async function callLlmForSummary(params: {
 
   const maxTokens = params.targetTokens ?? 1000;
 
-  // Embed system prompt in user message (common pattern for simple completions)
-  const combinedPrompt = `${params.systemPrompt}\n\n---\n\n${params.userPrompt}`;
-
   const res = await completeSimple(
     model,
     {
+      systemPrompt: params.systemPrompt,
       messages: [
         {
           role: "user",
-          content: combinedPrompt,
+          content: params.userPrompt,
           timestamp: Date.now(),
         },
       ],
