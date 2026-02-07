@@ -223,42 +223,16 @@ function isMentionAll(event: FeishuMessageEvent): boolean {
 
 function extractContentText(content: string, messageType: string): string {
   try {
-    const parsed = JSON.parse(content);
     if (messageType === "text") {
-      return parsed.text ?? "";
+      return JSON.parse(content).text ?? "";
     }
     if (messageType === "post") {
-      return extractPostText(parsed);
+      return parsePostContent(content).textContent;
     }
     return "";
   } catch {
     return "";
   }
-}
-
-function extractPostText(parsed: Record<string, unknown>): string {
-  const parts: string[] = [];
-  const locales = Object.values(parsed) as Array<{ content?: unknown[][] }>;
-  for (const locale of locales) {
-    if (!Array.isArray(locale?.content)) {
-      continue;
-    }
-    for (const line of locale.content) {
-      if (!Array.isArray(line)) {
-        continue;
-      }
-      for (const node of line) {
-        const n = node as { tag?: string; text?: string; user_id?: string };
-        if (n.tag === "text" && n.text) {
-          parts.push(n.text);
-        }
-        if (n.tag === "at" && n.user_id) {
-          parts.push(`@${n.user_id}`);
-        }
-      }
-    }
-  }
-  return parts.join(" ");
 }
 
 function stripBotMention(
@@ -310,8 +284,11 @@ function parseMediaKeys(
 }
 
 /**
- * Parse post (rich text) content and extract embedded image keys.
- * Post structure: { title?: string, content: [[{ tag, text?, image_key?, ... }]] }
+ * Parse post (rich text) content and extract text + embedded image keys.
+ *
+ * Handles both Feishu post formats:
+ * - Flat:      { title?, content: [[{tag,text,...}]] }
+ * - Localized: { zh_cn: { title?, content: [[...]] }, en_us: { ... } }
  */
 function parsePostContent(content: string): {
   textContent: string;
@@ -319,8 +296,7 @@ function parsePostContent(content: string): {
 } {
   try {
     const parsed = JSON.parse(content);
-    const title = parsed.title || "";
-    const contentBlocks = parsed.content || [];
+    const { title, contentBlocks } = resolvePostBody(parsed);
     let textContent = title ? `${title}\n\n` : "";
     const imageKeys: string[] = [];
 
@@ -330,13 +306,10 @@ function parsePostContent(content: string): {
           if (element.tag === "text") {
             textContent += element.text || "";
           } else if (element.tag === "a") {
-            // Link: show text or href
             textContent += element.text || element.href || "";
           } else if (element.tag === "at") {
-            // Mention: @username
             textContent += `@${element.user_name || element.user_id || ""}`;
           } else if (element.tag === "img" && element.image_key) {
-            // Embedded image
             imageKeys.push(element.image_key);
           }
         }
@@ -351,6 +324,26 @@ function parsePostContent(content: string): {
   } catch {
     return { textContent: "[富文本消息]", imageKeys: [] };
   }
+}
+
+/** Unwrap localized post wrapper if present, returning title + content blocks. */
+function resolvePostBody(parsed: Record<string, unknown>): {
+  title: string;
+  contentBlocks: unknown[];
+} {
+  // Flat format: { title?, content: [[...]] }
+  if (Array.isArray(parsed.content)) {
+    return { title: (parsed.title as string) || "", contentBlocks: parsed.content };
+  }
+  // Localized format: { zh_cn: { title?, content: [[...]] }, ... }
+  // Pick the first locale that has a content array
+  for (const value of Object.values(parsed)) {
+    const locale = value as Record<string, unknown> | null;
+    if (locale && Array.isArray(locale.content)) {
+      return { title: (locale.title as string) || "", contentBlocks: locale.content };
+    }
+  }
+  return { title: "", contentBlocks: [] };
 }
 
 /**
@@ -951,8 +944,9 @@ export async function handleFeishuMessage(params: {
 
     log(`feishu[${account.accountId}]: dispatching to agent (session=${route.sessionKey})`);
 
+    let queuedFinal = false;
     try {
-      await core.channel.reply.dispatchReplyFromConfig({
+      const result = await core.channel.reply.dispatchReplyFromConfig({
         ctx: ctxPayload,
         cfg,
         dispatcher,
@@ -961,6 +955,7 @@ export async function handleFeishuMessage(params: {
           ...streamingCallbacks,
         },
       });
+      queuedFinal = result.queuedFinal;
     } finally {
       if (streamingSession?.isActive()) {
         const streamMessageId = streamingSession.getMessageId();
@@ -989,12 +984,16 @@ export async function handleFeishuMessage(params: {
       markDispatchIdle();
     }
 
-    if (isGroup && historyKey && chatHistories) {
-      clearHistoryEntriesIfEnabled({
-        historyMap: chatHistories,
-        historyKey,
-        limit: historyLimit,
-      });
+    if (!queuedFinal) {
+      // Agent produced no reply — clear stale history and skip post-dispatch work
+      if (isGroup && historyKey && chatHistories) {
+        clearHistoryEntriesIfEnabled({
+          historyMap: chatHistories,
+          historyKey,
+          limit: historyLimit,
+        });
+      }
+      return;
     }
 
     log(`feishu[${account.accountId}]: dispatch complete`);
