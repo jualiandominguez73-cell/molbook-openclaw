@@ -65,6 +65,35 @@ jobs:
           pnpm -v
           pnpm install --frozen-lockfile --ignore-scripts=false --config.engine-strict=false --config.enable-pre-post-scripts=true
 
+  detect-macos-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    outputs:
+      run_macos: ${{ steps.filter.outputs.run_macos }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 0
+
+      - name: Detect macOS-relevant changes
+        id: filter
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHANGED_FILES="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
+
+          echo "Changed files:"
+          echo "${CHANGED_FILES}"
+
+          if echo "${CHANGED_FILES}" | grep -Eq '^(apps/macos/|Swabble/|\.swiftformat|\.swiftlint\.yml|\.github/workflows/ci\.yml)'; then
+            echo "run_macos=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_macos=false" >> "$GITHUB_OUTPUT"
+          fi
+
   checks:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
@@ -270,7 +299,8 @@ jobs:
         run: ${{ matrix.command }}
 
   checks-macos:
-    if: github.event_name == 'pull_request'
+    needs: [detect-macos-changes]
+    if: github.event_name == 'pull_request' && needs.detect-macos-changes.outputs.run_macos == 'true'
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -342,7 +372,8 @@ jobs:
         run: ${{ matrix.command }}
 
   macos-app:
-    if: github.event_name == 'pull_request'
+    needs: [detect-macos-changes]
+    if: github.event_name == 'pull_request' && needs.detect-macos-changes.outputs.run_macos == 'true'
     runs-on: macos-latest
     strategy:
       fail-fast: false
