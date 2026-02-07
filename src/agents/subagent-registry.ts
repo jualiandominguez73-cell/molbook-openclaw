@@ -19,6 +19,13 @@ export type SubagentUsage = {
   toolCalls: number;
 };
 
+export type SubagentProgress = {
+  percent: number;
+  status: string;
+  detail?: string;
+  lastUpdate: number;
+};
+
 export type SubagentRunRecord = {
   runId: string;
   childSessionKey: string;
@@ -37,6 +44,8 @@ export type SubagentRunRecord = {
   cleanupHandled?: boolean;
   /** Accumulated resource usage for this run. */
   usage?: SubagentUsage;
+  /** Real-time progress tracking. */
+  progress?: SubagentProgress;
 };
 
 const subagentRuns = new Map<string, SubagentRunRecord>();
@@ -564,4 +573,55 @@ export function listAllSubagentRuns(): SubagentRunRecord[] {
 
 export function initSubagentRegistry() {
   restoreSubagentRunsOnce();
+}
+
+export function updateSubagentProgress(
+  runId: string,
+  update: { percent: number; status: string; detail?: string },
+) {
+  const entry = subagentRuns.get(runId);
+  if (!entry) {
+    return;
+  }
+  const percent = Math.max(0, Math.min(100, Math.floor(update.percent)));
+  const status = update.status.trim();
+  const detail = update.detail?.trim();
+
+  entry.progress = {
+    percent,
+    status,
+    detail,
+    lastUpdate: Date.now(),
+  };
+
+  persistSubagentRuns();
+
+  // Broadcast progress update for real-time hierarchy tracking
+  emitAgentEvent({
+    runId,
+    stream: "lifecycle",
+    sessionKey: entry.childSessionKey,
+    data: {
+      phase: "progress-update",
+      progress: entry.progress,
+    },
+  });
+}
+
+export function getSubagentProgress(runId: string): SubagentProgress | null {
+  const entry = subagentRuns.get(runId);
+  return entry?.progress ?? null;
+}
+
+export function getSubagentRunById(runId: string): SubagentRunRecord | null {
+  return subagentRuns.get(runId) ?? null;
+}
+
+export function getSubagentRunBySessionKey(sessionKey: string): SubagentRunRecord | null {
+  for (const entry of subagentRuns.values()) {
+    if (entry.childSessionKey === sessionKey) {
+      return entry;
+    }
+  }
+  return null;
 }

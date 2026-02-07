@@ -878,14 +878,18 @@ function schedulePositionLock() {
 
   settleTimer = setTimeout(() => {
     settleTimer = null;
-    if (!chartInstance) return;
+    if (!chartInstance) {
+      return;
+    }
 
     // Extract settled positions from the chart
     const opt = chartInstance.getOption() as {
       series?: { data?: { id?: string; x?: number; y?: number }[] }[];
     };
     const data = opt?.series?.[0]?.data;
-    if (!Array.isArray(data)) return;
+    if (!Array.isArray(data)) {
+      return;
+    }
 
     lockedPositions = new Map();
     for (const n of data) {
@@ -908,7 +912,9 @@ function startPulseTimer() {
     clearInterval(pulseTimer);
     pulseTimer = null;
   }
-  if (!lockedPositions || lockedPositions.size === 0) return;
+  if (!lockedPositions || lockedPositions.size === 0) {
+    return;
+  }
 
   let phase = 0;
   pulseTimer = setInterval(() => {
@@ -921,7 +927,9 @@ function startPulseTimer() {
     }
 
     const gd = currentGraphData;
-    if (!gd) return;
+    if (!gd) {
+      return;
+    }
 
     phase = (phase + 1) % 12;
     const intensity = 8 + Math.sin((phase / 12) * Math.PI * 2) * 6;
