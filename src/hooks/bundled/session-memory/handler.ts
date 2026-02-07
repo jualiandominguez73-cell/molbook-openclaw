@@ -124,6 +124,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
       // Avoid calling the model provider in unit tests, keep hooks fast and deterministic.
       if (sessionContent && cfg && !process.env.VITEST && process.env.NODE_ENV !== "test") {
         log.debug("Calling generateSlugViaLLM...");
+        // Dynamic import to avoid tsdown cross-entry-point resolution issues
         const openclawRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
         const slugGenPath = path.join(openclawRoot, "llm-slug-generator.js");
         const { generateSlugViaLLM } = await import(slugGenPath);
