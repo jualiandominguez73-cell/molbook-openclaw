@@ -353,8 +353,11 @@ async function maybeMergeLevel(params: {
     return false; // Already at max level
   }
 
+  // Take exactly mergeThreshold entries to maintain fixed merge cadence
+  const toMerge = unmerged.slice(0, memoryConfig.mergeThreshold);
+
   // Load summary contents
-  const summaryContents = await loadSummaryContents(unmerged, agentId);
+  const summaryContents = await loadSummaryContents(toMerge, agentId);
 
   // Load older context (unmerged higher-level summaries only)
   const olderContext: string[] = [];
@@ -381,7 +384,7 @@ async function maybeMergeLevel(params: {
     createdAt: Date.now(),
     tokenEstimate: Math.ceil(mergedContent.length / 4),
     sourceLevel: getSourceLevel(nextLevel),
-    sourceIds: unmerged.map((s) => s.id),
+    sourceIds: toMerge.map((s) => s.id),
     mergedInto: null,
   };
 
@@ -390,7 +393,7 @@ async function maybeMergeLevel(params: {
   index.levels[nextLevel].push(mergedEntry);
 
   // Mark source summaries as merged
-  for (const summary of unmerged) {
+  for (const summary of toMerge) {
     summary.mergedInto = mergedId;
   }
 
