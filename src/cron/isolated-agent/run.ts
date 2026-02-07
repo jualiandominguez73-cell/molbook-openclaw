@@ -283,6 +283,14 @@ export async function runCronIsolatedAgentTurn(params: {
     to: deliveryPlan.to,
   });
 
+  // Override accountId when explicitly set in the cron delivery config.
+  // resolveDeliveryTarget infers accountId from the session store (last-used account),
+  // but an explicit delivery.accountId should take precedence so jobs can target
+  // a specific bot account (e.g. alerts bot vs main bot on the same channel).
+  if (deliveryPlan.accountId) {
+    resolvedDelivery.accountId = deliveryPlan.accountId;
+  }
+
   const userTimezone = resolveUserTimezone(params.cfg.agents?.defaults?.userTimezone);
   const userTimeFormat = resolveUserTimeFormat(params.cfg.agents?.defaults?.timeFormat);
   const formattedTime =

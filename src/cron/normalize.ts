@@ -165,6 +165,14 @@ function coerceDelivery(delivery: UnknownRecord) {
       delete next.to;
     }
   }
+  if (typeof delivery.accountId === "string") {
+    const trimmed = (delivery.accountId as string).trim();
+    if (trimmed) {
+      next.accountId = trimmed;
+    } else {
+      delete next.accountId;
+    }
+  }
   return next;
 }
 
