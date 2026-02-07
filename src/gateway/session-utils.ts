@@ -666,6 +666,11 @@ export function listSessionsFromStore(params: {
         lastChannel: deliveryFields.lastChannel ?? entry?.lastChannel,
         lastTo: deliveryFields.lastTo ?? entry?.lastTo,
         lastAccountId: deliveryFields.lastAccountId ?? entry?.lastAccountId,
+        spawnedBy: entry?.spawnedBy,
+        parentSessionKey: entry?.parentSessionKey,
+        rootSessionKey: entry?.rootSessionKey,
+        traceId: entry?.traceId,
+        spawnDepth: entry?.spawnDepth,
       };
     })
     .toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));

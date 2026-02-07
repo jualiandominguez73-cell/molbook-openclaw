@@ -100,6 +100,90 @@ export async function applySessionsPatchToStore(params: {
     }
   }
 
+  if ("parentSessionKey" in patch) {
+    const raw = patch.parentSessionKey;
+    if (raw === null) {
+      if (existing?.parentSessionKey) {
+        return invalid("parentSessionKey cannot be cleared once set");
+      }
+    } else if (raw !== undefined) {
+      const trimmed = String(raw).trim();
+      if (!trimmed) {
+        return invalid("invalid parentSessionKey: empty");
+      }
+      if (!isSubagentSessionKey(storeKey)) {
+        return invalid("parentSessionKey is only supported for subagent:* sessions");
+      }
+      if (existing?.parentSessionKey && existing.parentSessionKey !== trimmed) {
+        return invalid("parentSessionKey cannot be changed once set");
+      }
+      next.parentSessionKey = trimmed;
+    }
+  }
+
+  if ("rootSessionKey" in patch) {
+    const raw = patch.rootSessionKey;
+    if (raw === null) {
+      if (existing?.rootSessionKey) {
+        return invalid("rootSessionKey cannot be cleared once set");
+      }
+    } else if (raw !== undefined) {
+      const trimmed = String(raw).trim();
+      if (!trimmed) {
+        return invalid("invalid rootSessionKey: empty");
+      }
+      if (!isSubagentSessionKey(storeKey)) {
+        return invalid("rootSessionKey is only supported for subagent:* sessions");
+      }
+      if (existing?.rootSessionKey && existing.rootSessionKey !== trimmed) {
+        return invalid("rootSessionKey cannot be changed once set");
+      }
+      next.rootSessionKey = trimmed;
+    }
+  }
+
+  if ("traceId" in patch) {
+    const raw = patch.traceId;
+    if (raw === null) {
+      if (existing?.traceId) {
+        return invalid("traceId cannot be cleared once set");
+      }
+    } else if (raw !== undefined) {
+      const trimmed = String(raw).trim();
+      if (!trimmed) {
+        return invalid("invalid traceId: empty");
+      }
+      if (!isSubagentSessionKey(storeKey)) {
+        return invalid("traceId is only supported for subagent:* sessions");
+      }
+      if (existing?.traceId && existing.traceId !== trimmed) {
+        return invalid("traceId cannot be changed once set");
+      }
+      next.traceId = trimmed;
+    }
+  }
+
+  if ("spawnDepth" in patch) {
+    const raw = patch.spawnDepth;
+    if (raw === null) {
+      if (typeof existing?.spawnDepth === "number") {
+        return invalid("spawnDepth cannot be cleared once set");
+      }
+    } else if (raw !== undefined) {
+      if (!isSubagentSessionKey(storeKey)) {
+        return invalid("spawnDepth is only supported for subagent:* sessions");
+      }
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+        return invalid("invalid spawnDepth: must be an integer >= 0");
+      }
+      if (typeof existing?.spawnDepth === "number" && existing.spawnDepth !== value) {
+        return invalid("spawnDepth cannot be changed once set");
+      }
+      next.spawnDepth = value;
+    }
+  }
+
   if ("label" in patch) {
     const raw = patch.label;
     if (raw === null) {

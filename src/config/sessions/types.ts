@@ -35,6 +35,14 @@ export type SessionEntry = {
   sessionFile?: string;
   /** Parent session key that spawned this session (used for sandbox session-tool scoping). */
   spawnedBy?: string;
+  /** Direct parent session in the task/session chain (same as spawnedBy for subagents). */
+  parentSessionKey?: string;
+  /** Root session where this chain started. */
+  rootSessionKey?: string;
+  /** End-to-end trace id shared by the chain. */
+  traceId?: string;
+  /** Depth in the spawn chain. Root/main session defaults to 0. */
+  spawnDepth?: number;
   systemSent?: boolean;
   abortedLastRun?: boolean;
   chatType?: SessionChatType;

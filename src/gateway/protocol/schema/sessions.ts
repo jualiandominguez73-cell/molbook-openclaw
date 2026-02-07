@@ -71,6 +71,10 @@ export const SessionsPatchParamsSchema = Type.Object(
     execNode: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     model: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
     spawnedBy: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
+    parentSessionKey: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
+    rootSessionKey: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
+    traceId: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
+    spawnDepth: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
     sendPolicy: Type.Optional(
       Type.Union([Type.Literal("allow"), Type.Literal("deny"), Type.Null()]),
     ),

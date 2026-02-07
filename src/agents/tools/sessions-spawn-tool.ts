@@ -5,6 +5,7 @@ import type { AnyAgentTool } from "./common.js";
 import { formatThinkingLevels, normalizeThinkLevel } from "../../auto-reply/thinking.js";
 import { loadConfig } from "../../config/config.js";
 import { callGateway } from "../../gateway/call.js";
+import { loadSessionEntry } from "../../gateway/session-utils.js";
 import {
   isSubagentSessionKey,
   normalizeAgentId,
@@ -137,6 +138,14 @@ export function createSessionsSpawnTool(opts?: {
         alias,
         mainKey,
       });
+      const requesterEntry = loadSessionEntry(requesterInternalKey).entry;
+      const parentDepth =
+        typeof requesterEntry?.spawnDepth === "number" && requesterEntry.spawnDepth >= 0
+          ? requesterEntry.spawnDepth
+          : 0;
+      const chainRootSessionKey = requesterEntry?.rootSessionKey?.trim() || requesterInternalKey;
+      const chainTraceId = requesterEntry?.traceId?.trim() || crypto.randomUUID();
+      const childSpawnDepth = parentDepth + 1;
 
       const requesterAgentId = normalizeAgentId(
         opts?.requesterAgentIdOverride ?? parseAgentSessionKey(requesterInternalKey)?.agentId,
@@ -191,27 +200,55 @@ export function createSessionsSpawnTool(opts?: {
         }
         thinkingOverride = normalized;
       }
-      if (resolvedModel) {
+      const chainPatch = {
+        key: childSessionKey,
+        spawnedBy: spawnedByKey,
+        parentSessionKey: requesterInternalKey,
+        rootSessionKey: chainRootSessionKey,
+        traceId: chainTraceId,
+        spawnDepth: childSpawnDepth,
+      };
+
+      try {
+        await callGateway({
+          method: "sessions.patch",
+          params: resolvedModel ? { ...chainPatch, model: resolvedModel } : chainPatch,
+          timeoutMs: 10_000,
+        });
+        modelApplied = Boolean(resolvedModel);
+      } catch (err) {
+        const messageText =
+          err instanceof Error ? err.message : typeof err === "string" ? err : "error";
+        const recoverableModelError =
+          Boolean(resolvedModel) &&
+          (messageText.includes("invalid model") || messageText.includes("model not allowed"));
+        if (!recoverableModelError) {
+          return jsonResult({
+            status: "error",
+            error: messageText,
+            childSessionKey,
+          });
+        }
+
+        modelWarning = messageText;
         try {
           await callGateway({
             method: "sessions.patch",
-            params: { key: childSessionKey, model: resolvedModel },
+            params: chainPatch,
             timeoutMs: 10_000,
           });
-          modelApplied = true;
-        } catch (err) {
-          const messageText =
-            err instanceof Error ? err.message : typeof err === "string" ? err : "error";
-          const recoverable =
-            messageText.includes("invalid model") || messageText.includes("model not allowed");
-          if (!recoverable) {
-            return jsonResult({
-              status: "error",
-              error: messageText,
-              childSessionKey,
-            });
-          }
-          modelWarning = messageText;
+        } catch (chainErr) {
+          const chainMessage =
+            chainErr instanceof Error
+              ? chainErr.message
+              : typeof chainErr === "string"
+                ? chainErr
+                : "error";
+          return jsonResult({
+            status: "error",
+            error: chainMessage,
+            childSessionKey,
+          });
         }
       }
       const childSystemPrompt = buildSubagentSystemPrompt({

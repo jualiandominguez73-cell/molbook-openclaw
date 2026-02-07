@@ -36,6 +36,11 @@ export type SessionListRow = {
   lastChannel?: string;
   lastTo?: string;
   lastAccountId?: string;
+  spawnedBy?: string;
+  parentSessionKey?: string;
+  rootSessionKey?: string;
+  traceId?: string;
+  spawnDepth?: number;
   transcriptPath?: string;
   messages?: unknown[];
 };

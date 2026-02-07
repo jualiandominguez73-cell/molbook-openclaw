@@ -185,6 +185,26 @@ export function createSessionsListTool(opts?: {
           lastChannel,
           lastTo: deliveryTo ?? (typeof entry.lastTo === "string" ? entry.lastTo : undefined),
           lastAccountId,
+          spawnedBy:
+            typeof (entry as Record<string, unknown>).spawnedBy === "string"
+              ? ((entry as Record<string, unknown>).spawnedBy as string)
+              : undefined,
+          parentSessionKey:
+            typeof (entry as Record<string, unknown>).parentSessionKey === "string"
+              ? ((entry as Record<string, unknown>).parentSessionKey as string)
+              : undefined,
+          rootSessionKey:
+            typeof (entry as Record<string, unknown>).rootSessionKey === "string"
+              ? ((entry as Record<string, unknown>).rootSessionKey as string)
+              : undefined,
+          traceId:
+            typeof (entry as Record<string, unknown>).traceId === "string"
+              ? ((entry as Record<string, unknown>).traceId as string)
+              : undefined,
+          spawnDepth:
+            typeof (entry as Record<string, unknown>).spawnDepth === "number"
+              ? ((entry as Record<string, unknown>).spawnDepth as number)
+              : undefined,
           transcriptPath,
         };
 
