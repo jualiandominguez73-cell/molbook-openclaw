@@ -237,10 +237,10 @@ See [/providers/minimax](/providers/minimax) for setup details, model options, a
 
 ### StepFun
 
-StepFun (OpenAI-compatible):
+StepFun is configured via `models.providers` (OpenAI-compatible):
 
-- CLI: `--auth-choice stepfun-api-key`
-- Auth: `STEPFUN_API_KEY`
+- Provider: `stepfun`
+- Auth: Set `apiKey` in provider config
 - Base URL: `https://api.stepfun.ai/v1` (International) or `https://api.stepfun.com/v1` (China)
 - Example model: `stepfun/step-3.5-flash`
 
