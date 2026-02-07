@@ -7,7 +7,7 @@ import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import type { ClientToolDefinition } from "./pi-embedded-runner/run/params.js";
 import { logDebug, logError } from "../logger.js";
 import { runBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
-import { normalizeToolName } from "./tool-policy.js";
+import { normalizeToolName, truncateToolNameForOpenAI } from "./tool-policy.js";
 import { jsonResult } from "./tools/common.js";
 
 // oxlint-disable-next-line typescript/no-explicit-any
@@ -85,8 +85,9 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
   return tools.map((tool) => {
     const name = tool.name || "tool";
     const normalizedName = normalizeToolName(name);
+    const truncatedName = truncateToolNameForOpenAI(normalizedName);
     return {
-      name,
+      name: truncatedName,
       label: tool.label ?? name,
       description: tool.description ?? "",
       parameters: tool.parameters,
@@ -130,8 +131,9 @@ export function toClientToolDefinitions(
 ): ToolDefinition[] {
   return tools.map((tool) => {
     const func = tool.function;
+    const truncatedName = truncateToolNameForOpenAI(func.name);
     return {
-      name: func.name,
+      name: truncatedName,
       label: func.name,
       description: func.description ?? "",
       // oxlint-disable-next-line typescript/no-explicit-any
