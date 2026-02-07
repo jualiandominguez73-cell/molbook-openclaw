@@ -485,7 +485,7 @@ const FIELD_HELP: Record<string, string> = {
   "tools.web.search.bocha.apiKey":
     "Bocha Search API key (fallback: BOCHA_API_KEY env var).",
   "tools.web.search.bocha.baseUrl":
-    "Bocha base URL override (default: https://api.bocha.cn/v1/web-search).",
+    "Bocha base URL override (default: https://api.bocha.cn).",
   "tools.web.fetch.enabled": "Enable the web_fetch tool (lightweight HTTP fetch).",
   "tools.web.fetch.maxChars": "Max characters returned by web_fetch (truncated).",
   "tools.web.fetch.maxCharsCap":

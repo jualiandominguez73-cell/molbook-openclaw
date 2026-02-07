@@ -27,7 +27,7 @@ const PERPLEXITY_DIRECT_BASE_URL = "https://api.perplexity.ai";
 const DEFAULT_PERPLEXITY_MODEL = "perplexity/sonar-pro";
 const PERPLEXITY_KEY_PREFIXES = ["pplx-"];
 const OPENROUTER_KEY_PREFIXES = ["sk-or-"];
-const DEFAULT_BOCHA_BASE_URL = "https://api.bocha.cn/v1/web-search";
+const DEFAULT_BOCHA_BASE_URL = "https://api.bocha.cn";
 
 const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
@@ -417,7 +417,9 @@ async function runBochaSearch(params: {
   baseUrl: string;
   timeoutSeconds: number;
 }): Promise<{ results: Array<{ title: string; url: string; description: string; siteName?: string; published?: string }> }> {
-  const res = await fetch(params.baseUrl, {
+  // Normalize: treat baseUrl as a base and ensure the search path is appended
+  const endpoint = new URL("/v1/web-search", params.baseUrl.replace(/\/$/, "")).toString();
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -474,10 +476,17 @@ async function runWebSearch(params: {
   perplexityModel?: string;
   bochaBaseUrl?: string;
 }): Promise<Record<string, unknown>> {
-  const cacheKey = normalizeCacheKey(
+  // Include provider-specific base URL in cache key so endpoint changes invalidate cache
+  const providerSuffix =
     params.provider === "brave"
-      ? `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}:${params.freshness || "default"}`
-      : `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}`,
+      ? `:${params.freshness || "default"}`
+      : params.provider === "perplexity"
+        ? `:${params.perplexityBaseUrl || "default"}:${params.perplexityModel || "default"}`
+        : params.provider === "bocha"
+          ? `:${params.bochaBaseUrl || "default"}`
+          : "";
+  const cacheKey = normalizeCacheKey(
+    `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}${providerSuffix}`,
   );
   const cached = readCache(SEARCH_CACHE, cacheKey);
   if (cached) {
