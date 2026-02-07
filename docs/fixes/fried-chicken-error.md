@@ -6,6 +6,8 @@ When using Anthropic via auth-based (session/cookie) access rather than API keys
 
 We nicknamed it the "Fried Chicken Error" because the false "Context overflow" message looks like a real, substantial error (a whole meal) — but it's actually just a rate limit with nothing behind it (just gas). The name stuck because it perfectly captures the frustration: you think something serious is wrong with your context window, but the real problem is just temporary throttling.
 
+There's also a practical reason for the alias: the bug is self-referential. Discussing the error by its real name (e.g., quoting the "Context overflow" message) can _trigger_ the very bug being discussed, because `sanitizeUserFacingText()` pattern-matches against all text content — including agent replies. Using "Fried Chicken Error" sidesteps this entirely. See [#3594](https://github.com/openclaw/openclaw/issues/3594) for that related bug.
+
 ## Who's Affected?
 
 - Users authenticating to Anthropic via OAuth/session tokens (Claude Pro/Max subscriptions)
