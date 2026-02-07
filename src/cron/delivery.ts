@@ -72,6 +72,10 @@ export function resolveCronDeliveryPlan(job: CronJob): CronDeliveryPlan {
   const hasExplicitTarget = Boolean(to);
   const requested = legacyMode === "explicit" || (legacyMode === "auto" && hasExplicitTarget);
 
+  // accountId is intentionally omitted for payload-sourced plans.
+  // The payload fields (deliver, channel, to) are legacy — normalization
+  // auto-promotes them into a delivery object for new jobs. accountId is
+  // only available via the modern delivery config.
   return {
     mode: requested ? "announce" : "none",
     channel,

@@ -166,7 +166,7 @@ function coerceDelivery(delivery: UnknownRecord) {
     }
   }
   if (typeof delivery.accountId === "string") {
-    const trimmed = (delivery.accountId as string).trim();
+    const trimmed = delivery.accountId.trim();
     if (trimmed) {
       next.accountId = trimmed;
     } else {
