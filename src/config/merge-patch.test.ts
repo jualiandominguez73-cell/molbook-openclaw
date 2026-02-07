@@ -60,11 +60,18 @@ describe("applyMergePatch", () => {
     expect(applyMergePatch(base, patch)).toEqual({ list: [4, 5] });
   });
 
-  it("does not mutate the original base object", () => {
+  it("does not mutate the original base object (shallow)", () => {
     const base = { a: 1, b: 2 };
     const copy = { ...base };
     applyMergePatch(base, { b: 3, c: 4 });
     expect(base).toEqual(copy);
+  });
+
+  it("does not mutate nested objects in the base", () => {
+    const nested = { x: 1, y: 2 };
+    const base = { a: nested };
+    applyMergePatch(base, { a: { y: 99, z: 3 } });
+    expect(nested).toEqual({ x: 1, y: 2 });
   });
 
   it("handles deeply nested merges", () => {
