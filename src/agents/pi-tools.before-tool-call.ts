@@ -2,8 +2,9 @@ import type { SigConfig } from "@disreguard/sig";
 import type { AnyAgentTool } from "./tools/common.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { logGateEvent } from "./sig-gate-audit.js";
 import { checkMutationGate } from "./sig-mutation-gate.js";
-import { checkVerificationGate } from "./sig-verification-gate.js";
+import { checkVerificationGate, SIG_GATED_TOOLS } from "./sig-verification-gate.js";
 import { normalizeToolName } from "./tool-policy.js";
 
 type HookContext = {
@@ -27,6 +28,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Check if sig enforcement is enabled in config (same logic as checkVerificationGate). */
+function isEnforcementEnabled(config: unknown): boolean {
+  const agents = (config as Record<string, unknown>)?.agents as Record<string, unknown> | undefined;
+  const defaults = agents?.defaults as Record<string, unknown> | undefined;
+  const sig = defaults?.sig as { enforceVerification?: boolean } | undefined;
+  return !!sig?.enforceVerification;
+}
+
 export async function runBeforeToolCallHook(args: {
   toolName: string;
   params: unknown;
@@ -42,6 +51,16 @@ export async function runBeforeToolCallHook(args: {
     args.ctx?.config,
   );
   if (gateResult.blocked) {
+    if (args.ctx?.projectRoot) {
+      logGateEvent(args.ctx.projectRoot, {
+        event: "gate_blocked",
+        gate: "verification",
+        tool: args.toolName,
+        session: args.ctx.sessionKey,
+        turn: args.ctx.turnId,
+        reason: gateResult.reason,
+      }).catch(() => {});
+    }
     return gateResult;
   }
 
@@ -54,7 +73,33 @@ export async function runBeforeToolCallHook(args: {
     args.ctx?.sigConfig,
   );
   if (mutationResult.blocked) {
+    if (args.ctx?.projectRoot) {
+      logGateEvent(args.ctx.projectRoot, {
+        event: "gate_blocked",
+        gate: "mutation",
+        tool: args.toolName,
+        session: args.ctx.sessionKey,
+        turn: args.ctx.turnId,
+        reason: mutationResult.reason,
+      }).catch(() => {});
+    }
     return mutationResult;
+  }
+
+  // Audit: log gated tools that pass both gates (verified execution).
+  // Only log when enforcement is active — otherwise the gate wasn't involved.
+  if (
+    args.ctx?.projectRoot &&
+    isEnforcementEnabled(args.ctx.config) &&
+    SIG_GATED_TOOLS.has(args.toolName.trim().toLowerCase())
+  ) {
+    logGateEvent(args.ctx.projectRoot, {
+      event: "gate_allowed",
+      gate: "verification",
+      tool: args.toolName,
+      session: args.ctx.sessionKey,
+      turn: args.ctx.turnId,
+    }).catch(() => {});
   }
 
   const hookRunner = getGlobalHookRunner();

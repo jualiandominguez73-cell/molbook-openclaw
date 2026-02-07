@@ -1109,7 +1109,7 @@
               },
               {
                 "group": "Security",
-                "pages": ["security/formal-verification"]
+                "pages": ["security/formal-verification", "reference/adversarial-testing"]
               },
               {
                 "group": "Web interfaces",
