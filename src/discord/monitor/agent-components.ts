@@ -13,7 +13,9 @@ import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { logDebug, logError } from "../../logger.js";
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
 import {
+  allowListMatches,
   type DiscordGuildEntryResolved,
+  normalizeDiscordAllowList,
   normalizeDiscordSlug,
   resolveDiscordChannelConfigWithFallback,
   resolveDiscordGuildEntry,
@@ -27,6 +29,10 @@ export type AgentComponentContext = {
   cfg: OpenClawConfig;
   accountId: string;
   guildEntries?: Record<string, DiscordGuildEntryResolved>;
+  /** DM allowlist (from dm.allowFrom config) */
+  allowFrom?: Array<string | number>;
+  /** DM policy (default: "pairing") */
+  dmPolicy?: "open" | "pairing" | "allowlist" | "disabled";
 };
 
 /**
@@ -138,6 +144,42 @@ export class AgentComponentButton extends Button {
     // when guild is not cached even though guild_id is present in rawData
     const rawGuildId = interaction.rawData.guild_id;
     const isDirectMessage = !rawGuildId;
+
+    // DM authorization check - enforce allowFrom list if configured
+    if (isDirectMessage) {
+      const dmPolicy = this.ctx.dmPolicy ?? "pairing";
+      if (dmPolicy === "disabled") {
+        logVerbose("agent button: blocked (DM policy disabled)");
+        try {
+          await interaction.reply({
+            content: "DM interactions are disabled.",
+            ephemeral: true,
+          });
+        } catch {
+          // Interaction may have expired
+        }
+        return;
+      }
+      if (dmPolicy !== "open" && this.ctx.allowFrom) {
+        const allowList = normalizeDiscordAllowList(this.ctx.allowFrom, [
+          "discord:",
+          "user:",
+          "pk:",
+        ]);
+        if (allowList && !allowListMatches(allowList, { id: userId, name: user.username })) {
+          logVerbose(`agent button: blocked DM user ${userId} (not in allowFrom)`);
+          try {
+            await interaction.reply({
+              content: "You are not authorized to use this button.",
+              ephemeral: true,
+            });
+          } catch {
+            // Interaction may have expired
+          }
+          return;
+        }
+      }
+    }
 
     // P2 FIX: Check user allowlist before processing component interaction
     // This prevents unauthorized users from injecting system events
@@ -292,6 +334,42 @@ export class AgentSelectMenu extends StringSelectMenu {
     // when guild is not cached even though guild_id is present in rawData
     const rawGuildId = interaction.rawData.guild_id;
     const isDirectMessage = !rawGuildId;
+
+    // DM authorization check - enforce allowFrom list if configured
+    if (isDirectMessage) {
+      const dmPolicy = this.ctx.dmPolicy ?? "pairing";
+      if (dmPolicy === "disabled") {
+        logVerbose("agent select: blocked (DM policy disabled)");
+        try {
+          await interaction.reply({
+            content: "DM interactions are disabled.",
+            ephemeral: true,
+          });
+        } catch {
+          // Interaction may have expired
+        }
+        return;
+      }
+      if (dmPolicy !== "open" && this.ctx.allowFrom) {
+        const allowList = normalizeDiscordAllowList(this.ctx.allowFrom, [
+          "discord:",
+          "user:",
+          "pk:",
+        ]);
+        if (allowList && !allowListMatches(allowList, { id: userId, name: user.username })) {
+          logVerbose(`agent select: blocked DM user ${userId} (not in allowFrom)`);
+          try {
+            await interaction.reply({
+              content: "You are not authorized to use this select menu.",
+              ephemeral: true,
+            });
+          } catch {
+            // Interaction may have expired
+          }
+          return;
+        }
+      }
+    }
 
     // Check user allowlist before processing component interaction
     const guild = interaction.guild;

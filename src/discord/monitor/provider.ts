@@ -497,6 +497,8 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
         cfg,
         accountId: account.accountId,
         guildEntries,
+        allowFrom,
+        dmPolicy,
       }),
     );
     components.push(
@@ -504,6 +506,8 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
         cfg,
         accountId: account.accountId,
         guildEntries,
+        allowFrom,
+        dmPolicy,
       }),
     );
   }
