@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CronJob } from "./types.js";
 import { CronService } from "./service.js";
@@ -235,6 +236,64 @@ describe("Cron issue regressions", () => {
     expect(timeoutSpy).not.toHaveBeenCalled();
     expect(state.timer).toBeNull();
     timeoutSpy.mockRestore();
+    await store.cleanup();
+  });
+
+  it("skips forced manual runs while a timer-triggered run is in progress", async () => {
+    vi.useRealTimers();
+    const store = await makeStorePath();
+    let resolveRun:
+      | ((value: { status: "ok" | "error" | "skipped"; summary?: string; error?: string }) => void)
+      | undefined;
+    const runIsolatedAgentJob = vi.fn(
+      async () =>
+        await new Promise<{ status: "ok" | "error" | "skipped"; summary?: string; error?: string }>(
+          (resolve) => {
+            resolveRun = resolve;
+          },
+        ),
+    );
+
+    const cron = new CronService({
+      cronEnabled: true,
+      storePath: store.storePath,
+      log: noopLogger,
+      enqueueSystemEvent: vi.fn(),
+      requestHeartbeatNow: vi.fn(),
+      runIsolatedAgentJob,
+    });
+    await cron.start();
+
+    const runAt = Date.now() + 30;
+    const job = await cron.add({
+      name: "timer-overlap",
+      enabled: true,
+      schedule: { kind: "at", at: new Date(runAt).toISOString() },
+      sessionTarget: "isolated",
+      wakeMode: "next-heartbeat",
+      payload: { kind: "agentTurn", message: "long task" },
+      delivery: { mode: "none" },
+    });
+
+    for (let i = 0; i < 25 && runIsolatedAgentJob.mock.calls.length === 0; i++) {
+      await delay(20);
+    }
+    expect(runIsolatedAgentJob).toHaveBeenCalledTimes(1);
+
+    const manualResult = await cron.run(job.id, "force");
+    expect(manualResult).toEqual({ ok: true, ran: false, reason: "already-running" });
+    expect(runIsolatedAgentJob).toHaveBeenCalledTimes(1);
+
+    resolveRun?.({ status: "ok", summary: "done" });
+    for (let i = 0; i < 25; i++) {
+      const jobs = await cron.list({ includeDisabled: true });
+      if (jobs.some((j) => j.id === job.id && j.state.lastStatus === "ok")) {
+        break;
+      }
+      await delay(20);
+    }
+
+    cron.stop();
     await store.cleanup();
   });
 

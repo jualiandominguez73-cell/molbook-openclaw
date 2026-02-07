@@ -366,15 +366,13 @@ function mergeCronDelivery(
 }
 
 export function isJobDue(job: CronJob, nowMs: number, opts: { forced: boolean }) {
+  if (typeof job.state.runningAtMs === "number") {
+    return false;
+  }
   if (opts.forced) {
     return true;
   }
-  return (
-    job.enabled &&
-    typeof job.state.runningAtMs !== "number" &&
-    typeof job.state.nextRunAtMs === "number" &&
-    nowMs >= job.state.nextRunAtMs
-  );
+  return job.enabled && typeof job.state.nextRunAtMs === "number" && nowMs >= job.state.nextRunAtMs;
 }
 
 export function resolveJobPayloadTextForMain(job: CronJob): string | undefined {

@@ -153,6 +153,9 @@ export async function run(state: CronServiceState, id: string, mode?: "due" | "f
     warnIfDisabled(state, "run");
     await ensureLoaded(state, { skipRecompute: true });
     const job = findJobOrThrow(state, id);
+    if (typeof job.state.runningAtMs === "number") {
+      return { ok: true, ran: false, reason: "already-running" as const };
+    }
     const now = state.deps.nowMs();
     const due = isJobDue(job, now, { forced: mode === "force" });
     if (!due) {
