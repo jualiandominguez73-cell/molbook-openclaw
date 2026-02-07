@@ -356,7 +356,7 @@ export const registerTelegramNativeCommands = ({
     existingCommands.add(normalized);
     pluginCommands.push({ command: normalized, description });
   }
-  const allCommands: Array<{ command: string; description: string }> = [
+  let allCommands: Array<{ command: string; description: string }> = [
     ...nativeCommands.map((command) => ({
       command: command.name,
       description: command.description,
@@ -364,6 +364,15 @@ export const registerTelegramNativeCommands = ({
     ...pluginCommands,
     ...customCommands,
   ];
+
+  // Telegram API limits setMyCommands to 100 entries
+  const TELEGRAM_MAX_COMMANDS = 100;
+  if (allCommands.length > TELEGRAM_MAX_COMMANDS) {
+    runtime.log(
+      `Telegram allows max ${TELEGRAM_MAX_COMMANDS} commands but ${allCommands.length} were configured; truncating to ${TELEGRAM_MAX_COMMANDS}.`,
+    );
+    allCommands = allCommands.slice(0, TELEGRAM_MAX_COMMANDS);
+  }
 
   if (allCommands.length > 0) {
     withTelegramApiErrorLogging({
