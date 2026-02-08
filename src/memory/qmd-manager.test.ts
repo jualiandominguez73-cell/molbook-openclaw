@@ -459,6 +459,40 @@ describe("QmdMemoryManager", () => {
     await manager.close();
   });
 
+  it("allows CLI invocations even with restrictive scope", async () => {
+    cfg = {
+      ...cfg,
+      memory: {
+        backend: "qmd",
+        qmd: {
+          includeDefaultMemory: false,
+          update: { interval: "0s", debounceMs: 60_000, onBoot: false },
+          paths: [{ path: workspaceDir, pattern: "**/*.md", name: "workspace" }],
+          scope: {
+            default: "deny",
+            rules: [{ action: "allow", match: { channel: "slack" } }],
+          },
+        },
+      },
+    } as OpenClawConfig;
+    const resolved = resolveMemoryBackendConfig({ cfg, agentId });
+    const manager = await QmdMemoryManager.create({ cfg, agentId, resolved });
+    expect(manager).toBeTruthy();
+    if (!manager) {
+      throw new Error("manager missing");
+    }
+
+    const isAllowed = (key?: string) =>
+      (manager as unknown as { isScopeAllowed: (key?: string) => boolean }).isScopeAllowed(key);
+    // CLI invocations (no sessionKey) should always be allowed
+    expect(isAllowed(undefined)).toBe(true);
+    // Empty strings should NOT bypass scope checks (only undefined)
+    expect(isAllowed("")).toBe(false);
+    expect(isAllowed("  ")).toBe(false);
+
+    await manager.close();
+  });
+
   it("blocks non-markdown or symlink reads for qmd paths", async () => {
     const resolved = resolveMemoryBackendConfig({ cfg, agentId });
     const manager = await QmdMemoryManager.create({ cfg, agentId, resolved });
