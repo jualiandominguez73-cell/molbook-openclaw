@@ -49,10 +49,16 @@ describe("convertToOllamaMessages", () => {
     ]);
   });
 
-  it("converts tool result messages", () => {
+  it("converts tool result messages with 'tool' role", () => {
     const messages = [{ role: "tool", content: "file1.txt\nfile2.txt" }];
     const result = convertToOllamaMessages(messages);
     expect(result).toEqual([{ role: "tool", content: "file1.txt\nfile2.txt" }]);
+  });
+
+  it("converts SDK 'toolResult' role to Ollama 'tool' role", () => {
+    const messages = [{ role: "toolResult", content: "command output here" }];
+    const result = convertToOllamaMessages(messages);
+    expect(result).toEqual([{ role: "tool", content: "command output here" }]);
   });
 
   it("handles empty messages array", () => {
@@ -99,11 +105,12 @@ describe("buildAssistantMessage", () => {
     };
     const result = buildAssistantMessage(response, modelInfo);
     expect(result.stopReason).toBe("end_turn");
-    expect(result.content.length).toBe(2); // empty text + tool_use
-    expect(result.content[1].type).toBe("tool_use");
-    const toolUse = result.content[1] as { type: "tool_use"; name: string; input: Record<string, unknown> };
+    expect(result.content.length).toBe(1); // tool_use only (empty content is skipped)
+    expect(result.content[0].type).toBe("tool_use");
+    const toolUse = result.content[0] as { type: "tool_use"; id: string; name: string; input: Record<string, unknown> };
     expect(toolUse.name).toBe("bash");
     expect(toolUse.input).toEqual({ command: "ls -la" });
+    expect(toolUse.id).toMatch(/^ollama_call_[0-9a-f-]{36}$/);
   });
 
   it("sets all costs to zero for local models", () => {
