@@ -530,6 +530,22 @@ const FIELD_HELP: Record<string, string> = {
   "auth.cooldowns.failureWindowHours": "Failure window (hours) for backoff counters (default: 24).",
   "agents.defaults.bootstrapMaxChars":
     "Max characters of each workspace bootstrap file injected into the system prompt before truncation (default: 20000).",
+  "agents.defaults.contextBudget":
+    "Opt-in context budget caps (chars) to reduce token usage across bootstrap/memory/web_fetch.",
+  "agents.defaults.contextBudget.enabled":
+    "Enable agent-level context budget overrides (default: false).",
+  "agents.defaults.contextBudget.bootstrapMaxChars":
+    "When contextBudget is enabled, cap bootstrap injection max chars (overrides bootstrapMaxChars if lower).",
+  "agents.defaults.contextBudget.memoryMaxInjectedChars":
+    "When contextBudget is enabled, cap memory_search injected snippet chars (overrides memory.qmd.limits.maxInjectedChars if lower).",
+  "agents.defaults.contextBudget.webFetchMaxChars":
+    "When contextBudget is enabled, cap web_fetch max chars (overrides tools.web.fetch.maxChars if lower).",
+  "agents.defaults.contextPruning":
+    "Opt-in: prune old tool results from the LLM context to reduce token usage.",
+  "agents.defaults.contextPruning.mode":
+    "Context pruning mode: off | cache-ttl | always. cache-ttl requires an eligible provider; always is fully opt-in.",
+  "agents.defaults.contextPruning.ttl":
+    "Context pruning TTL for cache-ttl mode (duration string; default unit minutes).",
   "agents.defaults.repoRoot":
     "Optional repository root shown in the system prompt runtime line (overrides auto-detect).",
   "agents.defaults.envelopeTimezone":
