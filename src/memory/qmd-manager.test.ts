@@ -35,6 +35,27 @@ import { resolveMemoryBackendConfig } from "./backend-config.js";
 import { QmdMemoryManager } from "./qmd-manager.js";
 
 const spawnMock = mockedSpawn as unknown as vi.Mock;
+const createMockChild = (stdoutText = "", stderrText = "") => {
+  const stdout = new EventEmitter();
+  const stderr = new EventEmitter();
+  const child = new EventEmitter() as {
+    stdout: EventEmitter;
+    stderr: EventEmitter;
+    kill: () => void;
+    emit: (event: string, code: number) => boolean;
+  };
+  child.stdout = stdout;
+  child.stderr = stderr;
+  child.kill = () => {
+    child.emit("close", 0);
+  };
+  setImmediate(() => {
+    stdout.emit("data", stdoutText);
+    stderr.emit("data", stderrText);
+    child.emit("close", 0);
+  });
+  return child;
+};
 
 describe("QmdMemoryManager", () => {
   let tmpRoot: string;
@@ -45,6 +66,7 @@ describe("QmdMemoryManager", () => {
 
   beforeEach(async () => {
     spawnMock.mockClear();
+    spawnMock.mockImplementation((_cmd: string, _args: string[]) => createMockChild());
     tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "qmd-manager-test-"));
     workspaceDir = path.join(tmpRoot, "workspace");
     await fs.mkdir(workspaceDir, { recursive: true });
@@ -149,6 +171,26 @@ describe("QmdMemoryManager", () => {
     await expect(manager.readFile({ relPath: "qmd/workspace/link.md" })).rejects.toThrow(
       "path required",
     );
+
+    await manager.close();
+  });
+
+  it("treats plain-text no-results output as empty", async () => {
+    spawnMock.mockImplementation((_cmd: string, args: string[]) => {
+      if (args[0] === "query") {
+        return createMockChild("No results found.");
+      }
+      return createMockChild();
+    });
+    const resolved = resolveMemoryBackendConfig({ cfg, agentId });
+    const manager = await QmdMemoryManager.create({ cfg, agentId, resolved });
+    expect(manager).toBeTruthy();
+    if (!manager) {
+      throw new Error("manager missing");
+    }
+
+    const results = await manager.search("hello");
+    expect(results).toEqual([]);
 
     await manager.close();
   });
