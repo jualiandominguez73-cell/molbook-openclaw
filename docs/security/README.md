@@ -4,6 +4,7 @@
 
 ## Documents
 
+- [Hardening Guide](./hardening-guide.md) - Practical security checklist for OpenClaw configurations
 - [Threat Model](./THREAT-MODEL-ATLAS.md) - MITRE ATLAS-based threat model for the OpenClaw ecosystem
 - [Contributing to the Threat Model](./CONTRIBUTING-THREAT-MODEL.md) - How to add threats, mitigations, and attack chains
 
