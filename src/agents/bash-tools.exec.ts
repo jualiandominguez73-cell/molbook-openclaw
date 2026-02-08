@@ -2,6 +2,8 @@ import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { Type } from "@sinclair/typebox";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { BashSandboxConfig } from "./bash-tools.shared.js";
 import {
@@ -55,6 +57,52 @@ import { buildCursorPositionResponse, stripDsrRequests } from "./pty-dsr.js";
 import { getShellConfig, sanitizeBinaryOutput } from "./shell-utils.js";
 import { callGatewayTool } from "./tools/gateway.js";
 import { listNodes, resolveNodeIdFromList } from "./tools/nodes-utils.js";
+
+/**
+ * Detects if a command string contains multi-line script content that would fail
+ * when executed directly through a shell (e.g., Python code with 'import' statements
+ * being interpreted as ImageMagick commands).
+ *
+ * See: https://github.com/openclaw/openclaw/issues/11724
+ */
+function detectScriptContent(command: string): { isScript: boolean; reason?: string } {
+  // Quick check: must contain newlines to be multi-line
+  if (!command.includes("\n") && !command.includes("\r")) {
+    return { isScript: false };
+  }
+
+  const trimmed = command.trim();
+
+  // Check for shebang - definitely a script
+  if (trimmed.startsWith("#!")) {
+    return {
+      isScript: true,
+      reason: "Shebang detected (#!). Multi-line scripts must be written to a file first.",
+    };
+  }
+
+  // Check for Python-specific keywords that would fail in shell
+  // Use multiline flag (/m) so ^ matches start of any line, not just start of string
+  const pythonIndicators = [
+    /^import\s+\w+/m, // import statements at start of line
+    /^from\s+\w+\s+import/m, // from ... import statements
+    /^def\s+\w+\s*\(/m, // function definitions
+    /^class\s+\w+/m, // class definitions
+    /print\s*\(/, // Python 3 print
+  ];
+
+  for (const pattern of pythonIndicators) {
+    if (pattern.test(trimmed)) {
+      return {
+        isScript: true,
+        reason:
+          "Python code detected. 'import' and similar keywords are interpreted as shell commands (e.g., ImageMagick). Write the script to a file first.",
+      };
+    }
+  }
+
+  return { isScript: false };
+}
 
 // Security: Blocklist of environment variables that could alter execution flow
 // or inject code when running on non-sandboxed hosts (Gateway/Node).
@@ -992,6 +1040,75 @@ export function createExecTool(
       }
       applyPathPrepend(env, defaultPathPrepend);
 
+      // Fix for Issue #11724: Detect and handle multi-line script content
+      // https://github.com/openclaw/openclaw/issues/11724
+      const scriptDetection = detectScriptContent(params.command);
+      let command = params.command;
+      let tempScriptFile: string | undefined;
+
+      if (scriptDetection.isScript) {
+        // Only apply temp file fix for local gateway execution
+        // host=node won't work because the temp file won't exist on the remote node
+        if (host === "node") {
+          throw new Error(
+            "Multi-line scripts cannot be executed with host=node. " +
+              "The script content would need to be on the remote node. " +
+              "Please write the script to a file on the target node first, then execute it.",
+          );
+        }
+
+        // For sandbox or gateway, we can use temp files (sandbox mounts workspace)
+        if (host === "gateway" || sandbox) {
+          // Auto-convert script to temp file execution
+          // Detect interpreter from shebang or default to bash
+          let interpreter = "bash";
+          const trimmedCommand = params.command.trim();
+          if (trimmedCommand.startsWith("#!/")) {
+            const shebangMatch = trimmedCommand.match(/^#!(.+)$/m);
+            if (shebangMatch) {
+              // Extract interpreter from shebang
+              // Handle: /usr/bin/python3, /usr/bin/env python3, /usr/bin/env python3 -u
+              const shebang = shebangMatch[1].trim();
+              const envMatch = shebang.match(/env\s+(\S+)/);
+              if (envMatch) {
+                // /usr/bin/env python3 [args] -> python3
+                interpreter = envMatch[1];
+              } else {
+                // /usr/bin/python3 [args] -> /usr/bin/python3
+                interpreter = shebang.split(/\s+/)[0];
+              }
+            }
+          } else if (/^(import\s|from\s+\w+\s+import|def\s|class\s)/m.test(trimmedCommand)) {
+            interpreter = "python3";
+          }
+
+          // For sandbox, use workspace root so the temp file is accessible in the container
+          const scriptFileName = `openclaw-script-${crypto.randomUUID()}`;
+
+          if (sandbox) {
+            // Write to the resolved host workdir (which maps to container workdir)
+            tempScriptFile = path.join(workdir, scriptFileName);
+            fs.writeFileSync(tempScriptFile, params.command, { mode: 0o700 });
+
+            // In container, use the resolved container workdir
+            const containerTempFile = path.posix.join(
+              containerWorkdir ?? sandbox.containerWorkdir,
+              scriptFileName,
+            );
+            command = `${interpreter} "${containerTempFile}"`;
+          } else {
+            // For gateway, use system temp directory
+            tempScriptFile = path.join(os.tmpdir(), scriptFileName);
+            fs.writeFileSync(tempScriptFile, params.command, { mode: 0o700 });
+            command = `${interpreter} "${tempScriptFile}"`;
+          }
+
+          warnings.push(
+            `Note: Multi-line script detected and written to temp file. ${scriptDetection.reason}`,
+          );
+        }
+      }
+
       if (host === "node") {
         const approvals = resolveExecApprovals(agentId, { security, ask });
         const hostSecurity = minSecurity(security, approvals.agent.security);
@@ -1033,7 +1150,9 @@ export function createExecTool(
             "exec host=node requires a node that supports system.run (companion app or node host).",
           );
         }
-        const argv = buildNodeShellCommand(params.command, nodeInfo?.platform);
+        // Use 'command' (not 'params.command') for consistency. For host=node with scripts,
+        // we would have already thrown an error, so 'command' equals 'params.command' here.
+        const argv = buildNodeShellCommand(command, nodeInfo?.platform);
 
         const nodeEnv = params.env ? { ...params.env } : undefined;
 
@@ -1041,7 +1160,7 @@ export function createExecTool(
           applyPathPrepend(nodeEnv, defaultPathPrepend, { requireExisting: true });
         }
         const baseAllowlistEval = evaluateShellAllowlist({
-          command: params.command,
+          command,
           allowlist: [],
           safeBins: new Set(),
           cwd: workdir,
@@ -1069,7 +1188,7 @@ export function createExecTool(
               });
               // Allowlist-only precheck; safe bins are node-local and may diverge.
               const allowlistEval = evaluateShellAllowlist({
-                command: params.command,
+                command,
                 allowlist: resolved.allowlist,
                 safeBins: new Set(),
                 cwd: workdir,
@@ -1089,7 +1208,7 @@ export function createExecTool(
           analysisOk,
           allowlistSatisfied,
         });
-        const commandText = params.command;
+        const commandText = command;
         const invokeTimeoutMs = Math.max(
           10_000,
           (typeof params.timeout === "number" ? params.timeout : defaultTimeoutSec) * 1000 + 5_000,
@@ -1181,6 +1300,14 @@ export function createExecTool(
             }
 
             if (deniedReason) {
+              // Clean up temp file on early exit
+              if (tempScriptFile) {
+                try {
+                  fs.unlinkSync(tempScriptFile);
+                } catch {
+                  // Ignore cleanup errors
+                }
+              }
               emitExecSystemEvent(
                 `Exec denied (node=${nodeId} id=${approvalId}, ${deniedReason}): ${commandText}`,
                 { sessionKey: notifySessionKey, contextKey },
@@ -1210,6 +1337,14 @@ export function createExecTool(
                 { sessionKey: notifySessionKey, contextKey },
               );
             } finally {
+              // Clean up temp file after execution completes
+              if (tempScriptFile) {
+                try {
+                  fs.unlinkSync(tempScriptFile);
+                } catch {
+                  // Ignore cleanup errors
+                }
+              }
               if (runningTimer) {
                 clearTimeout(runningTimer);
               }
@@ -1279,7 +1414,7 @@ export function createExecTool(
           throw new Error("exec denied: host=gateway security=deny");
         }
         const allowlistEval = evaluateShellAllowlist({
-          command: params.command,
+          command,
           allowlist: approvals.allowlist,
           safeBins,
           cwd: workdir,
@@ -1304,7 +1439,7 @@ export function createExecTool(
           const contextKey = `exec:${approvalId}`;
           const resolvedPath = allowlistEval.segments[0]?.resolution?.resolvedPath;
           const noticeSeconds = Math.max(1, Math.round(approvalRunningNoticeMs / 1000));
-          const commandText = params.command;
+          const commandText = command;
           const effectiveTimeout =
             typeof params.timeout === "number" ? params.timeout : defaultTimeoutSec;
           const warningText = warnings.length ? `${warnings.join("\n")}\n\n` : "";
@@ -1381,6 +1516,14 @@ export function createExecTool(
             }
 
             if (deniedReason) {
+              // Clean up temp file on early exit
+              if (tempScriptFile) {
+                try {
+                  fs.unlinkSync(tempScriptFile);
+                } catch {
+                  // Ignore cleanup errors
+                }
+              }
               emitExecSystemEvent(
                 `Exec denied (gateway id=${approvalId}, ${deniedReason}): ${commandText}`,
                 { sessionKey: notifySessionKey, contextKey },
@@ -1423,6 +1566,14 @@ export function createExecTool(
                 timeoutSec: effectiveTimeout,
               });
             } catch {
+              // Clean up temp file on spawn failure
+              if (tempScriptFile) {
+                try {
+                  fs.unlinkSync(tempScriptFile);
+                } catch {
+                  // Ignore cleanup errors
+                }
+              }
               emitExecSystemEvent(
                 `Exec denied (gateway id=${approvalId}, spawn-failed): ${commandText}`,
                 { sessionKey: notifySessionKey, contextKey },
@@ -1443,6 +1594,16 @@ export function createExecTool(
             }
 
             const outcome = await run.promise;
+
+            // Clean up temp file after execution completes
+            if (tempScriptFile) {
+              try {
+                fs.unlinkSync(tempScriptFile);
+              } catch {
+                // Ignore cleanup errors
+              }
+            }
+
             if (runningTimer) {
               clearTimeout(runningTimer);
             }
@@ -1471,7 +1632,7 @@ export function createExecTool(
               approvalSlug,
               expiresAtMs,
               host: "gateway",
-              command: params.command,
+              command,
               cwd: workdir,
             },
           };
@@ -1492,7 +1653,7 @@ export function createExecTool(
               approvals.file,
               agentId,
               match,
-              params.command,
+              command,
               allowlistEval.segments[0]?.resolution?.resolvedPath,
             );
           }
@@ -1504,7 +1665,7 @@ export function createExecTool(
       const getWarningText = () => (warnings.length ? `${warnings.join("\n")}\n\n` : "");
       const usePty = params.pty === true && !sandbox;
       const run = await runExecProcess({
-        command: params.command,
+        command,
         workdir,
         env,
         sandbox,
@@ -1585,8 +1746,20 @@ export function createExecTool(
           }
         }
 
+        // Ensure temp file is always cleaned up, even if yielded/backgrounded
+        const cleanupTempFile = () => {
+          if (tempScriptFile) {
+            try {
+              fs.unlinkSync(tempScriptFile);
+            } catch {
+              // Ignore cleanup errors
+            }
+          }
+        };
+
         run.promise
           .then((outcome) => {
+            cleanupTempFile();
             if (yieldTimer) {
               clearTimeout(yieldTimer);
             }
@@ -1614,6 +1787,7 @@ export function createExecTool(
             });
           })
           .catch((err) => {
+            cleanupTempFile();
             if (yieldTimer) {
               clearTimeout(yieldTimer);
             }
