@@ -174,10 +174,10 @@ export async function onTimer(state: CronServiceState) {
 
       const now = state.deps.nowMs();
       if (changed) {
-    await persist(state);
-  }
+        await persist(state);
+      }
 
-  for (const job of due) {
+      for (const job of due) {
         job.state.runningAtMs = now;
         job.state.lastError = undefined;
       }
