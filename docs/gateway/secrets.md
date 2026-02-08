@@ -248,9 +248,11 @@ Contributions are welcome — see the stub files in `src/config/secrets/`.
 
 ## Sync vs Async
 
-`$secret{...}` resolution requires async config loading.
+`$secret{...}` resolution requires async config loading (e.g. GCP API calls, keyring shell commands).
 
-The Gateway handles this automatically during normal startup. If secret references are detected in a sync-only load path, OpenClaw throws a clear error instead of silently continuing.
+The Gateway handles this automatically: during startup, the async `readConfigFileSnapshot()` resolves all secrets and caches the result. Subsequent sync `loadConfig()` calls throughout the codebase (health checks, channel manager, WebSocket handlers, etc.) return the cached resolved config transparently.
+
+If no async-resolved config has been cached yet (e.g. a CLI tool that only uses the sync path), OpenClaw throws a clear error instead of silently continuing with unresolved values.
 
 ## Error Diagnostics
 
@@ -276,4 +278,7 @@ with multiple secret references.
 - `Secret not found in keychain`
   - Add it with the keychain CLI commands above and verify `NAME` matches exactly
 - `Config contains $secret{...} references but secrets can only be resolved in async mode`
-  - Start the gateway normally (`openclaw gateway start`) so async config loading is used
+  - This only occurs before the first async config load has run (e.g. a CLI tool
+    that bypasses gateway startup). Start the gateway normally (`openclaw gateway start`)
+    and the async config loader will resolve secrets and cache the result for all
+    subsequent sync callers.

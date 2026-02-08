@@ -266,9 +266,16 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       // the resolved values, not a potentially mutated live env (TOCTOU fix).
       envSnapshotForRestore = { ...deps.env } as Record<string, string | undefined>;
 
-      // $secret{} resolution is async-only. Detect any unresolved refs and throw a clear error.
+      // $secret{} resolution is async-only.  If an async-resolved config is
+      // already cached (primed by a prior readConfigFileSnapshot() call), return
+      // that instead of failing.  This covers the many sync loadConfig() call
+      // sites across the codebase (health checks, channel manager, WS handlers,
+      // plugin SDK, etc.) that cannot be individually converted to async.
       const unresolvedSecretRefs = detectUnresolvedSecretRefs(substituted);
       if (unresolvedSecretRefs.length > 0) {
+        if (configCache && configCache.configPath === configPath) {
+          return configCache.config;
+        }
         throw new SecretsProviderError(
           `Config contains ${unresolvedSecretRefs[0]} references but secrets can only be resolved in async mode. ` +
             `Use readConfigFileSnapshot() or ensure the gateway starts with async config loading.`,
@@ -707,6 +714,19 @@ export async function readConfigFileSnapshot(): Promise<ConfigFileSnapshot> {
   const envSnap = io.getEnvSnapshot();
   if (envSnap) {
     _moduleEnvSnapshots.set(io.configPath, envSnap);
+  }
+  // Prime the sync config cache with the async-resolved config (which has
+  // $secret{} references resolved).  The sync loadConfig() checks this cache
+  // when it encounters unresolved $secret{} refs, avoiding the need to convert
+  // every sync callsite to async.  No expiry — the cache is invalidated by
+  // clearConfigCache() (called from writeConfigFile) or re-primed by the next
+  // readConfigFileSnapshot() (called by the config file watcher on changes).
+  if (snapshot.valid) {
+    configCache = {
+      configPath: io.configPath,
+      expiresAt: Infinity,
+      config: snapshot.config,
+    };
   }
   return snapshot;
 }
