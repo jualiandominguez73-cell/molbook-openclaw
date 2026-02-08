@@ -1,9 +1,10 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { describe, expect, it } from "vitest";
+import { limitHistoryTurns } from "./pi-embedded-runner/history.js";
 import {
+  repairToolUseResultPairing,
   sanitizeToolCallInputs,
   sanitizeToolUseResultPairing,
-  repairToolUseResultPairing,
 } from "./session-transcript-repair.js";
 
 describe("sanitizeToolUseResultPairing", () => {
@@ -241,5 +242,193 @@ describe("sanitizeToolCallInputs", () => {
       ? assistant.content.map((block) => (block as { type?: unknown }).type)
       : [];
     expect(types).toEqual(["text", "toolUse"]);
+  });
+});
+
+describe("limitHistoryTurns + sanitizeToolUseResultPairing integration", () => {
+  it("repairs orphaned tool results created when limitHistoryTurns cuts mid-sequence", () => {
+    // This test demonstrates the bug fixed by re-running repair after limiting.
+    // Scenario: A session has tool_use/tool_result pairs that span user turns.
+    // When limitHistoryTurns slices the transcript, it can create orphaned
+    // tool_results whose matching tool_use was cut off.
+    //
+    // See: https://github.com/openclaw/openclaw/issues/4650
+
+    // Simulate a transcript where a tool_result appears at the start after limiting.
+    // This can happen when:
+    // 1. Original transcript has [user][assistant tool_use:A][tool_result:A][user][assistant]...
+    // 2. Validation modifies/drops the assistant message but keeps subsequent messages
+    // 3. Or limiting slices in a way that orphans the tool_result
+    const afterLimiting = [
+      // This tool_result's matching tool_use was cut off by limiting
+      {
+        role: "toolResult",
+        toolCallId: "toolu_orphaned_by_limit",
+        toolName: "read",
+        content: [{ type: "text", text: "result from previous context" }],
+        isError: false,
+        timestamp: 1000,
+      },
+      { role: "user", content: "continuing conversation" },
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "Here is the file content" },
+          { type: "toolCall", id: "toolu_current", name: "write", arguments: {} },
+        ],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "toolu_current",
+        toolName: "write",
+        content: [{ type: "text", text: "written" }],
+        isError: false,
+        timestamp: 2000,
+      },
+      { role: "user", content: "thanks" },
+    ] satisfies AgentMessage[];
+
+    // Without the fix, this transcript would be sent to the API with an orphaned
+    // tool_result, causing: "unexpected tool_use_id found in tool_result blocks"
+
+    const report = repairToolUseResultPairing(afterLimiting);
+
+    // The orphaned tool_result should be dropped
+    expect(report.droppedOrphanCount).toBe(1);
+    expect(report.messages[0]?.role).toBe("user");
+    expect(report.messages).toHaveLength(4);
+
+    // Valid tool_use/tool_result pair should remain intact
+    const toolResults = report.messages.filter((m) => m.role === "toolResult") as Array<{
+      toolCallId?: string;
+    }>;
+    expect(toolResults).toHaveLength(1);
+    expect(toolResults[0]?.toolCallId).toBe("toolu_current");
+  });
+
+  it("handles the full sanitize -> limit -> sanitize flow", () => {
+    // Simulate a long conversation that will be limited
+    const fullTranscript = [
+      // Turn 1: Old conversation that will be cut
+      { role: "user", content: "old question 1" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "toolu_old_1", name: "read", arguments: {} }],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "toolu_old_1",
+        toolName: "read",
+        content: [{ type: "text", text: "old result" }],
+        isError: false,
+        timestamp: 1000,
+      },
+      { role: "assistant", content: [{ type: "text", text: "old response" }] },
+
+      // Turn 2: Also will be cut
+      { role: "user", content: "old question 2" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "toolu_old_2", name: "exec", arguments: {} }],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "toolu_old_2",
+        toolName: "exec",
+        content: [{ type: "text", text: "old exec result" }],
+        isError: false,
+        timestamp: 2000,
+      },
+      { role: "assistant", content: [{ type: "text", text: "old response 2" }] },
+
+      // Turn 3: Recent - will be kept
+      { role: "user", content: "recent question" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "toolu_recent", name: "write", arguments: {} }],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "toolu_recent",
+        toolName: "write",
+        content: [{ type: "text", text: "recent result" }],
+        isError: false,
+        timestamp: 3000,
+      },
+      { role: "assistant", content: [{ type: "text", text: "recent response" }] },
+      { role: "user", content: "thanks" },
+    ] satisfies AgentMessage[];
+
+    // Step 1: First sanitization (happens in sanitizeSessionTranscript)
+    const sanitized = sanitizeToolUseResultPairing(fullTranscript);
+    expect(sanitized).toHaveLength(13);
+
+    // Step 2: Limit to 2 user turns (simulates dmHistoryLimit)
+    const limited = limitHistoryTurns(sanitized, 2);
+
+    // After limiting, we should have recent conversation only
+    // The slice starts at the 3rd-to-last user message
+    expect(limited.length).toBeLessThan(sanitized.length);
+
+    // Step 3: Re-run repair after limiting (the fix)
+    const repaired = sanitizeToolUseResultPairing(limited);
+
+    // Verify no orphaned tool_results remain
+    const toolResults = repaired.filter((m) => m.role === "toolResult") as Array<{
+      toolCallId?: string;
+    }>;
+    const toolCalls = repaired
+      .filter((m) => m.role === "assistant")
+      .flatMap((m) => {
+        const content = (m as { content?: unknown[] }).content;
+        if (!Array.isArray(content)) {
+          return [];
+        }
+        return content
+          .filter(
+            (c): c is { type: string; id: string } =>
+              c !== null &&
+              typeof c === "object" &&
+              "type" in c &&
+              "id" in c &&
+              (c.type === "toolCall" || c.type === "toolUse"),
+          )
+          .map((c) => c.id);
+      });
+
+    // Every tool_result should have a matching tool_call
+    for (const result of toolResults) {
+      expect(toolCalls).toContain(result.toolCallId);
+    }
+  });
+
+  it("inserts synthetic results when limiting cuts off tool_results but keeps tool_use", () => {
+    // Edge case: What if limiting keeps the assistant with tool_use but somehow
+    // the tool_result got separated and cut? The repair should insert synthetic results.
+
+    const brokenTranscript = [
+      { role: "user", content: "question" },
+      {
+        role: "assistant",
+        content: [
+          { type: "toolCall", id: "toolu_no_result", name: "dangerous_tool", arguments: {} },
+        ],
+      },
+      // tool_result is missing (was cut off or never existed)
+      { role: "user", content: "what happened?" },
+    ] satisfies AgentMessage[];
+
+    const report = repairToolUseResultPairing(brokenTranscript);
+
+    // A synthetic error result should be inserted
+    expect(report.added).toHaveLength(1);
+    expect(report.added[0]?.toolCallId).toBe("toolu_no_result");
+    expect(report.added[0]?.isError).toBe(true);
+
+    // The repaired transcript should have valid pairing
+    expect(report.messages[0]?.role).toBe("user");
+    expect(report.messages[1]?.role).toBe("assistant");
+    expect(report.messages[2]?.role).toBe("toolResult");
+    expect(report.messages[3]?.role).toBe("user");
   });
 });

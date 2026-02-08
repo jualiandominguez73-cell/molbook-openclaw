@@ -261,6 +261,7 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
+- Agents: re-run tool_use/result pairing repair after history limiting to prevent orphaned tool_result API rejections. (#6680, #4650, #4323, #4367)
 - Security: guard remote media fetches with SSRF protections (block private/localhost, DNS pinning).
 - Updates: clean stale global install rename dirs and extend gateway update timeouts to avoid npm ENOTEMPTY failures.
 - Plugins: validate plugin/hook install paths and reject traversal-like names.
