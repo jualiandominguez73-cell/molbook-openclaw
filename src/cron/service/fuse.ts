@@ -4,7 +4,9 @@
  * for remote control commands: HOLD, UPGRADE, ANNOUNCE.
  *
  * HOLD commands suspend cron job execution (not the gateway itself).
- * This module only fetches FUSE when a cron job is about to execute.
+ * This module only fetches FUSE when a cron job is about to execute,
+ * unless both missionCritical and manualUpgrade are enabled (in which case
+ * FUSE polling is skipped entirely since HOLD/UPGRADE commands would be ignored).
  */
 
 import type { OpenClawConfig } from "../../config/config.js";
@@ -14,6 +16,12 @@ import { runGatewayUpdate } from "../../infra/update-runner.js";
 import { runCommandWithTimeout } from "../../process/exec.js";
 
 const FUSE_URL = "https://raw.githubusercontent.com/openclaw/openclaw/refs/heads/main/FUSE.txt";
+const FUSE_FETCH_TIMEOUT_MS = 5000;
+const UPGRADE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const RESTART_DELAY_MS = 2000; // 2 seconds
+
+// Upgrade state lock to prevent concurrent upgrades
+let upgradeInProgress = false;
 
 /**
  * Check if a git tag exists locally.
@@ -46,6 +54,13 @@ async function performUpgrade(
   version: string,
   gateway: { log: (msg: string) => void },
 ): Promise<boolean> {
+  // Check if an upgrade is already in progress
+  if (upgradeInProgress) {
+    gateway.log("Upgrade already in progress, skipping duplicate request");
+    return false;
+  }
+
+  upgradeInProgress = true;
   try {
     const root = await resolveOpenClawPackageRoot({
       moduleUrl: import.meta.url,
@@ -82,7 +97,7 @@ async function performUpgrade(
       cwd: root ?? process.cwd(),
       argv1: process.argv[1],
       tag: cleanVersion,
-      timeoutMs: 10 * 60 * 1000, // 10 minute timeout
+      timeoutMs: UPGRADE_TIMEOUT_MS,
       progress: {
         onStepStart: (step) => {
           gateway.log(`[${step.index + 1}/${step.total}] ${step.name}...`);
@@ -99,10 +114,10 @@ async function performUpgrade(
       const afterVersion = result.after?.version ?? cleanVersion;
       gateway.log(`Upgrade to ${afterVersion} completed successfully`);
 
-      // Schedule restart in 2 seconds
-      gateway.log("Restarting gateway in 2 seconds...");
+      // Schedule restart
+      gateway.log(`Restarting gateway in ${RESTART_DELAY_MS / 1000} seconds...`);
       scheduleGatewaySigusr1Restart({
-        delayMs: 2000,
+        delayMs: RESTART_DELAY_MS,
         reason: `upgrade to ${afterVersion}`,
       });
 
@@ -124,11 +139,21 @@ async function performUpgrade(
   } catch (err) {
     gateway.log(`Upgrade error: ${String(err)}`);
     return false;
+  } finally {
+    upgradeInProgress = false;
   }
 }
 
+// Minimal response interface for our use case
+interface FuseResponse {
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  text(): Promise<string>;
+}
+
 // Fetch that handles file:// URLs
-async function fetchURL(url: string | URL, options?: RequestInit) {
+async function fetchURL(url: string | URL, options?: RequestInit): Promise<FuseResponse> {
   const urlString = typeof url === "string" ? url : url.toString();
 
   if (urlString.startsWith("file://")) {
@@ -139,18 +164,21 @@ async function fetchURL(url: string | URL, options?: RequestInit) {
       const content = readFileSync(filePath, "utf-8");
       return {
         ok: true,
+        status: 200,
+        statusText: "OK",
         text: async () => content,
-      } as Response;
+      };
     } catch {
       return {
         ok: false,
         status: 404,
         statusText: "Not Found",
-      } as Response;
+        text: async () => "",
+      };
     }
   }
 
-  // For non-file URLs, use Node
+  // For non-file URLs, use Node fetch
   return await fetch(url, options);
 }
 
@@ -168,17 +196,24 @@ export async function checkCircuitBreaker(
 
   if (missionCritical && manualUpgrade) {
     // Both options set - no need to fetch FUSE at all
+    // Note: This means ANNOUNCE commands will also be skipped, but this is acceptable
+    // since users with these settings have opted out of remote control entirely
     return true;
   }
 
   let content: string;
   const fuseUrl = config.update?.fuseUrl ?? FUSE_URL;
 
+  // Set up abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FUSE_FETCH_TIMEOUT_MS);
+
   try {
     const response = await fetchURL(fuseUrl, {
       headers: {
         "User-Agent": "openclaw-gateway",
       },
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -192,8 +227,10 @@ export async function checkCircuitBreaker(
     const firstLine = fullText.split("\n")[0] ?? "";
     content = firstLine.trim();
   } catch {
-    // Network error, allow processing (fail-open)
+    // Network error or timeout, allow processing (fail-open)
     return true;
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!content) {

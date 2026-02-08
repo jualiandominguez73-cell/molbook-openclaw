@@ -294,11 +294,11 @@ describe("fuse circuit breaker", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       "https://raw.githubusercontent.com/openclaw/openclaw/refs/heads/main/FUSE.txt",
-      {
+      expect.objectContaining({
         headers: {
           "User-Agent": "openclaw-gateway",
         },
-      },
+      }),
     );
   });
 
@@ -379,11 +379,14 @@ describe("fuse circuit breaker", () => {
     const result = await checkCircuitBreaker(config, mockGateway);
 
     expect(result).toBe(true);
-    expect(mockFetch).toHaveBeenCalledWith("https://example.com/custom-fuse.txt", {
-      headers: {
-        "User-Agent": "openclaw-gateway",
-      },
-    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://example.com/custom-fuse.txt",
+      expect.objectContaining({
+        headers: {
+          "User-Agent": "openclaw-gateway",
+        },
+      }),
+    );
     expect(mockGateway.log).toHaveBeenCalledWith("Custom FUSE source");
   });
 
@@ -640,5 +643,114 @@ describe("fuse circuit breaker", () => {
 
     // Should not trigger auto-upgrade
     expect(runGatewayUpdate).not.toHaveBeenCalled();
+  });
+
+  it("should skip FUSE polling when both missionCritical and manualUpgrade are true", async () => {
+    const mockFetch = vi.fn();
+    global.fetch = mockFetch;
+
+    const config: OpenClawConfig = {
+      update: {
+        missionCritical: true,
+        manualUpgrade: true,
+      },
+    };
+    const result = await checkCircuitBreaker(config, mockGateway);
+
+    expect(result).toBe(true);
+    expect(mockFetch).not.toHaveBeenCalled(); // Key assertion - no network call
+    expect(mockGateway.log).not.toHaveBeenCalled();
+  });
+
+  it("should still fetch FUSE when only missionCritical is true", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "ANNOUNCE Test message",
+    });
+    global.fetch = mockFetch;
+
+    const config: OpenClawConfig = {
+      update: {
+        missionCritical: true,
+        manualUpgrade: false,
+      },
+    };
+    const result = await checkCircuitBreaker(config, mockGateway);
+
+    expect(result).toBe(true);
+    expect(mockFetch).toHaveBeenCalled(); // Should still fetch
+    expect(mockGateway.log).toHaveBeenCalledWith("Test message");
+  });
+
+  it("should still fetch FUSE when only manualUpgrade is true", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "ANNOUNCE Test message",
+    });
+    global.fetch = mockFetch;
+
+    const config: OpenClawConfig = {
+      update: {
+        missionCritical: false,
+        manualUpgrade: true,
+      },
+    };
+    const result = await checkCircuitBreaker(config, mockGateway);
+
+    expect(result).toBe(true);
+    expect(mockFetch).toHaveBeenCalled(); // Should still fetch
+    expect(mockGateway.log).toHaveBeenCalledWith("Test message");
+  });
+
+  it("should handle concurrent upgrade requests with lock", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      text: async () => "UPGRADE v2.0.0",
+    });
+
+    (resolveOpenClawPackageRoot as ReturnType<typeof vi.fn>).mockResolvedValue("/fake/root");
+    (runCommandWithTimeout as ReturnType<typeof vi.fn>).mockResolvedValue({
+      stdout: "",
+      stderr: "",
+      code: 0,
+    });
+
+    // Mock a slow upgrade
+    (runGatewayUpdate as ReturnType<typeof vi.fn>).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              status: "ok",
+              mode: "git",
+              root: "/fake/root",
+              after: { version: "v2.0.0" },
+              steps: [],
+              durationMs: 1000,
+            });
+          }, 100);
+        }),
+    );
+
+    const config: OpenClawConfig = {
+      update: {
+        manualUpgrade: false,
+      },
+    };
+
+    // Trigger two upgrades in quick succession
+    const result1Promise = checkCircuitBreaker(config, mockGateway);
+    const result2Promise = checkCircuitBreaker(config, mockGateway);
+
+    await Promise.all([result1Promise, result2Promise]);
+
+    // Wait for async upgrades to complete
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Only one upgrade should have been executed (the second should be skipped due to lock)
+    expect(runGatewayUpdate).toHaveBeenCalledTimes(1);
+    expect(mockGateway.log).toHaveBeenCalledWith(
+      "Upgrade already in progress, skipping duplicate request",
+    );
   });
 });

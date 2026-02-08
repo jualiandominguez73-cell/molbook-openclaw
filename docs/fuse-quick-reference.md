@@ -100,6 +100,31 @@ update:
 
 **Effect:** You'll see upgrade notifications but no automatic installation
 
+### Opt Out of All Remote Control (Mission-Critical + Manual Upgrade)
+
+Add to your `config.yaml`:
+
+```yaml
+update:
+  missionCritical: true
+  manualUpgrade: true
+```
+
+**Effect:**
+
+- FUSE.txt is not fetched at all (no network calls)
+- HOLD commands are ignored (cron jobs always run)
+- UPGRADE commands are ignored (no auto-upgrades or notifications)
+- ANNOUNCE commands are not displayed
+- Complete independence from central remote control
+
+**Use when:**
+
+- Running in air-gapped or restricted network environments
+- Maximum performance required (eliminate FUSE fetch overhead)
+- Complete control over upgrades and maintenance windows
+- Compliance requirements prevent external remote control
+
 ### Check Upgrade Status
 
 **Successful auto-upgrade:**
@@ -175,6 +200,7 @@ This allows you to:
 - FUSE is checked only when cron jobs are about to execute
 - No continuous polling or background checks
 - Zero overhead when no cron jobs are scheduled
+- If both `missionCritical: true` and `manualUpgrade: true` are set, FUSE is never fetched (zero network overhead)
 
 ## Fail-Safe Behavior
 
