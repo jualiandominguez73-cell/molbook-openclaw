@@ -165,6 +165,13 @@ out to QMD for retrieval. Key points:
 **Config surface (`memory.qmd.*`)**
 
 - `command` (default `qmd`): override the executable path.
+- `searchMode` (default `query`): QMD search command to use:
+  - `query`: full reranking with local LLM models (best quality, slow on CPU)
+  - `search`: BM25 full-text only (fast, good for exact keywords)
+  - `vsearch`: vector similarity only (semantic, moderate speed)
+
+  Use `search` if `query` is too slow on CPU-only machines.
+
 - `includeDefaultMemory` (default `true`): auto-index `MEMORY.md` + `memory/**/*.md`.
 - `paths[]`: add extra directories/files (`path`, optional `pattern`, optional
   stable `name`).
@@ -196,6 +203,7 @@ memory: {
   backend: "qmd",
   citations: "auto",
   qmd: {
+    searchMode: "search",  // "query" | "search" | "vsearch"
     includeDefaultMemory: true,
     update: { interval: "5m", debounceMs: 15000 },
     limits: { maxResults: 6, timeoutMs: 4000 },

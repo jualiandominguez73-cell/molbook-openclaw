@@ -260,6 +260,7 @@ const FIELD_LABELS: Record<string, string> = {
   "memory.backend": "Memory Backend",
   "memory.citations": "Memory Citations Mode",
   "memory.qmd.command": "QMD Binary",
+  "memory.qmd.searchMode": "QMD Search Mode",
   "memory.qmd.includeDefaultMemory": "QMD Include Default Memory",
   "memory.qmd.paths": "QMD Extra Paths",
   "memory.qmd.paths.path": "QMD Path",
@@ -583,6 +584,8 @@ const FIELD_HELP: Record<string, string> = {
   "memory.backend": 'Memory backend ("builtin" for OpenClaw embeddings, "qmd" for QMD sidecar).',
   "memory.citations": 'Default citation behavior ("auto", "on", or "off").',
   "memory.qmd.command": "Path to the qmd binary (default: resolves from PATH).",
+  "memory.qmd.searchMode":
+    'QMD search mode: "query" (full reranking, slow), "search" (BM25 only, fast), "vsearch" (vector only). Default: "query".',
   "memory.qmd.includeDefaultMemory":
     "Whether to automatically index MEMORY.md + memory/**/*.md (default: true).",
   "memory.qmd.paths":

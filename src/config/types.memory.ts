@@ -9,8 +9,11 @@ export type MemoryConfig = {
   qmd?: MemoryQmdConfig;
 };
 
+export type QmdSearchMode = "query" | "search" | "vsearch";
+
 export type MemoryQmdConfig = {
   command?: string;
+  searchMode?: QmdSearchMode;
   includeDefaultMemory?: boolean;
   paths?: MemoryQmdIndexPath[];
   sessions?: MemoryQmdSessionConfig;

@@ -234,13 +234,13 @@ export class QmdMemoryManager implements MemorySearchManager {
       this.qmd.limits.maxResults,
       opts?.maxResults ?? this.qmd.limits.maxResults,
     );
-    const args = ["query", trimmed, "--json", "-n", String(limit)];
+    const args = [this.qmd.searchMode, trimmed, "--json", "-n", String(limit)];
     let stdout: string;
     try {
       const result = await this.runQmd(args, { timeoutMs: this.qmd.limits.timeoutMs });
       stdout = result.stdout;
     } catch (err) {
-      log.warn(`qmd query failed: ${String(err)}`);
+      log.warn(`qmd ${this.qmd.searchMode} failed: ${String(err)}`);
       throw err instanceof Error ? err : new Error(String(err));
     }
     let parsed: QmdQueryResult[] = [];
@@ -248,8 +248,10 @@ export class QmdMemoryManager implements MemorySearchManager {
       parsed = JSON.parse(stdout);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      log.warn(`qmd query returned invalid JSON: ${message}`);
-      throw new Error(`qmd query returned invalid JSON: ${message}`, { cause: err });
+      log.warn(`qmd ${this.qmd.searchMode} returned invalid JSON: ${message}`);
+      throw new Error(`qmd ${this.qmd.searchMode} returned invalid JSON: ${message}`, {
+        cause: err,
+      });
     }
     const results: MemorySearchResult[] = [];
     for (const entry of parsed) {
@@ -602,6 +604,12 @@ export class QmdMemoryManager implements MemorySearchManager {
   private isScopeAllowed(sessionKey?: string): boolean {
     const scope = this.qmd.scope;
     if (!scope) {
+      return true;
+    }
+    // CLI/manual searches have no session key - always allow these.
+    // Scope rules are meant to control agent behavior in chat contexts,
+    // not to block explicit user-initiated searches.
+    if (!sessionKey) {
       return true;
     }
     const channel = this.deriveChannelFromKey(sessionKey);

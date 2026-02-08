@@ -6,6 +6,7 @@ import type {
   MemoryCitationsMode,
   MemoryQmdConfig,
   MemoryQmdIndexPath,
+  QmdSearchMode,
 } from "../config/types.memory.js";
 import { resolveAgentWorkspaceDir } from "../agents/agent-scope.js";
 import { parseDurationMs } from "../cli/parse-duration.js";
@@ -53,6 +54,7 @@ export type ResolvedQmdConfig = {
   limits: ResolvedQmdLimitsConfig;
   includeDefaultMemory: boolean;
   scope?: SessionSendPolicyConfig;
+  searchMode: QmdSearchMode;
 };
 
 const DEFAULT_BACKEND: MemoryBackend = "builtin";
@@ -249,6 +251,10 @@ export function resolveMemoryBackendConfig(params: {
   const rawCommand = qmdCfg?.command?.trim() || "qmd";
   const parsedCommand = splitShellArgs(rawCommand);
   const command = parsedCommand?.[0] || rawCommand.split(/\s+/)[0] || "qmd";
+  const rawSearchMode = qmdCfg?.searchMode?.trim().toLowerCase();
+  const searchMode: QmdSearchMode =
+    rawSearchMode === "search" || rawSearchMode === "vsearch" ? rawSearchMode : "query";
+
   const resolved: ResolvedQmdConfig = {
     command,
     collections,
@@ -262,6 +268,7 @@ export function resolveMemoryBackendConfig(params: {
     },
     limits: resolveLimits(qmdCfg?.limits),
     scope: qmdCfg?.scope ?? DEFAULT_QMD_SCOPE,
+    searchMode,
   };
 
   return {
