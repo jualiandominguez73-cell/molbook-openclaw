@@ -311,6 +311,8 @@ export async function handleDirectiveOnly(params: {
   if (directives.hasThinkDirective && directives.thinkLevel) {
     if (directives.thinkLevel === "off") {
       delete sessionEntry.thinkingLevel;
+      // When /think off, also disable reasoning_content
+      delete sessionEntry.reasoningLevel;
     } else {
       sessionEntry.thinkingLevel = directives.thinkLevel;
     }

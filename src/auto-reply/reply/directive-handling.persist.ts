@@ -84,6 +84,8 @@ export async function persistInlineDirectives(params: {
     if (directives.hasThinkDirective && directives.thinkLevel) {
       if (directives.thinkLevel === "off") {
         delete sessionEntry.thinkingLevel;
+        // When /think off, also disable reasoning_content
+        delete sessionEntry.reasoningLevel;
       } else {
         sessionEntry.thinkingLevel = directives.thinkLevel;
       }
