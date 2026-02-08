@@ -172,6 +172,30 @@ if (nonEmptyLines.length > hardCap) {
   );
 }
 
+// Line wrapping guidance
+// Chat surfaces wrap unpredictably; keep lines ~80–100 chars when possible.
+const wrapTarget = 100;
+const longLines = lines
+  .map((line, idx) => ({ line, lineNo: idx + 1 }))
+  .filter((x) => x.line.trim().length > 0)
+  .filter((x) => x.line.length > wrapTarget);
+
+if (longLines.length > 0) {
+  const longest = Math.max(...longLines.map((x) => x.line.length));
+  const sample = longLines
+    .slice(0, 5)
+    .map((x) => `${x.lineNo}(${x.line.length})`)
+    .join(", ");
+
+  add(
+    "warn",
+    "long-lines",
+    `Found ${longLines.length} line(s) longer than ${wrapTarget} chars ` +
+      `(longest is ${longest}). Examples: ${sample}. ` +
+      "Consider inserting line breaks; put URLs on their own line.",
+  );
+}
+
 // Soft warnings (common footguns)
 const firstLine = firstNonEmptyLine(lines);
 if (firstLine && !/^(Outcome|Done):\s*/.test(firstLine.trim())) {
