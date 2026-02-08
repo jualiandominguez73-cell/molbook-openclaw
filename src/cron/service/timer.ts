@@ -292,7 +292,20 @@ function findDueJobs(state: CronServiceState): CronJob[] {
       return false;
     }
     if (typeof j.state.runningAtMs === "number") {
-      return false;
+      const timeoutMs =
+        j.payload.kind === "agentTurn" && typeof j.payload.timeoutSeconds === "number"
+          ? j.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - j.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: j.id, runningAtMs: j.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker",
+        );
+        j.state.runningAtMs = undefined;
+      } else {
+        return false;
+      }
     }
     const next = j.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
@@ -312,7 +325,20 @@ export async function runMissedJobs(state: CronServiceState) {
       return false;
     }
     if (typeof j.state.runningAtMs === "number") {
-      return false;
+      const timeoutMs =
+        j.payload.kind === "agentTurn" && typeof j.payload.timeoutSeconds === "number"
+          ? j.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - j.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: j.id, runningAtMs: j.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker",
+        );
+        j.state.runningAtMs = undefined;
+      } else {
+        return false;
+      }
     }
     const next = j.state.nextRunAtMs;
     if (j.schedule.kind === "at" && j.state.lastStatus === "ok") {
@@ -345,7 +371,20 @@ export async function runDueJobs(state: CronServiceState) {
       return false;
     }
     if (typeof j.state.runningAtMs === "number") {
-      return false;
+      const timeoutMs =
+        j.payload.kind === "agentTurn" && typeof j.payload.timeoutSeconds === "number"
+          ? j.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - j.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: j.id, runningAtMs: j.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker",
+        );
+        j.state.runningAtMs = undefined;
+      } else {
+        return false;
+      }
     }
     const next = j.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
