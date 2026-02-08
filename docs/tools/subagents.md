@@ -56,6 +56,10 @@ Allowlist:
 
 - `agents.list[].subagents.allowAgents`: list of agent ids that can be targeted via `agentId` (`["*"]` to allow any). Default: only the requester agent.
 
+<Warning>
+`allowAgents` is per-agent only and **cannot** be set in `agents.defaults.subagents`. Place it under the specific agent entry in `agents.list[]` that will initiate `sessions_spawn` (typically `main`).
+</Warning>
+
 Discovery:
 
 - Use `agents_list` to see which agent ids are currently allowed for `sessions_spawn`.
