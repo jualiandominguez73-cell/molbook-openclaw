@@ -594,7 +594,8 @@ export const chatHandlers: GatewayRequestHandlers = {
           onModelSelected,
         },
       })
-        .then(() => {
+        .then(async () => {
+          await dispatcher.waitForIdle();
           if (!agentRunStarted) {
             const combinedReply = finalReplyParts
               .map((part) => part.trim())
@@ -629,6 +630,17 @@ export const chatHandlers: GatewayRequestHandlers = {
                   usage: { input: 0, output: 0, totalTokens: 0 },
                 };
               }
+            } else {
+              // Command had no output text (unlikely for /context list but possible)
+              message = {
+                role: "assistant",
+                content: [{ type: "text", text: "" }],
+                timestamp: Date.now(),
+                stopReason: "injected",
+              };
+            }
+            if (message) {
+              (message as any).command = true;
             }
             broadcastChatFinal({
               context,
