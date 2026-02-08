@@ -50,7 +50,8 @@
         "**/macos/gateway-daemon.ts",
         "**/logging/console.ts",
         "**/infra/unhandled-rejections.ts",
-        "**/*.test.ts"
+        "**/*.test.ts",
+        "scripts/**/*.mjs"
       ],
       "rules": {
         "eslint/no-console": "off"
