@@ -44,9 +44,12 @@ export function buildSystemdUnit({
     "Wants=network-online.target",
     "",
     "[Service]",
+    "Type=notify",
     `ExecStart=${execStart}`,
     "Restart=always",
     "RestartSec=5",
+    "NotifyAccess=all",
+    "WatchdogSec=90",
     // KillMode=process ensures systemd only waits for the main process to exit.
     // Without this, podman's conmon (container monitor) processes block shutdown
     // since they run as children of the gateway and stay in the same cgroup.

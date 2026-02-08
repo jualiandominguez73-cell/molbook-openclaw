@@ -33,6 +33,7 @@ import { startHeartbeatRunner } from "../infra/heartbeat-runner.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { ensureOpenClawCliOnPath } from "../infra/path-env.js";
 import { setGatewaySigusr1RestartPolicy } from "../infra/restart.js";
+import { sdNotifyReady } from "../infra/sd-notify.js";
 import {
   primeRemoteSkillsCache,
   refreshRemoteBinsForConnectedNodes,
@@ -621,6 +622,8 @@ export async function startGatewayServer(
     httpServer,
     httpServers,
   });
+
+  sdNotifyReady();
 
   return {
     close: async (opts) => {
