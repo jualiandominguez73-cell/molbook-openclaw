@@ -374,10 +374,18 @@ def generate_all_glossaries():
     log("")
 
     total_cost = 0.0
+    errors = []
     for lang_code in LOCALES:
-        generate_glossary(lang_code)
+        try:
+            generate_glossary(lang_code)
+        except Exception as e:
+            log(f"  ERROR generating {lang_code}: {e}")
+            errors.append(lang_code)
 
-    log(f"\nGlossary generation complete.")
+    if errors:
+        log(f"\nGlossary generation finished with errors for: {', '.join(errors)}")
+    else:
+        log(f"\nGlossary generation complete for all {len(LOCALES)} languages.")
 
 
 def build_system_prompt(src_lang: str, tgt_lang: str, lang_code: str, glossary: list) -> str:
