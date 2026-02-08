@@ -96,13 +96,21 @@ const routeSessionsScrub: RouteSpec = {
     const verbose = hasFlag(argv, "--verbose");
     const noBackup = hasFlag(argv, "--no-backup");
     const concurrencyIdx = argv.indexOf("--concurrency");
-    const concurrency =
-      concurrencyIdx >= 0 ? parseInt(argv[concurrencyIdx + 1] ?? "", 10) : undefined;
+    let concurrency: number | undefined;
+    if (concurrencyIdx >= 0) {
+      const raw = argv[concurrencyIdx + 1];
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (isNaN(parsed) || parsed < 1) {
+        defaultRuntime.error("--concurrency requires a positive integer value");
+        return true;
+      }
+      concurrency = parsed;
+    }
     await sessionsScrubCommand(defaultRuntime, {
       dryRun,
       verbose,
       noBackup,
-      concurrency: concurrency && !isNaN(concurrency) ? concurrency : undefined,
+      concurrency,
     });
     return true;
   },
