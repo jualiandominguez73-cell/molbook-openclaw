@@ -4,7 +4,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultDeps } from "../cli/deps.js";
 import * as agentModule from "../commands/agent.js";
-import { resolveStorePath } from "../config/sessions/paths.js";
+import { loadConfig } from "../config/config.js";
+import {
+  clearSessionStoreCacheForTest,
+  resolveStorePath,
+  saveSessionStore,
+} from "../config/sessions.js";
 import * as targets from "../infra/outbound/targets.js";
 import { writeRestartSentinel } from "../infra/restart-sentinel.js";
 import { scheduleRestartSentinelWake } from "./server-restart-sentinel.js";
@@ -23,6 +28,7 @@ describe("server restart sentinel", () => {
     process.env.OPENCLAW_CONFIG_PATH = configPath;
     await fs.mkdir(path.dirname(configPath), { recursive: true });
     await fs.writeFile(configPath, "{}", "utf-8");
+    clearSessionStoreCacheForTest();
   });
 
   afterEach(async () => {
@@ -42,8 +48,12 @@ describe("server restart sentinel", () => {
 
   it("routes restart pings using the session lastAccountId", async () => {
     const sessionKey = "agent:main:whatsapp:dm:+15555550123";
-    const storePath = resolveStorePath(undefined, { agentId: "main" });
-    await fs.mkdir(path.dirname(storePath), { recursive: true });
+
+    // We must ensure we get the same store path that the production code will use.
+    // By passing the store config from the loaded config, we ensure alignment.
+    const cfg = loadConfig();
+    const storePath = resolveStorePath(cfg.session?.store, { agentId: "main" });
+
     const entry = {
       sessionId: "session-1",
       updatedAt: Date.now(),
@@ -53,7 +63,10 @@ describe("server restart sentinel", () => {
       lastTo: "+15555550123",
       lastAccountId: "work",
     };
-    await fs.writeFile(storePath, JSON.stringify({ [sessionKey]: entry }, null, 2), "utf-8");
+
+    // Use saveSessionStore to ensure correct normalization and cache invalidation
+    await saveSessionStore(storePath, { [sessionKey]: entry });
+
     await writeRestartSentinel({
       kind: "restart",
       status: "ok",
@@ -72,6 +85,7 @@ describe("server restart sentinel", () => {
 
     await scheduleRestartSentinelWake({ deps: createDefaultDeps() });
 
+    expect(resolveTargetSpy).toHaveBeenCalled();
     const calledWith = resolveTargetSpy.mock.calls[0][0];
     expect(calledWith.accountId).toBe("work");
     expect(agentCommandSpy).toHaveBeenCalled();
