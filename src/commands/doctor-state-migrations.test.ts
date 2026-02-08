@@ -374,6 +374,24 @@ describe("doctor legacy state migrations", () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it("warns when legacy state dir is empty and target already exists", async () => {
+    const root = await makeTempRoot();
+    const targetDir = path.join(root, ".openclaw");
+    const legacyDir = path.join(root, ".moltbot");
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.mkdirSync(legacyDir, { recursive: true });
+
+    const result = await autoMigrateLegacyStateDir({
+      env: {} as NodeJS.ProcessEnv,
+      homedir: () => root,
+    });
+
+    expect(result.migrated).toBe(false);
+    expect(result.warnings).toEqual([
+      `State dir migration skipped: target already exists (${targetDir}). Remove or merge manually.`,
+    ]);
+  });
+
   it("warns when legacy state dir contains non-symlink entries and target already exists", async () => {
     const root = await makeTempRoot();
     const targetDir = path.join(root, ".openclaw");

@@ -365,11 +365,14 @@ function isWithinDir(targetPath: string, rootDir: string): boolean {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function isLegacyTreeSymlinkMirror(currentDir: string, targetDir: string): boolean {
+function isLegacyTreeSymlinkMirror(currentDir: string, realTargetDir: string): boolean {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(currentDir, { withFileTypes: true });
   } catch {
+    return false;
+  }
+  if (entries.length === 0) {
     return false;
   }
 
@@ -386,13 +389,19 @@ function isLegacyTreeSymlinkMirror(currentDir: string, targetDir: string): boole
       if (!resolvedTarget) {
         return false;
       }
-      if (!isWithinDir(resolvedTarget, targetDir)) {
+      let resolvedRealTarget: string;
+      try {
+        resolvedRealTarget = fs.realpathSync(resolvedTarget);
+      } catch {
+        return false;
+      }
+      if (!isWithinDir(resolvedRealTarget, realTargetDir)) {
         return false;
       }
       continue;
     }
     if (stat.isDirectory()) {
-      if (!isLegacyTreeSymlinkMirror(entryPath, targetDir)) {
+      if (!isLegacyTreeSymlinkMirror(entryPath, realTargetDir)) {
         return false;
       }
       continue;
@@ -404,7 +413,13 @@ function isLegacyTreeSymlinkMirror(currentDir: string, targetDir: string): boole
 }
 
 function isLegacyDirSymlinkMirror(legacyDir: string, targetDir: string): boolean {
-  return isLegacyTreeSymlinkMirror(legacyDir, targetDir);
+  let realTargetDir: string;
+  try {
+    realTargetDir = fs.realpathSync(targetDir);
+  } catch {
+    return false;
+  }
+  return isLegacyTreeSymlinkMirror(legacyDir, realTargetDir);
 }
 
 export async function autoMigrateLegacyStateDir(params: {
