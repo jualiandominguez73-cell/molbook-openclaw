@@ -45,4 +45,9 @@ describe("mattermost monitor websocket heartbeat (#11796)", () => {
     );
     expect(messageSection).toMatch(/lastPongAt\s*=\s*Date\.now\(\)/);
   });
+
+  it("cleans up heartbeat intervals on error", () => {
+    const errorSection = connectOnceBody.slice(connectOnceBody.indexOf('ws.on("error"'));
+    expect(errorSection).toContain("clearHeartbeat");
+  });
 });

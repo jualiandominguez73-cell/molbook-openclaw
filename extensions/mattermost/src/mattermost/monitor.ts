@@ -1005,6 +1005,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
       });
 
       ws.on("error", (err) => {
+        clearHeartbeat();
         runtime.error?.(`mattermost websocket error: ${String(err)}`);
         opts.statusSink?.({
           lastError: String(err),
