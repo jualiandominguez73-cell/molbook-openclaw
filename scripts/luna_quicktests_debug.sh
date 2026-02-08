@@ -53,6 +53,25 @@ write_summary() {
   echo "${json}" > "${PROOF_DIR}/luna_tests/quicktests_summary.json"
 }
 
+build_gateway_image() {
+  local log="${PROOF_DIR}/luna_tests/gateway_build.log"
+  if [[ "${OPENCLAW_BUILD_GATEWAY:-1}" != "1" ]]; then
+    echo "skipped:OPENCLAW_BUILD_GATEWAY=${OPENCLAW_BUILD_GATEWAY:-0}" > "${log}"
+    echo "0" > "${PROOF_DIR}/luna_tests/gateway_build.exitcode"
+    return 0
+  fi
+  log_step "gateway_build" "start"
+  docker compose build openclaw-gateway > "${log}" 2>&1
+  local code=$?
+  echo "${code}" > "${PROOF_DIR}/luna_tests/gateway_build.exitcode"
+  if [[ "${code}" -ne 0 ]]; then
+    write_blocker "gateway_build" "${code}" "" "docker compose build openclaw-gateway failed."
+    return 1
+  fi
+  log_step "gateway_build" "ok"
+  return 0
+}
+
 wait_gateway_ready() {
   local url="${GATEWAY_URL}/__openclaw__/canvas/"
   local max_wait_sec=90
@@ -115,6 +134,11 @@ curl_tool_call() {
   return 1
 }
 
+extract_confirm_token() {
+  local file="$1"
+  node -e "const fs=require('fs');const raw=fs.readFileSync(process.argv[1],'utf8');const res=JSON.parse(raw);const text=res?.result?.content?.[0]?.text; if(!text){process.exit(1)}; let parsed=null; try{parsed=JSON.parse(text);}catch{process.exit(1)}; const token=parsed.confirm_token||parsed.token||\"\"; if(!token){process.exit(1)}; console.log(token);" "$file"
+}
+
 load_gateway_token() {
   if [[ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
     return 0
@@ -174,20 +198,33 @@ ha_fan_code=1
 ha_outlet_code=1
 ha_vacuum_code=1
 ha_climate_code=1
+ha_plan_action_code=1
+ha_prepare_missing_code=1
+ha_prepare_confirm_code=1
+ha_confirm_action_code=1
 ha_policy_get_code=1
 ha_policy_explain_vacuum_code=1
 ha_policy_explain_climate_code=1
 ha_policy_explain_lock_code=1
+confirm_token=""
 ha_ping_http="0"
 ha_light_http=""
 ha_fan_http=""
 ha_outlet_http=""
 ha_vacuum_http=""
 ha_climate_http=""
+ha_plan_action_http=""
+ha_prepare_missing_http=""
+ha_prepare_confirm_http=""
+ha_confirm_action_http=""
 ha_policy_get_http=""
 ha_policy_explain_vacuum_http=""
 ha_policy_explain_climate_http=""
 ha_policy_explain_lock_http=""
+
+if ! build_gateway_image; then
+  exit 1
+fi
 
 if ! wait_gateway_ready; then
   write_blocker "gateway_wait" 1 000 "Gateway did not respond with a ready HTTP code within 90s."
@@ -214,6 +251,53 @@ if load_gateway_token; then
   ha_policy_get_code=$?
   ha_policy_get_http="$(cat "${PROOF_DIR}/luna_tests/ha_risk_policy_get.http" 2>/dev/null || echo 0)"
   echo "${ha_policy_get_code}" > "${PROOF_DIR}/luna_tests/ha_risk_policy_get.exitcode"
+
+  echo "{\"tool\":\"ha_plan_action\",\"args\":{\"user_intent\":\"inventar izvještaj NEEDS_OVERRIDE\"},\"sessionKey\":\"main\"}" > "${PROOF_DIR}/luna_tests/ha_plan_action_request.json"
+  curl_tool_call "ha_plan_action" \
+    "${PROOF_DIR}/luna_tests/ha_plan_action_request.json" \
+    "${PROOF_DIR}/luna_tests/ha_plan_action.json" \
+    "${PROOF_DIR}/luna_tests/ha_plan_action.http" \
+    "${PROOF_DIR}/luna_tests/ha_plan_action.log"
+  ha_plan_action_code=$?
+  ha_plan_action_http="$(cat "${PROOF_DIR}/luna_tests/ha_plan_action.http" 2>/dev/null || echo 0)"
+  echo "${ha_plan_action_code}" > "${PROOF_DIR}/luna_tests/ha_plan_action.exitcode"
+
+  echo "{\"tool\":\"ha_prepare_risky_action\",\"args\":{\"kind\":\"service_call\",\"reason\":\"missing_action_test\"},\"sessionKey\":\"main\"}" > "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing_request.json"
+  curl_tool_call "ha_prepare_risky_action_missing" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing_request.json" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.json" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.http" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.log"
+  ha_prepare_missing_code=$?
+  ha_prepare_missing_http="$(cat "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.http" 2>/dev/null || echo 0)"
+  echo "${ha_prepare_missing_code}" > "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.exitcode"
+
+  echo "{\"tool\":\"ha_prepare_risky_action\",\"args\":{\"kind\":\"service_call\",\"action\":{\"domain\":\"persistent_notification\",\"service\":\"create\",\"data\":{\"title\":\"OpenClaw Engineer Mode\",\"message\":\"Risky action confirm test\",\"notification_id\":\"openclaw_engineer_mode_test\"}}},\"sessionKey\":\"main\"}" > "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_request.json"
+  curl_tool_call "ha_prepare_risky_action" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_request.json" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action.json" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action.http" \
+    "${PROOF_DIR}/luna_tests/ha_prepare_risky_action.log"
+  ha_prepare_confirm_code=$?
+  ha_prepare_confirm_http="$(cat "${PROOF_DIR}/luna_tests/ha_prepare_risky_action.http" 2>/dev/null || echo 0)"
+  echo "${ha_prepare_confirm_code}" > "${PROOF_DIR}/luna_tests/ha_prepare_risky_action.exitcode"
+
+  confirm_token=""
+  if confirm_token="$(extract_confirm_token "${PROOF_DIR}/luna_tests/ha_prepare_risky_action.json" 2>/dev/null)"; then
+    echo "${confirm_token}" > "${PROOF_DIR}/luna_tests/ha_confirm_action.token"
+    echo "{\"tool\":\"ha_confirm_action\",\"args\":{\"token\":\"${confirm_token}\"},\"sessionKey\":\"main\"}" > "${PROOF_DIR}/luna_tests/ha_confirm_action_request.json"
+    curl_tool_call "ha_confirm_action" \
+      "${PROOF_DIR}/luna_tests/ha_confirm_action_request.json" \
+      "${PROOF_DIR}/luna_tests/ha_confirm_action.json" \
+      "${PROOF_DIR}/luna_tests/ha_confirm_action.http" \
+      "${PROOF_DIR}/luna_tests/ha_confirm_action.log"
+    ha_confirm_action_code=$?
+    ha_confirm_action_http="$(cat "${PROOF_DIR}/luna_tests/ha_confirm_action.http" 2>/dev/null || echo 0)"
+    echo "${ha_confirm_action_code}" > "${PROOF_DIR}/luna_tests/ha_confirm_action.exitcode"
+  else
+    ha_confirm_action_code=0
+    echo "skipped:no_confirm_token" > "${PROOF_DIR}/luna_tests/ha_confirm_action.log"
+  fi
 
   if [[ -n "${LIGHT}" ]]; then
     echo "{\"tool\":\"ha_universal_control\",\"args\":{\"target\":{\"entity_id\":\"${LIGHT}\"},\"safe_probe\":true},\"sessionKey\":\"main\"}" > "${PROOF_DIR}/luna_tests/ha_uc_light_request.json"
@@ -332,6 +416,19 @@ else
   echo "Failed to load OPENCLAW_GATEWAY_TOKEN" > "${PROOF_DIR}/luna_tests/token_load.log"
 fi
 
+plan_route_ok=false
+if [[ -f "${PROOF_DIR}/luna_tests/ha_plan_action.json" ]]; then
+  if node -e "const fs=require('fs');const raw=fs.readFileSync(process.argv[1],'utf8');const res=JSON.parse(raw);const text=res?.result?.content?.[0]?.text||'';let parsed=null;try{parsed=JSON.parse(text);}catch{};process.exit(parsed?.route==='inventory_report'?0:1);" "${PROOF_DIR}/luna_tests/ha_plan_action.json"; then
+    plan_route_ok=true
+  fi
+fi
+missing_action_ok=false
+if [[ -f "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.json" ]]; then
+  if node -e "const fs=require('fs');const raw=fs.readFileSync(process.argv[1],'utf8');const res=JSON.parse(raw);const text=res?.result?.content?.[0]?.text||'';let parsed=null;try{parsed=JSON.parse(text);}catch{};process.exit(parsed?.error==='missing_action'?0:1);" "${PROOF_DIR}/luna_tests/ha_prepare_risky_action_missing.json"; then
+    missing_action_ok=true
+  fi
+fi
+
 cp "${PROOF_DIR}/luna_tests/ha_risk_policy_get.json" "${PROOF_DIR}/luna_tests/policy_dump.json" 2>/dev/null || true
 vacuum_explain_payload="null"
 climate_explain_payload="null"
@@ -358,6 +455,10 @@ summary=$(cat <<EOF_INNER
   "candidate_select": { "ok": $( [[ "${candidate_select_code}" -eq 0 ]] && echo true || echo false ), "exit_code": ${candidate_select_code}, "log": "luna_tests/candidate_select.log" },
   "candidate_read": { "ok": $( [[ "${candidate_read_code}" -eq 0 ]] && echo true || echo false ), "exit_code": ${candidate_read_code}, "log": "luna_tests/candidate_read.log" },
   "ha_ping": { "ok": $( [[ "${ha_ping_code}" -eq 0 && "${ha_ping_http}" -ge 200 && "${ha_ping_http}" -lt 300 ]] && echo true || echo false ), "exit_code": ${ha_ping_code}, "http_code": "${ha_ping_http}" },
+  "ha_plan_action_inventory": { "ok": $( [[ "${ha_plan_action_code}" -eq 0 && "${ha_plan_action_http}" -ge 200 && "${ha_plan_action_http}" -lt 300 && "${plan_route_ok}" == "true" ]] && echo true || echo false ), "exit_code": ${ha_plan_action_code}, "http_code": "${ha_plan_action_http}" },
+  "ha_prepare_risky_action_missing": { "ok": $( [[ "${ha_prepare_missing_code}" -eq 0 && "${ha_prepare_missing_http}" -ge 200 && "${ha_prepare_missing_http}" -lt 300 && "${missing_action_ok}" == "true" ]] && echo true || echo false ), "exit_code": ${ha_prepare_missing_code}, "http_code": "${ha_prepare_missing_http}" },
+  "ha_prepare_risky_action": { "ok": $( [[ "${ha_prepare_confirm_code}" -eq 0 && "${ha_prepare_confirm_http}" -ge 200 && "${ha_prepare_confirm_http}" -lt 300 ]] && echo true || echo false ), "exit_code": ${ha_prepare_confirm_code}, "http_code": "${ha_prepare_confirm_http}" },
+  "ha_confirm_action": { "ok": $( [[ -n "${confirm_token}" && "${ha_confirm_action_code}" -eq 0 && "${ha_confirm_action_http}" -ge 200 && "${ha_confirm_action_http}" -lt 300 ]] && echo true || echo false ), "exit_code": ${ha_confirm_action_code}, "http_code": "${ha_confirm_action_http}", "token_present": $( [[ -n "${confirm_token}" ]] && echo true || echo false ) },
   "ha_risk_policy_get": { "ok": $( [[ "${ha_policy_get_code}" -eq 0 && "${ha_policy_get_http}" -ge 200 && "${ha_policy_get_http}" -lt 300 ]] && echo true || echo false ), "exit_code": ${ha_policy_get_code}, "http_code": "${ha_policy_get_http}" },
   "ha_risk_policy_explain_vacuum": { "ok": $( [[ "${ha_policy_explain_vacuum_code}" -eq 0 && ( -z "${VACUUM}" || ("${ha_policy_explain_vacuum_http}" -ge 200 && "${ha_policy_explain_vacuum_http}" -lt 300) ) ]] && echo true || echo false ), "exit_code": ${ha_policy_explain_vacuum_code}, "http_code": "${ha_policy_explain_vacuum_http}", "candidate": "${VACUUM}", "skipped": $( [[ -z "${VACUUM}" ]] && echo true || echo false ) },
   "ha_risk_policy_explain_climate": { "ok": $( [[ "${ha_policy_explain_climate_code}" -eq 0 && ( -z "${CLIMATE}" || ("${ha_policy_explain_climate_http}" -ge 200 && "${ha_policy_explain_climate_http}" -lt 300) ) ]] && echo true || echo false ), "exit_code": ${ha_policy_explain_climate_code}, "http_code": "${ha_policy_explain_climate_http}", "candidate": "${CLIMATE}", "skipped": $( [[ -z "${CLIMATE}" ]] && echo true || echo false ) },
@@ -383,6 +484,22 @@ if [[ "${candidate_read_code}" -ne 0 ]]; then
 fi
 if [[ "${ha_ping_code}" -ne 0 || "${ha_ping_http}" -lt 200 || "${ha_ping_http}" -ge 300 ]]; then
   write_blocker "ha_ping" "${ha_ping_code}" "${ha_ping_http}" "ha_ping failed. Check ha_ping.log and ha_ping.json."
+  exit 1
+fi
+if [[ "${ha_plan_action_code}" -ne 0 || "${ha_plan_action_http}" -lt 200 || "${ha_plan_action_http}" -ge 300 || "${plan_route_ok}" != "true" ]]; then
+  write_blocker "ha_plan_action" "${ha_plan_action_code}" "${ha_plan_action_http}" "ha_plan_action inventory routing failed. Check ha_plan_action.json."
+  exit 1
+fi
+if [[ "${ha_prepare_missing_code}" -ne 0 || "${ha_prepare_missing_http}" -lt 200 || "${ha_prepare_missing_http}" -ge 300 || "${missing_action_ok}" != "true" ]]; then
+  write_blocker "ha_prepare_risky_action_missing" "${ha_prepare_missing_code}" "${ha_prepare_missing_http}" "ha_prepare_risky_action missing-action fallback failed. Check ha_prepare_risky_action_missing.json."
+  exit 1
+fi
+if [[ "${ha_prepare_confirm_code}" -ne 0 || "${ha_prepare_confirm_http}" -lt 200 || "${ha_prepare_confirm_http}" -ge 300 ]]; then
+  write_blocker "ha_prepare_risky_action" "${ha_prepare_confirm_code}" "${ha_prepare_confirm_http}" "ha_prepare_risky_action failed. Check ha_prepare_risky_action.json."
+  exit 1
+fi
+if [[ -z "${confirm_token}" || "${ha_confirm_action_code}" -ne 0 || "${ha_confirm_action_http}" -lt 200 || "${ha_confirm_action_http}" -ge 300 ]]; then
+  write_blocker "ha_confirm_action" "${ha_confirm_action_code}" "${ha_confirm_action_http}" "ha_confirm_action failed. Check ha_confirm_action.json."
   exit 1
 fi
 if [[ "${ha_policy_get_code}" -ne 0 || "${ha_policy_get_http}" -lt 200 || "${ha_policy_get_http}" -ge 300 ]]; then

@@ -25,6 +25,12 @@ log_search() {
 
 echo "${PROOF_DIR}" > "${PROOF_DIR}/PROOF_DIR.txt"
 
+echo "== gateway build ==" > "${PROOF_DIR}/gateway_build.log"
+if ! docker compose build openclaw-gateway >> "${PROOF_DIR}/gateway_build.log" 2>&1; then
+  echo "Gateway build failed. See ${PROOF_DIR}/gateway_build.log" >&2
+  exit 1
+fi
+
 docker compose restart openclaw-gateway > "${PROOF_DIR}/restart.txt" 2>&1
 
 echo "== health wait ==" > "${PROOF_DIR}/health_wait.log"

@@ -1783,7 +1783,7 @@ const normalizeName = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[_-]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -2830,6 +2830,36 @@ const findAreaMatch = (areas: RegistryArea[], areaName: string) => {
     .map((area) => area.name)
     .slice(0, 5);
   return { area: null, suggestions };
+};
+
+const pickAreaNameFromQuery = (areas: RegistryArea[], query: string) => {
+  const normalizedQuery = normalizeName(query);
+  if (!normalizedQuery) return "";
+  const queryTokens = normalizedQuery.split(" ").filter(Boolean);
+  let best: { name: string; score: number; norm: string } | null = null;
+  for (const area of areas) {
+    const normalizedArea = normalizeName(area.name);
+    if (!normalizedArea) continue;
+    let score = 0;
+    if (normalizedQuery.includes(normalizedArea)) score += 50;
+    if (normalizedArea.includes(normalizedQuery)) score += 40;
+    const areaTokens = normalizedArea.split(" ").filter(Boolean);
+    let tokenMatches = 0;
+    for (const token of areaTokens) {
+      if (token.length < 3) continue;
+      if (queryTokens.includes(token)) {
+        tokenMatches += 1;
+        score += 6;
+      }
+    }
+    if (tokenMatches > 0) score += Math.min(12, tokenMatches * 2);
+    score += Math.min(8, Math.floor(normalizedArea.length / 4));
+    if (!best || score > best.score || (score === best.score && normalizedArea.length > best.norm.length)) {
+      best = { name: area.name, score, norm: normalizedArea };
+    }
+  }
+  if (!best || best.score < 20) return "";
+  return best.name;
 };
 
 const SEMANTIC_OVERRIDE_SCHEMA: Record<string, unknown> = {
@@ -4165,6 +4195,24 @@ const normalizeActionKey = (value: string) =>
     .replace(/[-\s]+/g, "_")
     .replace(/__+/g, "_")
     .trim();
+
+const INVENTORY_ROUTE_TOKENS = [
+  "inventar",
+  "izvjestaj",
+  "report",
+  "needs_override",
+  "needs override",
+  "no_jebanci_score",
+  "no jebanci score",
+  "semantic map",
+  "semantic_map",
+];
+
+const matchInventoryRouteTokens = (intent: string) => {
+  const normalized = normalizeName(intent);
+  const matched = INVENTORY_ROUTE_TOKENS.filter((token) => normalized.includes(normalizeName(token)));
+  return { normalized, matched };
+};
 
 const resolveCanonicalActionKey = (input: {
   domain: string;
@@ -10070,21 +10118,7 @@ const registerTools = (api: OpenClawPluginApi) => {
           const intentTokens = queryTokens.filter((token) => !stopwords.has(token));
 
           const snapshot = await buildRegistrySnapshot();
-          const areaNameFromQuery = snapshot.areas
-            .map((area) => area.name)
-            .find((name) => {
-              const normalizedName = normalizeName(name);
-              if (queryNormalized.includes(normalizedName)) {
-                return true;
-              }
-              const tokens = normalizedName.split(" ").filter(Boolean);
-              return tokens.some((token) => {
-                if (token.length < 4) return false;
-                if (queryNormalized.includes(token)) return true;
-                if (queryNormalized.includes(token.slice(0, Math.max(3, token.length - 1)))) return true;
-                return false;
-              });
-            });
+          const areaNameFromQuery = pickAreaNameFromQuery(snapshot.areas, queryNormalized);
           const areaMatch = params.area_hint?.trim()
             ? findAreaMatch(snapshot.areas, params.area_hint)
             : findAreaMatch(snapshot.areas, areaNameFromQuery ?? "");
@@ -10137,12 +10171,16 @@ const registerTools = (api: OpenClawPluginApi) => {
               ].filter(Boolean);
               const friendlyNormalized = normalizeName(friendlyName);
               const entityNormalized = normalizeName(entityId);
+              const deviceNormalized = normalizeName(device?.name ?? "");
               if (tokenVariants.some((variant) => friendlyNormalized.includes(variant))) {
                 score += 10;
                 scoreBreakdown[`friendly:${token}`] = 10;
               } else if (tokenVariants.some((variant) => entityNormalized.includes(variant))) {
                 score += 6;
                 scoreBreakdown[`entity:${token}`] = 6;
+              } else if (tokenVariants.some((variant) => deviceNormalized.includes(variant))) {
+                score += 5;
+                scoreBreakdown[`device:${token}`] = 5;
               }
             }
             if (wantsUpper || wantsLower) {
@@ -10367,23 +10405,66 @@ const registerTools = (api: OpenClawPluginApi) => {
           kind: { type: "string" },
           action: { type: "object", additionalProperties: true },
           reason: { type: "string" },
+          domain: { type: "string" },
+          service: { type: "string" },
+          target: { type: "object", additionalProperties: true },
+          data: { type: "object", additionalProperties: true },
+          service_data: { type: "object", additionalProperties: true },
+          entity_id: { type: "array", items: { type: "string" } },
         },
-        required: ["kind", "action"],
+        required: ["kind"],
       },
       async execute(
         _id: string,
         params: {
           kind: "service_call" | "ha_call_service" | "config_patch" | "automation_config" | "semantic_override";
-          action: Record<string, unknown>;
+          action?: Record<string, unknown>;
           reason?: string;
+          domain?: string;
+          service?: string;
+          target?: Record<string, unknown>;
+          data?: Record<string, unknown>;
+          service_data?: Record<string, unknown>;
+          entity_id?: string[];
         },
       ) {
         const started = Date.now();
         try {
           prunePendingActions();
+          const actionFromFlat =
+            !params.action && (params.domain || params.service || params.target || params.data || params.service_data)
+              ? {
+                  domain: params.domain,
+                  service: params.service,
+                  target: params.target,
+                  data: params.data ?? params.service_data ?? {},
+                  entity_id: params.entity_id,
+                }
+              : null;
+          const resolvedAction = params.action ?? actionFromFlat;
+          if (!resolvedAction) {
+            return textResult(
+              JSON.stringify(
+                {
+                  ok: false,
+                  error: "missing_action",
+                  expected: {
+                    kind: params.kind,
+                    action: {
+                      domain: "string",
+                      service: "string",
+                      data: { entity_id: ["entity.id"] },
+                    },
+                  },
+                },
+                null,
+                2,
+              ),
+            );
+          }
           let summary = "";
           if (params.kind === "service_call" || params.kind === "ha_call_service") {
-            const normalized = normalizeServiceCallAction(params.action);
+            const normalized = normalizeServiceCallAction(resolvedAction);
             const entityIds = toArray(normalized.data["entity_id"] as string | string[] | undefined);
             const decision = getPolicyDecision({
               domain: normalized.domain,
@@ -10395,18 +10476,18 @@ const registerTools = (api: OpenClawPluginApi) => {
             }
             summary = `service_call ${normalized.domain}.${normalized.service} on ${entityIds.join(", ") || "target"}`;
           } else if (params.kind === "semantic_override") {
-            const scope = String(params.action["scope"] ?? "");
-            const id = String(params.action["id"] ?? "");
+            const scope = String(resolvedAction["scope"] ?? "");
+            const id = String(resolvedAction["id"] ?? "");
             if (!id || (scope !== "entity" && scope !== "device")) {
               return textResult("HA prepare error: semantic_override requires scope + id");
             }
             summary = `semantic_override ${scope}:${id}`;
           } else if (params.kind === "config_patch") {
-            summary = `config_patch ${String(params.action["file"] ?? "")}`;
+            summary = `config_patch ${String(resolvedAction["file"] ?? "")}`;
           } else if (params.kind === "automation_config") {
-            const mode = String(params.action["mode"] ?? "");
+            const mode = String(resolvedAction["mode"] ?? "");
             const automationId = String(
-              params.action["automation_id"] ?? params.action["config"]?.["id"] ?? "",
+              resolvedAction["automation_id"] ?? resolvedAction["config"]?.["id"] ?? "",
             );
             if (!automationId || (mode !== "upsert" && mode !== "delete")) {
               return textResult("HA prepare error: automation_config requires mode + id");
@@ -10426,40 +10507,40 @@ const registerTools = (api: OpenClawPluginApi) => {
               params.kind === "service_call" || params.kind === "ha_call_service"
                 ? {
                     kind: "service_call",
-                    action: normalizeServiceCallAction(params.action),
+                    action: normalizeServiceCallAction(resolvedAction),
                   }
                 : params.kind === "semantic_override"
                   ? {
                       kind: "semantic_override",
                       action: {
-                        scope: String(params.action["scope"] ?? "") as "entity" | "device",
-                        id: String(params.action["id"] ?? ""),
-                        semantic_type: String(params.action["semantic_type"] ?? "") || undefined,
-                        control_model: String(params.action["control_model"] ?? "") || undefined,
-                        smoke_test_safe: Boolean(params.action["smoke_test_safe"] ?? false),
-                        notes: String(params.action["notes"] ?? "") || undefined,
+                        scope: String(resolvedAction["scope"] ?? "") as "entity" | "device",
+                        id: String(resolvedAction["id"] ?? ""),
+                        semantic_type: String(resolvedAction["semantic_type"] ?? "") || undefined,
+                        control_model: String(resolvedAction["control_model"] ?? "") || undefined,
+                        smoke_test_safe: Boolean(resolvedAction["smoke_test_safe"] ?? false),
+                        notes: String(resolvedAction["notes"] ?? "") || undefined,
                       },
                     }
                 : params.kind === "automation_config"
                   ? {
                       kind: "automation_config",
                       action: {
-                        mode: String(params.action["mode"] ?? "") as "upsert" | "delete",
-                        config: (params.action["config"] ?? {}) as Record<string, unknown>,
+                        mode: String(resolvedAction["mode"] ?? "") as "upsert" | "delete",
+                        config: (resolvedAction["config"] ?? {}) as Record<string, unknown>,
                         automation_id: String(
-                          params.action["automation_id"] ?? params.action["config"]?.["id"] ?? "",
+                          resolvedAction["automation_id"] ?? resolvedAction["config"]?.["id"] ?? "",
                         ),
-                        reload: Boolean(params.action["reload"] ?? false),
+                        reload: Boolean(resolvedAction["reload"] ?? false),
                       },
                     }
                   : {
                       kind: "config_patch",
                       action: {
-                        file: String(params.action["file"] ?? ""),
-                        before: String(params.action["before"] ?? ""),
-                        after: String(params.action["after"] ?? ""),
-                        validate: Boolean(params.action["validate"] ?? true),
-                        reload_domain: String(params.action["reload_domain"] ?? ""),
+                        file: String(resolvedAction["file"] ?? ""),
+                        before: String(resolvedAction["before"] ?? ""),
+                        after: String(resolvedAction["after"] ?? ""),
+                        validate: Boolean(resolvedAction["validate"] ?? true),
+                        reload_domain: String(resolvedAction["reload_domain"] ?? ""),
                       },
                     },
           };
@@ -10477,6 +10558,7 @@ const registerTools = (api: OpenClawPluginApi) => {
             JSON.stringify(
               {
                 token,
+                confirm_token: token,
                 summary,
                 expires_at: new Date(record.expiresAt).toISOString(),
                 reason: params.reason ?? null,
@@ -10510,19 +10592,24 @@ const registerTools = (api: OpenClawPluginApi) => {
         additionalProperties: false,
         properties: {
           token: { type: "string" },
+          confirm_token: { type: "string" },
         },
-        required: ["token"],
+        required: [],
       },
-      async execute(_id: string, params: { token: string }) {
+      async execute(_id: string, params: { token?: string; confirm_token?: string }) {
         const started = Date.now();
         try {
           prunePendingActions();
-          const record = pendingActions.get(params.token);
+          const token = params.token ?? params.confirm_token ?? "";
+          if (!token) {
+            return textResult("HA confirm error: token required");
+          }
+          const record = pendingActions.get(token);
           if (!record) {
             return textResult("HA confirm error: token not found or expired");
           }
           if (record.expiresAt <= Date.now()) {
-            pendingActions.delete(params.token);
+            pendingActions.delete(token);
             return textResult("HA confirm error: token expired");
           }
           let result: unknown = null;
@@ -12006,7 +12093,30 @@ const registerTools = (api: OpenClawPluginApi) => {
       ) {
         const started = Date.now();
         try {
-          const intent = params.user_intent.toLowerCase();
+          const routeMatch = matchInventoryRouteTokens(params.user_intent);
+          if (routeMatch.matched.length > 0) {
+            const response = {
+              route: "inventory_report",
+              matched_tokens: routeMatch.matched,
+              tools_needed: ["ha_inventory_report"],
+              steps: [],
+              requires_confirmation: false,
+              assistant_reply:
+                "Prepoznat zahtjev za inventar/izvještaj. Pokrećem ha_inventory_report.",
+              assistant_reply_short: "Pokrećem inventar izvještaj.",
+            };
+            await traceToolCall({
+              tool: "ha_plan_action",
+              params,
+              durationMs: Date.now() - started,
+              ok: true,
+              endpoint: "plan_action",
+              resultBytes: Buffer.byteLength(JSON.stringify(response), "utf8"),
+            });
+            return textResult(JSON.stringify(response, null, 2));
+          }
+
+          const intent = normalizeName(params.user_intent);
           let domainHint = "";
           let service = "";
           if (intent.includes("turn on")) service = "turn_on";
