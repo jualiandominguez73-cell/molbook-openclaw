@@ -37,6 +37,7 @@
 ```
 
 **核心逻辑（对标 Android）**:
+
 - 默认从**可信商店**安装，商店 Skill 经过审核 + SHA256 逐文件校验
 - 用户**可以侧载**自己的 Skill（类似 Android "允许安装未知来源"），侧载 Skill 走本地行为扫描
 - 侧载扫描发现 critical 级问题默认**阻断**，warn 级**告警放行**
@@ -107,33 +108,33 @@ export type SkillsConfig = {
 
 ```json5
 {
-  "skills": {
-    "guard": {
-      "enabled": true,
-      "trustedStores": [
+  skills: {
+    guard: {
+      enabled: true,
+      trustedStores: [
         {
-          "name": "OpenClaw Official Store",
-          "url": "https://store-api.openclaw.com/api/v1/skill-guard",
-          "apiKey": "${OPENCLAW_STORE_API_KEY}"
-        }
+          name: "OpenClaw Official Store",
+          url: "https://store-api.openclaw.com/api/v1/skill-guard",
+          apiKey: "${OPENCLAW_STORE_API_KEY}",
+        },
       ],
-      "sideloadPolicy": "block-critical",
-      "syncIntervalSeconds": 300,
-      "auditLog": true
-    }
-  }
+      sideloadPolicy: "block-critical",
+      syncIntervalSeconds: 300,
+      auditLog: true,
+    },
+  },
 }
 ```
 
 **字段说明**:
 
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| `enabled` | `true` | 总开关，false 关闭所有校验 |
-| `trustedStores` | `[]` | 可信商店列表，空 = 仅做本地侧载扫描 |
-| `sideloadPolicy` | `"block-critical"` | 侧载扫描发现 critical 时阻断 |
-| `syncIntervalSeconds` | `300` | 5分钟同步一次 Manifest |
-| `auditLog` | `true` | 记录审计日志到 JSONL |
+| 字段                  | 默认值             | 说明                                |
+| --------------------- | ------------------ | ----------------------------------- |
+| `enabled`             | `true`             | 总开关，false 关闭所有校验          |
+| `trustedStores`       | `[]`               | 可信商店列表，空 = 仅做本地侧载扫描 |
+| `sideloadPolicy`      | `"block-critical"` | 侧载扫描发现 critical 时阻断        |
+| `syncIntervalSeconds` | `300`              | 5分钟同步一次 Manifest              |
+| `auditLog`            | `true`             | 记录审计日志到 JSONL                |
 
 ### 1.3 配置路径选择理由
 
@@ -261,11 +262,11 @@ extensions/skill-guard/
 
 ### 4.1 三个 GET 接口
 
-| # | 路径 | 用途 |
-|---|------|------|
-| 1 | `GET /api/v1/skill-guard/manifest` | 全量同步配置 + hash 清单 |
-| 2 | `GET /api/v1/skill-guard/skills/:name` | 单 Skill 查询（增量补充） |
-| 3 | `GET /api/v1/skill-guard/skills/:name/download` | 下载 Skill tar.gz 包 |
+| #   | 路径                                            | 用途                      |
+| --- | ----------------------------------------------- | ------------------------- |
+| 1   | `GET /api/v1/skill-guard/manifest`              | 全量同步配置 + hash 清单  |
+| 2   | `GET /api/v1/skill-guard/skills/:name`          | 单 Skill 查询（增量补充） |
+| 3   | `GET /api/v1/skill-guard/skills/:name/download` | 下载 Skill tar.gz 包      |
 
 ### 4.2 Manifest 响应
 
@@ -294,6 +295,7 @@ extensions/skill-guard/
 ```
 
 **要点**:
+
 - `files` 中路径用 `/` 分隔（跨平台统一）
 - SHA256 小写 hex 64 字符
 - 支持 `If-None-Match` / ETag → 304 Not Modified
@@ -329,11 +331,11 @@ extensions/skill-guard/
 
 当前 `src/security/skill-scanner.ts`（v2026.2.6 实际规则）:
 
-| 类型 | 规则数 | 规则ID |
-|------|--------|--------|
-| LINE_RULES | 4条 | `dangerous-exec`, `dynamic-code-execution`, `crypto-mining`, `suspicious-network` |
-| SOURCE_RULES | 4条 | `potential-exfiltration`, `obfuscated-code`×2, `env-harvesting` |
-| **合计** | **8条** | 覆盖命令注入/代码注入/挖矿/数据窃取/混淆/环境变量窃取 |
+| 类型         | 规则数  | 规则ID                                                                            |
+| ------------ | ------- | --------------------------------------------------------------------------------- |
+| LINE_RULES   | 4条     | `dangerous-exec`, `dynamic-code-execution`, `crypto-mining`, `suspicious-network` |
+| SOURCE_RULES | 4条     | `potential-exfiltration`, `obfuscated-code`×2, `env-harvesting`                   |
+| **合计**     | **8条** | 覆盖命令注入/代码注入/挖矿/数据窃取/混淆/环境变量窃取                             |
 
 Extension 中直接 `import { scanDirectoryWithSummary } from "openclaw/security/skill-scanner"` 复用。
 
@@ -377,31 +379,31 @@ JSONL 追加写入 `~/.openclaw/security/skill-guard/audit.jsonl`:
 
 ### Phase 1: 商店守卫（5天）
 
-| 天 | 任务 | 改核心 |
-|----|------|--------|
-| D1 | `types.skills.ts` + `load-guard.ts` + `workspace.ts` 补丁 | ✅ 3文件/78行 |
-| D2 | `cloud-client.ts` + `types.ts` | ❌ Extension |
-| D3 | `hash-cache.ts` + `audit-logger.ts` | ❌ Extension |
-| D4 | `verify-engine.ts`（SHA256 + 侧载扫描） | ❌ Extension |
-| D5 | `index.ts` + 集成测试 | ❌ Extension |
+| 天  | 任务                                                      | 改核心        |
+| --- | --------------------------------------------------------- | ------------- |
+| D1  | `types.skills.ts` + `load-guard.ts` + `workspace.ts` 补丁 | ✅ 3文件/78行 |
+| D2  | `cloud-client.ts` + `types.ts`                            | ❌ Extension  |
+| D3  | `hash-cache.ts` + `audit-logger.ts`                       | ❌ Extension  |
+| D4  | `verify-engine.ts`（SHA256 + 侧载扫描）                   | ❌ Extension  |
+| D5  | `index.ts` + 集成测试                                     | ❌ Extension  |
 
 ### Phase 2-4（后续迭代）
 
-| Phase | 内容 | 时间 |
-|-------|------|------|
-| 2 | 增强扫描规则(+5条) + SKILL.md 注入检测 + 安装阻断 | 2周 |
-| 3 | Ed25519 签名验证 + manifest 防篡改 + 依赖审计 | 2周 |
-| 4 | 运行时资源限制 + 许可证 + Marketplace 分成 | 4-7周 |
+| Phase | 内容                                              | 时间  |
+| ----- | ------------------------------------------------- | ----- |
+| 2     | 增强扫描规则(+5条) + SKILL.md 注入检测 + 安装阻断 | 2周   |
+| 3     | Ed25519 签名验证 + manifest 防篡改 + 依赖审计     | 2周   |
+| 4     | 运行时资源限制 + 许可证 + Marketplace 分成        | 4-7周 |
 
 ---
 
 ## 8. 商业化
 
-| 版本 | 内容 | 价格 |
-|------|------|------|
-| **Community** | Phase 1 + Phase 2（商店校验 + 增强扫描） | **免费** |
-| **Professional** | + 签名验证 + 审计导出 + 规则库优先更新 | **$49/月** |
-| **Enterprise** | + 运行时保护 + 私有商店 + SIEM + 多租户 | **$299/月** |
+| 版本             | 内容                                     | 价格        |
+| ---------------- | ---------------------------------------- | ----------- |
+| **Community**    | Phase 1 + Phase 2（商店校验 + 增强扫描） | **免费**    |
+| **Professional** | + 签名验证 + 审计导出 + 规则库优先更新   | **$49/月**  |
+| **Enterprise**   | + 运行时保护 + 私有商店 + SIEM + 多租户  | **$299/月** |
 
 收入 = SaaS 订阅 + Marketplace 分成（开发者 70% / 平台 30%）
 
@@ -411,48 +413,48 @@ JSONL 追加写入 `~/.openclaw/security/skill-guard/audit.jsonl`:
 
 ### 9.1 源码 vs 设计文档
 
-| 检查项 | 源码实际值 | 设计文档引用 | 收敛 |
-|--------|-----------|-------------|------|
-| `SkillsConfig` 结构 | `{ allowBundled, load, install, entries }` | 新增 `guard` optional 字段 | ✅ 零破坏 |
-| `loadSkillEntries()` 位置 | `workspace.ts:99` | 正确引用 | ✅ |
-| Map 合并结束位置 | `workspace.ts:171` | 插入点 171-173 之间 | ✅ |
-| `loadSkillEntries()` 同步性 | 同步函数，用 `readFileSync` | SHA256 用 `readFileSync` | ✅ 匹配 |
-| LINE_RULES 数量 | **4 条** | 文档已修正为 4 条 | ✅ |
-| SOURCE_RULES 数量 | **4 条** | 文档已修正为 4 条 | ✅ |
-| Plugin 注册接口 | `src/plugins/types.ts` 有 `registerService` | Extension 使用此接口 | ✅ |
-| SSRF 防护 | `fetchWithSsrFGuard` 已存在 | cloud-client 复用 | ✅ |
-| `scanDirectoryWithSummary` 导出 | `skill-scanner.ts` 已 export | 侧载扫描复用 | ✅ |
-| Skill.baseDir 属性 | Skill 类型有 `baseDir` | SHA256 校验使用 | ✅ |
+| 检查项                          | 源码实际值                                  | 设计文档引用               | 收敛      |
+| ------------------------------- | ------------------------------------------- | -------------------------- | --------- |
+| `SkillsConfig` 结构             | `{ allowBundled, load, install, entries }`  | 新增 `guard` optional 字段 | ✅ 零破坏 |
+| `loadSkillEntries()` 位置       | `workspace.ts:99`                           | 正确引用                   | ✅        |
+| Map 合并结束位置                | `workspace.ts:171`                          | 插入点 171-173 之间        | ✅        |
+| `loadSkillEntries()` 同步性     | 同步函数，用 `readFileSync`                 | SHA256 用 `readFileSync`   | ✅ 匹配   |
+| LINE_RULES 数量                 | **4 条**                                    | 文档已修正为 4 条          | ✅        |
+| SOURCE_RULES 数量               | **4 条**                                    | 文档已修正为 4 条          | ✅        |
+| Plugin 注册接口                 | `src/plugins/types.ts` 有 `registerService` | Extension 使用此接口       | ✅        |
+| SSRF 防护                       | `fetchWithSsrFGuard` 已存在                 | cloud-client 复用          | ✅        |
+| `scanDirectoryWithSummary` 导出 | `skill-scanner.ts` 已 export                | 侧载扫描复用               | ✅        |
+| Skill.baseDir 属性              | Skill 类型有 `baseDir`                      | SHA256 校验使用            | ✅        |
 
 ### 9.2 需求 vs 设计文档
 
-| 原始需求 | 设计对应 | 收敛 |
-|---------|---------|------|
-| 云端 Skill 商店 | `trustedStores` 配置 + Manifest API | ✅ |
-| 商店审核 Skill 安全性 | 提交→自动扫描→人工审核→SHA256入库 | ✅ |
-| 端侧从商店下载 | cloud-client + Manifest SHA256 校验 | ✅ |
-| 类 Android 模式 | 默认商店 + 允许侧载 | ✅ |
-| 用户可自行安装 | 侧载 Skill 走本地 skill-scanner 扫描 | ✅ |
-| 配置文件含可信商店地址 | `skills.guard.trustedStores[]` | ✅ |
-| 支持多个商店 | 数组类型，按顺序查询 | ✅ |
-| Demo 写一个 | 默认配置示例含 1 个官方商店 | ✅ |
-| 合并到 OpenClaw 配置 | 扩展 `SkillsConfig.guard` | ✅ |
-| 商业化可落地 | Community/Professional/Enterprise 三层 | ✅ |
+| 原始需求               | 设计对应                               | 收敛 |
+| ---------------------- | -------------------------------------- | ---- |
+| 云端 Skill 商店        | `trustedStores` 配置 + Manifest API    | ✅   |
+| 商店审核 Skill 安全性  | 提交→自动扫描→人工审核→SHA256入库      | ✅   |
+| 端侧从商店下载         | cloud-client + Manifest SHA256 校验    | ✅   |
+| 类 Android 模式        | 默认商店 + 允许侧载                    | ✅   |
+| 用户可自行安装         | 侧载 Skill 走本地 skill-scanner 扫描   | ✅   |
+| 配置文件含可信商店地址 | `skills.guard.trustedStores[]`         | ✅   |
+| 支持多个商店           | 数组类型，按顺序查询                   | ✅   |
+| Demo 写一个            | 默认配置示例含 1 个官方商店            | ✅   |
+| 合并到 OpenClaw 配置   | 扩展 `SkillsConfig.guard`              | ✅   |
+| 商业化可落地           | Community/Professional/Enterprise 三层 | ✅   |
 
 ### 9.3 research.md vs 最终方案
 
-| research.md 设计点 | 最终方案采纳 | 状态 |
-|-------------------|-------------|------|
-| Extension 即插即用架构 | ✅ 完整采用 | 收敛 |
-| 核心仅 1 处改动 | ✅ 3 文件/78 行 | 收敛 |
-| 云端 3 个 GET 接口 | ✅ 完整采用 | 收敛 |
+| research.md 设计点     | 最终方案采纳                 | 状态 |
+| ---------------------- | ---------------------------- | ---- |
+| Extension 即插即用架构 | ✅ 完整采用                  | 收敛 |
+| 核心仅 1 处改动        | ✅ 3 文件/78 行              | 收敛 |
+| 云端 3 个 GET 接口     | ✅ 完整采用                  | 收敛 |
 | SHA256 全目录 6 步校验 | ✅ 简化为 4 步（合并了逻辑） | 收敛 |
-| fileCount 快速路径 | ✅ 保留 | 收敛 |
-| Blocklist 紧急阻断 | ✅ 保留 | 收敛 |
-| JSONL 审计日志 | ✅ 保留 | 收敛 |
-| 降级决策树 | ✅ 简化保留 | 收敛 |
-| ETag 304 优化 | ✅ 保留 | 收敛 |
-| 5 天工时 | ✅ 保留 | 收敛 |
+| fileCount 快速路径     | ✅ 保留                      | 收敛 |
+| Blocklist 紧急阻断     | ✅ 保留                      | 收敛 |
+| JSONL 审计日志         | ✅ 保留                      | 收敛 |
+| 降级决策树             | ✅ 简化保留                  | 收敛 |
+| ETag 304 优化          | ✅ 保留                      | 收敛 |
+| 5 天工时               | ✅ 保留                      | 收敛 |
 
 **结论: 3 方（源码/需求/设计）完全收敛，零遗留冲突。**
 
@@ -460,16 +462,18 @@ JSONL 追加写入 `~/.openclaw/security/skill-guard/audit.jsonl`:
 
 ## 10. 验收标准
 
-| # | 测试场景 | 预期结果 |
-|---|---------|---------|
-| 1 | `guard.enabled=false` | 全部正常加载 |
-| 2 | 商店 Skill，hash 匹配 | 加载通过 |
-| 3 | 商店 Skill，文件被篡改 | 阻断 |
-| 4 | 商店 Skill，被注入文件 | 阻断 |
-| 5 | blocklist 中的 Skill | 阻断 |
-| 6 | 侧载 Skill，无 critical | 放行 |
-| 7 | 侧载 Skill，有 critical + policy=block-critical | 阻断 |
-| 8 | 侧载 Skill，有 critical + policy=warn | 警告放行 |
-| 9 | 云端不可达 + 有缓存 | 用缓存 |
-| 10 | 云端不可达 + 无缓存 | 降级为侧载扫描 |
-| 11 | 100 个 Skill 全量校验 | < 500ms |
+| #   | 测试场景                                        | 预期结果                              |
+| --- | ----------------------------------------------- | ------------------------------------- |
+| 1   | `guard.enabled=false`                           | 全部正常加载                          |
+| 2   | 商店 Skill，hash 匹配                           | 加载通过                              |
+| 3   | 商店 Skill，文件被篡改                          | 阻断                                  |
+| 4   | 商店 Skill，被注入文件                          | 阻断                                  |
+| 5   | blocklist 中的 Skill                            | 阻断                                  |
+| 6   | 侧载 Skill，无 critical                         | 放行                                  |
+| 7   | 侧载 Skill，有 critical + policy=block-critical | 阻断                                  |
+| 8   | 侧载 Skill，有 critical + policy=warn           | 警告放行                              |
+| 9   | 云端不可达 + 有缓存                             | 用缓存                                |
+| 10  | 云端不可达 + 无缓存                             | 降级为侧载扫描                        |
+| 11  | 100 个 Skill 全量校验                           | < 500ms                               |
+| 12  | Skills 页面 Disable/Enable 后 Guard 持续有效    | 恶意 skill 始终被阻断                 |
+| 13  | Gateway SIGUSR1 重启后 Guard 自动恢复           | 重启后 guard 重新注册，阻断能力不中断 |
