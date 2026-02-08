@@ -348,12 +348,12 @@ export async function ensureFunnel(
     const stdout = typeof errOutput.stdout === "string" ? errOutput.stdout : "";
     const stderr = typeof errOutput.stderr === "string" ? errOutput.stderr : "";
     if (stdout.includes("Funnel is not enabled")) {
-      log.error(danger("Funnel is not enabled on this tailnet/device."));
+      runtime.error(danger("Funnel is not enabled on this tailnet/device."));
       const linkMatch = stdout.match(/https?:\/\/\S+/);
       if (linkMatch) {
-        log.error(info(`Enable it here: ${linkMatch[0]}`));
+        runtime.error(info(`Enable it here: ${linkMatch[0]}`));
       } else {
-        log.error(
+        runtime.error(
           info(
             "Enable in admin console: https://login.tailscale.com/admin (see https://tailscale.com/kb/1223/funnel)",
           ),
@@ -361,7 +361,7 @@ export async function ensureFunnel(
       }
     }
     if (stderr.includes("client version") || stdout.includes("client version")) {
-      log.warn(
+      runtime.error(
         "Tailscale client/server version mismatch detected; try updating tailscale/tailscaled.",
       );
     }

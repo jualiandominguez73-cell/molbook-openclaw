@@ -3,12 +3,9 @@ import { formatCliCommand } from "../cli/command-format.js";
 import { loadConfig } from "../config/config.js";
 import { danger, info, success } from "../globals.js";
 import { logInfo } from "../logger.js";
-import { createSubsystemLogger } from "../logging/subsystem.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
 import { resolveWhatsAppAccount } from "./accounts.js";
 import { createWaSocket, formatError, logoutWeb, waitForWaConnection } from "./session.js";
-
-const log = createSubsystemLogger("web/login");
 
 export async function loginWeb(
   verbose: boolean,
@@ -25,13 +22,13 @@ export async function loginWeb(
   logInfo("Waiting for WhatsApp connection...", runtime);
   try {
     await wait(sock);
-    log.info(success("✅ Linked! Credentials saved for future sends."));
+    runtime.log(success("✅ Linked! Credentials saved for future sends."));
   } catch (err) {
     const code =
       (err as { error?: { output?: { statusCode?: number } } })?.error?.output?.statusCode ??
       (err as { output?: { statusCode?: number } })?.output?.statusCode;
     if (code === 515) {
-      log.info(
+      runtime.log(
         info(
           "WhatsApp asked for a restart after pairing (code 515); creds are saved. Restarting connection once…",
         ),
@@ -46,7 +43,7 @@ export async function loginWeb(
       });
       try {
         await wait(retry);
-        log.info(success("✅ Linked after restart; web session ready."));
+        runtime.log(success("✅ Linked after restart; web session ready."));
         return;
       } finally {
         setTimeout(() => retry.ws?.close(), 500);
@@ -58,7 +55,7 @@ export async function loginWeb(
         isLegacyAuthDir: account.isLegacyAuthDir,
         runtime,
       });
-      log.error(
+      runtime.error(
         danger(
           `WhatsApp reported the session is logged out. Cleared cached web session; please rerun ${formatCliCommand("openclaw channels login")} and scan the QR again.`,
         ),
@@ -66,7 +63,7 @@ export async function loginWeb(
       throw new Error("Session logged out; cache cleared. Re-run login.", { cause: err });
     }
     const formatted = formatError(err);
-    log.error(danger(`WhatsApp Web connection ended before fully opening. ${formatted}`));
+    runtime.error(danger(`WhatsApp Web connection ended before fully opening. ${formatted}`));
     throw new Error(formatted, { cause: err });
   } finally {
     // Let Baileys flush any final events before closing the socket.
