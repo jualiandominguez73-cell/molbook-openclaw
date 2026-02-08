@@ -57,7 +57,7 @@ const SHELL_ENV_EXPECTED_KEYS = [
 
 const CONFIG_BACKUP_COUNT = 5;
 const loggedInvalidConfigs = new Set<string>();
-const loggedConfigWarnings = new Set<string>();
+let lastLoggedWarningKey: string | null = null;
 
 export type ParseConfigJson5Result = { ok: true; parsed: unknown } | { ok: false; error: string };
 
@@ -272,8 +272,8 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
           .map((iss) => `- ${iss.path || "<root>"}: ${iss.message}`)
           .join("\n");
         const warningKey = `${configPath}:${details}`;
-        if (!loggedConfigWarnings.has(warningKey)) {
-          loggedConfigWarnings.add(warningKey);
+        if (warningKey !== lastLoggedWarningKey) {
+          lastLoggedWarningKey = warningKey;
           deps.logger.warn(`Config warnings:\\n${details}`);
         }
       }
