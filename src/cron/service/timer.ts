@@ -10,6 +10,7 @@ import {
 } from "./jobs.js";
 import { locked } from "./locked.js";
 import { ensureLoaded, persist } from "./store.js";
+import { recomputeNextRuns } from "./jobs.js";
 
 const MAX_TIMER_DELAY_MS = 60_000;
 

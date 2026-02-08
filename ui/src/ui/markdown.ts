@@ -39,9 +39,10 @@ const allowedAttrs = ["class", "href", "rel", "target", "title", "start"];
 
 let hooksInstalled = false;
 const MARKDOWN_CHAR_LIMIT = 140_000;
-const MARKDOWN_PARSE_LIMIT = 40_000;
+const MARKDOWN_PARSE_LIMIT = 20_000;
 const MARKDOWN_CACHE_LIMIT = 200;
 const MARKDOWN_CACHE_MAX_CHARS = 50_000;
+const MARKDOWN_PRE_WRAP_LIMIT = 10_000;
 const markdownCache = new Map<string, string>();
 
 function getCachedMarkdown(key: string): string | null {
@@ -100,9 +101,10 @@ export function toSanitizedMarkdownHtml(markdown: string): string {
   const suffix = truncated.truncated
     ? `\n\n… truncated (${truncated.total} chars, showing first ${truncated.text.length}).`
     : "";
-  if (truncated.text.length > MARKDOWN_PARSE_LIMIT) {
+  // For large content, skip markdown parsing and use pre-wrap for performance
+  if (truncated.text.length > MARKDOWN_PRE_WRAP_LIMIT) {
     const escaped = escapeHtml(`${truncated.text}${suffix}`);
-    const html = `<pre class="code-block">${escaped}</pre>`;
+    const html = `<pre class="code-block" style="white-space: pre-wrap; word-break: break-word;">${escaped}</pre>`;
     const sanitized = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: allowedTags,
       ALLOWED_ATTR: allowedAttrs,

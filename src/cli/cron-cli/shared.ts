@@ -97,7 +97,10 @@ const truncate = (value: string, width: number) => {
   return `${value.slice(0, width - 3)}...`;
 };
 
-const formatIsoMinute = (iso: string) => {
+const formatIsoMinute = (iso: string | undefined) => {
+  if (!iso) {
+    return "-";
+  }
   const parsed = parseAbsoluteTimeMs(iso);
   const d = new Date(parsed ?? NaN);
   if (Number.isNaN(d.getTime())) {

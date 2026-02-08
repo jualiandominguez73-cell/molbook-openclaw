@@ -235,8 +235,14 @@ export async function agentCommand(
       });
     }
 
+  // For subagent sessions, use subagent model config instead of agent model
+  const isSubagent = sessionKey ? isSubagentSessionKey(sessionKey) : false;
+  const subagentModelConfig = isSubagent ? cfg.agents?.defaults?.subagents?.model : undefined;
+  const subagentModelPrimary = typeof subagentModelConfig === "string" ? subagentModelConfig : subagentModelConfig?.primary;
+
     const agentModelPrimary = resolveAgentModelPrimary(cfg, sessionAgentId);
-    const cfgForModelSelection = agentModelPrimary
+  const effectiveModelPrimary = subagentModelPrimary ?? agentModelPrimary;
+    const cfgForModelSelection = effectiveModelPrimary
       ? {
           ...cfg,
           agents: {
@@ -247,7 +253,7 @@ export async function agentCommand(
                 ...(typeof cfg.agents?.defaults?.model === "object"
                   ? cfg.agents.defaults.model
                   : undefined),
-                primary: agentModelPrimary,
+                primary: effectiveModelPrimary,
               },
             },
           },

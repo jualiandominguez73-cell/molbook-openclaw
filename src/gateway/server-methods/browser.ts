@@ -18,6 +18,7 @@ type BrowserRequestParams = {
   query?: Record<string, unknown>;
   body?: unknown;
   timeoutMs?: number;
+  profile?: string;
 };
 
 type BrowserProxyFile = {
@@ -210,7 +211,7 @@ export const browserHandlers: GatewayRequestHandlers = {
         query,
         body,
         timeoutMs,
-        profile: typeof query?.profile === "string" ? query.profile : undefined,
+        profile: typeof typed.profile === "string" ? typed.profile : undefined,
       };
       const res = await context.nodeRegistry.invoke({
         nodeId: nodeTarget.nodeId,

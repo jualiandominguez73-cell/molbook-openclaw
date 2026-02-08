@@ -304,7 +304,11 @@ export const buildTelegramMessageContext = async ({
   }
 
   const botUsername = primaryCtx.me?.username?.toLowerCase();
-  const senderId = msg.from?.id ? String(msg.from.id) : "";
+  const senderId = msg.sender_chat?.id
+    ? String(msg.sender_chat.id)
+    : msg.from?.id
+      ? String(msg.from.id)
+      : "";
   const senderUsername = msg.from?.username ?? "";
   if (isGroup && hasGroupAllowOverride) {
     const allowed = isSenderAllowed({
