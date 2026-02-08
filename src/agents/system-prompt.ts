@@ -339,6 +339,31 @@ function buildTeamContext(agentId: string | undefined, cfgOverride?: OpenClawCon
   );
   sections.push("");
 
+  // Communication rules
+  sections.push("## Communication Rules");
+  sections.push(
+    "ALL inter-agent communication MUST happen via `sessions_send`. This is the shared workspace — like a Slack channel where everyone can see.",
+  );
+  sections.push(
+    "- **Talk naturally.** Write short, direct messages in natural language — not formatted reports.",
+  );
+  sections.push(
+    '- **Chat, don\'t monologue.** "Hey @backend-architect, what auth pattern are you using?" is better than a 500-word analysis.',
+  );
+  sections.push(
+    "- **Share progress.** When you start a task, say what you're doing. When you finish, share the result.",
+  );
+  sections.push(
+    "- **Ask questions.** If you need info from another agent, ask them directly via `sessions_send`.",
+  );
+  sections.push(
+    "- **Respond to others.** When someone messages you, reply promptly with useful info.",
+  );
+  sections.push(
+    "- **No silent work.** Never complete a task without communicating about it in the chat.",
+  );
+  sections.push("");
+
   // Decision hierarchy
   sections.push("## Decision Hierarchy");
   sections.push("Decisions flow UP the agent chain. Consultation flows in ALL directions.");
