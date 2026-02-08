@@ -7,6 +7,7 @@ Docs: https://docs.openclaw.ai
 ### Added
 
 - Gateway: add `agents.create`, `agents.update`, `agents.delete` RPC methods for web UI agent management. (#11045) Thanks @advaitpaliwal.
+- Compaction: add `agents.defaults.model.compact` to specify a dedicated model for compaction summarization. Falls back to primary on failure. Fixes silent auto-compaction failures with CLI-based providers that return 400 on summarization.
 
 ### Fixes
 
