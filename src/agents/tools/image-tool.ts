@@ -26,6 +26,8 @@ import {
 const DEFAULT_PROMPT = "Describe the image.";
 const ANTHROPIC_IMAGE_PRIMARY = "anthropic/claude-opus-4-6";
 const ANTHROPIC_IMAGE_FALLBACK = "anthropic/claude-opus-4-5";
+const ZAI_IMAGE_PRIMARY = "zai/glm-4.6v";
+const ZAI_IMAGE_FALLBACK = "zai/glm-4.7";
 
 export const __testing = {
   decodeDataUrl,
@@ -114,6 +116,8 @@ export function resolveImageModelConfigForTool(params: {
   // MiniMax users: always try the canonical vision model first when auth exists.
   if (primary.provider === "minimax" && providerOk) {
     preferred = "minimax/MiniMax-VL-01";
+  } else if (primary.provider === "zai" && providerOk) {
+    preferred = ZAI_IMAGE_PRIMARY;
   } else if (providerOk && providerVisionFromConfig) {
     preferred = providerVisionFromConfig;
   } else if (primary.provider === "openai" && openaiOk) {
@@ -123,6 +127,9 @@ export function resolveImageModelConfigForTool(params: {
   }
 
   if (preferred?.trim()) {
+    if (preferred === ZAI_IMAGE_PRIMARY) {
+      addFallback(ZAI_IMAGE_FALLBACK);
+    }
     if (openaiOk) {
       addFallback("openai/gpt-5-mini");
     }

@@ -13,6 +13,7 @@ import {
   applyOpenrouterProviderConfig,
   applySyntheticConfig,
   applySyntheticProviderConfig,
+  applyZaiConfig,
   applyXaiConfig,
   applyXaiProviderConfig,
   applyXiaomiConfig,
@@ -20,6 +21,8 @@ import {
   OPENROUTER_DEFAULT_MODEL_REF,
   SYNTHETIC_DEFAULT_MODEL_ID,
   SYNTHETIC_DEFAULT_MODEL_REF,
+  ZAI_DEFAULT_IMAGE_MODEL_REF,
+  ZAI_DEFAULT_MODEL_REF,
   XAI_DEFAULT_MODEL_REF,
   setMinimaxApiKey,
   writeOAuthCredentials,
@@ -389,6 +392,30 @@ describe("applyXiaomiConfig", () => {
       "custom-model",
       "mimo-v2-flash",
     ]);
+  });
+});
+
+describe("applyZaiConfig", () => {
+  it("configures Z.AI provider for GLM-4.6V image analysis", () => {
+    const cfg = applyZaiConfig({});
+    expect(cfg.models?.providers?.zai).toMatchObject({
+      baseUrl: "https://api.z.ai/api/paas/v4",
+      api: "openai-completions",
+    });
+    expect(cfg.models?.providers?.zai?.models.some((m) => m.id === "glm-4.6v")).toBe(true);
+    expect(cfg.agents?.defaults?.imageModel?.primary).toBe(ZAI_DEFAULT_IMAGE_MODEL_REF);
+    expect(cfg.agents?.defaults?.model?.primary).toBe(ZAI_DEFAULT_MODEL_REF);
+  });
+
+  it("keeps existing imageModel.primary when already set", () => {
+    const cfg = applyZaiConfig({
+      agents: {
+        defaults: {
+          imageModel: { primary: "openai/gpt-5-mini" },
+        },
+      },
+    });
+    expect(cfg.agents?.defaults?.imageModel?.primary).toBe("openai/gpt-5-mini");
   });
 });
 

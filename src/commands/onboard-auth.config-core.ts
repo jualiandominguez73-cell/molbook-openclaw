@@ -1,5 +1,5 @@
 import type { OpenClawConfig } from "../config/config.js";
-import type { ModelApi } from "../config/types.models.js";
+import type { ModelApi, ModelDefinitionConfig } from "../config/types.models.js";
 import {
   buildCloudflareAiGatewayModelDefinition,
   resolveCloudflareAiGatewayBaseUrl,
@@ -27,6 +27,7 @@ import {
   OPENROUTER_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
+  ZAI_DEFAULT_IMAGE_MODEL_REF,
   ZAI_DEFAULT_MODEL_REF,
   XAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.credentials.js";
@@ -50,8 +51,71 @@ export function applyZaiConfig(cfg: OpenClawConfig): OpenClawConfig {
     ...models[ZAI_DEFAULT_MODEL_REF],
     alias: models[ZAI_DEFAULT_MODEL_REF]?.alias ?? "GLM",
   };
+  models[ZAI_DEFAULT_IMAGE_MODEL_REF] = {
+    ...models[ZAI_DEFAULT_IMAGE_MODEL_REF],
+    alias: models[ZAI_DEFAULT_IMAGE_MODEL_REF]?.alias ?? "GLM Vision",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers.zai;
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModels: ModelDefinitionConfig[] = [
+    {
+      id: "glm-4.7",
+      name: "GLM 4.7",
+      reasoning: true,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 204800,
+      maxTokens: 131072,
+    },
+    {
+      id: "glm-4.6v",
+      name: "GLM 4.6V",
+      reasoning: true,
+      input: ["text", "image"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 128000,
+      maxTokens: 8192,
+    },
+  ];
+  const mergedModels = [
+    ...existingModels,
+    ...defaultModels.filter(
+      (model) => !existingModels.some((existing) => existing.id === model.id),
+    ),
+  ];
+  const {
+    apiKey: existingApiKey,
+    baseUrl: existingBaseUrl,
+    api: existingApi,
+    ...existingProviderRest
+  } = (existingProvider ?? {}) as Record<string, unknown> as {
+    apiKey?: string;
+    baseUrl?: string;
+    api?: ModelApi;
+  };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  providers.zai = {
+    ...existingProviderRest,
+    baseUrl: existingBaseUrl ?? "https://api.z.ai/api/paas/v4",
+    api: existingApi ?? "openai-completions",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels,
+  };
 
   const existingModel = cfg.agents?.defaults?.model;
+  const existingImageModel = cfg.agents?.defaults?.imageModel as
+    | { primary?: string; fallbacks?: string[] }
+    | string
+    | undefined;
+  const imagePrimary =
+    typeof existingImageModel === "string"
+      ? existingImageModel.trim() || ZAI_DEFAULT_IMAGE_MODEL_REF
+      : existingImageModel?.primary?.trim() || ZAI_DEFAULT_IMAGE_MODEL_REF;
+  const imageFallbacks =
+    typeof existingImageModel === "object" ? existingImageModel.fallbacks : undefined;
   return {
     ...cfg,
     agents: {
@@ -59,6 +123,10 @@ export function applyZaiConfig(cfg: OpenClawConfig): OpenClawConfig {
       defaults: {
         ...cfg.agents?.defaults,
         models,
+        imageModel: {
+          primary: imagePrimary,
+          ...(imageFallbacks && imageFallbacks.length > 0 ? { fallbacks: imageFallbacks } : {}),
+        },
         model: {
           ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
             ? {
@@ -68,6 +136,10 @@ export function applyZaiConfig(cfg: OpenClawConfig): OpenClawConfig {
           primary: ZAI_DEFAULT_MODEL_REF,
         },
       },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
     },
   };
 }

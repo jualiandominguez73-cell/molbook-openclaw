@@ -30,7 +30,6 @@ describe("image tool implicit imageModel config", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    // @ts-expect-error global fetch cleanup
     global.fetch = priorFetch;
   });
 
@@ -71,9 +70,26 @@ describe("image tool implicit imageModel config", () => {
       models: {
         providers: {
           acme: {
+            baseUrl: "https://api.acme.test/v1",
             models: [
-              { id: "text-1", input: ["text"] },
-              { id: "vision-1", input: ["text", "image"] },
+              {
+                id: "text-1",
+                name: "Text 1",
+                reasoning: false,
+                input: ["text"],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 32000,
+                maxTokens: 4096,
+              },
+              {
+                id: "vision-1",
+                name: "Vision 1",
+                reasoning: false,
+                input: ["text", "image"],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 32000,
+                maxTokens: 4096,
+              },
             ],
           },
         },
@@ -83,6 +99,23 @@ describe("image tool implicit imageModel config", () => {
       primary: "acme/vision-1",
     });
     expect(createImageTool({ config: cfg, agentDir })).not.toBeNull();
+  });
+
+  it("prefers GLM-4.6V for Z.AI when auth exists", async () => {
+    const agentDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-image-"));
+    await writeAuthProfiles(agentDir, {
+      version: 1,
+      profiles: {
+        "zai:default": { type: "api_key", provider: "zai", key: "sk-zai-test" },
+      },
+    });
+    const cfg: OpenClawConfig = {
+      agents: { defaults: { model: { primary: "zai/glm-4.7" } } },
+    };
+    expect(resolveImageModelConfigForTool({ cfg, agentDir })).toEqual({
+      primary: "zai/glm-4.6v",
+      fallbacks: ["zai/glm-4.7"],
+    });
   });
 
   it("prefers explicit agents.defaults.imageModel", async () => {
@@ -116,7 +149,18 @@ describe("image tool implicit imageModel config", () => {
       models: {
         providers: {
           acme: {
-            models: [{ id: "vision-1", input: ["text", "image"] }],
+            baseUrl: "https://api.acme.test/v1",
+            models: [
+              {
+                id: "vision-1",
+                name: "Vision 1",
+                reasoning: false,
+                input: ["text", "image"],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 32000,
+                maxTokens: 4096,
+              },
+            ],
           },
         },
       },
@@ -243,7 +287,6 @@ describe("image tool MiniMax VLM routing", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    // @ts-expect-error global fetch cleanup
     global.fetch = priorFetch;
   });
 
