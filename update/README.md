@@ -3,7 +3,7 @@ Failover utilities
 This folder contains two small Node.js utilities that help with model failover when the configured provider/model becomes unavailable:
 
 - `update/session-failover.js` — per-session failover. Probes a list of candidate provider/model pairs and writes a per-session override into a sessions store (JSON file). It mirrors the minimal behavior of OpenClaw's `applyModelOverrideToSessionEntry`.
-- `update/default-model-failover.js` — default/global failover. Probes candidates and, on success, updates the global OpenClaw config file (by default `%USERPROFILE%/.openclaw/openclaw.json`) setting `agents.defaults.model.primary` to the responsive model. A backup of the config is created before modification.
+- `update/default-model-failover.js` — default/global failover. Probes candidates and, on success, updates `agents.defaults.model.primary` in the global OpenClaw config file (by default `%USERPROFILE%/.openclaw/openclaw.json`) while preserving other keys (e.g. `fallbacks`). A backup of the config is created before modification.
 
 Why two scripts?
 
@@ -64,8 +64,3 @@ Safety checklist before running
 - Ensure you have backups of `%USERPROFILE%/.openclaw/openclaw.json` and your session store files.
 - Export any provider API keys the script expects, or modify `probeModel` to accept your existing env var names.
 - Test with a short candidate list and a small timeout to verify behavior before automating.
-
-If you want, I can:
-
-- run `default-model-failover.js` now against your config (requires approval), or
-- produce a PowerShell one-liner / scheduled task to run periodically and optionally rotate through a configured fallback list.

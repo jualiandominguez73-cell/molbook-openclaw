@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 // Default-model failover utility for OpenClaw.
 // Probes a list of candidate models and updates the global config's
-// `agents.defaults.model` to the first responsive model.
+// `agents.defaults.model.primary` to the first responsive model.
 // Usage:
 // node update/default-model-failover.js --models openai/gpt-4o,anthropic/claude-opus-4-6 --config "C:\Users\you\.openclaw\openclaw.json" --timeout 5000
 
@@ -119,7 +120,7 @@ function applyDefaultModel(cfg, provider, model) {
   if (!cfg.agents.defaults) {
     cfg.agents.defaults = {};
   }
-  // store as object with primary property to match OpenClaw's expected shape
+  // merge into existing object to preserve keys like fallbacks
   cfg.agents.defaults.model = {
     ...(cfg.agents.defaults.model || {}),
     primary: `${provider}/${model}`,
@@ -167,11 +168,11 @@ async function main() {
     console.log("failed");
   }
 
-  console.log("No candidates succeeded; leaving config unchanged (backup created)");
+  console.log(`No candidates succeeded; leaving config unchanged${bak ? " (backup created)" : ""}`);
   process.exit(1);
 }
 
-if (import.meta.url === `file://${process.argv[1]}` || process.env.NODE_ENV !== "test") {
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   main().catch((err) => {
     console.error(err);
     process.exit(10);

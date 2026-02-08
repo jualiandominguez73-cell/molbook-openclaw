@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 // Simple model failover utility for OpenClaw sessions.
-// Usage: node update/failover.js --sessionKey <sessionKey> --models provider1/model1,provider2/model2 --store <path/to/sessions.json> --timeout 5000
+// Usage: node update/session-failover.js --sessionKey <sessionKey> --models provider1/model1,provider2/model2 --store <path/to/sessions.json> --timeout 5000
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const out = {};
@@ -52,7 +54,7 @@ function splitModelRef(raw) {
 }
 
 function applyModelOverrideToEntry(entry, selection) {
-  // Minimal copy of OpenClaw's applyModelOverrideToSessionEntry behaviour
+  // Mirrors OpenClaw's applyModelOverrideToSessionEntry behaviour
   let updated = false;
   if (selection.isDefault) {
     if (entry.providerOverride) {
@@ -63,6 +65,15 @@ function applyModelOverrideToEntry(entry, selection) {
       delete entry.modelOverride;
       updated = true;
     }
+    // Clear auth profile overrides to stay consistent with OpenClaw core
+    if (entry.authProfileOverride) {
+      delete entry.authProfileOverride;
+      updated = true;
+    }
+    if (entry.authProfileOverrideName) {
+      delete entry.authProfileOverrideName;
+      updated = true;
+    }
   } else {
     if (entry.providerOverride !== selection.provider) {
       entry.providerOverride = selection.provider;
@@ -70,6 +81,15 @@ function applyModelOverrideToEntry(entry, selection) {
     }
     if (entry.modelOverride !== selection.model) {
       entry.modelOverride = selection.model;
+      updated = true;
+    }
+    // Clear auth profile overrides when switching provider/model without a profile
+    if (entry.authProfileOverride) {
+      delete entry.authProfileOverride;
+      updated = true;
+    }
+    if (entry.authProfileOverrideName) {
+      delete entry.authProfileOverrideName;
       updated = true;
     }
   }
@@ -215,7 +235,7 @@ async function main() {
   process.exit(1);
 }
 
-if (import.meta.url === `file://${process.argv[1]}` || process.env.NODE_ENV !== "test") {
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   main().catch((err) => {
     console.error(err);
     process.exit(10);
