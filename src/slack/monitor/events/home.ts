@@ -6,8 +6,10 @@ import { danger, logVerbose } from "../../../globals.js";
 import { VERSION } from "../../../version.js";
 import { hasCurrentHomeTab, hasCustomHomeTab, markHomeTabPublished } from "../../home-tab-state.js";
 
-/** Gateway process start time — used for uptime display. */
-const GATEWAY_START_MS = Date.now();
+/** Returns process uptime in milliseconds, consistent with gateway health state. */
+function processUptimeMs(): number {
+  return Math.round(process.uptime() * 1000);
+}
 
 /**
  * Format a millisecond duration as a human-readable uptime string.
@@ -86,7 +88,7 @@ export function buildHomeTabBlocks(params: {
     { type: "mrkdwn", text: `*Model:*\n\`${model}\`` },
   ];
 
-  const uptimeMs = params.uptimeMs ?? Date.now() - GATEWAY_START_MS;
+  const uptimeMs = params.uptimeMs ?? processUptimeMs();
   infoFields.push({ type: "mrkdwn", text: `*Uptime:*\n${formatUptime(uptimeMs)}` });
 
   blocks.push({ type: "section", fields: infoFields });
