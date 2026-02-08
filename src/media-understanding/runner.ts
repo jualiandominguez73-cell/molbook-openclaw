@@ -1023,8 +1023,29 @@ async function runCliEntry(params: {
     timeoutMs,
   });
   const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-media-cli-"));
-  const mediaPath = pathResult.path;
+  let mediaPath = pathResult.path;
   const outputBase = path.join(outputDir, path.parse(mediaPath).name);
+
+  // whisper-cli only accepts WAV input; convert other audio formats via ffmpeg.
+  const cmdId = commandBase(command);
+  if ((cmdId === "whisper-cli" || cmdId === "whisper") && !mediaPath.endsWith(".wav")) {
+    const wavPath = path.join(outputDir, `${path.parse(mediaPath).name}.wav`);
+    try {
+      await runExec(
+        "ffmpeg",
+        ["-y", "-i", mediaPath, "-ar", "16000", "-ac", "1", "-f", "wav", wavPath],
+        {
+          timeoutMs: 30_000,
+        },
+      );
+      mediaPath = wavPath;
+    } catch (convErr) {
+      // ffmpeg not available or conversion failed; proceed with original path
+      if (shouldLogVerbose()) {
+        logVerbose(`ffmpeg conversion failed, proceeding with original: ${convErr}`);
+      }
+    }
+  }
 
   const templCtx: MsgContext = {
     ...ctx,
@@ -1039,9 +1060,6 @@ async function runCliEntry(params: {
     index === 0 ? part : applyTemplate(part, templCtx),
   );
   try {
-    if (shouldLogVerbose()) {
-      logVerbose(`Media understanding via CLI: ${argv.join(" ")}`);
-    }
     const { stdout } = await runExec(argv[0], argv.slice(1), {
       timeoutMs,
       maxBuffer: CLI_OUTPUT_MAX_BUFFER,
