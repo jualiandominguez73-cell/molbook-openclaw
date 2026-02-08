@@ -17,6 +17,14 @@ if (process.env.OPENCLAW_SECURE_MODE === "1" && !PROXY_URL) {
 // Store the original fetch
 const originalFetch = globalThis.fetch;
 
+/** Returns true only for valid 127.0.0.0/8 IPv4 addresses (octets 0-255). */
+function isLoopbackIPv4(hostname: string): boolean {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+  if (!m) return false;
+  const octets = [+m[1], +m[2], +m[3], +m[4]];
+  return octets[0] === 127 && octets.every((o) => o >= 0 && o <= 255);
+}
+
 /**
  * Checks if a URL should bypass the proxy.
  * Only bypass for true loopback addresses, NOT host.docker.internal
@@ -26,12 +34,8 @@ function shouldBypassProxy(url: string): boolean {
   try {
     const parsed = new URL(url);
     const hostname = parsed.hostname;
-    // Bypass loopback: localhost, IPv6 ::1, and full IPv4 127.0.0.0/8 range
-    if (
-      hostname === "localhost" ||
-      hostname === "::1" ||
-      /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)
-    ) {
+    // Bypass loopback: localhost, IPv6 ::1, and valid IPv4 127.0.0.0/8 range
+    if (hostname === "localhost" || hostname === "::1" || isLoopbackIPv4(hostname)) {
       return true;
     }
     // Also bypass requests TO the proxy itself to avoid infinite loop
