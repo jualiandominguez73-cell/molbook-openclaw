@@ -147,6 +147,49 @@ export const configHandlers: GatewayRequestHandlers = {
         configUiHints: entry.configSchema?.uiHints,
       })),
     });
+
+    const scope = (params as { scope?: string }).scope?.trim();
+    if (scope) {
+      let current: any = schema.schema;
+      const parts = scope.split(".");
+      for (const part of parts) {
+        if (
+          current &&
+          typeof current === "object" &&
+          "properties" in current &&
+          current.properties &&
+          part in current.properties
+        ) {
+          current = current.properties[part];
+        } else {
+          respond(
+            false,
+            undefined,
+            errorShape(ErrorCodes.INVALID_REQUEST, `scope '${scope}' not found in schema`),
+          );
+          return;
+        }
+      }
+
+      const filteredHints: typeof schema.uiHints = {};
+      for (const [key, hint] of Object.entries(schema.uiHints)) {
+        if (key === scope || key.startsWith(`${scope}.`)) {
+          filteredHints[key] = hint;
+        }
+      }
+
+      respond(
+        true,
+        {
+          ...schema,
+          schema: current,
+          uiHints: filteredHints,
+        },
+        undefined,
+      );
+      return;
+    }
+
     respond(true, schema, undefined);
   },
   "config.set": async ({ params, respond }) => {

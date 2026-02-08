@@ -1,8 +1,10 @@
 import { html, nothing } from "lit";
 import type { ConfigUiHints } from "../types.ts";
+import { t } from "../i18n/i18n-manager.ts";
 import { icons } from "../icons.ts";
 import { renderNode } from "./config-form.node.ts";
 import { hintForPath, humanize, schemaType, type JsonSchema } from "./config-form.shared.ts";
+import "../components/lazy-mount.ts";
 
 export type ConfigFormProps = {
   schema: JsonSchema | null;
@@ -355,14 +357,14 @@ function schemaMatches(schema: JsonSchema, query: string): boolean {
 export function renderConfigForm(props: ConfigFormProps) {
   if (!props.schema) {
     return html`
-      <div class="muted">Schema unavailable.</div>
+      <div class="muted">${t("config.schemaUnavailable")}</div>
     `;
   }
   const schema = props.schema;
   const value = props.value ?? {};
   if (schemaType(schema) !== "object" || !schema.properties) {
     return html`
-      <div class="callout danger">Unsupported schema. Use Raw.</div>
+      <div class="callout danger">${t("config.unsupportedSchema")}</div>
     `;
   }
   const unsupported = new Set(props.unsupportedPaths ?? []);
@@ -413,7 +415,7 @@ export function renderConfigForm(props: ConfigFormProps) {
       <div class="config-empty">
         <div class="config-empty__icon">${icons.search}</div>
         <div class="config-empty__text">
-          ${searchQuery ? `No settings match "${searchQuery}"` : "No settings in this section"}
+          ${searchQuery ? t("config.noSettingsMatch", { query: searchQuery }) : t("config.noSettingsInSection")}
         </div>
       </div>
     `;
@@ -448,24 +450,31 @@ export function renderConfigForm(props: ConfigFormProps) {
                   </div>
                 </div>
                 <div class="config-section-card__content">
-                  ${renderNode({
-                    schema: node,
-                    value: scopedValue,
-                    path: [sectionKey, subsectionKey],
-                    hints: props.uiHints,
-                    unsupported,
-                    disabled: props.disabled ?? false,
-                    showLabel: false,
-                    onPatch: props.onPatch,
-                  })}
+                  <lazy-mount .renderContent=${() =>
+                    renderNode({
+                      schema: node,
+                      value: scopedValue,
+                      path: [sectionKey, subsectionKey],
+                      hints: props.uiHints,
+                      unsupported,
+                      disabled: props.disabled ?? false,
+                      showLabel: false,
+                      onPatch: props.onPatch,
+                    })}
+                  label="${sectionKey}.${subsectionKey}"
+                  ></lazy-mount>
                 </div>
               </section>
             `;
             })()
           : filteredEntries.map(([key, node]) => {
-              const meta = SECTION_META[key] ?? {
-                label: key.charAt(0).toUpperCase() + key.slice(1),
-                description: node.description ?? "",
+              const meta = {
+                label: t(`config.sections.${key}`) || SECTION_META[key]?.label || humanize(key),
+                description:
+                  t(`config.sectionDescriptions.${key}`) ||
+                  SECTION_META[key]?.description ||
+                  node.description ||
+                  "",
               };
 
               return html`
@@ -482,16 +491,19 @@ export function renderConfigForm(props: ConfigFormProps) {
                   </div>
                 </div>
                 <div class="config-section-card__content">
-                  ${renderNode({
-                    schema: node,
-                    value: value[key],
-                    path: [key],
-                    hints: props.uiHints,
-                    unsupported,
-                    disabled: props.disabled ?? false,
-                    showLabel: false,
-                    onPatch: props.onPatch,
-                  })}
+                  <lazy-mount .renderContent=${() =>
+                    renderNode({
+                      schema: node,
+                      value: value[key],
+                      path: [key],
+                      hints: props.uiHints,
+                      unsupported,
+                      disabled: props.disabled ?? false,
+                      showLabel: false,
+                      onPatch: props.onPatch,
+                    })}
+                  label="${key}"
+                  ></lazy-mount>
                 </div>
               </section>
             `;
