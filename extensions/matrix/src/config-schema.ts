@@ -31,6 +31,7 @@ const matrixRoomSchema = z
     users: z.array(allowFromEntry).optional(),
     skills: z.array(z.string()).optional(),
     systemPrompt: z.string().optional(),
+    accountId: z.string().optional(),
   })
   .optional();
 

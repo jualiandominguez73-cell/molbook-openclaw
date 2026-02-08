@@ -28,6 +28,8 @@ export type MatrixRoomConfig = {
   skills?: string[];
   /** Optional system prompt snippet for this room. */
   systemPrompt?: string;
+  /** Account ID that owns this room (for multi-account routing). */
+  accountId?: string;
 };
 
 export type MatrixActionConfig = {

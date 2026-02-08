@@ -14,11 +14,19 @@ export type ResolvedMatrixAccount = {
 };
 
 function listConfiguredAccountIds(cfg: CoreConfig): string[] {
-  const accounts = cfg.channels?.matrix?.accounts;
-  if (!accounts || typeof accounts !== "object") {
-    return [];
+  const base = cfg.channels?.matrix ?? {};
+  const named =
+    base.accounts && typeof base.accounts === "object"
+      ? Object.keys(base.accounts).filter(Boolean)
+      : [];
+
+  // If base config has credentials (homeserver + accessToken/userId), include "default"
+  const hasBaseCredentials = Boolean(base.homeserver && (base.accessToken || base.userId));
+  const ids = new Set(named);
+  if (hasBaseCredentials) {
+    ids.add(DEFAULT_ACCOUNT_ID);
   }
-  return Object.keys(accounts).filter(Boolean);
+  return [...ids];
 }
 
 export function listMatrixAccountIds(cfg: CoreConfig): string[] {
