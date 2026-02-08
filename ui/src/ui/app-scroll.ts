@@ -7,6 +7,7 @@ type ScrollHost = {
   style: CSSStyleDeclaration;
   chatScrollFrame: number | null;
   chatScrollTimeout: number | null;
+  chatScrollPending: boolean;
   chatHasAutoScrolled: boolean;
   chatUserNearBottom: boolean;
   chatNewMessagesBelow: boolean;
@@ -16,6 +17,7 @@ type ScrollHost = {
 };
 
 export function scheduleChatScroll(host: ScrollHost, force = false) {
+  host.chatScrollPending = true; // Prevent scroll events from resetting flags during content expansion
   if (host.chatScrollFrame) {
     cancelAnimationFrame(host.chatScrollFrame);
   }
@@ -41,6 +43,7 @@ export function scheduleChatScroll(host: ScrollHost, force = false) {
   void host.updateComplete.then(() => {
     host.chatScrollFrame = requestAnimationFrame(() => {
       host.chatScrollFrame = null;
+      host.chatScrollPending = false; // Re-enable scroll event handling
       const target = pickScrollTarget();
       if (!target) {
         return;
@@ -64,25 +67,6 @@ export function scheduleChatScroll(host: ScrollHost, force = false) {
       target.scrollTop = target.scrollHeight;
       host.chatUserNearBottom = true;
       host.chatNewMessagesBelow = false;
-      const retryDelay = effectiveForce ? 150 : 120;
-      host.chatScrollTimeout = window.setTimeout(() => {
-        host.chatScrollTimeout = null;
-        const latest = pickScrollTarget();
-        if (!latest) {
-          return;
-        }
-        const latestDistanceFromBottom =
-          latest.scrollHeight - latest.scrollTop - latest.clientHeight;
-        const shouldStickRetry =
-          effectiveForce ||
-          host.chatUserNearBottom ||
-          latestDistanceFromBottom < NEAR_BOTTOM_THRESHOLD;
-        if (!shouldStickRetry) {
-          return;
-        }
-        latest.scrollTop = latest.scrollHeight;
-        host.chatUserNearBottom = true;
-      }, retryDelay);
     });
   });
 }
@@ -110,6 +94,10 @@ export function scheduleLogsScroll(host: ScrollHost, force = false) {
 }
 
 export function handleChatScroll(host: ScrollHost, event: Event) {
+  // Ignore scroll events during programmatic scroll operations
+  if (host.chatScrollPending) {
+    return;
+  }
   const container = event.currentTarget as HTMLElement | null;
   if (!container) {
     return;

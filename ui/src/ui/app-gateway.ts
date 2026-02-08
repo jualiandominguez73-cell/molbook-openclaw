@@ -212,7 +212,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
       }
     }
     if (state === "final") {
-      void loadChatHistory(host as unknown as OpenClawApp);
+      void loadChatHistory(host as unknown as OpenClawApp, { skipLoading: true });
     }
     return;
   }
