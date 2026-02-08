@@ -98,8 +98,8 @@ def _validate_place_id(place_id: str | None) -> None:
             detail=f"Invalid place_id length: {len(place_id)}. Expected 10-300 characters."
         )
 
-    # Normalize the path to detect encoded traversal attempts
-    normalized_path = place_id.replace('%2e', '.').replace('%2f', '/')
+    # Normalize the path to detect encoded traversal attempts (both lowercase and uppercase)
+    normalized_path = place_id.replace('%2e', '.').replace('%2E', '.').replace('%2f', '/').replace('%2F', '/')
 
     # Explicitly block path traversal patterns
     traversal_patterns = [
@@ -111,12 +111,15 @@ def _validate_place_id(place_id: str | None) -> None:
         r'\\$',        # Ends with \
         r'\/[^/]+?\/\.\.',  # Contains /../
         r'\\\\[^\\]+?\\\.\.', # Contains \..\
-        r'%2e%2e%2f',  # URL-encoded ../
-        r'%2e%2f',     # URL-encoded ./ (current directory)
+        r'%2e%2e%2f',  # URL-encoded ../ (lowercase)
+        r'%2E%2E%2F',  # URL-encoded ../ (uppercase)
+        r'%2e%2f',     # URL-encoded ./ (lowercase)
+        r'%2E%2F'      # URL-encoded ./ (uppercase)
     ]
 
     for pattern in traversal_patterns:
         if re.search(pattern, normalized_path, re.IGNORECASE):
+            logger.warning(f"Blocked potential path traversal attempt: {place_id}")
             raise HTTPException(
                 status_code=400,
                 detail="Invalid place_id format: contains path traversal sequences."
@@ -124,6 +127,7 @@ def _validate_place_id(place_id: str | None) -> None:
 
     # Check for mixed slashes which could indicate traversal attempts
     if '/' in normalized_path and '\\' in normalized_path:
+        logger.warning(f"Blocked place_id with mixed slashes: {place_id}")
         raise HTTPException(
             status_code=400,
             detail="Invalid place_id format: contains mixed path separators."
@@ -131,6 +135,7 @@ def _validate_place_id(place_id: str | None) -> None:
 
     # Allow alphanumeric, '+', '/', '=', '_', and '-' but reject dangerous characters
     if re.search(r'[\s?#<>|\*%$&\'";`]', place_id):
+        logger.warning(f"Blocked place_id with illegal characters: {place_id}")
         raise HTTPException(
             status_code=400,
             detail="Invalid place_id format: contains illegal characters."
