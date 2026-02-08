@@ -352,6 +352,13 @@ export function handleControlUiHttpRequest(
     return true;
   }
 
+  // If the requested path has a file extension, it's a static asset request —
+  // return 404 rather than falling through to the SPA index.html fallback.
+  if (path.extname(fileRel)) {
+    respondNotFound(res);
+    return true;
+  }
+
   // SPA fallback (client-side router): serve index.html for unknown paths.
   const indexPath = path.join(root, "index.html");
   if (fs.existsSync(indexPath)) {
