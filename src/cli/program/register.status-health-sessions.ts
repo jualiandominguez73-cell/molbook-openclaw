@@ -198,7 +198,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
         await sessionsScrubCommand(defaultRuntime, {
           dryRun: Boolean(opts.dryRun),
           verbose: Boolean(opts.verbose),
-          noBackup: !opts.backup,
+          noBackup: opts.backup === false,
           concurrency: opts.concurrency as number | undefined,
         });
       });
