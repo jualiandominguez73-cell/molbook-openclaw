@@ -54,6 +54,12 @@ export function stop(state: CronServiceState) {
 export async function status(state: CronServiceState) {
   return await locked(state, async () => {
     await ensureLoaded(state, { skipRecompute: true });
+    if (state.store) {
+      const changed = recomputeNextRuns(state);
+      if (changed) {
+        await persist(state);
+      }
+    }
     return {
       enabled: state.deps.cronEnabled,
       storePath: state.deps.storePath,
@@ -66,6 +72,12 @@ export async function status(state: CronServiceState) {
 export async function list(state: CronServiceState, opts?: { includeDisabled?: boolean }) {
   return await locked(state, async () => {
     await ensureLoaded(state, { skipRecompute: true });
+    if (state.store) {
+      const changed = recomputeNextRuns(state);
+      if (changed) {
+        await persist(state);
+      }
+    }
     const includeDisabled = opts?.includeDisabled === true;
     const jobs = (state.store?.jobs ?? []).filter((j) => includeDisabled || j.enabled);
     return jobs.toSorted((a, b) => (a.state.nextRunAtMs ?? 0) - (b.state.nextRunAtMs ?? 0));
@@ -78,8 +90,25 @@ export async function add(state: CronServiceState, input: CronJobCreate) {
     await ensureLoaded(state);
     const job = createJob(state, input);
     state.store?.jobs.push(job);
+
+    // Defensive: recompute all next-run times to ensure consistency
+    recomputeNextRuns(state);
+
     await persist(state);
     armTimer(state);
+
+    state.deps.log.info(
+      {
+        jobId: job.id,
+        jobName: job.name,
+        nextRunAtMs: job.state.nextRunAtMs,
+        schedulerNextWakeAtMs: nextWakeAtMs(state) ?? null,
+        timerArmed: state.timer !== null,
+        cronEnabled: state.deps.cronEnabled,
+      },
+      "cron: job added",
+    );
+
     emit(state, {
       jobId: job.id,
       action: "added",
@@ -112,12 +141,17 @@ export async function update(state: CronServiceState, id: string, patch: CronJob
         };
       }
     }
+    const scheduleChanged = patch.schedule !== undefined;
+    const enabledChanged = patch.enabled !== undefined;
+
     job.updatedAtMs = now;
-    if (job.enabled) {
-      job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
-    } else {
-      job.state.nextRunAtMs = undefined;
-      job.state.runningAtMs = undefined;
+    if (scheduleChanged || enabledChanged) {
+      if (job.enabled) {
+        job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
+      } else {
+        job.state.nextRunAtMs = undefined;
+        job.state.runningAtMs = undefined;
+      }
     }
 
     await persist(state);
