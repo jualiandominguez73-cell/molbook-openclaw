@@ -153,10 +153,19 @@ export function buildGatewayConnectionDetails(
   };
 }
 
+// Node.js setTimeout uses a 32-bit signed integer internally.
+// Values exceeding this limit silently wrap to 1ms, breaking timeout semantics.
+// See: https://github.com/openclaw/openclaw/issues/9572
+const MAX_SAFE_TIMEOUT_MS = 2_147_483_647; // 2^31 - 1
+
 export async function callGateway<T = Record<string, unknown>>(
   opts: CallGatewayOptions,
 ): Promise<T> {
-  const timeoutMs = opts.timeoutMs ?? 10_000;
+  const rawTimeout = opts.timeoutMs ?? 10_000;
+  const timeoutMs =
+    Number.isFinite(rawTimeout) && rawTimeout >= 1
+      ? Math.min(Math.floor(rawTimeout), MAX_SAFE_TIMEOUT_MS)
+      : 10_000;
   const config = opts.config ?? loadConfig();
   const isRemoteMode = config.gateway?.mode === "remote";
   const remote = isRemoteMode ? config.gateway?.remote : undefined;
