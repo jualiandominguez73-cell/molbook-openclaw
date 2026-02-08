@@ -9,6 +9,8 @@ title: "Azure ACI"
 
 # Azure Container Instances
 
+> **Superseded:** The [Azure VM deployment](/install/azure-vm) is now the recommended Azure option. It provides SSH access, faster local-disk storage for SQLite, and lower cost (~$20/month vs ~$40-55/month). This ACI guide remains for reference.
+
 **Goal:** OpenClaw Gateway running on [Azure Container Instances](https://learn.microsoft.com/en-us/azure/container-instances/) with HTTPS (Let's Encrypt), persistent state, and automatic restarts.
 
 ## What you need
