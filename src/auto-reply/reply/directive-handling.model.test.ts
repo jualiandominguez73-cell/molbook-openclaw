@@ -58,9 +58,90 @@ describe("/model chat UX", () => {
       resetModelOverride: false,
     });
 
-    expect(reply?.text).toContain("Current:");
+    expect(reply?.text).toContain("Configured:");
     expect(reply?.text).toContain("Browse: /models");
     expect(reply?.text).toContain("Switch: /model <provider/model>");
+  });
+
+  it("hides most-recently-used when session has not attempted a provider call", async () => {
+    const directives = parseInlineDirectives("/model");
+    const cfg = { commands: { text: true } } as unknown as OpenClawConfig;
+
+    const reply = await maybeHandleModelDirectiveInfo({
+      directives,
+      cfg,
+      agentDir: "/tmp/agent",
+      activeAgentId: "main",
+      provider: "anthropic",
+      model: "claude-opus-4-5",
+      defaultProvider: "anthropic",
+      defaultModel: "claude-opus-4-5",
+      aliasIndex: baseAliasIndex(),
+      allowedModelCatalog: [],
+      resetModelOverride: false,
+      sessionEntry: {
+        sessionId: "s1",
+        updatedAt: Date.now(),
+      },
+    });
+
+    expect(reply?.text).not.toContain("Most recently used:");
+  });
+
+  it("hides most-recently-used when runtime matches configured model", async () => {
+    const directives = parseInlineDirectives("/model");
+    const cfg = { commands: { text: true } } as unknown as OpenClawConfig;
+
+    const reply = await maybeHandleModelDirectiveInfo({
+      directives,
+      cfg,
+      agentDir: "/tmp/agent",
+      activeAgentId: "main",
+      provider: "anthropic",
+      model: "claude-opus-4-5",
+      defaultProvider: "anthropic",
+      defaultModel: "claude-opus-4-5",
+      aliasIndex: baseAliasIndex(),
+      allowedModelCatalog: [],
+      resetModelOverride: false,
+      sessionEntry: {
+        sessionId: "s1",
+        updatedAt: Date.now(),
+        modelProvider: "anthropic",
+        model: "claude-opus-4-5",
+      },
+    });
+
+    expect(reply?.text).toContain("Configured: anthropic/claude-opus-4-5");
+    expect(reply?.text).not.toContain("Most recently used:");
+  });
+
+  it("shows last runtime attempt from session state", async () => {
+    const directives = parseInlineDirectives("/model status");
+    const cfg = { commands: { text: true } } as unknown as OpenClawConfig;
+
+    const reply = await maybeHandleModelDirectiveInfo({
+      directives,
+      cfg,
+      agentDir: "/tmp/agent",
+      activeAgentId: "main",
+      provider: "anthropic",
+      model: "claude-opus-4-5",
+      defaultProvider: "anthropic",
+      defaultModel: "claude-opus-4-5",
+      aliasIndex: baseAliasIndex(),
+      allowedModelCatalog: [{ provider: "anthropic", id: "claude-opus-4-5" }],
+      resetModelOverride: false,
+      sessionEntry: {
+        sessionId: "s1",
+        updatedAt: Date.now(),
+        modelProvider: "openrouter",
+        model: "anthropic/claude-opus-4-5",
+      },
+    });
+
+    expect(reply?.text).toContain("Configured: anthropic/claude-opus-4-5");
+    expect(reply?.text).toContain("Most recently used: openrouter/anthropic/claude-opus-4-5");
   });
 
   it("auto-applies closest match for typos", () => {

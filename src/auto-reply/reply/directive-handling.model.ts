@@ -1,4 +1,5 @@
 import type { OpenClawConfig } from "../../config/config.js";
+import type { SessionEntry } from "../../config/sessions.js";
 import type { ReplyPayload } from "../types.js";
 import type { InlineDirectives } from "./directive-handling.parse.js";
 import { resolveAuthStorePathForDisplay } from "../../agents/auth-profiles.js";
@@ -178,6 +179,7 @@ export async function maybeHandleModelDirectiveInfo(params: {
   aliasIndex: ModelAliasIndex;
   allowedModelCatalog: Array<{ provider: string; id?: string; name?: string }>;
   resetModelOverride: boolean;
+  sessionEntry?: SessionEntry;
   surface?: string;
 }): Promise<ReplyPayload | undefined> {
   if (!params.directives.hasModelDirective) {
@@ -210,18 +212,34 @@ export async function maybeHandleModelDirectiveInfo(params: {
       cfg: params.cfg,
       commandBodyNormalized: "/models",
     });
-    return reply ?? { text: "No models available." };
+    if (!reply) {
+      return { text: "No models available." };
+    }
+    return {
+      ...reply,
+      text: reply.text || "",
+    };
   }
 
+  const configuredCurrent = `${params.provider}/${params.model}`;
+  const runtimeProvider = params.sessionEntry?.modelProvider?.trim();
+  const runtimeModel = params.sessionEntry?.model?.trim();
+  const runtimeCurrent =
+    runtimeProvider && runtimeModel ? `${runtimeProvider}/${runtimeModel}` : undefined;
+  const fallbackLine =
+    runtimeCurrent && runtimeCurrent !== configuredCurrent
+      ? `Most recently used: ${runtimeCurrent}`
+      : undefined;
+
   if (wantsSummary) {
-    const current = `${params.provider}/${params.model}`;
     const isTelegram = params.surface === "telegram";
 
     if (isTelegram) {
       const buttons = buildBrowseProvidersButton();
       return {
         text: [
-          `Current: ${current}`,
+          `Configured: ${configuredCurrent}`,
+          ...(fallbackLine ? [fallbackLine] : []),
           "",
           "Tap below to browse models, or use:",
           "/model <provider/model> to switch",
@@ -233,7 +251,8 @@ export async function maybeHandleModelDirectiveInfo(params: {
 
     return {
       text: [
-        `Current: ${current}`,
+        `Configured: ${configuredCurrent}`,
+        ...(fallbackLine ? [fallbackLine] : []),
         "",
         "Switch: /model <provider/model>",
         "Browse: /models (providers) or /models <provider> (models)",
@@ -265,10 +284,10 @@ export async function maybeHandleModelDirectiveInfo(params: {
     authByProvider.set(provider, formatAuthLabel(auth));
   }
 
-  const current = `${params.provider}/${params.model}`;
   const defaultLabel = `${params.defaultProvider}/${params.defaultModel}`;
   const lines = [
-    `Current: ${current}`,
+    `Configured: ${configuredCurrent}`,
+    ...(fallbackLine ? [fallbackLine] : []),
     `Default: ${defaultLabel}`,
     `Agent: ${params.activeAgentId}`,
     `Auth file: ${formatPath(resolveAuthStorePathForDisplay(params.agentDir))}`,

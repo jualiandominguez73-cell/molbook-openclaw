@@ -133,6 +133,7 @@ export async function handleDirectiveOnly(params: {
     aliasIndex,
     allowedModelCatalog,
     resetModelOverride,
+    sessionEntry,
     surface: params.surface,
   });
   if (modelInfo) {
