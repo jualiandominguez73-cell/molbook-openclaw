@@ -38,6 +38,11 @@ import {
   handleNostrProfileImport as handleNostrProfileImportInternal,
   handleNostrProfileSave as handleNostrProfileSaveInternal,
   handleNostrProfileToggleAdvanced as handleNostrProfileToggleAdvancedInternal,
+  handleSimplexInviteCreate as handleSimplexInviteCreateInternal,
+  handleSimplexInviteList as handleSimplexInviteListInternal,
+  handleSimplexInviteRevoke as handleSimplexInviteRevokeInternal,
+  type SimplexControlAccountState,
+  type SimplexInviteMode,
   handleWhatsAppLogout as handleWhatsAppLogoutInternal,
   handleWhatsAppStart as handleWhatsAppStartInternal,
   handleWhatsAppWait as handleWhatsAppWaitInternal,
@@ -192,6 +197,7 @@ export class OpenClawApp extends LitElement {
   @state() whatsappBusy = false;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
+  @state() simplexControlByAccount: Record<string, SimplexControlAccountState> = {};
 
   @state() presenceLoading = false;
   @state() presenceEntries: PresenceEntry[] = [];
@@ -491,6 +497,18 @@ export class OpenClawApp extends LitElement {
 
   handleNostrProfileToggleAdvanced() {
     handleNostrProfileToggleAdvancedInternal(this);
+  }
+
+  async handleSimplexInviteCreate(accountId: string, mode: SimplexInviteMode) {
+    await handleSimplexInviteCreateInternal(this, accountId, mode);
+  }
+
+  async handleSimplexInviteList(accountId: string) {
+    await handleSimplexInviteListInternal(this, accountId);
+  }
+
+  async handleSimplexInviteRevoke(accountId: string) {
+    await handleSimplexInviteRevokeInternal(this, accountId);
   }
 
   async handleExecApprovalDecision(decision: "allow-once" | "allow-always" | "deny") {
