@@ -1,0 +1,7 @@
+files:
+  - source: /docs/**/*.md
+    ignore:
+      - /docs/zh-CN/**
+      - /docs/security/**
+      - /docs/.i18n/**
+    translation: /docs/%two_letters_code%/%original_path%/%original_file_name%
