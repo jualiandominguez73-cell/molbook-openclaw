@@ -1,6 +1,7 @@
 import type { HealthSummary } from "../commands/health.js";
 import type { ChatRunEntry } from "./server-chat.js";
 import type { DedupeEntry } from "./server-shared.js";
+import { sdNotifyWatchdog } from "../infra/sd-notify.js";
 import { abortChatRunById, type ChatAbortControllerEntry } from "./chat-abort.js";
 import {
   DEDUPE_MAX,
@@ -57,6 +58,7 @@ export function startGatewayMaintenanceTimers(params: {
     const payload = { ts: Date.now() };
     params.broadcast("tick", payload, { dropIfSlow: true });
     params.nodeSendToAllSubscribed("tick", payload);
+    sdNotifyWatchdog();
   }, TICK_INTERVAL_MS);
 
   // periodic health refresh to keep cached snapshot warm
