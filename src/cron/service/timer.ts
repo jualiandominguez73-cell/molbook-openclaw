@@ -18,7 +18,7 @@ const MAX_TIMER_DELAY_MS = 60_000;
  * on top of the per-provider / per-agent timeouts to prevent one stuck job
  * from wedging the entire cron lane.
  */
-const DEFAULT_JOB_TIMEOUT_MS = 10 * 60_000; // 10 minutes
+export const DEFAULT_JOB_TIMEOUT_MS = 10 * 60_000; // 10 minutes
 
 /**
  * Exponential backoff delays (in ms) indexed by consecutive error count.
@@ -162,17 +162,21 @@ export async function onTimer(state: CronServiceState) {
   try {
     const dueJobs = await locked(state, async () => {
       await ensureLoaded(state, { forceReload: true, skipRecompute: true });
-      const due = findDueJobs(state);
+      const { due, changed } = findDueJobs(state);
 
       if (due.length === 0) {
-        const changed = recomputeNextRuns(state);
-        if (changed) {
+        const recomputeChanged = recomputeNextRuns(state);
+        if (changed || recomputeChanged) {
           await persist(state);
         }
         return [];
       }
 
       const now = state.deps.nowMs();
+      if (changed) {
+        await persist(state);
+      }
+
       for (const job of due) {
         job.state.runningAtMs = now;
         job.state.lastError = undefined;
@@ -279,24 +283,41 @@ export async function onTimer(state: CronServiceState) {
   }
 }
 
-function findDueJobs(state: CronServiceState): CronJob[] {
+function findDueJobs(state: CronServiceState): { due: CronJob[]; changed: boolean } {
   if (!state.store) {
-    return [];
+    return { due: [], changed: false };
   }
   const now = state.deps.nowMs();
-  return state.store.jobs.filter((j) => {
+  let changed = false;
+  const due = state.store.jobs.filter((j) => {
     if (!j.state) {
       j.state = {};
+      changed = true;
     }
     if (!j.enabled) {
       return false;
     }
     if (typeof j.state.runningAtMs === "number") {
-      return false;
+      const timeoutMs =
+        j.payload.kind === "agentTurn" && typeof j.payload.timeoutSeconds === "number"
+          ? j.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - j.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: j.id, runningAtMs: j.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker",
+        );
+        j.state.runningAtMs = undefined;
+        changed = true;
+      } else {
+        return false;
+      }
     }
     const next = j.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
   });
+  return { due, changed };
 }
 
 export async function runMissedJobs(state: CronServiceState) {
@@ -304,15 +325,31 @@ export async function runMissedJobs(state: CronServiceState) {
     return;
   }
   const now = state.deps.nowMs();
+  let changed = false;
   const missed = state.store.jobs.filter((j) => {
     if (!j.state) {
       j.state = {};
+      changed = true;
     }
     if (!j.enabled) {
       return false;
     }
     if (typeof j.state.runningAtMs === "number") {
-      return false;
+      const timeoutMs =
+        j.payload.kind === "agentTurn" && typeof j.payload.timeoutSeconds === "number"
+          ? j.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - j.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: j.id, runningAtMs: j.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker",
+        );
+        j.state.runningAtMs = undefined;
+        changed = true;
+      } else {
+        return false;
+      }
     }
     const next = j.state.nextRunAtMs;
     if (j.schedule.kind === "at" && j.state.lastStatus === "ok") {
@@ -320,6 +357,10 @@ export async function runMissedJobs(state: CronServiceState) {
     }
     return typeof next === "number" && now >= next;
   });
+
+  if (changed) {
+    await persist(state);
+  }
 
   if (missed.length > 0) {
     state.deps.log.info(
@@ -337,19 +378,39 @@ export async function runDueJobs(state: CronServiceState) {
     return;
   }
   const now = state.deps.nowMs();
+  let changed = false;
   const due = state.store.jobs.filter((j) => {
     if (!j.state) {
       j.state = {};
+      changed = true;
     }
     if (!j.enabled) {
       return false;
     }
     if (typeof j.state.runningAtMs === "number") {
-      return false;
+      const timeoutMs =
+        j.payload.kind === "agentTurn" && typeof j.payload.timeoutSeconds === "number"
+          ? j.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - j.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: j.id, runningAtMs: j.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker",
+        );
+        j.state.runningAtMs = undefined;
+        changed = true;
+      } else {
+        return false;
+      }
     }
     const next = j.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
   });
+  if (changed) {
+    await persist(state);
+  }
+
   for (const job of due) {
     await executeJob(state, job, now, { forced: false });
   }

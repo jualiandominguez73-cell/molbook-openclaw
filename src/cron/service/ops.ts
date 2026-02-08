@@ -12,6 +12,7 @@ import {
 import { locked } from "./locked.js";
 import { ensureLoaded, persist, warnIfDisabled } from "./store.js";
 import { armTimer, emit, executeJob, runMissedJobs, stopTimer, wake } from "./timer.js";
+import { DEFAULT_JOB_TIMEOUT_MS } from "./timer.js";
 
 export async function start(state: CronServiceState) {
   await locked(state, async () => {
@@ -188,7 +189,22 @@ export async function run(state: CronServiceState, id: string, mode?: "due" | "f
     await ensureLoaded(state, { skipRecompute: true });
     const job = findJobOrThrow(state, id);
     if (typeof job.state.runningAtMs === "number") {
-      return { ok: true, ran: false, reason: "already-running" as const };
+      const now = state.deps.nowMs();
+      const timeoutMs =
+        job.payload.kind === "agentTurn" && typeof job.payload.timeoutSeconds === "number"
+          ? job.payload.timeoutSeconds * 1_000
+          : DEFAULT_JOB_TIMEOUT_MS;
+      const staleAfterMs = timeoutMs + 30_000;
+      if (now - job.state.runningAtMs > staleAfterMs) {
+        state.deps.log.warn(
+          { jobId: job.id, runningAtMs: job.state.runningAtMs, staleAfterMs },
+          "cron: clearing stale running marker (run command)",
+        );
+        job.state.runningAtMs = undefined;
+        await persist(state);
+      } else {
+        return { ok: true, ran: false, reason: "already-running" as const };
+      }
     }
     const now = state.deps.nowMs();
     const due = isJobDue(job, now, { forced: mode === "force" });
