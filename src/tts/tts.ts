@@ -106,6 +106,7 @@ export type ResolvedTtsConfig = {
   };
   openai: {
     apiKey?: string;
+    baseUrl?: string;
     model: string;
     voice: string;
   };
@@ -497,7 +498,11 @@ export function resolveTtsApiKey(
     return config.elevenlabs.apiKey || process.env.ELEVENLABS_API_KEY || process.env.XI_API_KEY;
   }
   if (provider === "openai") {
-    return config.openai.apiKey || process.env.OPENAI_API_KEY;
+    return (
+      config.openai.apiKey ||
+      process.env.OPENAI_API_KEY ||
+      (config.openai.baseUrl ? "local" : undefined)
+    );
   }
   return undefined;
 }
@@ -511,6 +516,9 @@ export function resolveTtsProviderOrder(primary: TtsProvider): TtsProvider[] {
 export function isTtsProviderConfigured(config: ResolvedTtsConfig, provider: TtsProvider): boolean {
   if (provider === "edge") {
     return config.edge.enabled;
+  }
+  if (provider === "openai") {
+    return Boolean(resolveTtsApiKey(config, provider)) || Boolean(config.openai.baseUrl);
   }
   return Boolean(resolveTtsApiKey(config, provider));
 }
@@ -836,7 +844,10 @@ function getOpenAITtsBaseUrl(): string {
   );
 }
 
-function isCustomOpenAIEndpoint(): boolean {
+function isCustomOpenAIEndpoint(configBaseUrl?: string): boolean {
+  if (configBaseUrl?.trim()) {
+    return true;
+  }
   return getOpenAITtsBaseUrl() !== "https://api.openai.com/v1";
 }
 export const OPENAI_TTS_VOICES = [
@@ -853,17 +864,17 @@ export const OPENAI_TTS_VOICES = [
 
 type OpenAiTtsVoice = (typeof OPENAI_TTS_VOICES)[number];
 
-function isValidOpenAIModel(model: string): boolean {
+function isValidOpenAIModel(model: string, configBaseUrl?: string): boolean {
   // Allow any model when using custom endpoint (e.g., Kokoro, LocalAI)
-  if (isCustomOpenAIEndpoint()) {
+  if (isCustomOpenAIEndpoint(configBaseUrl)) {
     return true;
   }
   return OPENAI_TTS_MODELS.includes(model as (typeof OPENAI_TTS_MODELS)[number]);
 }
 
-function isValidOpenAIVoice(voice: string): voice is OpenAiTtsVoice {
+function isValidOpenAIVoice(voice: string, configBaseUrl?: string): voice is OpenAiTtsVoice {
   // Allow any voice when using custom endpoint (e.g., Kokoro Chinese voices)
-  if (isCustomOpenAIEndpoint()) {
+  if (isCustomOpenAIEndpoint(configBaseUrl)) {
     return true;
   }
   return OPENAI_TTS_VOICES.includes(voice as OpenAiTtsVoice);
@@ -1086,23 +1097,23 @@ async function openaiTTS(params: {
 }): Promise<Buffer> {
   const { text, apiKey, baseUrl, model, voice, responseFormat, timeoutMs } = params;
 
-  if (!isValidOpenAIModel(model)) {
+  if (!isValidOpenAIModel(model, baseUrl)) {
     throw new Error(`Invalid model: ${model}`);
   }
-  if (!isValidOpenAIVoice(voice)) {
+  if (!isValidOpenAIVoice(voice, baseUrl)) {
     throw new Error(`Invalid voice: ${voice}`);
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  const ttsBaseUrl = baseUrl?.trim() || getOpenAITtsBaseUrl();
+  const ttsBaseUrl = (baseUrl?.trim() || getOpenAITtsBaseUrl()).replace(/\/+$/, "");
 
   try {
     const response = await fetch(`${ttsBaseUrl}/audio/speech`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        ...(apiKey && apiKey !== "local" ? { Authorization: `Bearer ${apiKey}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -1295,6 +1306,7 @@ export async function textToSpeech(params: {
         audioBuffer = await openaiTTS({
           text: params.text,
           apiKey,
+          baseUrl: config.openai.baseUrl,
           model: openaiModelOverride ?? config.openai.model,
           voice: openaiVoiceOverride ?? config.openai.voice,
           responseFormat: output.openai,
@@ -1574,6 +1586,7 @@ export const _test = {
   isValidVoiceId,
   isValidOpenAIVoice,
   isValidOpenAIModel,
+  isCustomOpenAIEndpoint,
   OPENAI_TTS_MODELS,
   OPENAI_TTS_VOICES,
   parseTtsDirectives,
