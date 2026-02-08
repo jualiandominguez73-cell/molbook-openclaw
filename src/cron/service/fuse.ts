@@ -212,6 +212,7 @@ export async function checkCircuitBreaker(
     const response = await fetchURL(fuseUrl, {
       headers: {
         "User-Agent": "openclaw-gateway",
+        "Cache-Control": "max-age=300", // 5 minute cache hint for CDN
       },
       signal: controller.signal,
     });
