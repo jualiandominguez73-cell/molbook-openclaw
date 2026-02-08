@@ -10,6 +10,8 @@ concurrency:
   group: install-smoke-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+permissions: read-all
+
 jobs:
   install-smoke:
     runs-on: ubuntu-latest

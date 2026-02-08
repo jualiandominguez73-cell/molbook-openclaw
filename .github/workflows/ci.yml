@@ -9,6 +9,8 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+permissions: read-all
+
 jobs:
   install-check:
     runs-on: blacksmith-4vcpu-ubuntu-2404
