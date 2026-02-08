@@ -48,9 +48,9 @@ For a high-level overview, see [Onboarding Wizard](/start/wizard).
     - More detail: [Synthetic](/providers/synthetic)
     - **Moonshot (Kimi K2)**: config is auto-written.
     - **Kimi Coding**: config is auto-written.
+    - More detail: [Moonshot AI (Kimi + Kimi Coding)](/providers/moonshot)
     - **StepFun (Step 3.5 Flash)**: prompts for `STEPFUN_API_KEY` (or `--stepfun-api-key` in non-interactive mode), then writes provider config and default model.
     - More detail: [StepFun](/providers/stepfun)
-    - More detail: [Moonshot AI (Kimi + Kimi Coding)](/providers/moonshot)
     - **Skip**: no auth configured yet.
     - Pick a default model from detected options (or enter provider/model manually).
     - Wizard runs a model check and warns if the configured model is unknown or missing auth.
