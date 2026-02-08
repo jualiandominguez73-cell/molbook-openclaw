@@ -378,7 +378,10 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
       });
 
       // Build agent-specific mention regexes (fixes #1: respect agent-level patterns)
-      const agentMentionRegexes = core.channel.mentions.buildMentionRegexes(cfg, route.agentId);
+      // Fallback to global patterns if route is invalid
+      const agentMentionRegexes = route?.agentId
+        ? core.channel.mentions.buildMentionRegexes(cfg, route.agentId)
+        : mentionRegexes;
 
       const { wasMentioned, hasExplicitMention } = resolveMentions({
         content,
