@@ -60,11 +60,12 @@ enum ConfigStore {
             if let override = overrides.saveLocal {
                 override(root)
             } else {
-                do {
-                    try await self.saveToGateway(root)
-                } catch {
-                    OpenClawConfigFile.saveDict(root)
-                }
+                // CRITICAL: No fallback to direct file write on saveToGateway failure.
+                // Fallback path would bypass restoreRedactedValues() and could write
+                // __OPENCLAW_REDACTED__ sentinel values to disk, corrupting the config.
+                // If the gateway is unreachable or rejects the config, the save should fail
+                // rather than silently writing an invalid/redacted config.
+                try await self.saveToGateway(root)
             }
         }
     }

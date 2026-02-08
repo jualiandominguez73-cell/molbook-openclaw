@@ -35,6 +35,14 @@ enum OpenClawConfigFile {
     static func saveDict(_ dict: [String: Any]) {
         // Nix mode disables config writes in production, but tests rely on saving temp configs.
         if ProcessInfo.processInfo.isNixMode, !ProcessInfo.processInfo.isRunningTests { return }
+
+        // Guard: Reject config containing __OPENCLAW_REDACTED__ sentinel values.
+        // This prevents writing corrupted config if redacted values escape validation.
+        if containsRedactedSentinel(dict) {
+            self.logger.error("config save blocked: contains __OPENCLAW_REDACTED__ sentinel")
+            return
+        }
+
         do {
             let data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
             let url = self.url()
@@ -45,6 +53,19 @@ enum OpenClawConfigFile {
         } catch {
             self.logger.error("config save failed: \(error.localizedDescription)")
         }
+    }
+
+    private static func containsRedactedSentinel(_ value: Any) -> Bool {
+        if let string = value as? String {
+            return string == "__OPENCLAW_REDACTED__"
+        }
+        if let array = value as? [Any] {
+            return array.contains(where: containsRedactedSentinel)
+        }
+        if let dict = value as? [String: Any] {
+            return dict.values.contains(where: containsRedactedSentinel)
+        }
+        return false
     }
 
     static func loadGatewayDict() -> [String: Any] {
