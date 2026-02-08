@@ -36,6 +36,17 @@ const MINIMAX_API_COST = {
   cacheWrite: 10,
 };
 
+const NEXOS_BASE_URL = "https://api.nexos.ai/v1";
+const NEXOS_DEFAULT_MODEL_ID = "nexos-default";
+const NEXOS_DEFAULT_CONTEXT_WINDOW = 128000;
+const NEXOS_DEFAULT_MAX_TOKENS = 8192;
+const NEXOS_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 const XIAOMI_BASE_URL = "https://api.xiaomimimo.com/anthropic";
 export const XIAOMI_DEFAULT_MODEL_ID = "mimo-v2-flash";
 const XIAOMI_DEFAULT_CONTEXT_WINDOW = 262144;
@@ -343,6 +354,24 @@ function buildMoonshotProvider(): ProviderConfig {
   };
 }
 
+function buildNexosProvider(): ProviderConfig {
+  return {
+    baseUrl: NEXOS_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: NEXOS_DEFAULT_MODEL_ID,
+        name: "Nexos Default",
+        reasoning: false,
+        input: ["text"],
+        cost: NEXOS_DEFAULT_COST,
+        contextWindow: NEXOS_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: NEXOS_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 function buildQwenPortalProvider(): ProviderConfig {
   return {
     baseUrl: QWEN_PORTAL_BASE_URL,
@@ -469,6 +498,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "moonshot", store: authStore });
   if (moonshotKey) {
     providers.moonshot = { ...buildMoonshotProvider(), apiKey: moonshotKey };
+  }
+
+  const nexosKey =
+    resolveEnvApiKeyVarName("nexos") ??
+    resolveApiKeyFromProfiles({ provider: "nexos", store: authStore });
+  if (nexosKey) {
+    providers.nexos = { ...buildNexosProvider(), apiKey: nexosKey };
   }
 
   const syntheticKey =

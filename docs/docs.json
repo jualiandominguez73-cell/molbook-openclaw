@@ -1006,6 +1006,7 @@
                   "bedrock",
                   "providers/vercel-ai-gateway",
                   "providers/moonshot",
+                  "providers/nexos",
                   "providers/minimax",
                   "providers/opencode",
                   "providers/glm",

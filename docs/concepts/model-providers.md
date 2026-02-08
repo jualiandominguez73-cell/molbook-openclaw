@@ -164,6 +164,34 @@ Kimi K2 model IDs:
 }
 ```
 
+### Nexos.ai (Gateway)
+
+Nexos provides an OpenAI-compatible gateway. Configure it as a custom provider:
+
+- Provider: `nexos`
+- Auth: `NEXOS_API_KEY`
+- Example model: `nexos/<model-id>`
+
+```json5
+{
+  env: { NEXOS_API_KEY: "sk-..." },
+  agents: {
+    defaults: { model: { primary: "nexos/<model-id>" } },
+  },
+  models: {
+    mode: "merge",
+    providers: {
+      nexos: {
+        baseUrl: "https://api.nexos.ai/v1",
+        apiKey: "${NEXOS_API_KEY}",
+        api: "openai-completions",
+        models: [{ id: "<model-id>", name: "Nexos Model" }],
+      },
+    },
+  },
+}
+```
+
 ### Kimi Coding
 
 Kimi Coding uses Moonshot AI's Anthropic-compatible endpoint:
