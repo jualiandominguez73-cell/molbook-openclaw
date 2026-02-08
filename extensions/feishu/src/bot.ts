@@ -19,7 +19,8 @@ import {
 } from "./policy.js";
 import { createFeishuReplyDispatcher } from "./reply-dispatcher.js";
 import { getFeishuRuntime } from "./runtime.js";
-import { getMessageFeishu } from "./send.js";
+import { getMessageFeishu, sendMessageFeishu } from "./send.js";
+import { FeishuStreamingSession } from "./streaming-card.js";
 
 // --- Permission error extraction ---
 // Extract permission grant URL from Feishu API error response.
@@ -205,6 +206,35 @@ function checkBotMentioned(event: FeishuMessageEvent, botOpenId?: string): boole
   return mentions.some((m) => m.id.open_id === botOpenId);
 }
 
+function isMentionAll(event: FeishuMessageEvent): boolean {
+  const mentions = event.message.mentions ?? [];
+  for (const m of mentions) {
+    const openId = m.id.open_id?.toLowerCase();
+    if (openId === "all") {
+      return true;
+    }
+  }
+  const text = extractContentText(event.message.content, event.message.message_type);
+  if (text && /@(?:_?all|everyone|所有人)\b/i.test(text)) {
+    return true;
+  }
+  return false;
+}
+
+function extractContentText(content: string, messageType: string): string {
+  try {
+    if (messageType === "text") {
+      return JSON.parse(content).text ?? "";
+    }
+    if (messageType === "post") {
+      return parsePostContent(content).textContent;
+    }
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 function stripBotMention(
   text: string,
   mentions?: FeishuMessageEvent["message"]["mentions"],
@@ -254,8 +284,11 @@ function parseMediaKeys(
 }
 
 /**
- * Parse post (rich text) content and extract embedded image keys.
- * Post structure: { title?: string, content: [[{ tag, text?, image_key?, ... }]] }
+ * Parse post (rich text) content and extract text + embedded image keys.
+ *
+ * Handles both Feishu post formats:
+ * - Flat:      { title?, content: [[{tag,text,...}]] }
+ * - Localized: { zh_cn: { title?, content: [[...]] }, en_us: { ... } }
  */
 function parsePostContent(content: string): {
   textContent: string;
@@ -263,8 +296,7 @@ function parsePostContent(content: string): {
 } {
   try {
     const parsed = JSON.parse(content);
-    const title = parsed.title || "";
-    const contentBlocks = parsed.content || [];
+    const { title, contentBlocks } = resolvePostBody(parsed);
     let textContent = title ? `${title}\n\n` : "";
     const imageKeys: string[] = [];
 
@@ -274,13 +306,10 @@ function parsePostContent(content: string): {
           if (element.tag === "text") {
             textContent += element.text || "";
           } else if (element.tag === "a") {
-            // Link: show text or href
             textContent += element.text || element.href || "";
           } else if (element.tag === "at") {
-            // Mention: @username
             textContent += `@${element.user_name || element.user_id || ""}`;
           } else if (element.tag === "img" && element.image_key) {
-            // Embedded image
             imageKeys.push(element.image_key);
           }
         }
@@ -295,6 +324,26 @@ function parsePostContent(content: string): {
   } catch {
     return { textContent: "[富文本消息]", imageKeys: [] };
   }
+}
+
+/** Unwrap localized post wrapper if present, returning title + content blocks. */
+function resolvePostBody(parsed: Record<string, unknown>): {
+  title: string;
+  contentBlocks: unknown[];
+} {
+  // Flat format: { title?, content: [[...]] }
+  if (Array.isArray(parsed.content)) {
+    return { title: (parsed.title as string) || "", contentBlocks: parsed.content };
+  }
+  // Localized format: { zh_cn: { title?, content: [[...]] }, ... }
+  // Pick the first locale that has a content array
+  for (const value of Object.values(parsed)) {
+    const locale = value as Record<string, unknown> | null;
+    if (locale && Array.isArray(locale.content)) {
+      return { title: (locale.title as string) || "", contentBlocks: locale.content };
+    }
+  }
+  return { title: "", contentBlocks: [] };
 }
 
 /**
@@ -476,7 +525,7 @@ export function parseFeishuMessageEvent(
   botOpenId?: string,
 ): FeishuMessageContext {
   const rawContent = parseMessageContent(event.message.content, event.message.message_type);
-  const mentionedBot = checkBotMentioned(event, botOpenId);
+  const mentionedBot = checkBotMentioned(event, botOpenId) || isMentionAll(event);
   const content = stripBotMention(rawContent, event.message.mentions);
 
   const ctx: FeishuMessageContext = {
@@ -513,6 +562,7 @@ export async function handleFeishuMessage(params: {
   runtime?: RuntimeEnv;
   chatHistories?: Map<string, HistoryEntry[]>;
   accountId?: string;
+  enableStreaming?: boolean;
 }): Promise<void> {
   const { cfg, event, botOpenId, runtime, chatHistories, accountId } = params;
 
@@ -657,6 +707,23 @@ export async function handleFeishuMessage(params: {
       },
     });
 
+    // Command authorization: gate /status, /new etc. based on allowlist + access groups
+    const commandAllowFrom = isGroup
+      ? (feishuCfg?.groupAllowFrom ?? [])
+      : (feishuCfg?.allowFrom ?? []);
+    const commandAllowHasEntries = commandAllowFrom.length > 0;
+    const commandSenderMatch = resolveFeishuAllowlistMatch({
+      allowFrom: commandAllowFrom,
+      senderId: ctx.senderOpenId,
+      senderName: ctx.senderName,
+    });
+    const useAccessGroups = cfg.commands?.useAccessGroups !== false;
+    const commandAuthorized = core.channel.commands.resolveCommandAuthorizedFromAuthorizers({
+      useAccessGroups,
+      authorizers: [{ configured: commandAllowHasEntries, allowed: commandSenderMatch.allowed }],
+      modeWhenAccessGroupsOff: "configured",
+    });
+
     const preview = ctx.content.replace(/\s+/g, " ").slice(0, 160);
     const inboundLabel = isGroup
       ? `Feishu[${account.accountId}] message in group ${ctx.chatId}`
@@ -751,7 +818,7 @@ export async function handleFeishuMessage(params: {
         MessageSid: `${ctx.messageId}:permission-error`,
         Timestamp: Date.now(),
         WasMentioned: false,
-        CommandAuthorized: true,
+        CommandAuthorized: commandAuthorized,
         OriginatingChannel: "feishu" as const,
         OriginatingTo: feishuTo,
       });
@@ -827,11 +894,18 @@ export async function handleFeishuMessage(params: {
       MessageSid: ctx.messageId,
       Timestamp: Date.now(),
       WasMentioned: ctx.mentionedBot,
-      CommandAuthorized: true,
+      CommandAuthorized: commandAuthorized,
       OriginatingChannel: "feishu" as const,
       OriginatingTo: feishuTo,
       ...mediaPayload,
     });
+
+    const streamingEnabled = Boolean(params.enableStreaming);
+    const client = streamingEnabled ? createFeishuClient(account) : null;
+    const streamingSession = streamingEnabled && client ? new FeishuStreamingSession(client) : null;
+    let streamingStarted = false;
+    const threadId = ctx.rootId ?? ctx.parentId;
+    const replyToId = isGroup ? (threadId ?? ctx.messageId) : undefined;
 
     const { dispatcher, replyOptions, markDispatchIdle } = createFeishuReplyDispatcher({
       cfg,
@@ -841,30 +915,110 @@ export async function handleFeishuMessage(params: {
       replyToMessageId: ctx.messageId,
       mentionTargets: ctx.mentionTargets,
       accountId: account.accountId,
+      shouldDeliver: streamingSession ? () => !streamingSession.isActive() : undefined,
     });
+
+    const streamingCallbacks = streamingSession
+      ? {
+          onReplyStart: async () => {
+            if (!streamingStarted) {
+              try {
+                await streamingSession.start(ctx.chatId, "chat_id", {
+                  replyToId,
+                  isGroup,
+                  threadId,
+                });
+                streamingStarted = true;
+                log(`feishu[${account.accountId}]: streaming card started`);
+              } catch (err) {
+                log(`feishu[${account.accountId}]: streaming card start failed: ${String(err)}`);
+              }
+            }
+          },
+          onPartialReply: async (payload: { text?: string }) => {
+            if (streamingSession.isActive() && payload.text) {
+              await streamingSession.update(payload.text);
+            }
+          },
+        }
+      : {};
 
     log(`feishu[${account.accountId}]: dispatching to agent (session=${route.sessionKey})`);
 
-    const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
-      ctx: ctxPayload,
-      cfg,
-      dispatcher,
-      replyOptions,
-    });
-
-    markDispatchIdle();
-
-    if (isGroup && historyKey && chatHistories) {
-      clearHistoryEntriesIfEnabled({
-        historyMap: chatHistories,
-        historyKey,
-        limit: historyLimit,
+    let queuedFinal = false;
+    try {
+      const result = await core.channel.reply.dispatchReplyFromConfig({
+        ctx: ctxPayload,
+        cfg,
+        dispatcher,
+        replyOptions: {
+          ...replyOptions,
+          ...streamingCallbacks,
+        },
       });
+      queuedFinal = result.queuedFinal;
+    } finally {
+      if (streamingSession?.isActive()) {
+        const streamMessageId = streamingSession.getMessageId();
+        const closedOk = await streamingSession.close();
+        const streamedText = streamingSession.getCurrentText();
+
+        if (!closedOk && streamedText) {
+          log(
+            `feishu[${account.accountId}]: streaming card close failed, sending fallback message`,
+          );
+          try {
+            await sendMessageFeishu({
+              cfg,
+              to: ctx.chatId,
+              text: streamedText,
+              replyToMessageId: ctx.messageId,
+              accountId: account.accountId,
+            });
+          } catch (fallbackErr) {
+            error(
+              `feishu[${account.accountId}]: fallback message also failed: ${String(fallbackErr)}`,
+            );
+          }
+        }
+
+        core.hooks
+          .runMessageSent(
+            {
+              to: ctx.chatId,
+              content: streamedText,
+              success: true,
+              metadata: {
+                channelId: "feishu",
+                messageId: streamMessageId,
+                threadId,
+                streaming: true,
+              },
+            },
+            {
+              channelId: "feishu",
+              accountId: account.accountId,
+              conversationId: ctx.chatId,
+            },
+          )
+          .catch(() => {});
+      }
+      markDispatchIdle();
     }
 
-    log(
-      `feishu[${account.accountId}]: dispatch complete (queuedFinal=${queuedFinal}, replies=${counts.final})`,
-    );
+    if (!queuedFinal) {
+      // Agent produced no reply — clear stale history and skip post-dispatch work
+      if (isGroup && historyKey && chatHistories) {
+        clearHistoryEntriesIfEnabled({
+          historyMap: chatHistories,
+          historyKey,
+          limit: historyLimit,
+        });
+      }
+      return;
+    }
+
+    log(`feishu[${account.accountId}]: dispatch complete`);
   } catch (err) {
     error(`feishu[${account.accountId}]: failed to dispatch message: ${String(err)}`);
   }

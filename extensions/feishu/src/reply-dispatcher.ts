@@ -38,6 +38,8 @@ export type CreateFeishuReplyDispatcherParams = {
   mentionTargets?: MentionTarget[];
   /** Account ID for multi-account support */
   accountId?: string;
+  /** When returns false, deliver is skipped (streaming card already shows content). */
+  shouldDeliver?: () => boolean;
 };
 
 export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherParams) {
@@ -111,6 +113,14 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         params.runtime.log?.(
           `feishu[${account.accountId}] deliver called: text=${payload.text?.slice(0, 100)}`,
         );
+
+        if (params.shouldDeliver && !params.shouldDeliver()) {
+          params.runtime.log?.(
+            `feishu[${account.accountId}] deliver: suppressed (streaming card active)`,
+          );
+          return;
+        }
+
         const text = payload.text ?? "";
         if (!text.trim()) {
           params.runtime.log?.(`feishu[${account.accountId}] deliver: empty text, skipping`);

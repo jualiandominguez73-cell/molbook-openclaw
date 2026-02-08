@@ -71,6 +71,7 @@ async function monitorSingleAccount(params: {
           runtime,
           chatHistories,
           accountId,
+          enableStreaming: Boolean(account.appId && account.appSecret),
         });
       } catch (err) {
         error(`feishu[${accountId}]: error handling message: ${String(err)}`);
