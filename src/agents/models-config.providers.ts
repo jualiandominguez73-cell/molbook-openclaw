@@ -10,6 +10,16 @@ import {
   buildCloudflareAiGatewayModelDefinition,
   resolveCloudflareAiGatewayBaseUrl,
 } from "./cloudflare-ai-gateway.js";
+import {
+  HUAWEI_MAAS_API_BASE_URL,
+  HUAWEI_MAAS_BASE_URL,
+  HUAWEI_MAAS_DEFAULT_COST,
+  HUAWEI_MAAS_DEFAULT_CONTEXT_WINDOW,
+  HUAWEI_MAAS_DEFAULT_MAX_TOKENS,
+  HUAWEI_MAAS_DEFAULT_MODELS,
+  HuaweiMaasResponse,
+  generateFriendlyModelName,
+} from "./huawei-maas-models.js";
 import { resolveAwsSdkEnvVarName, resolveEnvApiKey } from "./model-auth.js";
 import {
   buildSyntheticModelDefinition,
@@ -79,17 +89,6 @@ const OLLAMA_DEFAULT_COST = {
   cacheRead: 0,
   cacheWrite: 0,
 };
-
-import {
-  HUAWEI_MAAS_API_BASE_URL,
-  HUAWEI_MAAS_BASE_URL,
-  HUAWEI_MAAS_DEFAULT_COST,
-  HUAWEI_MAAS_DEFAULT_CONTEXT_WINDOW,
-  HUAWEI_MAAS_DEFAULT_MAX_TOKENS,
-  HUAWEI_MAAS_DEFAULT_MODELS,
-  HuaweiMaasResponse,
-  generateFriendlyModelName,
-} from "./huawei-maas-models.js";
 
 export const QIANFAN_BASE_URL = "https://qianfan.baidubce.com/v2";
 export const QIANFAN_DEFAULT_MODEL_ID = "deepseek-v3.2";
