@@ -11,33 +11,50 @@ import { stripEnvelope } from "./chat-sanitize.js";
  * Used by both sessions-scrub and doctor-sessions-secrets commands.
  */
 export async function findSessionFiles(stateDir: string): Promise<string[]> {
-  const agentsDir = path.join(stateDir, "agents");
-  if (!fs.existsSync(agentsDir)) {
-    return [];
-  }
-
   const files: string[] = [];
-  try {
-    const agentDirs = await fs.promises.readdir(agentsDir, { withFileTypes: true });
+  const seen = new Set<string>();
 
-    for (const agentDir of agentDirs) {
-      if (!agentDir.isDirectory()) {
-        continue;
-      }
-      const sessionsDir = path.join(agentsDir, agentDir.name, "sessions");
-      if (!fs.existsSync(sessionsDir)) {
-        continue;
-      }
-
-      const sessionFiles = await fs.promises.readdir(sessionsDir);
-      for (const file of sessionFiles) {
+  const addFromDir = async (dir: string) => {
+    if (!fs.existsSync(dir)) {
+      return;
+    }
+    try {
+      const entries = await fs.promises.readdir(dir);
+      for (const file of entries) {
         if (file.endsWith(".jsonl")) {
-          files.push(path.join(sessionsDir, file));
+          const fullPath = path.join(dir, file);
+          const resolved = path.resolve(fullPath);
+          if (!seen.has(resolved)) {
+            seen.add(resolved);
+            files.push(fullPath);
+          }
         }
       }
+    } catch {
+      // Silently skip if we can't read the directory
     }
-  } catch {
-    // Silently skip if we can't read the directory
+  };
+
+  // Current layout: ${stateDir}/agents/*/sessions/*.jsonl
+  const agentsDir = path.join(stateDir, "agents");
+  if (fs.existsSync(agentsDir)) {
+    try {
+      const agentDirs = await fs.promises.readdir(agentsDir, { withFileTypes: true });
+      for (const agentDir of agentDirs) {
+        if (!agentDir.isDirectory()) {
+          continue;
+        }
+        await addFromDir(path.join(agentsDir, agentDir.name, "sessions"));
+      }
+    } catch {
+      // Silently skip if we can't read the directory
+    }
+  }
+
+  // Legacy layout: ~/.openclaw/sessions/*.jsonl (pre-agent-scoped storage)
+  const legacyDir = path.join(os.homedir(), ".openclaw", "sessions");
+  if (legacyDir !== path.join(stateDir, "sessions")) {
+    await addFromDir(legacyDir);
   }
 
   return files;
