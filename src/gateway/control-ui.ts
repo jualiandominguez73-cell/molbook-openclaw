@@ -154,7 +154,12 @@ export async function handleControlUiAvatarUploadRequest(
     return false;
   }
 
-  const url = new URL(urlRaw, "http://localhost");
+  let url: URL;
+  try {
+    url = new URL(urlRaw, "http://localhost");
+  } catch {
+    return false;
+  }
   const basePath = normalizeControlUiBasePath(opts.basePath);
   const pathname = url.pathname;
   const pathWithBase = basePath
@@ -252,7 +257,12 @@ export function handleControlUiAvatarRequest(
     return false;
   }
 
-  const url = new URL(urlRaw, "http://localhost");
+  let url: URL;
+  try {
+    url = new URL(urlRaw, "http://localhost");
+  } catch {
+    return false;
+  }
   const basePath = normalizeControlUiBasePath(opts.basePath);
   const pathname = url.pathname;
   const pathWithBase = basePath
