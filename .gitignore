@@ -75,3 +75,17 @@ USER.md
 memory/
 .agent/*.json
 !.agent/workflows/
+
+.idea/inspectionProfiles/profiles_settings.xml
+
+.idea/misc.xml
+
+.idea/openclaw.iml
+
+.idea/prettier.xml
+
+.idea/swift-toolchain.xml
+
+.idea/vcs.xml
+
+.idea/workspace.xml
