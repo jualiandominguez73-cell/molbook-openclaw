@@ -41,6 +41,7 @@ import {
 import { scheduleGatewayUpdateCheck } from "../infra/update-startup.js";
 import { startDiagnosticHeartbeat, stopDiagnosticHeartbeat } from "../logging/diagnostic.js";
 import { createSubsystemLogger, runtimeForLogger } from "../logging/subsystem.js";
+import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
 import { startGatewayConfigReloader } from "./config-reload.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
@@ -243,6 +244,8 @@ export async function startGatewayServer(
   const channelMethods = listChannelPlugins().flatMap((plugin) => plugin.gatewayMethods ?? []);
   const gatewayMethods = Array.from(new Set([...baseGatewayMethods, ...channelMethods]));
   let pluginServices: PluginServicesHandle | null = null;
+  const hookRunner = getGlobalHookRunner();
+  await hookRunner?.runGatewayPreStart({ port }, { port });
   const runtimeConfig = await resolveGatewayRuntimeConfig({
     cfg: cfgAtStart,
     port,
@@ -621,9 +624,11 @@ export async function startGatewayServer(
     httpServer,
     httpServers,
   });
+  await hookRunner?.runGatewayStart({ port }, { port });
 
   return {
     close: async (opts) => {
+      await hookRunner?.runGatewayPreStop({ reason: opts?.reason }, { port });
       if (diagnosticsEnabled) {
         stopDiagnosticHeartbeat();
       }
@@ -633,6 +638,7 @@ export async function startGatewayServer(
       }
       skillsChangeUnsub();
       await close(opts);
+      await hookRunner?.runGatewayStop({ reason: opts?.reason }, { port });
     },
   };
 }

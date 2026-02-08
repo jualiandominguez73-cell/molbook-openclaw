@@ -64,6 +64,41 @@ export async function runBeforeToolCallHook(args: {
   return { blocked: false, params };
 }
 
+export async function runAfterToolCallHook(args: {
+  toolName: string;
+  params: unknown;
+  result?: unknown;
+  error?: string;
+  durationMs?: number;
+  ctx?: HookContext;
+}): Promise<void> {
+  const hookRunner = getGlobalHookRunner();
+  if (!hookRunner?.hasHooks("after_tool_call")) {
+    return;
+  }
+
+  const toolName = normalizeToolName(args.toolName || "tool");
+  const params = isPlainObject(args.params) ? args.params : {};
+  try {
+    await hookRunner.runAfterToolCall(
+      {
+        toolName,
+        params,
+        result: args.result,
+        error: args.error,
+        durationMs: args.durationMs,
+      },
+      {
+        toolName,
+        agentId: args.ctx?.agentId,
+        sessionKey: args.ctx?.sessionKey,
+      },
+    );
+  } catch (err) {
+    log.warn(`after_tool_call hook failed: tool=${toolName} error=${String(err)}`);
+  }
+}
+
 export function wrapToolWithBeforeToolCallHook(
   tool: AnyAgentTool,
   ctx?: HookContext,
@@ -76,6 +111,7 @@ export function wrapToolWithBeforeToolCallHook(
   return {
     ...tool,
     execute: async (toolCallId, params, signal, onUpdate) => {
+      const startedAt = Date.now();
       const outcome = await runBeforeToolCallHook({
         toolName,
         params,
@@ -85,12 +121,34 @@ export function wrapToolWithBeforeToolCallHook(
       if (outcome.blocked) {
         throw new Error(outcome.reason);
       }
-      return await execute(toolCallId, outcome.params, signal, onUpdate);
+      const effectiveParams = outcome.params;
+      try {
+        const result = await execute(toolCallId, effectiveParams, signal, onUpdate);
+        await runAfterToolCallHook({
+          toolName,
+          params: effectiveParams,
+          result,
+          durationMs: Date.now() - startedAt,
+          ctx,
+        });
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await runAfterToolCallHook({
+          toolName,
+          params: effectiveParams,
+          error: message,
+          durationMs: Date.now() - startedAt,
+          ctx,
+        });
+        throw err;
+      }
     },
   };
 }
 
 export const __testing = {
   runBeforeToolCallHook,
+  runAfterToolCallHook,
   isPlainObject,
 };
