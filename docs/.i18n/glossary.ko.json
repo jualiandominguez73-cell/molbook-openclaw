@@ -1,0 +1,38 @@
+[
+  {
+    "source": "Gateway",
+    "target": "게이트웨이",
+    "ignore_case": false,
+    "whole_word": true
+  },
+  {
+    "source": "Control UI",
+    "target": "Control UI",
+    "ignore_case": false,
+    "whole_word": true
+  },
+  {
+    "source": "onboarding",
+    "target": "온보딩",
+    "ignore_case": true,
+    "whole_word": false
+  },
+  {
+    "source": "pairing",
+    "target": "페어링",
+    "ignore_case": true,
+    "whole_word": false
+  },
+  {
+    "source": "workspace",
+    "target": "워크스페이스",
+    "ignore_case": true,
+    "whole_word": false
+  },
+  {
+    "source": "sandbox",
+    "target": "샌드박스",
+    "ignore_case": true,
+    "whole_word": false
+  }
+]
