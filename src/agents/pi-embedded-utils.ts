@@ -1,5 +1,6 @@
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { stripReasoningTagsFromText } from "../shared/text/reasoning-tags.js";
+import { stripHistoricalContextText } from "./historical-context-repair.js";
 import { sanitizeUserFacingText } from "./pi-embedded-helpers.js";
 import { formatToolDetail, resolveToolDisplay } from "./tool-display.js";
 
@@ -212,7 +213,9 @@ export function extractAssistantText(msg: AssistantMessage): string {
         .filter(isTextBlock)
         .map((c) =>
           stripThinkingTagsFromText(
-            stripDowngradedToolCallText(stripMinimaxToolCallXml(c.text)),
+            stripHistoricalContextText(
+              stripDowngradedToolCallText(stripMinimaxToolCallXml(c.text)),
+            ),
           ).trim(),
         )
         .filter(Boolean)
