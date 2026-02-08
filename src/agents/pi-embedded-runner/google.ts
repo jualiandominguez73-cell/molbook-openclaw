@@ -119,6 +119,39 @@ function sanitizeAntigravityThinkingBlocks(messages: AgentMessage[]): AgentMessa
   return touched ? out : messages;
 }
 
+export function dropThinkingBlocks(messages: AgentMessage[]): AgentMessage[] {
+  let touched = false;
+  const out: AgentMessage[] = [];
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object" || msg.role !== "assistant") {
+      out.push(msg);
+      continue;
+    }
+    const assistant = msg;
+    if (!Array.isArray(assistant.content)) {
+      out.push(msg);
+      continue;
+    }
+    type AssistantContentBlock = Extract<AgentMessage, { role: "assistant" }>["content"][number];
+    const nextContent: AssistantContentBlock[] = [];
+    let changed = false;
+    for (const block of assistant.content) {
+      if (block && typeof block === "object" && (block as { type?: unknown }).type === "thinking") {
+        touched = true;
+        changed = true;
+        continue;
+      }
+      nextContent.push(block);
+    }
+    if (nextContent.length === 0) {
+      touched = true;
+      continue;
+    }
+    out.push(changed ? { ...assistant, content: nextContent } : msg);
+  }
+  return touched ? out : messages;
+}
+
 function findUnsupportedSchemaKeywords(schema: unknown, path: string): string[] {
   if (!schema || typeof schema !== "object") {
     return [];
@@ -346,9 +379,12 @@ export async function sanitizeSessionHistory(params: {
     preserveSignatures: policy.preserveSignatures,
     sanitizeThoughtSignatures: policy.sanitizeThoughtSignatures,
   });
-  const sanitizedThinking = policy.normalizeAntigravityThinkingBlocks
-    ? sanitizeAntigravityThinkingBlocks(sanitizedImages)
+  const droppedThinking = policy.dropThinkingBlocks
+    ? dropThinkingBlocks(sanitizedImages)
     : sanitizedImages;
+  const sanitizedThinking = policy.normalizeAntigravityThinkingBlocks
+    ? sanitizeAntigravityThinkingBlocks(droppedThinking)
+    : droppedThinking;
   const sanitizedToolCalls = sanitizeToolCallInputs(sanitizedThinking);
   const repairedTools = policy.repairToolUseResultPairing
     ? sanitizeToolUseResultPairing(sanitizedToolCalls)
