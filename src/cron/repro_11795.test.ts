@@ -1,23 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { createJob, nextWakeAtMs } from "./service/jobs.js";
 import { update } from "./service/ops.js";
-import { createCronServiceState } from "./service/state.js";
+import { createCronServiceState, type CronServiceDeps } from "./service/state.js";
 
 describe("reproduction of bug 11795", () => {
   it("registers nextWakeAtMs for 'at' schedule type during update via ops", async () => {
     const now = 1738987700000;
     const at = "2026-02-08T09:28:00Z";
-    const atMs = Date.parse(at);
     
-    const deps = {
+    const deps: CronServiceDeps = {
       nowMs: () => now,
-      log: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+      log: { 
+        info: () => {}, 
+        warn: () => {}, 
+        error: () => {}, 
+        debug: () => {} 
+      },
       cronEnabled: true,
       storePath: "/tmp/cron.json",
       enqueueSystemEvent: () => {},
       requestHeartbeatNow: () => {},
       runIsolatedAgentJob: async () => ({ status: "ok" }),
-    } as any;
+    };
 
     const state = createCronServiceState(deps);
     state.store = {
