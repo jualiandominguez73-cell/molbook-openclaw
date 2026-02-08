@@ -133,6 +133,7 @@ export async function handleDirectiveOnly(params: {
     aliasIndex,
     allowedModelCatalog,
     resetModelOverride,
+    // Needed so /model info can compare configured model vs most recently used model.
     sessionEntry,
     surface: params.surface,
   });
