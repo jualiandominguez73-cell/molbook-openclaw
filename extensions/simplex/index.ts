@@ -85,6 +85,32 @@ function extractSimplexPendingHints(resp: SimplexWsResponse): string[] {
   return [...hints];
 }
 
+type SharedSimplexClientKey = `${string}|${number}`;
+const sharedSimplexClients = new Map<SharedSimplexClientKey, SimplexWsClient>();
+
+function getSharedSimplexClient(params: {
+  account: ReturnType<typeof resolveSimplexAccount>;
+  logger?: {
+    info?: (message: string) => void;
+    warn?: (message: string) => void;
+    error?: (message: string) => void;
+  };
+}): SimplexWsClient {
+  const timeoutMs = params.account.config.connection?.connectTimeoutMs ?? 15_000;
+  const key: SharedSimplexClientKey = `${params.account.wsUrl}|${timeoutMs}`;
+  const existing = sharedSimplexClients.get(key);
+  if (existing) {
+    return existing;
+  }
+  const created = new SimplexWsClient({
+    url: params.account.wsUrl,
+    connectTimeoutMs: timeoutMs,
+    logger: params.logger,
+  });
+  sharedSimplexClients.set(key, created);
+  return created;
+}
+
 async function sendSimplexCommand(params: {
   account: ReturnType<typeof resolveSimplexAccount>;
   command: string;
@@ -94,17 +120,9 @@ async function sendSimplexCommand(params: {
     error?: (message: string) => void;
   };
 }): Promise<SimplexWsResponse> {
-  const client = new SimplexWsClient({
-    url: params.account.wsUrl,
-    connectTimeoutMs: params.account.config.connection?.connectTimeoutMs,
-    logger: params.logger,
-  });
+  const client = getSharedSimplexClient(params);
   await client.connect();
-  try {
-    return await client.sendCommand(params.command);
-  } finally {
-    await client.close().catch(() => undefined);
-  }
+  return await client.sendCommand(params.command);
 }
 
 async function sendSimplexCommandWithRetry(params: {
