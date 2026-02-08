@@ -173,6 +173,11 @@
 - When asked to open a “session” file, open the Pi session logs under `~/.openclaw/agents/<agentId>/sessions/*.jsonl` (use the `agent=<id>` value in the Runtime line of the system prompt; newest unless a specific ID is given), not the default `sessions.json`. If logs are needed from another machine, SSH via Tailscale and read the same path there.
 - Do not rebuild the macOS app over SSH; rebuilds must be run directly on the Mac.
 - Never send streaming/partial replies to external messaging surfaces (WhatsApp, Telegram); only final replies should be delivered there. Streaming/tool events may still go to internal UIs/control channel.
+- External messaging formatting guardrails (WhatsApp/Signal/Telegram/etc.):
+  - Use plain text; avoid Markdown headings (`# ...`), tables, and fenced code blocks (```).
+  - Put the main result on the first line (e.g., `Outcome:` / `Done:`). Add `Changed:` only if something actually changed.
+  - Ask at most **one** question total; watch for `?` in URLs (strip query params when possible).
+  - Keep it pasteable: short bullets, ~80–100 char lines, and max ~12 lines when you can.
 - Voice wake forwarding tips:
   - Command template should stay `openclaw-mac agent --message "${text}" --thinking low`; `VoiceWakeForwarder` already shell-escapes `${text}`. Don’t add extra quotes.
   - launchd PATH is minimal; ensure the app’s launch agent PATH includes standard system paths plus your pnpm bin (typically `$HOME/Library/pnpm`) so `pnpm`/`openclaw` binaries resolve when invoked via `openclaw-mac`.

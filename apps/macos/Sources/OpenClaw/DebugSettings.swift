@@ -21,9 +21,6 @@ struct DebugSettings: View {
     @State private var gatewayRootInput: String = GatewayProcessManager.shared.projectRootPath()
     @State private var sessionStorePath: String = SessionLoader.defaultStorePath
     @State private var sessionStoreSaveError: String?
-    @State private var debugSendInFlight = false
-    @State private var debugSendStatus: String?
-    @State private var debugSendError: String?
     @State private var portCheckInFlight = false
     @State private var portReports: [DebugActions.PortReport] = []
     @State private var portKillStatus: String?
@@ -55,7 +52,7 @@ struct DebugSettings: View {
                 self.logsSection
                 self.portsSection
                 self.pathsSection
-                self.quickActionsSection
+
                 self.canvasSection
                 self.experimentsSection
 
@@ -473,82 +470,6 @@ struct DebugSettings: View {
         }
     }
 
-    private var quickActionsSection: some View {
-        GroupBox("Quick actions") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Button("Send Test Notification") {
-                        Task { await DebugActions.sendTestNotification() }
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Open Agent Events") {
-                        DebugActions.openAgentEventsWindow()
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Spacer(minLength: 0)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Button {
-                        Task { await self.sendVoiceDebug() }
-                    } label: {
-                        Label(
-                            self.debugSendInFlight ? "Sending debug voice…" : "Send debug voice",
-                            systemImage: self.debugSendInFlight ? "bolt.horizontal.circle" : "waveform")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(self.debugSendInFlight)
-
-                    if !self.debugSendInFlight {
-                        if let debugSendStatus {
-                            Text(debugSendStatus)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else if let debugSendError {
-                            Text(debugSendError)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        } else {
-                            Text(
-                                """
-                                Uses the Voice Wake path: forwards over SSH when configured,
-                                otherwise runs locally via rpc.
-                                """)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(
-                        "Note: macOS may require restarting OpenClaw after enabling Accessibility or Screen Recording.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Button {
-                        LaunchdManager.startOpenClaw()
-                    } label: {
-                        Label("Restart OpenClaw", systemImage: "arrow.counterclockwise")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-
-                HStack(spacing: 8) {
-                    Button("Restart app") { DebugActions.restartApp() }
-                    Button("Restart onboarding") { DebugActions.restartOnboarding() }
-                    Button("Reveal app in Finder") { self.revealApp() }
-                    Spacer(minLength: 0)
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-    }
-
     private var canvasSection: some View {
         GroupBox("Canvas") {
             VStack(alignment: .leading, spacing: 10) {
@@ -734,33 +655,6 @@ struct DebugSettings: View {
             self.modelsCount = nil
             self.modelsError = error.localizedDescription
         }
-    }
-
-    private func sendVoiceDebug() async {
-        await MainActor.run {
-            self.debugSendInFlight = true
-            self.debugSendError = nil
-            self.debugSendStatus = nil
-        }
-
-        let result = await DebugActions.sendDebugVoice()
-
-        await MainActor.run {
-            self.debugSendInFlight = false
-            switch result {
-            case let .success(message):
-                self.debugSendStatus = message
-                self.debugSendError = nil
-            case let .failure(error):
-                self.debugSendStatus = nil
-                self.debugSendError = error.localizedDescription
-            }
-        }
-    }
-
-    private func revealApp() {
-        let url = Bundle.main.bundleURL
-        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     private func saveRelayRoot() {
@@ -982,9 +876,6 @@ extension DebugSettings {
         view.gatewayRootInput = "/tmp/openclaw"
         view.sessionStorePath = "/tmp/sessions.json"
         view.sessionStoreSaveError = "Save failed"
-        view.debugSendInFlight = true
-        view.debugSendStatus = "Sent"
-        view.debugSendError = "Failed"
         view.portCheckInFlight = true
         view.portReports = [
             DebugActions.PortReport(
@@ -1014,7 +905,7 @@ extension DebugSettings {
         _ = view.logsSection
         _ = view.portsSection
         _ = view.pathsSection
-        _ = view.quickActionsSection
+
         _ = view.canvasSection
         _ = view.experimentsSection
         _ = view.gridLabel("Test")

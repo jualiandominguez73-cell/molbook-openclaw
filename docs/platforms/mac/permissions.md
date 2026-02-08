@@ -48,3 +48,29 @@ Workaround: move files into the OpenClaw workspace (`~/.openclaw/workspace`) if 
 
 If you are testing permissions, always sign with a real certificate. Ad-hoc
 builds are only acceptable for quick local runs where permissions do not matter.
+
+## UI automation tools (Peekaboo)
+
+When you run UI automation or screenshot tools from a terminal (for example
+Peekaboo), macOS permission grants apply to the terminal app doing the work
+(Terminal/iTerm/Alacritty) and sometimes to the helper binary itself.
+
+Checklist:
+
+1. System Settings -> Privacy & Security -> Screen Recording: enable your
+   terminal app (and Peekaboo/Peekaboo Bridge if present), then quit and reopen
+   the terminal app.
+2. System Settings -> Privacy & Security -> Accessibility: enable your terminal
+   app (and Peekaboo/Peekaboo Bridge if present), then quit and reopen the
+   terminal app.
+3. Verify from the terminal:
+
+```bash
+peekaboo permissions
+peekaboo image --mode frontmost --retina --path /tmp/peekaboo-frontmost.png
+peekaboo see --mode screen --screen-index 0 --annotate --path /tmp/peekaboo-ui-map.png
+```
+
+If you are automating OpenClaw via node mode (`node.invoke` for `screen.*`,
+`camera.*`, `canvas.*`, `system.*`), those permissions are checked against the
+OpenClaw app/node host, not your terminal.

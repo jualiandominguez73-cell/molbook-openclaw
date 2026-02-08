@@ -241,6 +241,18 @@ The wizard uses it to set your **allowlist/owner** so your own DMs are permitted
 - WhatsApp Web sends standard messages (no quoted reply threading in the current gateway).
 - Reply tags are ignored on this channel.
 
+## Message formatting tips
+
+WhatsApp is a plain-text chat surface. To keep replies readable (especially on mobile):
+
+- Lead with the answer/result in the first line.
+- Prefer short labeled sections like `Outcome:` / `Details:` / `Next:` / `Question:`.
+- Avoid Markdown headings (`# ...`), tables, and fenced code blocks (```), which render poorly in chat.
+- Keep lines roughly 80–100 characters to reduce awkward wrapping.
+- Put URLs on their own line.
+- If sharing commands, keep it to a few lines and prefix each command with `$ `.
+- Ask at most one question; if you need multiple clarifications, bundle them into a single choice question.
+
 ## Acknowledgment reactions (auto-react on receipt)
 
 WhatsApp can automatically send emoji reactions to incoming messages immediately upon receipt, before the bot generates a reply. This provides instant feedback to users that their message was received.
