@@ -92,6 +92,10 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     await ensureDevGatewayConfig({ reset: Boolean(opts.reset) });
   }
 
+  // Prime the config cache via async snapshot BEFORE the sync loadConfig()
+  // call below.  This resolves $secret{} references (GCP, keyring, etc.)
+  // and caches the result so loadConfig() returns the resolved config.
+  await readConfigFileSnapshot().catch(() => null);
   const cfg = loadConfig();
   const portOverride = parsePort(opts.port);
   if (opts.port !== undefined && portOverride === null) {
