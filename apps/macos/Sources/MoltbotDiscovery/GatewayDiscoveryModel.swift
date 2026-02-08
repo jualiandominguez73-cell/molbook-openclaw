@@ -1,5 +1,5 @@
-import MoltbotKit
 import Foundation
+import MoltbotKit
 import Network
 import Observation
 import OSLog
@@ -18,7 +18,10 @@ public final class GatewayDiscoveryModel {
     }
 
     public struct DiscoveredGateway: Identifiable, Equatable, Sendable {
-        public var id: String { self.stableID }
+        public var id: String {
+            self.stableID
+        }
+
         public var displayName: String
         public var lanHost: String?
         public var tailnetDns: String?
@@ -113,11 +116,13 @@ public final class GatewayDiscoveryModel {
     }
 
     public func refreshWideAreaFallbackNow(timeoutSeconds: TimeInterval = 5.0) {
-        let domain = MoltbotBonjour.wideAreaGatewayServiceDomain
-        Task(priority: .utility) { [weak self] in
+        guard let domain = OpenClawBonjour.wideAreaGatewayServiceDomain else { return }
 
+        Task(priority: .utility) { [weak self] in
             guard let self else { return }
+
             let beacons = WideAreaGatewayDiscovery.discover(timeoutSeconds: timeoutSeconds)
+
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.wideAreaFallbackGateways = self.mapWideAreaBeacons(beacons, domain: domain)
@@ -248,7 +253,6 @@ public final class GatewayDiscoveryModel {
         if Self.isRunningTests { return }
         guard self.wideAreaFallbackTask == nil else { return }
         self.wideAreaFallbackTask = Task(priority: .utility) { [weak self] in
-
             guard let self else { return }
             var attempt = 0
             let startedAt = Date()
