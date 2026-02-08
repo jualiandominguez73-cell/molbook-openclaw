@@ -40,10 +40,10 @@ describe("failover-error", () => {
   });
 
   it("coerces 401 auth errors into FailoverError with auth reason", () => {
-    const err = coerceToFailoverError(
-      Object.assign(new Error("Unauthorized"), { status: 401 }),
-      { provider: "anthropic", model: "claude-sonnet-4-5" },
-    );
+    const err = coerceToFailoverError(Object.assign(new Error("Unauthorized"), { status: 401 }), {
+      provider: "anthropic",
+      model: "claude-sonnet-4-5",
+    });
     expect(err?.name).toBe("FailoverError");
     expect(err?.reason).toBe("auth");
     expect(err?.status).toBe(401);

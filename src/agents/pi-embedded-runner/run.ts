@@ -18,7 +18,11 @@ import {
   resolveContextWindowInfo,
 } from "../context-window-guard.js";
 import { DEFAULT_CONTEXT_TOKENS, DEFAULT_MODEL, DEFAULT_PROVIDER } from "../defaults.js";
-import { FailoverError, resolveFailoverReasonFromError, resolveFailoverStatus } from "../failover-error.js";
+import {
+  FailoverError,
+  resolveFailoverReasonFromError,
+  resolveFailoverStatus,
+} from "../failover-error.js";
 import {
   ensureAuthProfileStore,
   getApiKeyForModel,
@@ -650,7 +654,8 @@ export async function runEmbeddedPiAgent(
                 },
               };
             }
-            const promptFailoverReason = resolveFailoverReasonFromError(promptError) ?? classifyFailoverReason(errorText);
+            const promptFailoverReason =
+              resolveFailoverReasonFromError(promptError) ?? classifyFailoverReason(errorText);
             if (promptFailoverReason && promptFailoverReason !== "timeout" && lastProfileId) {
               await markAuthProfileFailure({
                 store: authStore,
