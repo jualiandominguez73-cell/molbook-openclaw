@@ -311,6 +311,9 @@ export async function startSecretsProxy(opts: SecretsProxyOptions): Promise<http
       logger.info(`Proxying request: ${method} ${rawTargetUrl}`);
 
       // P0 Fix: Only pass body for methods that should have one
+      // Security: undici v7 request() does NOT follow redirects (requires explicit redirect
+      // interceptor), so an allowlisted host cannot 30x to a non-allowlisted destination.
+      // Do NOT add a redirect interceptor here; every new target must pass through the proxy.
       const response = await request(targetUrl, {
         method: method as import("undici").Dispatcher.HttpMethod,
         headers,

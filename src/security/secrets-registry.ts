@@ -210,9 +210,10 @@ export async function resolveOAuthToken(
   registry: SecretRegistry,
   profileId: string,
 ): Promise<string | null> {
-  // Get the credential to check provider type
-  const cred = registry.oauthProfiles.get(profileId);
-  if (!cred) {
+  // Read from authStore.profiles (authoritative, live source) instead of the
+  // startup-snapshotted oauthProfiles map so newly added/refreshed profiles work.
+  const cred = registry.authStore.profiles[profileId];
+  if (!cred || cred.type !== "oauth") {
     return null;
   }
 
