@@ -200,13 +200,16 @@ export const agentHandlers: GatewayRequestHandlers = {
       });
       const nodeResolution = await resolveNodeByIdOrName(nodeTarget);
       if (!nodeResolution.ok) {
-        respond(
-          false,
-          undefined,
-          errorShape(ErrorCodes.UNAVAILABLE, nodeResolution.error, {
-            details: { code: nodeResolution.code, nodeTarget },
-          }),
-        );
+        const error = errorShape(ErrorCodes.UNAVAILABLE, nodeResolution.error, {
+          details: { code: nodeResolution.code, nodeTarget },
+        });
+        // Overwrite dedupe with error to prevent poisoning on retry
+        context.dedupe.set(`agent:${idem}`, {
+          ts: Date.now(),
+          ok: false,
+          error,
+        });
+        respond(false, undefined, error);
         return;
       }
 
@@ -235,13 +238,18 @@ export const agentHandlers: GatewayRequestHandlers = {
       });
 
       if (!nodeResult.ok) {
-        respond(
-          false,
-          undefined,
-          errorShape(ErrorCodes.UNAVAILABLE, nodeResult.error ?? "node agent invocation failed", {
-            details: { nodeId: nodeResolution.node.nodeId },
-          }),
+        const error = errorShape(
+          ErrorCodes.UNAVAILABLE,
+          nodeResult.error ?? "node agent invocation failed",
+          { details: { nodeId: nodeResolution.node.nodeId } },
         );
+        // Overwrite dedupe with error to prevent poisoning on retry
+        context.dedupe.set(`agent:${idem}`, {
+          ts: Date.now(),
+          ok: false,
+          error,
+        });
+        respond(false, undefined, error);
         return;
       }
 
