@@ -8,6 +8,10 @@ Docs: https://docs.openclaw.ai
 
 - Gateway: add `agents.create`, `agents.update`, `agents.delete` RPC methods for web UI agent management. (#11045) Thanks @advaitpaliwal.
 
+### Changes
+
+- Android: add timeout constant and exponential backoff to gateway discovery; prevents freezes when gateways are offline. (#9744) Thanks @hubertusgbecker.
+
 ### Fixes
 
 - Thinking: allow xhigh for `github-copilot/gpt-5.2-codex` and `github-copilot/gpt-5.2`. (#11646) Thanks @seans-openclawbot.
