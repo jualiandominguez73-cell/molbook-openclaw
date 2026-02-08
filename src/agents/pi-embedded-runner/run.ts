@@ -18,7 +18,11 @@ import {
   resolveContextWindowInfo,
 } from "../context-window-guard.js";
 import { DEFAULT_CONTEXT_TOKENS, DEFAULT_MODEL, DEFAULT_PROVIDER } from "../defaults.js";
-import { FailoverError, resolveFailoverStatus } from "../failover-error.js";
+import {
+  FailoverError,
+  resolveFailoverReasonFromError,
+  resolveFailoverStatus,
+} from "../failover-error.js";
 import {
   ensureAuthProfileStore,
   getApiKeyForModel,
@@ -650,7 +654,11 @@ export async function runEmbeddedPiAgent(
                 },
               };
             }
-            const promptFailoverReason = classifyFailoverReason(errorText);
+            // Use the error *object* (not just the message string) so HTTP status
+            // codes like 401/403 trigger failover even when the text doesn't match
+            // known patterns.  #11674
+            const promptFailoverReason =
+              resolveFailoverReasonFromError(promptError) ?? classifyFailoverReason(errorText);
             if (promptFailoverReason && promptFailoverReason !== "timeout" && lastProfileId) {
               await markAuthProfileFailure({
                 store: authStore,
@@ -661,7 +669,7 @@ export async function runEmbeddedPiAgent(
               });
             }
             if (
-              isFailoverErrorMessage(errorText) &&
+              (promptFailoverReason !== null || isFailoverErrorMessage(errorText)) &&
               promptFailoverReason !== "timeout" &&
               (await advanceAuthProfile())
             ) {
@@ -678,9 +686,12 @@ export async function runEmbeddedPiAgent(
               thinkLevel = fallbackThinking;
               continue;
             }
-            // FIX: Throw FailoverError for prompt errors when fallbacks configured
-            // This enables model fallback for quota/rate limit errors during prompt submission
-            if (fallbackConfigured && isFailoverErrorMessage(errorText)) {
+            // Throw FailoverError for prompt errors when fallbacks configured
+            // This enables model fallback for quota/rate limit/auth errors during prompt submission
+            if (
+              fallbackConfigured &&
+              (promptFailoverReason !== null || isFailoverErrorMessage(errorText))
+            ) {
               throw new FailoverError(errorText, {
                 reason: promptFailoverReason ?? "unknown",
                 provider,
