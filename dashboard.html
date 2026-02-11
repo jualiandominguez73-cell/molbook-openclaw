@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pod Maestro — Centro de Control</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: #2a2a3a;
+  --text: #e4e4ef;
+  --text-dim: #8888a0;
+  --accent: #00e5a0;
+  --accent2: #00b8ff;
+  --accent3: #ff6b6b;
+  --opus: #d4a0ff;
+  --success: #00e5a0;
+  --warning: #ffb800;
+  --error: #ff4757;
+  --glow: rgba(0, 229, 160, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+
+.logo span { color: var(--text-dim); font-weight: 400; }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.status-pill.online { background: rgba(0,229,160,0.12); color: var(--accent); }
+.status-pill.offline { background: rgba(255,71,87,0.12); color: var(--error); }
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.refresh-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Main Layout */
+.main {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto 1fr;
+  gap: 16px;
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.card:hover { border-color: rgba(0,229,160,0.3); }
+
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface2);
+}
+
+.card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.card-body { padding: 18px; }
+
+/* Agents Grid */
+.agents-card { grid-column: 1 / -1; }
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.agent-tile {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  transition: all 0.3s;
+  cursor: default;
+}
+
+.agent-tile:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+  transform: translateY(-2px);
+}
+
+.agent-tile .name {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-tile .icon { font-size: 18px; }
+
+.agent-tile .detail {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.agent-tile .status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.status-badge.ok { background: rgba(0,229,160,0.15); color: var(--success); }
+.status-badge.degraded { background: rgba(255,184,0,0.15); color: var(--warning); }
+.status-badge.error { background: rgba(255,71,87,0.15); color: var(--error); }
+
+/* Knowledge Panel */
+.knowledge-card { grid-column: 1; }
+
+.knowledge-form { display: flex; flex-direction: column; gap: 10px; }
+
+.knowledge-form textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 100px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.knowledge-form textarea:focus { border-color: var(--accent); }
+
+.knowledge-form input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+
+.knowledge-form input:focus { border-color: var(--accent); }
+
+.knowledge-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 20px var(--glow);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+.btn-opus {
+  background: rgba(212,160,255,0.15);
+  color: var(--opus);
+  border: 1px solid rgba(212,160,255,0.3);
+}
+
+.btn-opus:hover { background: rgba(212,160,255,0.25); }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Chat / Code Panel */
+.interact-card { grid-column: 2; grid-row: 2 / 4; }
+
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.tab {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.chat-messages {
+  height: 340px;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.msg {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 90%;
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.msg.user {
+  background: rgba(0,184,255,0.12);
+  border: 1px solid rgba(0,184,255,0.2);
+  align-self: flex-end;
+  color: var(--accent2);
+}
+
+.msg.bot {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  align-self: flex-start;
+}
+
+.msg.system {
+  background: rgba(212,160,255,0.08);
+  border: 1px solid rgba(212,160,255,0.15);
+  align-self: center;
+  font-size: 12px;
+  color: var(--opus);
+  font-style: italic;
+}
+
+.msg pre {
+  background: var(--bg);
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+}
+
+.chat-input:focus { border-color: var(--accent); }
+
+/* Queue Panel */
+.queue-card { grid-column: 1; }
+
+.queue-list { display: flex; flex-direction: column; gap: 8px; }
+
+.queue-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.queue-item .q-agent {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0,184,255,0.1);
+  color: var(--accent2);
+}
+
+.queue-item .q-task {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-dim);
+}
+
+.queue-item .q-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* File Upload */
+.file-upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+
+.file-upload-area:hover {
+  border-color: var(--accent);
+  background: var(--glow);
+}
+
+.file-upload-area input { display: none; }
+
+/* Results / Log */
+.result-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+/* Loading */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
+  .agents-card, .interact-card, .knowledge-card, .queue-card {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+/* Select */
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+select:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">POD MAESTRO <span>v1.0</span></div>
+    <div class="status-pill online" id="mainStatus">
+      <div class="status-dot"></div>
+      <span>LOADING...</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="opusStatus" class="status-pill offline">
+      <span>OPUS: ...</span>
+    </div>
+    <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- AGENTS ROW -->
+  <div class="card agents-card">
+    <div class="card-header">
+      <div class="card-title">⚡ Agentes</div>
+      <div id="agentCount" style="font-size:12px;color:var(--text-dim)"></div>
+    </div>
+    <div class="card-body">
+      <div class="agents-grid" id="agentsGrid">
+        <div class="empty-state">Cargando agentes...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KNOWLEDGE -->
+  <div class="card knowledge-card">
+    <div class="card-header">
+      <div class="card-title">🧠 Base de Conocimiento</div>
+      <div id="docsCount" style="font-size:12px;color:var(--text-dim)">0 docs</div>
+    </div>
+    <div class="card-body">
+      <div class="knowledge-form">
+        <textarea id="knowledgeText" placeholder="Pega aquí texto, documentos, información que quieras guardar en la memoria..."></textarea>
+        <div class="knowledge-meta">
+          <input id="knowledgeSource" placeholder="Fuente (ej: LISR, AdminLife)" />
+          <input id="knowledgeType" placeholder="Tipo (ej: proyecto, ley, nota)" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="addKnowledge()" id="addKnowledgeBtn">+ Agregar</button>
+          <button class="btn btn-secondary" onclick="uploadFile()">📄 Subir Archivo</button>
+        </div>
+        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.json,.csv" onchange="handleFile(event)" style="display:none">
+      </div>
+      <div id="knowledgeResult" class="result-box" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- QUEUE -->
+  <div class="card queue-card">
+    <div class="card-header">
+      <div class="card-title">📋 Cola de Trabajos</div>
+      <div id="queueStats" style="font-size:12px;color:var(--text-dim)"></div>
+    </div>
+    <div class="card-body">
+      <div class="queue-list" id="queueList">
+        <div class="empty-state">Sin trabajos en cola</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERACT -->
+  <div class="card interact-card">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('chat')">💬 Chat</div>
+      <div class="tab" onclick="switchTab('code')">⌨️ Código</div>
+      <div class="tab" onclick="switchTab('orchestrate')">🎯 Orquestar</div>
+    </div>
+
+    <!-- CHAT TAB -->
+    <div class="tab-content active" id="tab-chat">
+      <div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)">
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-dim);text-transform:uppercase">Agente:</span>
+        <select id="chatAgent" style="flex:1">
+          <option value="chat">📚 Consulta (RAG + Qwen 32B)</option>
+          <option value="code">⌨️ Código (Qwen Coder)</option>
+          <option value="opus">🎯 Opus 4.6 (Director)</option>
+          <option value="voice">🎙️ Voz (TTS)</option>
+          <option value="image">🎨 Imagen (ComfyUI)</option>
+        </select>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg system">Pod Maestro listo. Selecciona un agente y pregunta.</div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendChat()" />
+        <button class="btn btn-primary" onclick="sendChat()">→</button>
+      </div>
+    </div>
+
+    <!-- CODE TAB -->
+    <div class="tab-content" id="tab-code">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="codeModel">
+            <option value="auto">Auto</option>
+            <option value="qwen2.5:32b">Qwen 2.5 32B</option>
+            <option value="qwen2.5-coder:7b">Qwen Coder 7B</option>
+          </select>
+        </div>
+        <textarea id="codePrompt" placeholder="Describe qué código necesitas..." style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;min-height:80px;outline:none"></textarea>
+        <button class="btn btn-primary" onclick="generateCode()" id="codeBtn">⚡ Generar Código</button>
+        <div id="codeResult" class="result-box" style="display:none;max-height:400px"></div>
+      </div>
+    </div>
+
+    <!-- ORCHESTRATE TAB -->
+    <div class="tab-content" id="tab-orchestrate">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div class="msg system" style="align-self:stretch;text-align:center;margin:0">
+          Opus 4.6 planifica → Agentes locales ejecutan
+        </div>
+        <textarea id="orchPrompt" placeholder="Instrucción compleja para Opus... (ej: Crea un componente React para Mirror IA con catálogo de peinados, thumbnails, filtros por estilo, y API endpoint en Flask)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;min-height:100px;outline:none"></textarea>
+        <button class="btn btn-opus" onclick="orchestrate()" id="orchBtn">🎯 Orquestar con Opus</button>
+        <div id="orchResult" class="result-box" style="display:none;max-height:400px"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = window.location.origin;
+
+// ─── STATUS ───
+async function refreshAll() {
+  try {
+    const r = await fetch(`${API}/api/status`);
+    const d = await r.json();
+
+    // Main status
+    const main = document.getElementById('mainStatus');
+    main.className = `status-pill ${d.orquestador === 'online' ? 'online' : 'offline'}`;
+    main.querySelector('span').textContent = d.orquestador === 'online' ? 'ONLINE' : 'OFFLINE';
+
+    // Opus
+    const opus = document.getElementById('opusStatus');
+    opus.className = `status-pill ${d.opus === 'connected' ? 'online' : 'offline'}`;
+    opus.querySelector('span').textContent = `OPUS: ${d.opus === 'connected' ? '✓' : '✗'}`;
+
+    // Queue
+    const q = d.queue;
+    document.getElementById('queueStats').textContent =
+      `${q.running} corriendo · ${q.queued} en cola · ${q.completed} completados`;
+
+    // Agents
+    const grid = document.getElementById('agentsGrid');
+    const icons = { codigo: '⌨️', voz: '🎙️', imagen: '🎨', video: '🎬', consulta: '📚' };
+    const agents = d.agents;
+    let html = '';
+    let okCount = 0;
+
+    for (const [name, info] of Object.entries(agents)) {
+      const s = info.status || 'unknown';
+      if (s === 'ok') okCount++;
+      let details = [];
+
+      if (info.ollama) details.push(`Ollama: ${info.ollama}`);
+      if (info.models && info.models.length) details.push(`Models: ${info.models.join(', ')}`);
+      if (info.comfyui) details.push(`ComfyUI: ${info.comfyui}`);
+      if (info.ffmpeg) details.push(`ffmpeg: ${info.ffmpeg}`);
+      if (info.chromadb) details.push(`ChromaDB: ${info.chromadb}`);
+      if (info.docs !== undefined) details.push(`Docs: ${info.docs}`);
+      if (info.voices && info.voices.length) details.push(`Voces: ${info.voices.join(', ')}`);
+      if (info.model) details.push(`Model: ${info.model}`);
+      if (info.nota) details.push(info.nota);
+
+      // Update docs count
+      if (name === 'consulta' && info.docs !== undefined) {
+        document.getElementById('docsCount').textContent = `${info.docs} docs`;
+      }
+
+      html += `
+        <div class="agent-tile">
+          <div class="name"><span class="icon">${icons[name] || '🤖'}</span> ${name}</div>
+          <div class="detail">${details.join('<br>')}</div>
+          <span class="status-badge ${s === 'ok' ? 'ok' : s === 'degraded' ? 'degraded' : 'error'}">${s}</span>
+        </div>`;
+    }
+    grid.innerHTML = html;
+    document.getElementById('agentCount').textContent = `${okCount}/${Object.keys(agents).length} activos`;
+
+  } catch (e) {
+    document.getElementById('mainStatus').className = 'status-pill offline';
+    document.getElementById('mainStatus').querySelector('span').textContent = 'ERROR';
+    console.error(e);
+  }
+}
+
+// ─── TABS ───
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ─── CHAT ───
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const agent = document.getElementById('chatAgent').value;
+  const agentNames = { chat: '📚 Consulta', code: '⌨️ Código', opus: '🎯 Opus', voice: '🎙️ Voz', image: '🎨 Imagen' };
+  const endpoints = {
+    chat: '/api/chat',
+    code: '/api/generate/code',
+    opus: '/api/opus/ask',
+    voice: '/api/generate/voice',
+    image: '/api/generate/image'
+  };
+
+  addMsg('user', text);
+  addMsg('system', `⏳ ${agentNames[agent]} procesando...`);
+
+  try {
+    const r = await fetch(`${API}${endpoints[agent]}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: text })
+    });
+    const d = await r.json();
+    removeLastMsg();
+
+    let resp = '';
+    if (d.respuesta) resp = d.respuesta;
+    else if (d.contenido) resp = d.contenido;
+    else if (d.archivo) resp = `✅ Archivo generado: ${d.archivo}`;
+    else if (d.archivos) resp = `✅ ${d.archivos.length} archivo(s): ${d.archivos.join(', ')}`;
+    else if (d.error) resp = `❌ ${d.error}`;
+    else if (d.detail) resp = `❌ ${d.detail}`;
+    else resp = JSON.stringify(d, null, 2);
+
+    const prefix = `[${agentNames[agent]}]\n`;
+    addMsg('bot', prefix + resp);
+  } catch (e) {
+    removeLastMsg();
+    addMsg('bot', `❌ Error: ${e.message}`);
+  }
+}
+
+function addMsg(type, text) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `msg ${type}`;
+
+  // Format code blocks
+  let formatted = text
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
+    .replace(/\n/g, '<br>');
+  div.innerHTML = formatted;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeLastMsg() {
+  const container = document.getElementById('chatMessages');
+  const msgs = container.querySelectorAll('.msg');
+  if (msgs.length) msgs[msgs.length - 1].remove();
+}
+
+// ─── CODE ───
+async function generateCode() {
+  const prompt = document.getElementById('codePrompt').value.trim();
+  if (!prompt) return;
+
+  const btn = document.getElementById('codeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generando...';
+
+  const result = document.getElementById('codeResult');
+  result.style.display = 'block';
+  result.textContent = 'Esperando respuesta de Qwen...';
+
+  try {
+    const model = document.getElementById('codeModel').value;
+    const r = await fetch(`${API}/api/generate/code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, modelo: model })
+    });
+    const d = await r.json();
+    result.textContent = d.contenido || JSON.stringify(d, null, 2);
+  } catch (e) {
+    result.textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Generar Código';
+  }
+}
+
+// ─── ORCHESTRATE ───
+async function orchestrate() {
+  const prompt = document.getElementById('orchPrompt').value.trim();
+  if (!prompt) return;
+
+  const btn = document.getElementById('orchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Opus planificando...';
+
+  const result = document.getElementById('orchResult');
+  result.style.display = 'block';
+  result.textContent = 'Enviando instrucción a Opus 4.6...';
+
+  try {
+    const r = await fetch(`${API}/api/orchestrate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instruccion: prompt })
+    });
+    const d = await r.json();
+    let text = `Plan ID: ${d.plan_id}\n`;
+    text += `Resumen: ${d.plan?.resumen || ''}\n\n`;
+    if (d.plan?.subtareas) {
+      text += `Subtareas (${d.plan.subtareas.length}):\n`;
+      d.plan.subtareas.forEach(s => {
+        text += `  ${s.id}. [${s.agente}] ${s.tarea}\n`;
+      });
+    }
+    if (d.plan?.notas) text += `\nNotas: ${d.plan.notas}`;
+    result.textContent = text;
+
+    // Poll for completion
+    if (d.plan_id) pollPlan(d.plan_id);
+  } catch (e) {
+    result.textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🎯 Orquestar con Opus';
+  }
+}
+
+async function pollPlan(planId) {
+  const result = document.getElementById('orchResult');
+  let attempts = 0;
+  const interval = setInterval(async () => {
+    attempts++;
+    try {
+      const r = await fetch(`${API}/api/plans/${planId}`);
+      const d = await r.json();
+      let text = result.textContent + `\n--- Update ${attempts} ---\n`;
+      text += `Completed: ${d.completed}/${d.total_jobs} | Running: ${d.running} | Failed: ${d.failed}\n`;
+      d.jobs?.forEach(j => {
+        text += `  [${j.status}] ${j.agente}: ${j.tarea?.substring(0, 60)}\n`;
+        if (j.result_preview) text += `    → ${j.result_preview}\n`;
+        if (j.error) text += `    ✗ ${j.error}\n`;
+      });
+      result.textContent = text;
+      result.scrollTop = result.scrollHeight;
+
+      if (d.running === 0 && d.queued === 0) {
+        clearInterval(interval);
+        text += '\n✅ Plan completado!';
+        result.textContent = text;
+        refreshAll();
+      }
+    } catch (e) { /* ignore */ }
+    if (attempts > 60) clearInterval(interval);
+  }, 5000);
+}
+
+// ─── KNOWLEDGE ───
+async function addKnowledge() {
+  const text = document.getElementById('knowledgeText').value.trim();
+  if (!text) return;
+
+  const source = document.getElementById('knowledgeSource').value.trim();
+  const type = document.getElementById('knowledgeType').value.trim();
+  const btn = document.getElementById('addKnowledgeBtn');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Guardando...';
+
+  const result = document.getElementById('knowledgeResult');
+  result.style.display = 'block';
+
+  try {
+    const metadata = {};
+    if (source) metadata.source = source;
+    if (type) metadata.type = type;
+
+    const r = await fetch(`${API}/api/knowledge/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, metadata })
+    });
+    const d = await r.json();
+    result.textContent = `✅ ${d.doc_id || 'Guardado'} | Total docs: ${d.total || '?'}`;
+    document.getElementById('knowledgeText').value = '';
+    document.getElementById('knowledgeSource').value = '';
+    document.getElementById('knowledgeType').value = '';
+    refreshAll();
+  } catch (e) {
+    result.textContent = `❌ Error: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '+ Agregar';
+  }
+}
+
+function uploadFile() {
+  document.getElementById('fileInput').click();
+}
+
+async function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const result = document.getElementById('knowledgeResult');
+  result.style.display = 'block';
+  result.textContent = `Leyendo ${file.name}...`;
+
+  try {
+    const text = await file.text();
+    // Split into chunks of ~2000 chars
+    const chunks = [];
+    const chunkSize = 2000;
+    for (let i = 0; i < text.length; i += chunkSize) {
+      chunks.push(text.substring(i, i + chunkSize));
+    }
+
+    let added = 0;
+    for (const chunk of chunks) {
+      const r = await fetch(`${API}/api/knowledge/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: chunk,
+          metadata: { source: file.name, chunk: added + 1 }
+        })
+      });
+      const d = await r.json();
+      if (d.doc_id) added++;
+      result.textContent = `Procesando ${file.name}... ${added}/${chunks.length} chunks`;
+    }
+
+    result.textContent = `✅ ${file.name}: ${added} chunks guardados`;
+    refreshAll();
+  } catch (e) {
+    result.textContent = `❌ Error: ${e.message}`;
+  }
+  event.target.value = '';
+}
+
+// ─── INIT ───
+refreshAll();
+setInterval(refreshAll, 15000);
+</script>
+</body>
+</html>
