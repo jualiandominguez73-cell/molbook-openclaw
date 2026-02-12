@@ -3,1000 +3,1217 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pod Maestro — Centro de Control</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Pod Maestro v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0a0a0f;
-  --surface: #12121a;
-  --surface2: #1a1a26;
-  --border: #2a2a3a;
+  --bg: #08080d;
+  --surface: #101018;
+  --surface2: #181824;
+  --surface3: #20202e;
+  --border: #2a2a3d;
+  --border-light: #3a3a50;
   --text: #e4e4ef;
-  --text-dim: #8888a0;
+  --text-dim: #7878a0;
+  --text-muted: #55556a;
   --accent: #00e5a0;
   --accent2: #00b8ff;
-  --accent3: #ff6b6b;
-  --opus: #d4a0ff;
+  --opus: #c490ff;
   --success: #00e5a0;
   --warning: #ffb800;
   --error: #ff4757;
-  --glow: rgba(0, 229, 160, 0.15);
+  --glow: rgba(0,229,160,0.1);
+  --glow2: rgba(0,184,255,0.1);
+  --radius: 10px;
 }
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* Background grid */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Header */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(10,10,15,0.85);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.logo {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: -0.5px;
-}
-
-.logo span { color: var(--text-dim); font-weight: 400; }
-
-.status-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.status-pill.online { background: rgba(0,229,160,0.12); color: var(--accent); }
-.status-pill.offline { background: rgba(255,71,87,0.12); color: var(--error); }
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.header-right {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.refresh-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-family: 'DM Sans', sans-serif;
-  transition: all 0.2s;
-}
-
-.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-/* Main Layout */
-.main {
-  position: relative;
-  z-index: 1;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto 1fr;
-  gap: 16px;
-}
-
-/* Cards */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: border-color 0.3s;
-}
-
-.card:hover { border-color: rgba(0,229,160,0.3); }
-
-.card-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface2);
-}
-
-.card-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-dim);
-}
-
-.card-body { padding: 18px; }
-
-/* Agents Grid */
-.agents-card { grid-column: 1 / -1; }
-
-.agents-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.agent-tile {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  transition: all 0.3s;
-  cursor: default;
-}
-
-.agent-tile:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 20px var(--glow);
-  transform: translateY(-2px);
-}
-
-.agent-tile .name {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.agent-tile .icon { font-size: 18px; }
-
-.agent-tile .detail {
-  font-size: 12px;
-  color: var(--text-dim);
-  line-height: 1.5;
-}
-
-.agent-tile .status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  margin-top: 8px;
-}
-
-.status-badge.ok { background: rgba(0,229,160,0.15); color: var(--success); }
-.status-badge.degraded { background: rgba(255,184,0,0.15); color: var(--warning); }
-.status-badge.error { background: rgba(255,71,87,0.15); color: var(--error); }
-
-/* Knowledge Panel */
-.knowledge-card { grid-column: 1; }
-
-.knowledge-form { display: flex; flex-direction: column; gap: 10px; }
-
-.knowledge-form textarea {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 12px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
-  resize: vertical;
-  min-height: 100px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.knowledge-form textarea:focus { border-color: var(--accent); }
-
-.knowledge-form input {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 10px 12px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  outline: none;
-}
-
-.knowledge-form input:focus { border-color: var(--accent); }
-
-.knowledge-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: var(--bg);
-}
-
-.btn-primary:hover {
-  box-shadow: 0 0 20px var(--glow);
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background: var(--surface2);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-
-.btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
-
-.btn-opus {
-  background: rgba(212,160,255,0.15);
-  color: var(--opus);
-  border: 1px solid rgba(212,160,255,0.3);
-}
-
-.btn-opus:hover { background: rgba(212,160,255,0.25); }
-
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Chat / Code Panel */
-.interact-card { grid-column: 2; grid-row: 2 / 4; }
-
-.tabs {
-  display: flex;
-  gap: 0;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface2);
-}
-
-.tab {
-  padding: 10px 16px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 500;
-  color: var(--text-dim);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-
-.chat-messages {
-  height: 340px;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chat-messages::-webkit-scrollbar { width: 4px; }
-.chat-messages::-webkit-scrollbar-track { background: transparent; }
-.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-.msg {
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  line-height: 1.6;
-  max-width: 90%;
-  animation: fadeIn 0.3s;
-}
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-.msg.user {
-  background: rgba(0,184,255,0.12);
-  border: 1px solid rgba(0,184,255,0.2);
-  align-self: flex-end;
-  color: var(--accent2);
-}
-
-.msg.bot {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  align-self: flex-start;
-}
-
-.msg.system {
-  background: rgba(212,160,255,0.08);
-  border: 1px solid rgba(212,160,255,0.15);
-  align-self: center;
-  font-size: 12px;
-  color: var(--opus);
-  font-style: italic;
-}
-
-.msg pre {
-  background: var(--bg);
-  padding: 10px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin-top: 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.chat-input-row {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-}
-
-.chat-input {
-  flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 10px 14px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
-  outline: none;
-}
-
-.chat-input:focus { border-color: var(--accent); }
-
-/* Queue Panel */
-.queue-card { grid-column: 1; }
-
-.queue-list { display: flex; flex-direction: column; gap: 8px; }
-
-.queue-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--surface2);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-size: 13px;
-}
-
-.queue-item .q-agent {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(0,184,255,0.1);
-  color: var(--accent2);
-}
-
-.queue-item .q-task {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-dim);
-}
-
-.queue-item .q-time {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 30px;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-/* File Upload */
-.file-upload-area {
-  border: 2px dashed var(--border);
-  border-radius: 10px;
-  padding: 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  margin-top: 10px;
-}
-
-.file-upload-area:hover {
-  border-color: var(--accent);
-  background: var(--glow);
-}
-
-.file-upload-area input { display: none; }
-
-/* Results / Log */
-.result-box {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--text-dim);
-  max-height: 200px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.6;
-}
-
-/* Loading */
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border);
-  border-top: 2px solid var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Responsive */
-@media (max-width: 900px) {
-  .main {
-    grid-template-columns: 1fr;
-  }
-  .agents-card, .interact-card, .knowledge-card, .queue-card {
-    grid-column: 1;
-    grid-row: auto;
-  }
-}
-
-/* Select */
-select {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 8px 12px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  outline: none;
-  cursor: pointer;
-}
-
-select:focus { border-color: var(--accent); }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+
+/* ─── HEADER ─── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:100}
+.h-left{display:flex;align-items:center;gap:12px}
+.logo{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)}
+.logo span{color:var(--text-muted);font-weight:400;font-size:12px}
+.pill{padding:3px 10px;border-radius:12px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px}
+.pill.on{background:rgba(0,229,160,0.1);color:var(--accent)}
+.pill.off{background:rgba(255,71,87,0.1);color:var(--error)}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.h-right{display:flex;align-items:center;gap:8px}
+.h-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;transition:.2s}
+.h-btn:hover{border-color:var(--accent);color:var(--accent)}
+.uptime{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)}
+
+/* ─── LAYOUT ─── */
+.app{display:flex;flex:1;overflow:hidden}
+
+/* ─── SIDEBAR ─── */
+.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s}
+.sidebar.collapsed{width:48px}
+.sidebar.collapsed .sb-hide{display:none}
+.sb-section{padding:8px}
+.sb-title{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);padding:8px 10px 4px;font-family:'JetBrains Mono',monospace}
+.sb-btn{width:100%;background:none;border:none;color:var(--text-dim);padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;text-align:left;display:flex;align-items:center;gap:8px;transition:.15s;font-family:'DM Sans',sans-serif}
+.sb-btn:hover{background:var(--surface2);color:var(--text)}
+.sb-btn.active{background:var(--glow);color:var(--accent)}
+.sb-btn .icon{width:20px;text-align:center;flex-shrink:0}
+.sb-divider{height:1px;background:var(--border);margin:4px 8px}
+.new-chat-btn{margin:8px;padding:8px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.new-chat-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.chat-list{flex:1;overflow-y:auto;padding:4px 8px}
+.chat-item{padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:.15s;display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.chat-item:hover{background:var(--surface2);color:var(--text)}
+.chat-item.active{background:var(--glow);color:var(--accent)}
+.chat-item .del{opacity:0;cursor:pointer;color:var(--error);font-size:14px;transition:.15s}
+.chat-item:hover .del{opacity:.7}
+.chat-item .del:hover{opacity:1}
+.chat-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+
+/* ─── MAIN CONTENT ─── */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* ─── PANELS ─── */
+.panel{display:none;flex:1;flex-direction:column;overflow:hidden}
+.panel.active{display:flex}
+
+/* ─── CHAT PANEL ─── */
+.chat-top{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);flex-shrink:0}
+.chat-top select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:6px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif}
+.chat-top select:focus{border-color:var(--accent)}
+.chat-top label{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{padding:10px 14px;border-radius:var(--radius);font-size:14px;line-height:1.65;max-width:85%;animation:fadeIn .25s;position:relative}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{background:rgba(0,184,255,0.08);border:1px solid rgba(0,184,255,0.15);align-self:flex-end;color:var(--accent2)}
+.msg.bot{background:var(--surface2);border:1px solid var(--border);align-self:flex-start}
+.msg.system{background:rgba(196,144,255,0.06);border:1px solid rgba(196,144,255,0.1);align-self:center;font-size:12px;color:var(--opus);font-style:italic}
+.msg pre{background:var(--bg);padding:10px;border-radius:6px;overflow-x:auto;margin:8px 0 4px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5;position:relative}
+.msg code{font-family:'JetBrains Mono',monospace;font-size:12px}
+.msg-actions{display:flex;gap:4px;margin-top:6px}
+.msg-btn{background:none;border:1px solid var(--border);color:var(--text-muted);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;transition:.15s;font-family:'JetBrains Mono',monospace}
+.msg-btn:hover{border-color:var(--accent);color:var(--accent)}
+.msg .audio-player{margin-top:8px}
+.msg .img-preview{max-width:300px;border-radius:8px;margin-top:8px;cursor:pointer}
+.thinking{animation:thinkPulse 1.5s ease-in-out infinite}
+@keyframes thinkPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.think-spin{display:inline-block;width:10px;height:10px;border:2px solid var(--opus);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.think-time{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--accent);font-style:normal}
+.chat-input-area{padding:10px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;resize:none;min-height:42px;max-height:120px;line-height:1.5}
+.chat-input:focus{border-color:var(--accent)}
+.send-btn{background:var(--accent);border:none;color:var(--bg);width:42px;height:42px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.send-btn:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.upload-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);width:42px;height:42px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ─── MONITOR PANEL ─── */
+.monitor-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;overflow-y:auto}
+.m-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.m-card-header{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;justify-content:space-between;align-items:center}
+.m-card-title{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)}
+.m-card-body{padding:14px}
+.gpu-bar-wrap{margin:8px 0}
+.gpu-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.gpu-bar{height:8px;background:var(--surface3);border-radius:4px;overflow:hidden}
+.gpu-bar-fill{height:100%;border-radius:4px;transition:width .5s;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.gpu-bar-fill.hot{background:linear-gradient(90deg,var(--warning),var(--error))}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat-item{text-align:center}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent)}
+.stat-label{font-size:11px;color:var(--text-muted);margin-top:2px}
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.agent-tile{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:.2s}
+.agent-tile:hover{border-color:rgba(0,229,160,.3)}
+.agent-tile .a-name{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+.agent-tile .a-info{font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.4}
+.badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin-top:5px}
+.badge.ok{background:rgba(0,229,160,.12);color:var(--success)}
+.badge.degraded{background:rgba(255,184,0,.12);color:var(--warning)}
+.badge.error{background:rgba(255,71,87,.12);color:var(--error)}
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);max-height:250px;overflow-y:auto;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.queue-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:6px;margin-bottom:6px;font-size:12px;border:1px solid var(--border)}
+.q-badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600}
+
+/* ─── KNOWLEDGE PANEL ─── */
+.know-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;overflow-y:auto;flex:1}
+.know-grid .m-card{display:flex;flex-direction:column}
+.know-grid .m-card-body{flex:1;display:flex;flex-direction:column}
+.know-form{display:flex;flex-direction:column;gap:8px;flex:1}
+.know-form textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;resize:none;outline:none;min-height:120px}
+.know-form textarea:focus{border-color:var(--accent)}
+.know-form input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif}
+.know-form input:focus{border-color:var(--accent)}
+.know-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.know-btns{display:flex;gap:6px}
+.drop-zone{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:.3s;color:var(--text-muted);font-size:13px;margin-top:8px}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:var(--glow);color:var(--accent)}
+.know-results{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text-dim);max-height:200px;overflow-y:auto;font-family:'JetBrains Mono',monospace;white-space:pre-wrap;line-height:1.5}
+.know-catalog{overflow-y:auto;flex:1}
+.know-doc{padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between}
+.know-doc:last-child{border:none}
+
+/* ─── GITHUB PANEL ─── */
+.gh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;overflow-y:auto;flex:1}
+.gh-form{display:flex;flex-direction:column;gap:8px}
+.gh-form textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;resize:none;outline:none;min-height:200px}
+.gh-form textarea:focus{border-color:var(--accent)}
+.gh-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gh-history-item{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;display:flex;gap:8px;align-items:center}
+.gh-sha{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:11px}
+
+/* ─── BTN ─── */
+.btn{padding:8px 16px;border-radius:6px;border:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:var(--bg)}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent2);color:var(--accent2)}
+.btn-opus{background:rgba(196,144,255,0.12);color:var(--opus);border:1px solid rgba(196,144,255,.25)}
+.btn-opus:hover{background:rgba(196,144,255,0.2)}
+.btn-danger{background:rgba(255,71,87,.1);color:var(--error);border:1px solid rgba(255,71,87,.2)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.empty{text-align:center;padding:30px;color:var(--text-muted);font-size:13px}
+
+/* ─── PREVIEW IFRAME ─── */
+.preview-frame{width:100%;border:none;border-radius:6px;background:#fff;margin-top:8px}
+
+/* ─── MODAL ─── */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-title{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--accent)}
+.modal-close{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{color:var(--text)}
+.modal-body{display:flex;flex-direction:column;gap:12px}
+.setting-group{display:flex;flex-direction:column;gap:6px}
+.setting-label{font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+.setting-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;outline:none}
+.setting-input:focus{border-color:var(--accent)}
+.setting-radio{display:flex;gap:12px;flex-wrap:wrap}
+.radio-option{display:flex;align-items:center;gap:6px;cursor:pointer}
+.radio-option input[type="radio"]{appearance:none;width:16px;height:16px;border:2px solid var(--border);border-radius:50%;background:var(--bg);cursor:pointer}
+.radio-option input[type="radio"]:checked{border-color:var(--accent);background:var(--accent)}
+.radio-option label{font-size:12px;cursor:pointer}
+.file-info{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:768px){.sidebar{width:200px}.monitor-grid,.know-grid,.gh-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.sidebar{position:absolute;z-index:99;height:100%}.sidebar.collapsed{width:0;border:none}}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left">
-    <div class="logo">POD MAESTRO <span>v1.0</span></div>
-    <div class="status-pill online" id="mainStatus">
-      <div class="status-dot"></div>
-      <span>LOADING...</span>
-    </div>
+  <div class="h-left">
+    <div class="logo">POD MAESTRO <span>v2.0</span></div>
+    <div class="pill on" id="mainPill"><div class="dot"></div><span>LOADING</span></div>
+    <div class="pill off" id="opusPill"><span>OPUS: ...</span></div>
+    <div class="uptime" id="uptimeEl"></div>
   </div>
-  <div class="header-right">
-    <div id="opusStatus" class="status-pill offline">
-      <span>OPUS: ...</span>
-    </div>
-    <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+  <div class="h-right">
+    <button class="h-btn" onclick="refreshAll()" title="Refresh">⟳</button>
+    <button class="h-btn" onclick="openSettings()" title="Settings">⚙️</button>
+    <button class="h-btn" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
+    <button class="h-btn" onclick="showShortcuts()" title="Shortcuts">?</button>
   </div>
 </div>
 
-<!-- MAIN -->
-<div class="main">
-
-  <!-- AGENTS ROW -->
-  <div class="card agents-card">
-    <div class="card-header">
-      <div class="card-title">⚡ Agentes</div>
-      <div id="agentCount" style="font-size:12px;color:var(--text-dim)"></div>
+<!-- MODAL SETTINGS -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Configuración</div>
+      <button class="modal-close" onclick="closeSettings()">×</button>
     </div>
-    <div class="card-body">
-      <div class="agents-grid" id="agentsGrid">
-        <div class="empty-state">Cargando agentes...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- KNOWLEDGE -->
-  <div class="card knowledge-card">
-    <div class="card-header">
-      <div class="card-title">🧠 Base de Conocimiento</div>
-      <div id="docsCount" style="font-size:12px;color:var(--text-dim)">0 docs</div>
-    </div>
-    <div class="card-body">
-      <div class="knowledge-form">
-        <textarea id="knowledgeText" placeholder="Pega aquí texto, documentos, información que quieras guardar en la memoria..."></textarea>
-        <div class="knowledge-meta">
-          <input id="knowledgeSource" placeholder="Fuente (ej: LISR, AdminLife)" />
-          <input id="knowledgeType" placeholder="Tipo (ej: proyecto, ley, nota)" />
+    <div class="modal-body">
+      <div class="setting-group">
+        <div class="setting-label">Modo de Conexión</div>
+        <div class="setting-radio">
+          <div class="radio-option">
+            <input type="radio" id="modeServer" name="connectionMode" value="server" checked>
+            <label for="modeServer">Servidor (RunPod)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="modeLocal" name="connectionMode" value="local">
+            <label for="modeLocal">Local (localhost:8888)</label>
+          </div>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary" onclick="addKnowledge()" id="addKnowledgeBtn">+ Agregar</button>
-          <button class="btn btn-secondary" onclick="uploadFile()">📄 Subir Archivo</button>
-        </div>
-        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.json,.csv" onchange="handleFile(event)" style="display:none">
       </div>
-      <div id="knowledgeResult" class="result-box" style="display:none"></div>
-    </div>
-  </div>
-
-  <!-- QUEUE -->
-  <div class="card queue-card">
-    <div class="card-header">
-      <div class="card-title">📋 Cola de Trabajos</div>
-      <div id="queueStats" style="font-size:12px;color:var(--text-dim)"></div>
-    </div>
-    <div class="card-body">
-      <div class="queue-list" id="queueList">
-        <div class="empty-state">Sin trabajos en cola</div>
+      <div class="setting-group">
+        <div class="setting-label">URL del Servidor</div>
+        <input type="text" id="serverUrl" class="setting-input" placeholder="https://xllc1fioyr3x27-8888.proxy.runpod.net">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-secondary" onclick="closeSettings()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- INTERACT -->
-  <div class="card interact-card">
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('chat')">💬 Chat</div>
-      <div class="tab" onclick="switchTab('code')">⌨️ Código</div>
-      <div class="tab" onclick="switchTab('orchestrate')">🎯 Orquestar</div>
+<!-- APP -->
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sb-section sb-hide">
+      <div class="sb-title">Navegación</div>
+      <button class="sb-btn active" onclick="showPanel('chat')" data-panel="chat"><span class="icon">💬</span><span class="sb-hide">Chat</span></button>
+      <button class="sb-btn" onclick="showPanel('monitor')" data-panel="monitor"><span class="icon">📊</span><span class="sb-hide">Monitor</span></button>
+      <button class="sb-btn" onclick="showPanel('knowledge')" data-panel="knowledge"><span class="icon">🧠</span><span class="sb-hide">Conocimiento</span></button>
+      <button class="sb-btn" onclick="showPanel('github')" data-panel="github"><span class="icon">🐙</span><span class="sb-hide">GitHub</span></button>
     </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section sb-hide">
+      <div class="sb-title">Conversaciones</div>
+      <button class="new-chat-btn" onclick="newChat()">+ Nueva Conversación</button>
+    </div>
+    <div class="chat-list sb-hide" id="chatList"></div>
+  </div>
 
-    <!-- CHAT TAB -->
-    <div class="tab-content active" id="tab-chat">
-      <div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)">
-        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-dim);text-transform:uppercase">Agente:</span>
-        <select id="chatAgent" style="flex:1">
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ═══ CHAT PANEL ═══ -->
+    <div class="panel active" id="panel-chat">
+      <div class="chat-top">
+        <label>Agente:</label>
+        <select id="chatAgent">
           <option value="chat">📚 Consulta (RAG + Qwen 32B)</option>
-          <option value="code">⌨️ Código (Qwen Coder)</option>
-          <option value="opus">🎯 Opus 4.6 (Director)</option>
+          <option value="code">⌨️ Código (Qwen)</option>
+          <option value="opus">🎯 Opus 4.6</option>
           <option value="voice">🎙️ Voz (TTS)</option>
           <option value="image">🎨 Imagen (ComfyUI)</option>
         </select>
+        <label>Proyecto:</label>
+        <select id="chatProject"><option value="">— Sin proyecto —</option></select>
+        <div style="flex:1"></div>
+        <button class="btn btn-sm btn-secondary" onclick="exportChat()">📥 Export</button>
+        <button class="btn btn-sm btn-danger" onclick="clearChat()">🗑 Limpiar</button>
       </div>
-      <div class="chat-messages" id="chatMessages">
-        <div class="msg system">Pod Maestro listo. Selecciona un agente y pregunta.</div>
-      </div>
-      <div class="chat-input-row">
-        <input class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendChat()" />
-        <button class="btn btn-primary" onclick="sendChat()">→</button>
+      <div class="messages" id="messages"></div>
+      <div class="chat-input-area">
+        <div class="input-row">
+          <button class="upload-btn" onclick="document.getElementById('audioUpload').click()" title="Subir audio para transcribir">🎤</button>
+          <input type="file" id="audioUpload" accept="audio/*" onchange="transcribeAudio(event)" style="display:none">
+          <button class="upload-btn" onclick="document.getElementById('fileUpload').click()" title="Subir archivo para leer">📄</button>
+          <input type="file" id="fileUpload" accept=".txt,.md,.json,.csv,.pdf,.docx,.doc,.rtf" onchange="uploadFile(event)" style="display:none">
+          <textarea class="chat-input" id="chatInput" placeholder="Escribe tu mensaje o sube un archivo... (Enter=enviar, Shift+Enter=nueva línea)" rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">→</button>
+        </div>
       </div>
     </div>
 
-    <!-- CODE TAB -->
-    <div class="tab-content" id="tab-code">
-      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="codeModel">
-            <option value="auto">Auto</option>
-            <option value="qwen2.5:32b">Qwen 2.5 32B</option>
-            <option value="qwen2.5-coder:7b">Qwen Coder 7B</option>
-          </select>
+    <!-- ═══ MONITOR PANEL ═══ -->
+    <div class="panel" id="panel-monitor">
+      <div class="monitor-grid">
+        <!-- GPU -->
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">🔥 GPU</div><div id="gpuName" style="font-size:11px;color:var(--text-dim)"></div></div>
+          <div class="m-card-body" id="gpuBody">
+            <div class="gpu-bar-wrap"><div class="gpu-bar-label"><span>VRAM</span><span id="vramText">--</span></div><div class="gpu-bar"><div class="gpu-bar-fill" id="vramBar" style="width:0%"></div></div></div>
+            <div class="gpu-bar-wrap"><div class="gpu-bar-label"><span>GPU Util</span><span id="gpuUtilText">--</span></div><div class="gpu-bar"><div class="gpu-bar-fill" id="gpuUtilBar" style="width:0%"></div></div></div>
+            <div class="gpu-bar-wrap"><div class="gpu-bar-label"><span>Temp</span><span id="gpuTempText">--</span></div><div class="gpu-bar"><div class="gpu-bar-fill" id="gpuTempBar" style="width:0%"></div></div></div>
+          </div>
         </div>
-        <textarea id="codePrompt" placeholder="Describe qué código necesitas..." style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;min-height:80px;outline:none"></textarea>
-        <button class="btn btn-primary" onclick="generateCode()" id="codeBtn">⚡ Generar Código</button>
-        <div id="codeResult" class="result-box" style="display:none;max-height:400px"></div>
+        <!-- Stats -->
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">📈 Stats (7 días)</div></div>
+          <div class="m-card-body">
+            <div class="stat-grid" id="statsGrid">
+              <div class="stat-item"><div class="stat-val" id="statJobs">-</div><div class="stat-label">Jobs</div></div>
+              <div class="stat-item"><div class="stat-val" id="statTokens">-</div><div class="stat-label">Tokens</div></div>
+              <div class="stat-item"><div class="stat-val" id="statMsgs">-</div><div class="stat-label">Mensajes</div></div>
+              <div class="stat-item"><div class="stat-val" id="statFiles">-</div><div class="stat-label">Archivos</div></div>
+              <div class="stat-item"><div class="stat-val" id="statKnow">-</div><div class="stat-label">Knowledge</div></div>
+              <div class="stat-item"><div class="stat-val" id="statPushes">-</div><div class="stat-label">Pushes</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Agents -->
+        <div class="m-card" style="grid-column:1/-1">
+          <div class="m-card-header"><div class="m-card-title">⚡ Agentes</div><div id="agentCount" style="font-size:11px;color:var(--text-dim)"></div></div>
+          <div class="m-card-body"><div class="agent-grid" id="agentGrid"></div></div>
+        </div>
+        <!-- Queue -->
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">📋 Cola</div><div id="queueStats" style="font-size:11px;color:var(--text-dim)"></div></div>
+          <div class="m-card-body" id="queueBody"><div class="empty">Sin trabajos</div></div>
+        </div>
+        <!-- Logs -->
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">📜 Logs</div><button class="btn btn-sm btn-secondary" onclick="loadLogs()">⟳</button></div>
+          <div class="m-card-body"><div class="log-box" id="logBox">Cargando logs...</div></div>
+        </div>
+        <!-- Models -->
+        <div class="m-card" style="grid-column:1/-1">
+          <div class="m-card-header"><div class="m-card-title">🤖 Modelos Ollama</div></div>
+          <div class="m-card-body"><div id="modelsGrid" class="agent-grid"></div></div>
+        </div>
       </div>
     </div>
 
-    <!-- ORCHESTRATE TAB -->
-    <div class="tab-content" id="tab-orchestrate">
-      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <div class="msg system" style="align-self:stretch;text-align:center;margin:0">
-          Opus 4.6 planifica → Agentes locales ejecutan
+    <!-- ═══ KNOWLEDGE PANEL ═══ -->
+    <div class="panel" id="panel-knowledge">
+      <div class="know-grid">
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">➕ Agregar Conocimiento</div></div>
+          <div class="m-card-body">
+            <div class="know-form">
+              <textarea id="knowText" placeholder="Pega texto, documentos, leyes, información..."></textarea>
+              <div class="know-meta">
+                <input id="knowSource" placeholder="Fuente (ej: LISR, AdminLife)">
+                <input id="knowType" placeholder="Tipo (ej: proyecto, ley, nota)">
+              </div>
+              <div class="know-btns">
+                <button class="btn btn-primary" onclick="addKnowledge()" id="knowBtn">+ Agregar</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('fileUpload').click()">📄 Archivo</button>
+                <input type="file" id="fileUpload" accept=".txt,.md,.json,.csv,.pdf" onchange="uploadKnowledge(event)" style="display:none">
+              </div>
+              <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileUpload').click()">
+                📂 Arrastra archivos aquí o haz click
+              </div>
+              <div id="knowResult" class="know-results" style="display:none"></div>
+            </div>
+          </div>
         </div>
-        <textarea id="orchPrompt" placeholder="Instrucción compleja para Opus... (ej: Crea un componente React para Mirror IA con catálogo de peinados, thumbnails, filtros por estilo, y API endpoint en Flask)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;min-height:100px;outline:none"></textarea>
-        <button class="btn btn-opus" onclick="orchestrate()" id="orchBtn">🎯 Orquestar con Opus</button>
-        <div id="orchResult" class="result-box" style="display:none;max-height:400px"></div>
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">🔍 Buscar en Base</div><div id="knowCount" style="font-size:11px;color:var(--text-dim)">0 docs</div></div>
+          <div class="m-card-body" style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:6px">
+              <input id="knowSearch" placeholder="Buscar..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;outline:none" onkeydown="if(event.key==='Enter')searchKnowledge()">
+              <button class="btn btn-sm btn-secondary" onclick="searchKnowledge()">🔍</button>
+            </div>
+            <div id="knowSearchResult" class="know-results" style="display:none"></div>
+            <div class="sb-title" style="padding:4px 0">Catálogo</div>
+            <div class="know-catalog" id="knowCatalog"><div class="empty">Sin documentos</div></div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- ═══ GITHUB PANEL ═══ -->
+    <div class="panel" id="panel-github">
+      <div class="gh-grid">
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">🚀 Push a GitHub</div></div>
+          <div class="m-card-body">
+            <div class="gh-form">
+              <div class="gh-row">
+                <select id="ghBranch"><option>main</option></select>
+                <input id="ghPath" placeholder="Ruta: ej orquestador-lean/utils/my_file.py" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;outline:none">
+              </div>
+              <input id="ghMsg" placeholder="Commit message (auto si vacío)" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;outline:none">
+              <textarea id="ghContent" placeholder="Contenido del archivo..."></textarea>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-primary" onclick="pushToGithub()" id="ghBtn">🚀 Push</button>
+                <button class="btn btn-secondary" onclick="pasteFromChat()">📋 Pegar último código</button>
+              </div>
+              <div id="ghResult" class="know-results" style="display:none"></div>
+            </div>
+          </div>
+        </div>
+        <div class="m-card">
+          <div class="m-card-header"><div class="m-card-title">📜 Historial de Pushes</div></div>
+          <div class="m-card-body" style="overflow-y:auto">
+            <div id="ghHistory"><div class="empty">Sin pushes</div></div>
+          </div>
+        </div>
+        <div class="m-card" style="grid-column:1/-1">
+          <div class="m-card-header"><div class="m-card-title">👁️ Preview</div>
+            <div style="display:flex;gap:6px"><button class="btn btn-sm btn-primary" onclick="createPreviewFromGH()">▶ Preview</button><button class="btn btn-sm btn-secondary" onclick="loadPreviews()">⟳</button></div>
+          </div>
+          <div class="m-card-body">
+            <div id="previewList"></div>
+            <iframe class="preview-frame" id="previewFrame" style="display:none;height:400px"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-
 </div>
 
+<!-- AUDIO NOTIFICATION -->
+<audio id="notifSound" preload="auto"><source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczIjeBrrDFdEYwO3Ger8WATDEyPH2er8V7SjI0N3yer8V2TTRVKW6er8VwUT5TG3Oer8V=" type="audio/wav"></audio>
+
 <script>
-const API = window.location.origin;
+// ═══════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════
+let API = window.location.origin;
+let settings = {
+  connectionMode: 'server',
+  serverUrl: window.location.origin
+};
 
-// ─── STATUS ───
-async function refreshAll() {
-  try {
-    const r = await fetch(`${API}/api/status`);
-    const d = await r.json();
+// Cargar configuración desde localStorage
+function loadSettings() {
+  const saved = localStorage.getItem('podMaestroSettings');
+  if (saved) {
+    settings = { ...settings, ...JSON.parse(saved) };
+  }
+  updateAPI();
+}
 
-    // Main status
-    const main = document.getElementById('mainStatus');
-    main.className = `status-pill ${d.orquestador === 'online' ? 'online' : 'offline'}`;
-    main.querySelector('span').textContent = d.orquestador === 'online' ? 'ONLINE' : 'OFFLINE';
-
-    // Opus
-    const opus = document.getElementById('opusStatus');
-    opus.className = `status-pill ${d.opus === 'connected' ? 'online' : 'offline'}`;
-    opus.querySelector('span').textContent = `OPUS: ${d.opus === 'connected' ? '✓' : '✗'}`;
-
-    // Queue
-    const q = d.queue;
-    document.getElementById('queueStats').textContent =
-      `${q.running} corriendo · ${q.queued} en cola · ${q.completed} completados`;
-
-    // Agents
-    const grid = document.getElementById('agentsGrid');
-    const icons = { codigo: '⌨️', voz: '🎙️', imagen: '🎨', video: '🎬', consulta: '📚' };
-    const agents = d.agents;
-    let html = '';
-    let okCount = 0;
-
-    for (const [name, info] of Object.entries(agents)) {
-      const s = info.status || 'unknown';
-      if (s === 'ok') okCount++;
-      let details = [];
-
-      if (info.ollama) details.push(`Ollama: ${info.ollama}`);
-      if (info.models && info.models.length) details.push(`Models: ${info.models.join(', ')}`);
-      if (info.comfyui) details.push(`ComfyUI: ${info.comfyui}`);
-      if (info.ffmpeg) details.push(`ffmpeg: ${info.ffmpeg}`);
-      if (info.chromadb) details.push(`ChromaDB: ${info.chromadb}`);
-      if (info.docs !== undefined) details.push(`Docs: ${info.docs}`);
-      if (info.voices && info.voices.length) details.push(`Voces: ${info.voices.join(', ')}`);
-      if (info.model) details.push(`Model: ${info.model}`);
-      if (info.nota) details.push(info.nota);
-
-      // Update docs count
-      if (name === 'consulta' && info.docs !== undefined) {
-        document.getElementById('docsCount').textContent = `${info.docs} docs`;
-      }
-
-      html += `
-        <div class="agent-tile">
-          <div class="name"><span class="icon">${icons[name] || '🤖'}</span> ${name}</div>
-          <div class="detail">${details.join('<br>')}</div>
-          <span class="status-badge ${s === 'ok' ? 'ok' : s === 'degraded' ? 'degraded' : 'error'}">${s}</span>
-        </div>`;
-    }
-    grid.innerHTML = html;
-    document.getElementById('agentCount').textContent = `${okCount}/${Object.keys(agents).length} activos`;
-
-  } catch (e) {
-    document.getElementById('mainStatus').className = 'status-pill offline';
-    document.getElementById('mainStatus').querySelector('span').textContent = 'ERROR';
-    console.error(e);
+function updateAPI() {
+  if (settings.connectionMode === 'local') {
+    API = 'http://localhost:8888';
+  } else {
+    API = settings.serverUrl || window.location.origin;
   }
 }
 
-// ─── TABS ───
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById(`tab-${name}`).classList.add('active');
+function saveSettings() {
+  const mode = document.querySelector('input[name="connectionMode"]:checked').value;
+  const serverUrl = document.getElementById('serverUrl').value.trim() || window.location.origin;
+  
+  settings = { connectionMode: mode, serverUrl };
+  localStorage.setItem('podMaestroSettings', JSON.stringify(settings));
+  updateAPI();
+  
+  closeSettings();
+  appendMsg('system', `⚙️ Configuración guardada. Modo: ${mode === 'local' ? 'Local' : 'Servidor'} | URL: ${API}`);
+  refreshAll();
 }
 
-// ─── CHAT ───
-async function sendChat() {
+function openSettings() {
+  // Cargar valores actuales
+  document.querySelector(`input[value="${settings.connectionMode}"]`).checked = true;
+  document.getElementById('serverUrl').value = settings.serverUrl;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function closeSettings() {
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════
+// VARIABLES GLOBALES
+// ═══════════════════════════════════════════
+let currentChat = null;
+let chats = {};
+let thinkTimer = null;
+let lastCodeResult = '';
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+async function init() {
+  loadSettings();
+  await loadChatsFromDB();
+  if (Object.keys(chats).length === 0) await newChat();
+  refreshAll();
+  loadProjects();
+  loadBranches();
+  setInterval(refreshStatus, 12000);
+  setupDragDrop();
+  setupKeyboard();
+}
+
+function setupKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (e.key === '?' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); showShortcuts(); }
+    if (e.key === 'n' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); newChat(); }
+    if (e.key === 'Escape') { closeSettings(); }
+  });
+  const input = document.getElementById('chatInput');
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+}
+
+function setupDragDrop() {
+  const zone = document.getElementById('dropZone');
+  ['dragenter','dragover'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.remove('dragover'); }));
+  zone.addEventListener('drop', ev => {
+    const files = ev.dataTransfer.files;
+    if (files.length) processFile(files[0]);
+  });
+
+  // Drag & drop en el input del chat
+  const chatInput = document.getElementById('chatInput');
+  ['dragenter','dragover'].forEach(e => chatInput.addEventListener(e, ev => { 
+    ev.preventDefault(); 
+    chatInput.style.borderColor = 'var(--accent)';
+  }));
+  ['dragleave'].forEach(e => chatInput.addEventListener(e, ev => { 
+    ev.preventDefault(); 
+    chatInput.style.borderColor = 'var(--border)';
+  }));
+  chatInput.addEventListener('drop', ev => {
+    ev.preventDefault();
+    chatInput.style.borderColor = 'var(--border)';
+    const files = ev.dataTransfer.files;
+    if (files.length) uploadFile({ target: { files } });
+  });
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sb-btn[data-panel]').forEach(b => b.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.querySelector(`.sb-btn[data-panel="${name}"]`).classList.add('active');
+  if (name === 'monitor') { refreshAll(); loadLogs(); loadModels(); }
+  if (name === 'knowledge') loadCatalog();
+  if (name === 'github') { loadGHHistory(); loadPreviews(); }
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+function showShortcuts() {
+  alert("Atajos de teclado:\n\nCtrl+N = Nueva conversación\nEnter = Enviar mensaje\nShift+Enter = Nueva línea\n? = Mostrar atajos\nEsc = Cerrar modal\n⚙️ = Configuración");
+}
+
+// ═══════════════════════════════════════════
+// UPLOAD FILE
+// ═══════════════════════════════════════════
+async function uploadFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const fileInfo = `📄 ${file.name} (${(file.size/1024).toFixed(1)}KB)`;
+  appendMsg('user', fileInfo);
+  startThinking('📄 Leyendo archivo');
+  
+  try {
+    let content = '';
+    
+    // Leer contenido según el tipo de archivo
+    if (file.type === 'application/pdf') {
+      // Para PDF necesitarías una librería como PDF.js, por simplicidad mostramos el nombre
+      content = `Archivo PDF: ${file.name} - Contenido no disponible en modo local`;
+    } else if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+      // Para Word necesitarías mammoth.js u otra librería
+      content = `Documento Word: ${file.name} - Contenido no disponible en modo local`;
+    } else {
+      // Para archivos de texto
+      content = await file.text();
+    }
+    
+    stopThinking();
+    
+    // Agregar el contenido al chat como mensaje del sistema
+    const summary = content.length > 2000 ? content.substring(0, 2000) + '...' : content;
+    appendMsg('bot', `📄 **Archivo leído: ${file.name}**\n\n${summary}`, '📄 Lector');
+    
+    // Opcional: agregar automáticamente al conocimiento
+    if (content && content !== `Archivo PDF: ${file.name} - Contenido no disponible en modo local`) {
+      try {
+        await fetch(`${API}/api/knowledge/add`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: content,
+            metadata: { source: file.name, type: 'archivo', uploaded: new Date().toISOString() }
+          })
+        });
+        appendMsg('system', `✅ Archivo agregado automáticamente al conocimiento`);
+      } catch (e) {
+        console.log('No se pudo agregar al conocimiento:', e);
+      }
+    }
+    
+  } catch (e) {
+    stopThinking();
+    appendMsg('bot', `❌ Error leyendo archivo: ${e.message}`, '📄 Lector');
+  }
+  
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════════
+// CHAT MANAGEMENT
+// ═══════════════════════════════════════════
+async function loadChatsFromDB() {
+  try {
+    const r = await fetch(`${API}/api/db/chats`);
+    const list = await r.json();
+    list.forEach(c => { chats[c.id] = c; });
+    if (list.length > 0) { currentChat = list[0].id; }
+    renderChatList();
+    if (currentChat) loadChatMessages(currentChat);
+  } catch(e) {
+    console.log('DB not ready, using local');
+    newChat();
+  }
+}
+
+async function newChat() {
+  try {
+    const r = await fetch(`${API}/api/db/chats`, { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name: 'Nueva conversación', agent: document.getElementById('chatAgent').value})
+    });
+    const d = await r.json();
+    const cid = d.chat_id;
+    chats[cid] = { id: cid, name: 'Nueva conversación', created_at: Date.now()/1000, messages: [] };
+    currentChat = cid;
+    renderChatList();
+    document.getElementById('messages').innerHTML = '<div class="msg system">Nueva conversación iniciada.</div>';
+  } catch(e) {
+    const cid = 'local_' + Date.now();
+    chats[cid] = { id: cid, name: 'Nueva conversación', messages: [] };
+    currentChat = cid;
+    renderChatList();
+    document.getElementById('messages').innerHTML = '<div class="msg system">Nueva conversación (modo local).</div>';
+  }
+}
+
+function renderChatList() {
+  const el = document.getElementById('chatList');
+  const sorted = Object.values(chats).sort((a,b) => (b.updated_at||b.created_at||0) - (a.updated_at||a.created_at||0));
+  el.innerHTML = sorted.map(c => `
+    <div class="chat-item ${c.id === currentChat ? 'active' : ''}" onclick="switchChat('${c.id}')">
+      <span class="chat-name">${c.name || 'Sin nombre'}</span>
+      <span class="del" onclick="event.stopPropagation();deleteChat('${c.id}')">×</span>
+    </div>
+  `).join('');
+}
+
+async function switchChat(cid) {
+  currentChat = cid;
+  renderChatList();
+  await loadChatMessages(cid);
+}
+
+async function loadChatMessages(cid) {
+  const container = document.getElementById('messages');
+  try {
+    const r = await fetch(`${API}/api/db/chats/${cid}`);
+    const d = await r.json();
+    if (d.name) chats[cid].name = d.name;
+    container.innerHTML = '';
+    if (d.messages && d.messages.length) {
+      d.messages.forEach(m => appendMsg(m.role, m.content, m.agent, false));
+    } else {
+      container.innerHTML = '<div class="msg system">Conversación vacía. Escribe algo o sube un archivo.</div>';
+    }
+  } catch(e) {
+    container.innerHTML = '<div class="msg system">Escribe algo o sube un archivo para comenzar.</div>';
+  }
+}
+
+async function deleteChat(cid) {
+  if (!confirm('¿Eliminar esta conversación?')) return;
+  try { await fetch(`${API}/api/db/chats/${cid}`, {method:'DELETE'}); } catch(e) {}
+  delete chats[cid];
+  if (currentChat === cid) {
+    const keys = Object.keys(chats);
+    currentChat = keys.length ? keys[0] : null;
+    if (!currentChat) await newChat();
+    else await loadChatMessages(currentChat);
+  }
+  renderChatList();
+}
+
+function clearChat() {
+  if (!confirm('¿Limpiar mensajes?')) return;
+  document.getElementById('messages').innerHTML = '<div class="msg system">Chat limpiado.</div>';
+  if (currentChat) deleteChat(currentChat);
+}
+
+function exportChat() {
+  const msgs = document.getElementById('messages');
+  let md = `# Chat Export - ${new Date().toLocaleString()}\n\n`;
+  msgs.querySelectorAll('.msg').forEach(m => {
+    if (m.classList.contains('user')) md += `**Tú:** ${m.textContent}\n\n`;
+    else if (m.classList.contains('bot')) md += `**Bot:** ${m.textContent}\n\n`;
+    else md += `_${m.textContent}_\n\n`;
+  });
+  const blob = new Blob([md], {type:'text/markdown'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `chat_${Date.now()}.md`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════════
+function appendMsg(type, text, agent='', save=true) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${type}`;
+
+  let html = formatText(text);
+
+  // Agent label for bot
+  if (type === 'bot' && agent) {
+    html = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace">${agent}</div>` + html;
+  }
+
+  // Action buttons for bot messages
+  if (type === 'bot') {
+    html += `<div class="msg-actions">
+      <button class="msg-btn" onclick="copyMsg(this)">📋 Copiar</button>
+      <button class="msg-btn" onclick="pushMsgToGH(this)">🐙 Push</button>
+    </div>`;
+  }
+
+  div.innerHTML = html;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
+  // Save to DB
+  if (save && currentChat) {
+    try {
+      fetch(`${API}/api/db/messages`, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({chat_id: currentChat, role: type, content: text, agent: agent})
+      }).catch(()=>{});
+    } catch(e) {}
+  }
+}
+
+function formatText(text) {
+  return text
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) =>
+      `<pre><code>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`)
+    .replace(/`([^`]+)`/g, '<code style="background:var(--bg);padding:1px 5px;border-radius:3px">$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function copyMsg(btn) {
+  const msg = btn.closest('.msg');
+  const text = msg.innerText.replace('📋 Copiar', '').replace('🐙 Push', '').trim();
+  navigator.clipboard.writeText(text);
+  btn.textContent = '✓ Copiado';
+  setTimeout(() => btn.textContent = '📋 Copiar', 1500);
+}
+
+function pushMsgToGH(btn) {
+  const msg = btn.closest('.msg');
+  const text = msg.innerText.replace('📋 Copiar', '').replace('🐙 Push', '').trim();
+  showPanel('github');
+  document.getElementById('ghContent').value = text;
+}
+
+// Thinking indicator
+function startThinking(agentName) {
+  stopThinking();
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg system thinking';
+  div.id = 'thinkingMsg';
+  div.innerHTML = `<span class="think-spin"></span>${agentName} procesando... <span class="think-time">0.0s</span>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  const start = Date.now();
+  thinkTimer = setInterval(() => {
+    const el = document.querySelector('.think-time');
+    if (el) el.textContent = ((Date.now()-start)/1000).toFixed(1)+'s';
+  }, 100);
+}
+
+function stopThinking() {
+  if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null; }
+  const el = document.getElementById('thinkingMsg');
+  if (el) el.remove();
+}
+
+// ═══════════════════════════════════════════
+// SEND MESSAGE
+// ═══════════════════════════════════════════
+async function sendMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
+  input.style.height = 'auto';
 
   const agent = document.getElementById('chatAgent').value;
-  const agentNames = { chat: '📚 Consulta', code: '⌨️ Código', opus: '🎯 Opus', voice: '🎙️ Voz', image: '🎨 Imagen' };
-  const endpoints = {
-    chat: '/api/chat',
-    code: '/api/generate/code',
-    opus: '/api/opus/ask',
-    voice: '/api/generate/voice',
-    image: '/api/generate/image'
-  };
+  const names = {chat:'📚 Consulta', code:'⌨️ Código', opus:'🎯 Opus', voice:'🎙️ Voz', image:'🎨 Imagen'};
+  const endpoints = {chat:'/api/chat', code:'/api/generate/code', opus:'/api/opus/ask', voice:'/api/generate/voice', image:'/api/generate/image'};
 
-  addMsg('user', text);
-  addMsg('system', `⏳ ${agentNames[agent]} procesando...`);
+  appendMsg('user', text);
+  startThinking(names[agent]);
+  document.getElementById('sendBtn').disabled = true;
+
+  // Auto-name first chat
+  if (chats[currentChat] && chats[currentChat].name === 'Nueva conversación') {
+    const shortName = text.substring(0, 40) + (text.length > 40 ? '...' : '');
+    chats[currentChat].name = shortName;
+    try { fetch(`${API}/api/db/chats/${currentChat}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:shortName})}); } catch(e){}
+    renderChatList();
+  }
 
   try {
     const r = await fetch(`${API}${endpoints[agent]}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: text })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt: text})
     });
     const d = await r.json();
-    removeLastMsg();
+    stopThinking();
 
     let resp = '';
     if (d.respuesta) resp = d.respuesta;
     else if (d.contenido) resp = d.contenido;
-    else if (d.archivo) resp = `✅ Archivo generado: ${d.archivo}`;
-    else if (d.archivos) resp = `✅ ${d.archivos.length} archivo(s): ${d.archivos.join(', ')}`;
+    else if (d.archivo) {
+      resp = `✅ Archivo generado: ${d.archivo}`;
+      if (d.archivo.match(/\.(wav|mp3|ogg)$/i)) {
+        resp += `\n<audio controls class="audio-player"><source src="${API}/api/outputs/${d.archivo}"></audio>`;
+      }
+      if (d.archivo.match(/\.(png|jpg|jpeg|webp)$/i)) {
+        resp += `\n<img class="img-preview" src="${API}/api/outputs/${d.archivo}" onclick="window.open(this.src)">`;
+      }
+    }
     else if (d.error) resp = `❌ ${d.error}`;
     else if (d.detail) resp = `❌ ${d.detail}`;
     else resp = JSON.stringify(d, null, 2);
 
-    const prefix = `[${agentNames[agent]}]\n`;
-    addMsg('bot', prefix + resp);
-  } catch (e) {
-    removeLastMsg();
-    addMsg('bot', `❌ Error: ${e.message}`);
-  }
-}
+    if (agent === 'code') lastCodeResult = resp;
+    appendMsg('bot', resp, names[agent]);
 
-function addMsg(type, text) {
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = `msg ${type}`;
+    // Notification sound
+    try { document.getElementById('notifSound').play(); } catch(e) {}
 
-  // Format code blocks
-  let formatted = text
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
-    .replace(/\n/g, '<br>');
-  div.innerHTML = formatted;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-}
-
-function removeLastMsg() {
-  const container = document.getElementById('chatMessages');
-  const msgs = container.querySelectorAll('.msg');
-  if (msgs.length) msgs[msgs.length - 1].remove();
-}
-
-// ─── CODE ───
-async function generateCode() {
-  const prompt = document.getElementById('codePrompt').value.trim();
-  if (!prompt) return;
-
-  const btn = document.getElementById('codeBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Generando...';
-
-  const result = document.getElementById('codeResult');
-  result.style.display = 'block';
-  result.textContent = 'Esperando respuesta de Qwen...';
-
-  try {
-    const model = document.getElementById('codeModel').value;
-    const r = await fetch(`${API}/api/generate/code`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, modelo: model })
-    });
-    const d = await r.json();
-    result.textContent = d.contenido || JSON.stringify(d, null, 2);
-  } catch (e) {
-    result.textContent = `Error: ${e.message}`;
+  } catch(e) {
+    stopThinking();
+    appendMsg('bot', `❌ Error: ${e.message}`, names[agent]);
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = '⚡ Generar Código';
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('chatInput').focus();
   }
 }
 
-// ─── ORCHESTRATE ───
-async function orchestrate() {
-  const prompt = document.getElementById('orchPrompt').value.trim();
-  if (!prompt) return;
-
-  const btn = document.getElementById('orchBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Opus planificando...';
-
-  const result = document.getElementById('orchResult');
-  result.style.display = 'block';
-  result.textContent = 'Enviando instrucción a Opus 4.6...';
-
-  try {
-    const r = await fetch(`${API}/api/orchestrate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ instruccion: prompt })
-    });
-    const d = await r.json();
-    let text = `Plan ID: ${d.plan_id}\n`;
-    text += `Resumen: ${d.plan?.resumen || ''}\n\n`;
-    if (d.plan?.subtareas) {
-      text += `Subtareas (${d.plan.subtareas.length}):\n`;
-      d.plan.subtareas.forEach(s => {
-        text += `  ${s.id}. [${s.agente}] ${s.tarea}\n`;
-      });
-    }
-    if (d.plan?.notas) text += `\nNotas: ${d.plan.notas}`;
-    result.textContent = text;
-
-    // Poll for completion
-    if (d.plan_id) pollPlan(d.plan_id);
-  } catch (e) {
-    result.textContent = `Error: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '🎯 Orquestar con Opus';
-  }
-}
-
-async function pollPlan(planId) {
-  const result = document.getElementById('orchResult');
-  let attempts = 0;
-  const interval = setInterval(async () => {
-    attempts++;
-    try {
-      const r = await fetch(`${API}/api/plans/${planId}`);
-      const d = await r.json();
-      let text = result.textContent + `\n--- Update ${attempts} ---\n`;
-      text += `Completed: ${d.completed}/${d.total_jobs} | Running: ${d.running} | Failed: ${d.failed}\n`;
-      d.jobs?.forEach(j => {
-        text += `  [${j.status}] ${j.agente}: ${j.tarea?.substring(0, 60)}\n`;
-        if (j.result_preview) text += `    → ${j.result_preview}\n`;
-        if (j.error) text += `    ✗ ${j.error}\n`;
-      });
-      result.textContent = text;
-      result.scrollTop = result.scrollHeight;
-
-      if (d.running === 0 && d.queued === 0) {
-        clearInterval(interval);
-        text += '\n✅ Plan completado!';
-        result.textContent = text;
-        refreshAll();
-      }
-    } catch (e) { /* ignore */ }
-    if (attempts > 60) clearInterval(interval);
-  }, 5000);
-}
-
-// ─── KNOWLEDGE ───
-async function addKnowledge() {
-  const text = document.getElementById('knowledgeText').value.trim();
-  if (!text) return;
-
-  const source = document.getElementById('knowledgeSource').value.trim();
-  const type = document.getElementById('knowledgeType').value.trim();
-  const btn = document.getElementById('addKnowledgeBtn');
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Guardando...';
-
-  const result = document.getElementById('knowledgeResult');
-  result.style.display = 'block';
-
-  try {
-    const metadata = {};
-    if (source) metadata.source = source;
-    if (type) metadata.type = type;
-
-    const r = await fetch(`${API}/api/knowledge/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, metadata })
-    });
-    const d = await r.json();
-    result.textContent = `✅ ${d.doc_id || 'Guardado'} | Total docs: ${d.total || '?'}`;
-    document.getElementById('knowledgeText').value = '';
-    document.getElementById('knowledgeSource').value = '';
-    document.getElementById('knowledgeType').value = '';
-    refreshAll();
-  } catch (e) {
-    result.textContent = `❌ Error: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '+ Agregar';
-  }
-}
-
-function uploadFile() {
-  document.getElementById('fileInput').click();
-}
-
-async function handleFile(event) {
+// Transcribe audio
+async function transcribeAudio(event) {
   const file = event.target.files[0];
   if (!file) return;
-
-  const result = document.getElementById('knowledgeResult');
-  result.style.display = 'block';
-  result.textContent = `Leyendo ${file.name}...`;
-
+  appendMsg('user', `🎤 Transcribiendo: ${file.name}`);
+  startThinking('🎙️ Whisper');
   try {
-    const text = await file.text();
-    // Split into chunks of ~2000 chars
-    const chunks = [];
-    const chunkSize = 2000;
-    for (let i = 0; i < text.length; i += chunkSize) {
-      chunks.push(text.substring(i, i + chunkSize));
-    }
-
-    let added = 0;
-    for (const chunk of chunks) {
-      const r = await fetch(`${API}/api/knowledge/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: chunk,
-          metadata: { source: file.name, chunk: added + 1 }
-        })
-      });
-      const d = await r.json();
-      if (d.doc_id) added++;
-      result.textContent = `Procesando ${file.name}... ${added}/${chunks.length} chunks`;
-    }
-
-    result.textContent = `✅ ${file.name}: ${added} chunks guardados`;
-    refreshAll();
-  } catch (e) {
-    result.textContent = `❌ Error: ${e.message}`;
+    const form = new FormData();
+    form.append('file', file);
+    const r = await fetch(`${API}/api/transcribe`, {method:'POST', body:form});
+    const d = await r.json();
+    stopThinking();
+    appendMsg('bot', d.texto || d.transcription || JSON.stringify(d), '🎙️ Whisper');
+  } catch(e) {
+    stopThinking();
+    appendMsg('bot', `❌ ${e.message}`);
   }
   event.target.value = '';
 }
 
-// ─── INIT ───
-refreshAll();
-setInterval(refreshAll, 15000);
+// ═══════════════════════════════════════════
+// STATUS / REFRESH
+// ═══════════════════════════════════════════
+async function refreshAll() { await refreshStatus(); }
+
+async function refreshStatus() {
+  try {
+    const r = await fetch(`${API}/api/status`);
+    const d = await r.json();
+
+    // Pills
+    const mp = document.getElementById('mainPill');
+    mp.className = `pill ${d.orquestador==='online'?'on':'off'}`;
+    mp.querySelector('span').textContent = d.orquestador==='online'?'ONLINE':'OFFLINE';
+    const op = document.getElementById('opusPill');
+    op.className = `pill ${d.opus==='connected'?'on':'off'}`;
+    op.querySelector('span').textContent = `OPUS: ${d.opus==='connected'?'✓':'✗'}`;
+
+    // Queue
+    const q = d.queue;
+    document.getElementById('queueStats').textContent = `${q.running}/${q.queued}/${q.completed}`;
+
+    // Agents
+    const icons = {codigo:'⌨️',voz:'🎙️',imagen:'🎨',video:'🎬',consulta:'📚'};
+    let ah = '', ok = 0;
+    for (const [n,info] of Object.entries(d.agents)) {
+      const s = info.status||'?';
+      if (s==='ok') ok++;
+      let det = [];
+      if (info.ollama) det.push(`Ollama: ${info.ollama}`);
+      if (info.models?.length) det.push(info.models.join(', '));
+      if (info.comfyui) det.push(`ComfyUI: ${info.comfyui}`);
+      if (info.ffmpeg) det.push(`ffmpeg: ${info.ffmpeg}`);
+      if (info.chromadb) det.push(`ChromaDB: ${info.chromadb}`);
+      if (info.docs!==undefined) { det.push(`${info.docs} docs`); document.getElementById('knowCount').textContent = `${info.docs} docs`; }
+      ah += `<div class="agent-tile"><div class="a-name">${icons[n]||'🤖'} ${n}</div><div class="a-info">${det.join(' · ')}</div><span class="badge ${s==='ok'?'ok':s==='degraded'?'degraded':'error'}">${s}</span></div>`;
+    }
+    document.getElementById('agentGrid').innerHTML = ah;
+    document.getElementById('agentCount').textContent = `${ok}/${Object.keys(d.agents).length}`;
+  } catch(e) {
+    document.getElementById('mainPill').className = 'pill off';
+    document.getElementById('mainPill').querySelector('span').textContent = 'OFFLINE';
+  }
+
+  // GPU
+  try {
+    const r = await fetch(`${API}/api/gpu`);
+    const g = await r.json();
+    if (!g.error) {
+      document.getElementById('gpuName').textContent = g.gpu_name;
+      document.getElementById('vramText').textContent = `${g.vram_used_mb}/${g.vram_total_mb} MB (${g.vram_pct}%)`;
+      document.getElementById('vramBar').style.width = g.vram_pct+'%';
+      document.getElementById('vramBar').className = `gpu-bar-fill ${g.vram_pct>85?'hot':''}`;
+      document.getElementById('gpuUtilText').textContent = g.gpu_util_pct+'%';
+      document.getElementById('gpuUtilBar').style.width = g.gpu_util_pct+'%';
+      document.getElementById('gpuTempText').textContent = g.temp_c+'°C';
+      document.getElementById('gpuTempBar').style.width = Math.min(g.temp_c,100)+'%';
+      document.getElementById('gpuTempBar').className = `gpu-bar-fill ${g.temp_c>75?'hot':''}`;
+    }
+  } catch(e) {}
+
+  // Uptime
+  try {
+    const r = await fetch(`${API}/api/uptime`);
+    const u = await r.json();
+    document.getElementById('uptimeEl').textContent = `⏱ ${u.formatted}`;
+  } catch(e) {}
+
+  // Stats
+  try {
+    const r = await fetch(`${API}/api/db/stats`);
+    const s = await r.json();
+    document.getElementById('statJobs').textContent = s.total_jobs;
+    document.getElementById('statTokens').textContent = s.total_tokens > 1000 ? (s.total_tokens/1000).toFixed(1)+'k' : s.total_tokens;
+    document.getElementById('statMsgs').textContent = s.total_messages;
+    document.getElementById('statFiles').textContent = s.total_files;
+    document.getElementById('statKnow').textContent = s.total_knowledge;
+    document.getElementById('statPushes').textContent = s.total_pushes;
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+// LOGS
+// ═══════════════════════════════════════════
+async function loadLogs() {
+  try {
+    const r = await fetch(`${API}/api/logs?lines=40`);
+    const d = await r.json();
+    document.getElementById('logBox').textContent = (d.lines||[]).join('\n');
+    document.getElementById('logBox').scrollTop = 9999;
+  } catch(e) { document.getElementById('logBox').textContent = 'Error loading logs'; }
+}
+
+// ═══════════════════════════════════════════
+// MODELS
+// ═══════════════════════════════════════════
+async function loadModels() {
+  try {
+    const r = await fetch(`${API}/api/models`);
+    const models = await r.json();
+    const el = document.getElementById('modelsGrid');
+    if (Array.isArray(models) && models.length) {
+      el.innerHTML = models.map(m => {
+        const gb = (m.size / 1e9).toFixed(1);
+        return `<div class="agent-tile"><div class="a-name">🤖 ${m.name}</div><div class="a-info">${gb} GB</div></div>`;
+      }).join('');
+    } else { el.innerHTML = '<div class="empty">No models found</div>'; }
+  } catch(e) { document.getElementById('modelsGrid').innerHTML = '<div class="empty">Error</div>'; }
+}
+
+// ═══════════════════════════════════════════
+// KNOWLEDGE
+// ═══════════════════════════════════════════
+async function addKnowledge() {
+  const text = document.getElementById('knowText').value.trim();
+  if (!text) return;
+  const src = document.getElementById('knowSource').value.trim();
+  const typ = document.getElementById('knowType').value.trim();
+  const btn = document.getElementById('knowBtn');
+  const res = document.getElementById('knowResult');
+  btn.disabled = true; btn.textContent = '⏳ Guardando...';
+  res.style.display = 'block';
+  try {
+    const metadata = {};
+    if (src) metadata.source = src;
+    if (typ) metadata.type = typ;
+    const r = await fetch(`${API}/api/knowledge/add`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, metadata})
+    });
+    const d = await r.json();
+    res.textContent = `✅ Guardado | ID: ${d.doc_id||'ok'} | Total: ${d.total||'?'}`;
+    document.getElementById('knowText').value = '';
+    document.getElementById('knowSource').value = '';
+    document.getElementById('knowType').value = '';
+    loadCatalog();
+  } catch(e) { res.textContent = `❌ ${e.message}`; }
+  finally { btn.disabled = false; btn.textContent = '+ Agregar'; }
+}
+
+async function uploadKnowledge(event) { processFile(event.target.files[0]); event.target.value = ''; }
+
+async function processFile(file) {
+  if (!file) return;
+  const res = document.getElementById('knowResult');
+  res.style.display = 'block';
+  res.textContent = `📄 Leyendo ${file.name}...`;
+  try {
+    const text = await file.text();
+    const chunks = [];
+    const sz = 2000;
+    for (let i = 0; i < text.length; i += sz) chunks.push(text.substring(i, i+sz));
+    let ok = 0;
+    for (const chunk of chunks) {
+      await fetch(`${API}/api/knowledge/add`, {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text: chunk, metadata:{source:file.name, chunk:ok+1}})
+      });
+      ok++;
+      res.textContent = `📄 ${file.name}: ${ok}/${chunks.length} chunks...`;
+    }
+    res.textContent = `✅ ${file.name}: ${ok} chunks guardados`;
+    loadCatalog();
+  } catch(e) { res.textContent = `❌ ${e.message}`; }
+}
+
+async function searchKnowledge() {
+  const q = document.getElementById('knowSearch').value.trim();
+  if (!q) return;
+  const res = document.getElementById('knowSearchResult');
+  res.style.display = 'block';
+  res.textContent = '🔍 Buscando...';
+  try {
+    const r = await fetch(`${API}/api/knowledge/search`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query:q, n:5})
+    });
+    const d = await r.json();
+    if (d.results?.length) {
+      res.textContent = d.results.map((r,i) => `[${i+1}] ${r}`).join('\n\n');
+    } else { res.textContent = 'Sin resultados'; }
+  } catch(e) { res.textContent = `❌ ${e.message}`; }
+}
+
+async function loadCatalog() {
+  try {
+    const r = await fetch(`${API}/api/knowledge/catalog`);
+    const docs = await r.json();
+    const el = document.getElementById('knowCatalog');
+    if (Array.isArray(docs) && docs.length) {
+      el.innerHTML = docs.map(d => `<div class="know-doc"><span>${d.source||'?'} — ${d.doc_type||''}</span><span style="color:var(--text-muted)">${d.char_count} chars</span></div>`).join('');
+    } else { el.innerHTML = '<div class="empty">Sin documentos</div>'; }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+// GITHUB
+// ═══════════════════════════════════════════
+async function loadBranches() {
+  try {
+    const r = await fetch(`${API}/api/github/branches`);
+    const d = await r.json();
+    const sel = document.getElementById('ghBranch');
+    sel.innerHTML = (d.branches||['main']).map(b => `<option>${b}</option>`).join('');
+  } catch(e) {}
+}
+
+async function pushToGithub() {
+  const content = document.getElementById('ghContent').value;
+  const filepath = document.getElementById('ghPath').value.trim();
+  const branch = document.getElementById('ghBranch').value;
+  const msg = document.getElementById('ghMsg').value.trim();
+  if (!content || !filepath) { alert('Falta contenido o ruta'); return; }
+  const btn = document.getElementById('ghBtn');
+  const res = document.getElementById('ghResult');
+  btn.disabled = true; btn.textContent = '⏳ Pushing...';
+  res.style.display = 'block';
+  try {
+    const r = await fetch(`${API}/api/github/push`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({content, filepath, branch, commit_msg: msg})
+    });
+    const d = await r.json();
+    if (d.status === 'ok') {
+      res.textContent = `✅ Pushed! SHA: ${d.sha} → ${branch}:${filepath}`;
+      loadGHHistory();
+    } else { res.textContent = `❌ ${d.error || d.message}`; }
+  } catch(e) { res.textContent = `❌ ${e.message}`; }
+  finally { btn.disabled = false; btn.textContent = '🚀 Push'; }
+}
+
+function pasteFromChat() {
+  document.getElementById('ghContent').value = lastCodeResult;
+}
+
+async function loadGHHistory() {
+  try {
+    const r = await fetch(`${API}/api/github/history`);
+    const list = await r.json();
+    const el = document.getElementById('ghHistory');
+    if (Array.isArray(list) && list.length) {
+      el.innerHTML = list.map(h => `<div class="gh-history-item"><span class="gh-sha">${h.sha||'?'}</span><span>${h.branch}:${h.filepath}</span><span style="color:var(--text-muted);font-size:11px">${h.commit_msg}</span></div>`).join('');
+    } else { el.innerHTML = '<div class="empty">Sin pushes</div>'; }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+// PREVIEW
+// ═══════════════════════════════════════════
+async function createPreviewFromGH() {
+  const html = document.getElementById('ghContent').value;
+  if (!html) { alert('Pega HTML en el editor'); return; }
+  const name = document.getElementById('ghPath').value.split('/').pop() || 'preview';
+  try {
+    const r = await fetch(`${API}/api/preview/create`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({html, name})
+    });
+    const d = await r.json();
+    if (d.local_url) {
+      const proxyBase = window.location.hostname.split('-')[0];
+      const proxyUrl = `https://${proxyBase}-${d.port}.proxy.runpod.net/${d.filename}`;
+      const iframe = document.getElementById('previewFrame');
+      iframe.style.display = 'block';
+      iframe.src = d.local_url;
+      const listEl = document.getElementById('previewList');
+      listEl.innerHTML = `<div style="padding:6px;font-size:12px">
+        <a href="${proxyUrl}" target="_blank" style="color:var(--accent)">${proxyUrl}</a>
+        <span style="color:var(--text-muted);margin-left:8px">Port ${d.port}</span>
+      </div>` + listEl.innerHTML;
+    }
+  } catch(e) { alert(`Error: ${e.message}`); }
+}
+
+async function loadPreviews() {
+  try {
+    const r = await fetch(`${API}/api/preview/list`);
+    const list = await r.json();
+    const el = document.getElementById('previewList');
+    if (Array.isArray(list) && list.length) {
+      const base = window.location.hostname.split('-')[0];
+      el.innerHTML = list.map(p => `<div style="padding:4px;font-size:12px;display:flex;align-items:center;gap:8px">
+        <span class="badge ${p.alive?'ok':'error'}">${p.alive?'LIVE':'DEAD'}</span>
+        <a href="https://${base}-${p.port}.proxy.runpod.net/${p.filename}" target="_blank" style="color:var(--accent2)">${p.name}</a>
+        <span style="color:var(--text-muted)">:${p.port}</span>
+      </div>`).join('');
+    } else { el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px">Sin previews activos</div>'; }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+// PROJECTS
+// ═══════════════════════════════════════════
+async function loadProjects() {
+  try {
+    const r = await fetch(`${API}/api/db/projects`);
+    const list = await r.json();
+    const sel = document.getElementById('chatProject');
+    sel.innerHTML = '<option value="">— Sin proyecto —</option>' +
+      (Array.isArray(list) ? list.map(p => `<option value="${p.id}">${p.name}</option>`).join('') : '');
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════
+init();
 </script>
 </body>
 </html>
+
